@@ -1,0 +1,931 @@
+Title: Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models
+
+URL Source: https://arxiv.org/pdf/2609.08517v1
+
+Published Time: Wed, 09 Sep 2026 04:01:10 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models 
+
+# Kun Xu 
+
+Nanjing University of Aeronautics and Astronautics Nanjing, China xukun930@nuaa.edu.cn 
+
+# Yushu Zhang ∗
+
+Jiangxi University of Finance and Economics Nanchang, China zhangyushu@jxufe.edu.cn 
+
+# Tao Wang 
+
+Nanjing University of Aeronautics and Astronautics Nanjing, China wangtao21@nuaa.edu.cn 
+
+# Shuren Qi 
+
+City University of Hong Kong Hong Kong, China shurenqi@cityu.edu.hk 
+
+# Barbara Carminati 
+
+University of Insubria Varese, Italy barbara.carminati@uninsubria.it 
+
+# Elena Ferrari 
+
+University of Insubria Varese, Italy elena.ferrari@uninsubria.it 
+
+# Yuming Fang 
+
+Jiangxi University of Finance and Economics Nanchang, China fa0001ng@e.ntu.edu.sg 
+
+## Abstract 
+
+Diffusion models have become a core paradigm for multimedia generation, offering powerful concept-driven controllability for per-sonalization, semantic editing, and selective unlearning. However, as semantic control extends beyond natural-language prompts to learned embeddings and intervention pipelines, the safety and gov-ernance of these systems become increasingly difficult to evaluate in a unified manner, especially for safety-sensitive, identity-linked, and other privacy-relevant concepts. Existing studies mainly rely on heuristic audits, adversarial probing, or task-specific erasure benchmarks, and therefore provide limited support for systematic comparison across models, conditioning channels, and deployment conditions. We present a concept-level probabilistic audit and re-porting framework for diffusion models. We formalize governance-relevant concept behaviors as Bernoulli semantic events induced by stochastic generation, and define a Concept Risk Operator that maps model-channel configurations to structured risk profiles, en-abling comparison across prompting interfaces, learned embedding channels, models, and recorded conditions. We apply sample-level post-hoc calibration and configuration-level risk aggregation, and show that probability error can change thresholded actions near policy boundaries. Experiments on SD1.5, SD2.1, and SDXL reveal consistent yet non-uniform operational risk patterns across concept families, channels, recorded conditions, and shifted protocols. In particular, embedding-based access and obfuscated prompts expose risks often understated by standard-prompt evaluation. A pooled 
+
+> ∗Corresponding author
+> This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+> MM ’26, Rio de Janeiro, Brazil.
+> © 2026 Copyright held by the owner/author(s). ACM ISBN 979-8-4007-2213-4/2026/11 https://doi.org/10.1145/3767308.3835863
+
+multi-protocol calibrator improves held-out probability reliability, but we do not claim transfer from a standard-only calibrator. CLRC provides a common audit schema for probabilistic and decision-aware governance of multimedia generation systems. 
+
+## CCS Concepts 
+
+• Security and privacy → Human and societal aspects of se-curity and privacy ; • Computing methodologies → Artificial intelligence ; Machine learning ; Computer vision. 
+
+## Keywords 
+
+Diffusion Models, Multimedia Generation, Concept-Level Risk, Prob-ability Calibration, AI Safety, Privacy-Aware Governance 
+
+ACM Reference Format: 
+
+Kun Xu, Yushu Zhang, Tao Wang, Shuren Qi, Barbara Carminati, Elena Ferrari, and Yuming Fang. 2026. Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models. In Proceedings of the 34th ACM International Conference on Multimedia (MM ’26), November 10–14, 2026, Rio de Janeiro, Brazil. ACM, New York, NY, USA, 15 pages. https: //doi.org/10.1145/3767308.3835863 
+
+## 1 Introduction 
+
+Diffusion models have rapidly evolved into powerful visual foun-dation models, achieving remarkable performance in high-fidelity image synthesis and semantic controllability [2, 35]. Following the introduction of denoising diffusion probabilistic models [21] and latent diffusion models [47], text-to-image (T2I) systems such as Stable Diffusion (SD) have demonstrated strong alignment between textual descriptions and generated images [55, 62]. Subsequent advances in personalization and concept manipulation, including Textual Inversion [13], DreamBooth [48], and cross-attention-based editing [20], have transformed diffusion models from generic gener-ative tools into programmable semantic systems capable of concept injection, modification, and removal [19, 25, 61]. arXiv:2609.08517v1 [cs.MM] 8 Sep 2026 MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al. 
+
+While these capabilities substantially enhance controllability, they simultaneously introduce new governance and reliability chal-lenges [60]. In concept-driven diffusion settings, semantic con-cepts act as operational units that can be activated, suppressed, transferred, or combined. Sensitive concepts such as weapons, nu-dity, copyrighted artistic styles, identity-related attributes, or other privacy-relevant semantic cues may be intentionally erased through model editing [14, 25, 34], yet remain recoverable through alterna-tive conditioning channels or adaptive prompts [5, 43]. This issue is particularly important for identity-linked and personalized gen-eration settings, where semantic control may interact with subject-specific embeddings and thereby expand the effective governance surface beyond prompt-only access. Moreover, robustness-oriented defenses [23, 65] often target specific attack surfaces without pro-viding a holistic view of concept-level vulnerabilities across models, conditioning channels, and deployment configurations. Current research primarily addresses complementary subsets of this problem. Concept erasure and unlearning methods aim to suppress targeted concepts [14, 25], while red-teaming approaches evaluate prompt-based safety weaknesses [56]. Improvements in diffusion guidance and sampling stability focus on generation qual-ity or classifier alignment [8, 40]. Benchmarks such as Six-CD cover important concept-removal settings [45]; what remains less stan-dardized is joint reporting across model, channel, protocol distribu-tion, intervention state, benign loss, and probability calibration. This gap becomes particularly critical when diffusion models are deployed as foundation systems. In real-world usage, concept activation behavior depends not only on textual prompts but also on learned embeddings introduced through personalization tech-niques [13, 46, 48]. This channel expansion is governance-relevant not only for unsafe content, but also for identity-linked and privacy-relevant concepts, since subject-specific embeddings or alternate control pathways may preserve, recover, or amplify concept behav-iors that are not visible under prompt-only evaluation [10]. The same semantic concept may exhibit distinct reproduction probabili-ties under different architectures such as SD1.5 and SDXL, as well as under different conditioning channels. Furthermore, existing evaluation metrics typically report binary outcomes or aggregate success rates, without quantifying whether predicted risk aligns with empirical frequency. Classical calibration theory [18] suggests that reliable decision-making requires probabilistic estimates whose confidence reflects true event likelihood, yet such calibration analy-sis has not been systematically applied to semantic concept events in diffusion models. These observations motivate three fundamental research questions: 
+
+• RQ1: How does semantic risk migrate across prompt, embedding, and intervention pathways under a unified configuration space? 
+
+• RQ2: Can concept activation be modeled as a Bernoulli semantic event, with reproduction and bypass as comparable risks and spillover as a population-level collateral-risk diagnostic? 
+
+• RQ3: How do held-out probability errors and post-hoc calibration affect sample-level threshold actions near policy boundaries? To address these questions, we present Concept-Level Risk and Calibration (CLRC) as an audit and reporting schema rather than a new concept detector, erasure algorithm, or calibration method. CLRC indexes event-frequency estimators by concept, model, chan-nel, protocol distribution, and intervention state, and couples these views with held-out post-hoc calibration using a declared multi-protocol development/held-out design. Its intended contribution is coverage, comparability, and decision-oriented reporting. We in-stantiate this schema in a controlled protocol for cross-model, cross-channel, and intervention-aware analysis. Empirically, the protocol reveals structured concept-level risk patterns, cross-channel risk shifts, and systematic miscalibration in concept-risk estimation. Figure 1 provides an overview of the CLRC pipeline, from concept-conditioned generation and event construction to structured risk estimation and post-hoc calibration for governance. Our contribu-tions are summarized as follows: 
+
+• Unified concept-risk evaluation across access and governance path-ways. Existing diffusion safety evaluations are mostly prompt-centric. We formalize an audit operator over model, channel, protocol distribution, and condition state, enabling direct com-parison across prompt access, learned embedding access, and recorded pre/post-condition settings. 
+
+• Bernoulli semantic-event modeling for concept-level governance. 
+
+Rather than reporting only binary success or suppression rates, we model reproduction and bypass as Bernoulli concept events and treat spillover as a population-level collateral-risk diagnos-tic. This provides a common estimation target for concept-level governance. 
+
+• Calibration-aware analysis of governance stability. We show that miscalibration can change thresholded actions near policy bound-aries. Our experiments quantify held-out probability reliability and action sensitivity to post-hoc calibration; they do not assert standard-to-shifted transfer or oracle decision accuracy. 
+
+## 2 Related Work 2.1 Concept Conditioning, Editing, and Erasure in Diffusion Models 
+
+Diffusion models have become a dominant class of foundation gen-erators for visual synthesis due to scalable training and high-fidelity sampling [12, 31]. DDPM establishes the forward noising and re-verse denoising framework [21], while subsequent advances im-prove objectives and sampling efficiency. Latent diffusion substan-tially reduces computation by performing generation in a learned latent space without sacrificing quality [47]. Diffusion architec-tures have also evolved beyond U-Nets, with transformer-based backbones showing favorable scaling behavior [42]. Large-scale systems further benefit from stronger text encoders and guidance mechanisms: Imagen highlights the role of large language models as text encoders [50], and classifier-free guidance enables control-lable fidelity–diversity trade-offs without a separate classifier [22]. More broadly, score-based formulations provide an explicit stochas-tic foundation for diffusion-style generation [9, 54], while recent surveys review the growing landscape of controllable T2I diffusion systems [3]. As diffusion models mature into concept-driven foundation sys-tems, practical utility increasingly depends on the ability to inject, bind, edit, suppress, and recover semantic concepts through di-verse conditioning channels. Personalization methods bind new concepts or subjects to tokens or embeddings: Textual Inversion Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+learns a new token embedding while freezing the base model [13], whereas DreamBooth fine-tunes the model to associate a rare token with a specific subject under prior-preservation regularization [48]. At inference time, concept manipulation can be achieved through attention and inversion mechanisms. Prompt-to-Prompt localizes word-level effects through cross-attention control [20], and Null-text inversion improves real-image reconstruction and editing by optimizing the unconditional embedding used in classifier-free guid-ance [38]. Instruction-based editing further extends prompt control to natural-language edit commands, as in InstructPix2Pix [1], while ControlNet adds spatial or structural conditions such as edges, depth, pose, or segmentation without retraining the backbone [64]. A closely related line studies concept manipulation from edit-ing to removal and forgetting [30]. Early editing frameworks such as SDEdit steer the denoising process under conditional priors to balance realism and fidelity [36]. Training-free or lightweight methods support semantic editing through prompt control, discov-ered embedding directions, or inferred masks, including Prompt-to-Prompt [20], Null-text inversion [38], InstructPix2Pix [1], pix2pix-zero [41], and DiffEdit [7]. Beyond editing, concept erasing and unlearning aim to suppress specific concepts, styles, or unsafe con-tent while preserving model utility [6, 17, 28]. Safe Latent Diffusion introduces inference-time interventions for suppressing unsafe generation without retraining [51]; ESD performs weight-level con-cept removal through negative-guidance fine-tuning [14]; and UCE uses closed-form parameter editing for moderation, debiasing, and style erasure at scale [15]. Machine unlearning surveys further systematize relevant definitions, threat models, and algorithm fam-ilies [16, 39, 44], while Forget-Me-Not and SalUn study selective forgetting and saliency-based removal in diffusion and broader generative settings [11, 49, 63]. Recent analyses show that concept removal is difficult to validate and may remain brittle under ad-versarial prompts or alternate channels [32]: Ring-A-Bell reveals model-agnostic bypass behavior [56], and subsequent work exam-ines whether concepts are truly erased and what collateral side effects remain [33]. Together, these studies motivate the develop-ment of concept-level risk evaluation frameworks for systematically comparing editing, erasure, bypass, and spillover behaviors across models and conditioning channels. Embedding-space vulnerability predates CLRC: query-free at-tacks against Stable Diffusion exploit sensitive text-encoder dimen-sions [67]. Recent defenses include HiRM, which redirects high-level representations [26], and AEGIS, which uses adversarial tar-gets without retention data [27]. Such methods can instantiate a fully specified intervention 𝜋 ; CLRC is complementary rather than a competing optimizer, auditing reproduction, bypass, benign loss, and calibration under matched protocols. 
+
+## 2.2 Safety and Governance Challenges in Diffusion Models 
+
+As diffusion models are increasingly deployed, safety evaluation and governance have become central concerns. Imagen introduced DrawBench for human evaluation of compositional and prompt-following behavior [50]; T2ISafety audits fairness, toxicity, and privacy [29], while Six-CD and UnlearnCanvas benchmark concept-removal effectiveness and retainability [45, 66]. These task-specific benchmarks provide valuable evaluation targets. CLRC contributes an orthogonal reporting layer: it indexes reproduction, bypass, and benign loss jointly by model, channel, protocol, and interven-tion, and adds held-out human-referenced calibration and action-sensitivity analysis. We therefore claim broader joint reporting, not superior detector or erasure performance. Inference-time methods such as Safe Latent Diffusion provide safety guidance and curated prompt testbeds without retraining [51]. At the same time, empiri-cal evidence suggests that safety filters and alignment layers can be brittle under distribution shifts or adversarial prompting [58, 59], indicating that evaluation should extend beyond nominal prompt settings to multiple channels and attack surfaces. Beyond content moderation, diffusion models also raise privacy, memorization, fairness, and governance concerns. Web-scale train-ing may induce memorization and reproduction of training samples; Carlini et al. show that diffusion models can leak verbatim training images under targeted extraction [4], while membership inference attacks indicate broader training-data exposure risks [53]. Open datasets such as LAION-5B further introduce noise and potential de-mographic or cultural bias into downstream diffusion systems [52]. Existing mitigation strategies often rely on curation, filtering, de-biasing, or adversarial testing, but they typically focus on isolated failure modes and provide limited support for structured compari-son across concept families, models, and interfaces. Calibration has long been recognized as critical for safety-critical decision making, since miscalibration can destabilize threshold-based interventions near policy boundaries [57]. However, most diffusion safety evalua-tions still rely on heuristic auditing or aggregate success rates, with-out modeling governance-relevant concept activation as calibrated Bernoulli events. This leaves a gap between empirical auditing and decision-oriented concept-level risk assessment, which our work aims to address. 
+
+## 3 Concept Risk Modeling and Calibration 3.1 Concept Event Family 
+
+We model a diffusion foundation model as a conditional stochastic generator over an image space X. Let 𝑚 ∈ M index the model architecture and let 𝜒 ∈ { prompt , embedding } denote the input channel. Let 𝑧 ∼ 𝑝 (𝑧 ) be the latent noise seed and let 𝑐 cond ∼ D be a conditioning input drawn from a distribution D under channel 
+
+𝜒 . The generation process is 𝑥 = 𝐺 𝑚 
+
+
+
+𝑧, 𝑐 ( 𝜒 )
+
+> cond
+
+
+
+, which induces a probability measure over X given by 
+
+𝑃 D 
+
+> 𝑚,𝜒
+
+= Law 
+
+
+
+𝐺 𝑚 
+
+
+
+𝑧, 𝑐 ( 𝜒 )
+
+> cond
+
+ 
+
+, 𝑧 ∼ 𝑝 (𝑧 ), 𝑐 cond ∼ D . (1) Here, Law (·) denotes the distribution of its random argument, induced jointly by the sampled seed and conditioning input. Thus each (𝑚, 𝜒, D) defines an image distribution. A governance condi-tion 𝜋 induces 𝑃 D,𝜋 𝑚,𝜒 = Π𝜋 (𝑃 D 
+
+> 𝑚,𝜒
+
+), where Π𝜋 replaces the baseline pipeline rather than estimating risk. We formalize governance-relevant behavior as measurable con-cept events. Let K = {1, . . . , 𝐾 }. For each 𝑘 ∈ K , let 𝑌 𝑘 (𝑥 ) ∈ { 0, 1}
+
+denote the human-reference event, observed here only through archived binary annotations on the audited calibration set. A fixed judge gives 𝑠 𝑘 (𝑥 ) = 𝑓 𝑘 (𝑥 ) and the operational event 𝐸 𝑘 (𝑥 ) =
+
+I{𝑠 𝑘 (𝑥 ) ≥ 𝜏 𝑘 }. The risk tensor uses 𝐸 𝑘 , whereas calibration maps a MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al. V*  
+
+> Concept embedding channel
+> "a portrait of V* with formal attire "
+> Natural-language prompt channel
+
+Concept & Control Inputs 
+
+Stochastic Semantic Process 
+
+Judge & Event Construction 
+
+Calibration & Governance 
+
+Structured Risk Estimation 
+
+SD1.5/SD2.1/SDXL 
+
+> Diffusion Foundation Model
+
+Stochastic generation with seed  z
+
+> Spillover
+> Concept Event Family
+> Multi-sample generation
+
+1x
+
+> 2
+
+## x
+
+3x
+
+> 4
+
+# x
+
+> 1
+
+( )kf x
+
+> 2
+
+( )kf x
+
+> 3
+
+( )kf x
+
+> 4
+
+( )kf x
+
+ Semantic similarity 
+
+ Safety-specific 
+
+ Concept-dependent 
+
+> Judge Bank
+> Threshold
+
+( , , , )k
+
+χ π   
+
+> 𝑘𝑘 : concept
+> 𝜒𝜒 :channel
+> 𝐷𝐷 : protocol distribution
+> 𝜋𝜋 :intervention state
+> ( ) ( ) 1
+
+1ˆ ( )  
+
+> nttkii
+
+R E xn == ∑  
+
+> Empirical event aggregation
+> Empirical risk estimate
+> ,,( ) ( ) ~
+
+( ) 1( )mt tkx PR E x
+
+> πχ
+
+= =
+
+> event probability
+> configuration-dependent risk
+
+# s 
+
+> Allow Intervene Flag
+> Post-hoc calibration
+> Calibrated concept risk probability
+> Reproduction
+> Bypass
+> Sample-level
+> Distribution-level
+
+Figure 1: Overview of Concept-Level Risk Modeling and Calibration in Diffusion Models. 
+
+fixed score proxy to 𝑌 𝑘 ; 𝑌 𝑘 is a reference target, not latent truth or an oracle. The sample-level type 𝑡 ∈ T = {rep , byp } restricts admissible protocol–condition pairs without changing the judge. Let Crep con-tain the declared standard, shifted, and obfuscated pre-condition re-production slices and the matched standard post-condition residual slice; let Cbyp contain the standard and obfuscated post-condition attack slices. For (D , 𝜋 ) ∈ C 𝑡 , set 𝐸 (𝑡 ) 
+
+> 𝑘
+
+= 𝐸 𝑘 and 𝑌 (𝑡 ) 
+
+> 𝑘
+
+= 𝑌 𝑘 under 
+
+𝑃 D,𝜋 𝑚,𝜒 . Thus the types differ by admissible slices, not decision rules; operational bypass does not imply configuration-invariant judge error. Interventions may also affect benign concepts. For 𝑏 ∈ K ben ,let 𝑅 (rep ) (𝑏, ·) denote the analogous fixed-judge event frequency; define the one-sided benign-utility loss and its tolerance indicator as 
+
+𝐷 𝑏 (𝑚, 𝜒 ; D, 𝜋 ) =
+
+h
+
+𝑅 (rep ) (𝑏, 𝑚, 𝜒 ; D, ∅) − 𝑅 (rep ) (𝑏, 𝑚, 𝜒 ; D, 𝜋 )
+
+i
+
+> +
+
+,
+
+S𝑏 (𝜖 ) = I{𝐷 𝑏 ≥ 𝜖 }, 𝑏 ∈ K ben .
+
+(2) Here [𝑢 ]+ = max (𝑢, 0). We report the continuous benign-loss magnitude 𝐷 (𝑚, 𝜒 ; D, 𝜋 ) = |K ben |−1 Í𝑏 𝐷 𝑏 (𝑚, 𝜒 ; D, 𝜋 ) and, when thresholding is required, the rate |K ben |−1 Í𝑏 S𝑏 (𝜖 ). In our proto-col Kben is a disjoint 20-concept auxiliary benign set and 𝜖 = 0.05; Fig. 3(d) reports one 𝐷 for each displayed model–channel–protocol– condition configuration, not a target-family-specific statistic. Both quantities are population-level diagnostics and are excluded from 
+
+T .
+
+## 3.2 Structured Risk Profiling 
+
+The Concept Risk Operator induces a structured risk profile, which we also view as a risk tensor indexed by concept, event type, model, channel, protocol distribution, and intervention. We formal-ize structured risk profiling as a distribution-level characterization of governance-relevant concept behavior across these axes. For 𝑡 ∈ T ,
+
+𝑘 ∈ K , and an admissible pair (D , 𝜋 ) ∈ C 𝑡 , we define the event risk under model–channel configuration (𝑚, 𝜒 ) as the population-level probability 
+
+𝑅 (𝑡 ) (𝑘, 𝑚, 𝜒 ; D, 𝜋 ) ≜ P𝑥 ∼𝑃 D,𝜋 𝑚,𝜒 
+
+ 𝐸 (𝑡 ) 
+
+> 𝑘
+
+(𝑥 ) = 1 = E𝑥 ∼𝑃 D,𝜋 𝑚,𝜒 
+
+𝐸 (𝑡 ) 
+
+> 𝑘
+
+(𝑥 ),
+
+(3) where 𝜋 = ∅ denotes the nominal setting. Only declared pairs 
+
+(D , 𝜋 ) ∈ C 𝑡 are admissible for event type 𝑡 . This definition covers reproduction and bypass risks; spillover is handled separately as a distribution-level diagnostic in Eq. (2). Collecting risks across concepts yields the event-specific risk vector 
+
+R(𝑡 ) (𝑚, 𝜒 ; D, 𝜋 ) =  𝑅 (𝑡 ) (1, 𝑚, 𝜒 ; D, 𝜋 ), . . . , 𝑅 (𝑡 ) (𝐾, 𝑚, 𝜒 ; D, 𝜋 ) ∈ [ 0, 1]𝐾 .
+
+(4) Collecting only admissible entries defines the structured risk profile 
+
+R(𝑚, 𝜒 ) = R(𝑡 ) (𝑚, 𝜒 ; D, 𝜋 ) : 𝑡 ∈ T , (D , 𝜋 ) ∈ C 𝑡 , (5) indexed by concept, event type, model, channel, protocol distribu-tion, and condition. Fix (𝑘, 𝑚, D, 𝜋, 𝑡 ). For a change from channel 𝜒 1 to 𝜒 2, define the signed channel risk gap 
+
+Δ(𝑡 ) 
+
+> 𝑘
+
+(𝑚 ; 𝜒 1 → 𝜒 2) = 𝑅 (𝑡 ) (𝑘, 𝑚, 𝜒 2; D, 𝜋 ) − 𝑅 (𝑡 ) (𝑘, 𝑚, 𝜒 1; D, 𝜋 ),
+
+(6) and for a change from model 𝑚 1 to 𝑚 2 under fixed (𝑘, 𝜒, D, 𝜋, 𝑡 ),the model risk gap is 
+
+Γ(𝑡 ) 
+
+> 𝑘
+
+(𝜒 ; 𝑚 1 →𝑚 2) = 𝑅 (𝑡 ) (𝑘, 𝑚 2, 𝜒 ; D, 𝜋 ) − 𝑅 (𝑡 ) (𝑘, 𝑚 1, 𝜒 ; D, 𝜋 ).
+
+(7) Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+Thus a positive prompt-to-embedding gap means higher fixed-judge frequency under embedding access, while a negative SD1.5-to-SDXL gap means a decrease on SDXL. Under configuration-invariant error with 𝛼 𝑘 + 𝛽 𝑘 < 1, these gaps preserve human-reference ordering; configuration-dependent error need not. Under independent sampling, risks are estimated from {𝑥 𝑖 }𝑛 𝑖 =1 ∼
+
+𝑃 D,𝜋 𝑚,𝜒 by ˆ𝑅 (𝑡 ) (𝑘, 𝑚, 𝜒 ; D, 𝜋 ) = 1
+
+𝑛 
+
+> 𝑛
+
+∑︁ 
+
+> 𝑖 =1
+
+𝐸 (𝑡 ) 
+
+> 𝑘
+
+(𝑥 𝑖 ) (8) and is unbiased and consistent for 𝑅 (𝑡 ) (𝑘, 𝑚, 𝜒 ; D, 𝜋 ). Our matched fixed-seed audit estimates the corresponding finite-protocol fre-quency and uses the same seed set across paired configurations; uncertainty is therefore interpreted conditional on that audit design. 
+
+## 3.3 Probabilistic Estimation and Calibration 
+
+Structured risk profiling defines population-level event frequencies under model-induced distributions. Calibration is performed at the sample level and then aggregated, rather than by training a separate neural risk network. Let 𝑗 index a score–label pair, with concept 𝑘 𝑗 ,channel 𝜒 𝑗 , human annotation 𝑦 𝑗 = 𝑌 𝑘 𝑗 (𝑥 𝑗 ), and cosine score 𝑠 𝑗 =
+
+𝑓 𝑘 𝑗 (𝑥 𝑗 ). We use the fixed raw probability proxy 𝑟 𝑗 = clip [0,1] (𝑠 𝑗 )
+
+and fit a channel-level post-hoc map 
+
+𝑞 𝑗 = ℎ𝜙,𝜒 𝑗 (𝑟 𝑗 ) ≈ P
+
+
+
+𝑌 𝑘 𝑗 = 1 | 𝑟 𝑗 , 𝜒 𝑗 
+
+
+
+,
+
+b𝑅 cal (𝑘, 𝑐 ) = 1
+
+|I 𝑘,𝑐 |∑︁ 𝑗 ∈ I 𝑘,𝑐 
+
+𝑞 𝑗 . (9) Here 𝑐 = (𝑡, 𝑚, 𝜒, D, 𝜋 ) and I𝑘,𝑐 = { 𝑗 : 𝑘 𝑗 = 𝑘, 𝑐 𝑗 = 𝑐 } is the concept-specific held-out subset. The two maps ℎ𝜙,𝜒 pool devel-opment pairs across concepts and protocol slices, but aggrega-tion retains the concept index. This human-reference probability aggregate differs from the operational judge-event frequency in Eq. (8). For probability-reliability evaluation, we additionally de-fine Ipool  
+
+> 𝑐
+
+= Ð𝑘 I𝑘,𝑐 within a named held-out slice; the reported ECE/Brier values are pooled sample-level diagnostics, not concept-specific policy risks. Threshold fitting and probability calibration use the develop-ment annotations for different mappings: 𝜏 𝑘 converts 𝑠 into the operational event 𝐸 , whereas ℎ𝜙,𝜒 maps the fixed proxy 𝑟 to the human-reference target 𝑌 . Neither 𝐸 nor a calibrated output is reused as its own calibration target. A principled sample-level mea-sure of probabilistic accuracy is the Brier score, BS = 1
+
+𝑁 cal 
+
+> 𝑁 cal
+
+∑︁ 
+
+> 𝑗 =1
+
+ 𝑞 𝑗 − 𝑦 𝑗 
+
+2, (10) computed only on held-out human-labeled score–label pairs. Calibration evaluates whether predicted probabilities agree with empirical human-label frequencies. Partitioning [0, 1] into bins 
+
+{C 𝑏 }𝐵 𝑏 =1 and letting I𝑏 = { 𝑗 : 𝑞 𝑗 ∈ C 𝑏 }, with 𝑁 cal = Í𝑏 |I 𝑏 |, the Expected Calibration Error is ECE =
+
+> 𝐵
+
+∑︁ 
+
+> 𝑏 =1
+
+|I 𝑏 |
+
+𝑁 cal 
+
+1
+
+|I 𝑏 |∑︁ 𝑗 ∈ I 𝑏 
+
+𝑦 𝑗 − 1
+
+|I 𝑏 |∑︁ 𝑗 ∈ I 𝑏 
+
+𝑞 𝑗 . (11) Empty bins are omitted. Raw Brier/ECE use the same equations with 𝑞 𝑗 replaced by 𝑟 𝑗 .For a concept–configuration policy threshold 𝑎 ∈ (0, 1), let 
+
+b𝑅 H (𝑘, 𝑐 ) = |I 𝑘,𝑐 |−1 Í𝑗 ∈ I 𝑘,𝑐 𝑦 𝑗 be the finite held-out human-reference frequency. The calibrated and human-reference configuration ac-tions disagree when 
+
+I
+
+nb𝑅 cal (𝑘, 𝑐 ) ≥ 𝑎 
+
+o
+
+≠ I
+
+nb𝑅 H (𝑘, 𝑐 ) ≥ 𝑎 
+
+o
+
+. (12) Separately, the raw and calibrated sample actions are I{𝑟 𝑗 ≥ 𝑎 } and 
+
+I{𝑞 𝑗 ≥ 𝑎 }. Our experiments report their disagreement as sample-level action sensitivity; without an independent action reference, it is not decision accuracy. 
+
+## 4 Probabilistic Semantic Risk Theory 4.1 Event Tensor and Intervention-Induced Risk 
+
+The structured risk profiling layer defines event-specific risks as population probabilities under induced image distributions. We now elevate this construction into a tensorized probabilistic object that serves as the foundation of semantic risk theory. Interventions act as transformations on the underlying gener-ation distribution. Let 𝑃 denote a baseline image distribution and define the intervention operator Π𝜋 : 𝑃 ↦ → 𝑃 𝜋 , where 𝑃 𝜋 denotes the post-intervention distribution induced by governance mecha-nism 𝜋 . Event probabilities are therefore functionals of transformed distributions 𝑅 (𝑡 ) (𝑘 ; 𝑃 𝜋 ) = P𝑥 ∼𝑃 𝜋 
+
+ 𝐸 (𝑡 ) 
+
+> 𝑘
+
+(𝑥 ) = 1. This formulation isolates semantic risk as a distributional property rather than as a prompt-specific artifact. The tensorized representation enables stability analysis at the event level. Let 𝑃 and 𝑄 be two distributions over X. For any (𝑘, 𝑡 ),
+
+𝑅 (𝑡 ) (𝑘 ; 𝑃 ) − 𝑅 (𝑡 ) (𝑘 ; 𝑄 ) ≤ TV (𝑃, 𝑄 ), (13) where TV (𝑃, 𝑄 ) = sup 𝐴 |𝑃 (𝐴 ) − 𝑄 (𝐴 )| is total variation distance; it upper-bounds the change of any single concept-event probability between 𝑃 and 𝑄 . While Eq. (13) provides a worst-case stability guarantee, it can be overly loose for concept events induced by thresholded judges. Supplementary Appendix A.2, Structured Sta-bility and Judge-Noise Robustness , gives a proof of a bound that separates distributional shift from semantic boundary mass. For the refined bound proved in Supplementary Appendix A.2, we use the ramp 𝜓 𝜏,𝜌 that is 0 below 𝜏 − 𝜌 , 1 above 𝜏 + 𝜌 , and linear between them. It has Lipschitz constant 1 /( 2𝜌 ) and differs from 
+
+I{𝑢 ≥ 𝜏 } only within 𝜌 of the threshold. 
+
+## 4.2 Comparative Risk Operators and Conditional Robustness 
+
+Structured risk tensors enable comparison across models, channels, and interventions. However, absolute values may be confounded by judge bias, generation quality, or concept activation frequency. We therefore study comparative operators and when their ordering is preserved despite judge error. For fixed (𝑘, 𝑡, D, 𝜋 ), the channel-and model-level operators use the signed directions in Eqs. (6)–(7). To state their limits, we adopt class-conditional label noise for the fixed judge. Let 𝑌 (𝑡 ) 
+
+> 𝑘
+
+(𝑥 ) denote the observed human-reference event defined in Sec. 3.1, and let 𝐸 (𝑡 ) 
+
+> 𝑘
+
+(𝑥 ) denote the separately thresholded event produced by the judge. For the following conditional comparison MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al. 
+
+Table 1: Category-level mean operational reproduction fre-quency ˆ𝑅 (rep ) under the non-intervention setting, measured by the fixed thresholded judge. Concept family SD1.5 SD2.1 SDXL Prompt Embedding Prompt Embedding Prompt Embedding                               
+
+> Identity-related 0.31 0.57 0.26 0.50 0.19 0.43 Copyright-sensitive 0.27 0.52 0.22 0.45 0.16 0.39 Unsafe / NSFW-sensitive 0.38 0.64 0.31 0.58 0.24 0.49 Benign controls 0.07 0.10 0.06 0.09 0.05 0.08
+> Mean over families 0.26 0.46 0.21 0.41 0.16 0.35
+
+relative to that reference, assume 
+
+(P 𝐸 (𝑡 ) 
+
+> 𝑘
+
+= 1 | 𝑌 (𝑡 ) 
+
+> 𝑘
+
+= 1 = 1 − 𝛽 𝑘 ,
+
+P 𝐸 (𝑡 ) 
+
+> 𝑘
+
+= 1 | 𝑌 (𝑡 ) 
+
+> 𝑘
+
+= 0 = 𝛼 𝑘 , (14) where 𝛼 𝑘 and 𝛽 𝑘 are the judge’s reference-conditional false-positive and false-negative rates. If they are configuration-independent and satisfy 𝛼 𝑘 + 𝛽 𝑘 < 1, observed and human-reference gaps have the same sign. These are modeling conditions, not empirical guarantees. Let 𝑅 (𝑡 ) 
+
+> H
+
+= E[𝑌 (𝑡 ) 
+
+> 𝑘
+
+] and note that the operational risk in Eq. (3) is 𝑅 (𝑡 ) = E[𝐸 (𝑡 ) 
+
+> 𝑘
+
+]. Under Eq. (14), 𝑅 (𝑡 ) = (1 − 𝛼 𝑘 − 𝛽 𝑘 )𝑅 (𝑡 ) 
+
+> H
+
++ 𝛼 𝑘 . If error rates vary with configuration 𝑐 , then 𝑅 𝑐 = 𝑅 H,𝑐 + 𝑏 𝑐 , where 
+
+𝑏 𝑐 = 𝛼 𝑐 (1 − 𝑅 H,𝑐 ) − 𝛽 𝑐 𝑅 H,𝑐 . Hence the observed gap 𝑅 𝑐 2 − 𝑅 𝑐 1 differs from its human-reference counterpart by 𝑏 𝑐 2 − 𝑏 𝑐 1 ; a sufficient sign-preservation condition is |𝑅 H,𝑐 2 − 𝑅 H,𝑐 1 | > |𝑏 𝑐 2 − 𝑏 𝑐 1 |. We therefore treat comparative invariance as conditional and do not infer judge stability from the reported sampling intervals. The shifted and obfuscated protocols stress the generator and intervention pipeline, not the judge itself. A judge-aware attacker could seek a human-reference-positive output, 𝑌 𝑘 = 1, while keep-ing 𝐸 𝑘 = 0, making 𝑏 𝑐 configuration-dependent and potentially invalidating the observed ordering; neither post-hoc calibration nor sampling intervals certify robustness to such adaptive judge evasion. We further connect comparative operators to distributional divergence. Let 𝑃 𝑚 1 and 𝑃 𝑚 2 denote induced distributions under identical (𝜒, D, 𝜋 ). Then for any (𝑘, 𝑡 ),
+
+Γ(𝑡 ) 
+
+> 𝑘
+
+(𝜒 ; 𝑚 1 →𝑚 2) ≤ TV (𝑃 𝑚 1 , 𝑃 𝑚 2 ), (15) which follows directly from Eq. (13). Thus, comparative semantic risk is bounded by total variation between the induced distributions. 
+
+## 5 Experiments 5.1 Experimental Setting 
+
+Models, Channels, and Recorded Conditions. We evaluate SD v1.5, SD v2.1, and SDXL through prompt and learned textual-inversion channels. The nominal setting 𝜋 = ∅ and one fixed, opaque, indi-visible end-to-end post-condition 𝜋 post are treated as archive-stable condition keys. Table 2 and Fig. 3 compare their output laws; the retained aggregate does not expose a component specification for 
+
+𝜋 post , so no effect is attributed to a particular checkpoint, filter, or optimizer. 
+
+Concept Set and Protocol Distributions. The core manifest reg-isters 64 concepts: 16 identity-related, 16 copyright-sensitive, 16 unsafe/NSFW-sensitive, and 16 core benign controls. A disjoint 20-concept auxiliary benign set is used only for spillover. Consequently, 0.2 0.3 0.4 0.5 0.6 0.7 Reproduction risk  ̂ R(rep) 
+
+> SDXL-Embedding SDXL-Prompt SD2.1-Embedding SD2.1-Prompt SD1.5-Embedding SD1.5-Prompt Model–channel configuration
+> Median 75th percentile 90th percentile
+
+Figure 2: Tail behavior of the per-concept reproduction-risk distribution under different model–channel configurations. The reference plot reports the median, 75 th percentile, and 
+
+90 th percentile of ˆ𝑅 (rep ) (𝑘, 𝑚, 𝜒 ; D, ∅) across concepts. The persistent separation between the median and the upper tail indicates that a subset of concepts remains substantially more vulnerable than the category average would suggest. 
+
+target-family, core-benign, and spillover denominators are respec-tively 48 × 50 = 2,400, 16 × 50 = 800, and 20 × 50 = 1,000 outputs per model–channel–protocol–condition slice. Standard, shifted, and ob-fuscated prompt protocols each contain five templates per concept. For each backbone, the fixed token denotes its registered encoder-compatible embedding path and outer form, not transfer of one vector across incompatible encoders. Each evaluation cell contains 
+
+𝑁 = 50 images in total, not 50 per template. Because outer forms differ, the channel gap compares declared deployment distributions rather than a causal channel substitution. 
+
+Judge and Calibration Split. The fixed openai/clip-vit-large-patch14 cosine judge scores a 3 ,840-label core pool (30 prompt and 30 embedding images per concept), split concept–channel-stratified into 2 ,688 development and 1 ,152 untouched held-out pairs. Development data set F1-optimal 𝜏 𝑘 and fit one isotonic and one Platt map per channel across concepts and protocols; the maps remain frozen on six held-out slices ( 𝑛 = 192 each). ECE uses ten equal-width bins (empty bins omitted), and action sensitivity scans 
+
+𝑎 = 0.05:0 .05:0 .95. Because retained labels lack annotator-level provenance and agreement, 𝑌 is a human-reference target, not oracle truth. 
+
+## 5.2 Structured Concept Risk Across Models and Conditioning Channels 
+
+Under the nominal setting 𝜋 = ∅, Table 1 addresses RQ1 : fixed-judge reproduction frequency is higher for the target families than for benign controls, higher under embedding than prompt condi-tioning, and lower on SDXL than SD1.5 without vanishing. Thus the observed risk is configuration-dependent. On SD1.5, promp-t/embedding frequencies are 0.31/0.57 for identity-related, 0.27/0.52 for copyright-sensitive, and 0.38/0.64 for unsafe/NSFW-sensitive concepts, compared with 0.07/0.10 for core benign controls. Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+Table 2: Comparative fixed-judge reproduction, signed-change, residual, and bypass statistics under the named baseline and post-condition slices. Concept family Baseline SD1.5 ˆ𝑅 (rep )
+
+ΔP→E
+
+SDXL −SD1.5 signed change SD1.5 residual ˆ𝑅 (rep ) SD1.5-P bypass ˆ𝑅 (byp )
+
+P E P E P E Std. Obf. Identity-related 0.31 0.57 +0.26 -0.12 -0.14 0.14 0.29 0.11 0.18 Copyright-sensitive 0.27 0.52 +0.25 -0.11 -0.13 0.13 0.26 0.10 0.17 Unsafe / NSFW-sensitive 0.38 0.64 +0.26 -0.14 -0.15 0.16 0.33 0.13 0.21 
+
+Mean target-family value 0.32 0.58 +0.26 -0.12 -0.14 0.14 0.29 0.11 0.19 ID CS UNS                            
+
+> 0.0 0.1 0.2 0.3 Gap
+> 0.26 0.25 0.26 0.24 0.23 0.27 0.24 0.23 0.25
+> (a) Channel gap
+> SD1.5 SD2.1 SDXL
+> ID CS UNS
+> −0.20 −0.15 −0.10 −0.05 0.00 Change
+> -0.12 -0.11 -0.14 -0.14 -0.13 -0.15
+> (b) SD1.5 →SDXL
+> Prompt Embedding
+> ID CS UNS
+> 0.0 0.2 0.4 0.6 Risk
+> 0.57 0.52 0.64 0.29 0.26 0.33 0.18 0.17 0.21
+> (c) Post-condition slices
+> Baseline Residual Bypass
+> Standard Obfuscation SD1.5 SD2.1 SDXL
+> 0.031 0.049 0.024 0.039 0.016 0.027
+> (d) Benign loss D
+> 0.02 0.03 0.04 0.05
+> Benign-loss magnitude
+> Family abbreviations: ID = Identity-related; CS = Copyright-sensitive; UNS = Unsafe/NSFW-sensitive.
+
+Figure 3: Comparative fixed-judge operational summaries under the specified slices. (a) Standard-protocol prompt-to-embedding gaps by backbone. (b) Signed standard-protocol changes ˆ𝑅 SDXL − ˆ𝑅 SD1 .5 at fixed channel. (c) SD1.5 embedding baseline, standard residual reproduction, and prompt-channel obfuscated bypass. (d) Prompt-channel benign-loss magnitude 𝐷 by backbone and protocol, averaged over the same 20 -concept auxiliary benign set; no target-family conditioning is implied. 
+
+Across backbones, the largest prompt-to-embedding gaps occur for unsafe and identity-related concepts; SDXL remains above the benign baseline, especially under embedding control. This check-point comparison is descriptive, not a causal architectural effect. Figure 2 shows a substantial upper tail in every model–channel configuration: the 90th percentile is separated from the median, most strongly under embedding conditioning. Category means therefore conceal particularly vulnerable concepts. 
+
+## 5.3 Comparative Risk Gaps, Residual Reproduction, Bypass, and Semantic Spillover 
+
+For RQ1–RQ2 , Table 2 and Fig. 3 show bΔP→E > 0 in every tar-get family and negative SDXL −SD1.5 changes at each fixed chan-nel, with slightly larger absolute embedding changes. Under the archived 𝜋 post , non-zero residual and bypass frequencies remain: residual uses SD1.5 and the standard protocol in the indicated chan-nel, whereas bypass uses SD1.5 prompt access under standard or obfuscated attack protocols. These describe an opaque archived condition, not component effects or a named intervention method. Under the archived 𝜋 post , residual reproduction spans 0 .13–0 .16 for prompts and 0 .26–0 .33 for embeddings; prompt-channel bypass spans 0 .10–0 .13 under standard attack and 0 .17–0 .21 under obfus-cation. These ranges reinforce joint residual-and-bypass reporting without identifying component effects. Benign loss 𝐷 is non-zero, largest for older backbones, and higher under obfuscated than stan-dard prompts in every displayed backbone (Fig. 3(d)). For SD1.5, SD2.1, and SDXL, standard/obfuscated 𝐷 is 0 .031 /0.049, 0 .024 /0.039, and 0 .016 /0.027, respectively; each value averages the same disjoint 20-concept auxiliary benign set and is not a target-family statistic. Figure 5 is only an illustrative montage; all quantitative claims use the fixed-judge statistics. Joint reporting exposes complementary slices: mean risk over target families is 0 .32 for standard prompts versus 0 .58 for embed-dings; bypass is 0 .11 under standard versus 0 .19 under obfuscated prompts; and one slice has maximum raw–isotonic action sensitiv-ity 0 .169. This compares coverage, not accuracy or a new safety algorithm. 
+
+## 5.4 Held-out Calibration and Action Sensitivity 
+
+For RQ3 , Fig. 4 and Table 3 show raw-proxy error, improved held-out reliability after post-hoc mapping, and action differences peak-ing near intermediate thresholds. ΔECE and ΔBrier are method-minus-raw; Avg.AS and Max.AS are action-change rates, not lower-is-better metrics. Across six slices, 𝑟 = clip [0,1] (𝑠 ) has non-trivial ECE and Brier error against archived labels; the largest displayed raw errors oc-cur in embedding and obfuscated slices, descriptively rather than causally. Channel-level isotonic and Platt maps are fit on pooled development pairs [37] and evaluated on untouched slices; isotonic mapping reduces both metrics throughout. Fig. 6 illustrates score corrections near policy thresholds; only examples whose raw and calibrated actions lie on opposite sides of the printed threshold constitute reversals. Score mappings may shift with style or obfuscation [24]. These held-out slices use channel-level maps trained on mixed-protocol development data, so they do not demonstrate transfer from stan-dard to shifted data. Fig. 4(d) shows pairwise disagreement among MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al. 0.0 0.2 0.4 0.6 0.8 1.0 Confidence 0.0 0.2 0.4 0.6 0.8 1.0 Empirical accuracy                    
+
+> (a) Raw reliability
+> 0.0 0.2 0.4 0.6 0.8 1.0 Confidence
+> (b) Isotonic reliability
+> 0.0 0.2 0.4 0.6 0.8 1.0 Confidence
+> (c) Platt reliability
+> 0.2 0.4 0.6 0.8 Threshold 0.02 0.04 0.06 0.08 0.10 0.12 0.14 Disagreement rate
+> (d) Disagreement vs threshold Raw Isotonic Platt Perfect calibration Raw vs Isotonic Raw vs Platt Platt vs Isotonic
+
+Figure 4: Held-out probability reliability and calibration-induced action sensitivity. (a)–(c) pool held-out score–label pairs for the raw proxy, isotonic map, and Platt map. (d) shows pairwise action-disagreement rates among the three mappings over policy thresholds, not decision accuracy. Identity Related 
+
+Copyright Sensitive 
+
+Benign Control 
+
+Baseline Prompt (Standard) 
+
+Baseline Embedding 
+
+Post-condition 
+
+Prompt (Standard) 
+
+Post-condition Bypass 
+
+Figure 5: Output montage under the four printed access/-condition labels; quantitative conclusions use the reported fixed-judge statistics. Overconfident Negatives         
+
+> Underconfident Positives
+> raw = 0.269 cal = 0.000
+> y = 0 s = 0.30
+> raw = 0.267 cal = 0.000
+> y = 0 s = 0.30
+> raw = 0.267 cal = 0.000
+> y = 0 s = 0.30
+> raw = 0.266 cal = 0.000
+> y = 0 s = 0.30
+> raw = 0.274 cal = 0.578
+> y = 1 s = 0.50
+> raw = 0.490 cal = 1.000
+> y = 1 s = 0.50
+> raw = 0.529 cal = 1.000
+> y = 1 s = 0.50
+> raw = 0.468 cal = 1.000
+> y = 1 s = 0.50
+
+Figure 6: Qualitative examples of near-threshold calibration corrections. 
+
+actions from the raw, isotonic, and Platt mappings near interme-diate thresholds. It is not oracle correctness; ECE and Brier assess reliability against archived labels. 
+
+Table 3: Held-out sample-level calibration quality and raw-versus-calibrated action sensitivity across representative re-production slices under 𝜋 = ∅ (𝑛 = 192 each). 
+
+Config. Mthd. ECE Br. ΔECE ΔBr. Avg.AS Max.AS Thr. Max 
+
+SD1.5-P-Std Raw 0.114 0.176 — — — — —Iso 0.051 0.149 -0.063 -0.027 0.068 0.123 0.50 Plt 0.072 0.158 -0.042 -0.018 0.047 0.091 0.50 SD1.5-E-Std Raw 0.143 0.191 — — — — —Iso 0.064 0.161 -0.079 -0.030 0.083 0.147 0.55 Plt 0.089 0.170 -0.054 -0.021 0.058 0.105 0.55 SD2.1-P-Shf Raw 0.129 0.183 — — — — —Iso 0.061 0.156 -0.068 -0.027 0.071 0.131 0.50 Plt 0.081 0.164 -0.048 -0.019 0.050 0.096 0.50 SD2.1-E-Obf Raw 0.176 0.214 — — — — —Iso 0.081 0.181 -0.095 -0.033 0.096 0.169 0.60 Plt 0.107 0.190 -0.069 -0.024 0.071 0.126 0.60 SDXL-P-Std Raw 0.091 0.151 — — — — —Iso 0.039 0.132 -0.052 -0.019 0.052 0.097 0.45 Plt 0.057 0.139 -0.034 -0.012 0.036 0.071 0.45 SDXL-E-Obf Raw 0.161 0.205 — — — — —Iso 0.074 0.173 -0.087 -0.032 0.084 0.151 0.55 Plt 0.099 0.182 -0.062 -0.023 0.063 0.117 0.55 
+
+Config.: P = Prompt, E = Embedding, Std = Standard, Shf = Shift, Obf = Obfuscation. Mthd.: Iso = Isotonic, Plt = Platt. Br. = Brier. AS = raw-calibrated action-disagreement rate; Avg./Max. = mean/maximum over 𝑎 = 0.05:0 .05:0 .95 ; Thr. Max = maximizing threshold. 
+
+## 6 Conclusion 
+
+We presented CLRC, a concept-level probabilistic risk and calibra-tion framework for diffusion models that unifies structured risk estimation, comparative analysis, recorded-condition evaluation, and calibration-aware decision analysis. By modeling concept be-haviors as stochastic semantic events across backbones, channels, protocol distributions, and condition states, CLRC compares where risk appears, how it shifts across interfaces and architectures, and how calibration changes thresholded actions. Experiments show nonuniform concept risk, exposure missed by evaluation using only standard prompts, and the need to report post-condition suppres-sion, bypass, and spillover jointly. These findings position concept-resolved and calibration-aware evaluation as a necessary basis for more auditable, reproducible, and policy-relevant governance of diffusion foundation models. Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+## Acknowledgments 
+
+This work was supported in part by the National Natural Science Foundation of China under Grant 62522112, the Outstanding Youth Fund Program of Jiangxi Province under Grant 20252BAC220008, the Jiangxi Key Research and Development Program under Grant 20261BCE310050, the Ganpo Talent Program of Jiangxi Province under Grant gpyc20240012, and the China Scholarship Council Program under Grant 202506830129. 
+
+## References 
+
+[1] Tim Brooks, Aleksander Holynski, and Alexei A. Efros. 2023. InstructPix2Pix: Learning to Follow Image Editing Instructions. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 18392–18402. [2] Hanqun Cao, Cheng Tan, Zhangyang Gao, Yilun Xu, Guangyong Chen, Pheng-Ann Heng, and Stan Z. Li. 2024. A Survey on Generative Diffusion Models. IEEE Transactions on Knowledge and Data Engineering 36, 7 (2024), 2814–2830. [3] Pu Cao, Feng Zhou, Qing Song, and Lu Yang. 2026. Controllable Generation With Text-to-Image Diffusion Models: A Survey. IEEE Transactions on Pattern Analysis and Machine Intelligence 48, 4 (2026), 4771–4791. [4] Nicolas Carlini, Jamie Hayes, Milad Nasr, Matthew Jagielski, Vikash Sehwag, Florian Tramèr, Borja Balle, Daphne Ippolito, and Eric Wallace. 2023. Extracting Training Data from Diffusion Models. In 32nd USENIX Security Symposium . 5253– 5270. [5] Junxi Chen, Junhao Dong, and Xiaohua Xie. 2025. Mind the trojan horse: Image prompt adapter enabling scalable and deceptive jailbreaking. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 23785–23794. [6] Ruidong Chen, Honglin Guo, Lanjun Wang, Chenyu Zhang, Weizhi Nie, and An-An Liu. 2025. TRCE: Towards Reliable Malicious Concept Erasure in Text-to-Image Diffusion Models. In Proceedings of the IEEE/CVF International Conference on Computer Vision . 18927–18936. [7] Guillaume Couairon, Jakob Verbeek, Holger Schwenk, and Matthieu Cord. 2023. DiffEdit: Diffusion-based semantic image editing with mask guidance. In The Eleventh International Conference on Learning Representations .[8] Prafulla Dhariwal and Alexander Nichol. 2021. Diffusion Models Beat GANs on Image Synthesis. In Advances in Neural Information Processing Systems , M. Ran-zato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. Wortman Vaughan (Eds.), Vol. 34. 8780–8794. [9] Xin Ding, Yongwei Wang, Kao Zhang, and Z. Jane Wang. 2026. CCDM: Continu-ous Conditional Diffusion Models for Image Generation. IEEE Transactions on Multimedia 28 (2026), 4360–4372. [10] Jan Dubiński, Antoni Kowalczuk, Franziska Boenisch, and Adam Dziedzic. 2025. CDI: Copyrighted Data Identification in Diffusion Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 18674–18684. [11] Chongyu Fan, Jiancheng Liu, Yihua Zhang, Eric Wong, Dennis Wei, and Sijia Liu. 2024. SalUn: Empowering Machine Unlearning via Gradient-based Weight Saliency in Both Image Classification and Generation. In The Twelfth International Conference on Learning Representations .[12] Michael Fuest, Pingchuan Ma, Ming Gui, Johannes Schusterbauer, Vincent Tao Hu, and Björn Ommer. 2026. Diffusion Models and Representation Learning: A Survey. IEEE Transactions on Pattern Analysis and Machine Intelligence 48, 7 (2026), 7209–7228. [13] Rinon Gal, Yuval Alaluf, Yuval Atzmon, Or Patashnik, Amit Haim Bermano, Gal Chechik, and Daniel Cohen-Or. 2023. An Image is Worth One Word: Personalizing Text-to-Image Generation using Textual Inversion. In The Eleventh International Conference on Learning Representations .[14] Rohit Gandikota, Joanna Materzyńska, Jaden Fiotto-Kaufman, and David Bau. 2023. Erasing Concepts from Diffusion Models. In Proceedings of the IEEE/CVF International Conference on Computer Vision . 2426–2436. [15] Rohit Gandikota, Hadas Orgad, Yonatan Belinkov, Joanna Materzyńska, and David Bau. 2024. Unified Concept Editing in Diffusion Models. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision . 5099–5108. [16] Hongcheng Gao, Tianyu Pang, Chao Du, Taihang Hu, Zhijie Deng, and Min Lin. 2025. Meta-unlearning on diffusion models: Preventing relearning unlearned concepts. In Proceedings of the IEEE/CVF International Conference on Computer Vision . 2131–2141. [17] Chao Gong, Kai Chen, Zhipeng Wei, Jingjing Chen, and Yu-Gang Jiang. 2024. Re-liable and efficient concept erasure of text-to-image diffusion models. In European Conference on Computer Vision . Springer, 73–88. [18] Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. 2017. On Calibration of Modern Neural Networks. In Proceedings of the 34th International Conference on Machine Learning , Vol. 70. 1321–1330. [19] Zirun Guo and Tao Jin. 2025. ConceptGuard: Continual Personalized Text-to-Image Generation with Forgetting and Confusion Mitigation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 2945–2954. [20] Amir Hertz, Ron Mokady, Jay Tenenbaum, Kfir Aberman, Yael Pritch, and Daniel Cohen-Or. 2023. Prompt-to-Prompt Image Editing with Cross-Attention Control. In The Eleventh International Conference on Learning Representations .[21] Jonathan Ho, Ajay N. Jain, and Pieter Abbeel. 2020. Denoising Diffusion Prob-abilistic Models. In Advances in Neural Information Processing Systems , Vol. 33. 6840–6851. [22] Jonathan Ho and Tim Salimans. 2021. Classifier-Free Diffusion Guidance. In 
+
+NeurIPS 2021 Workshop on Deep Generative Models and Downstream Applications .[23] Changhoon Kim, Kyle Min, and Yezhou Yang. 2024. R.A.C.E.: Robust Adver-sarial Concept Erasure for Secure Text-to-Image Diffusion Model. In European Conference on Computer Vision . Springer, 461–478. [24] Ananya Kumar, Percy S Liang, and Tengyu Ma. 2019. Verified uncertainty calibration. Advances in Neural Information Processing Systems 32 (2019). [25] Nupur Kumari, Bingliang Zhang, Sheng-Yu Wang, Eli Shechtman, Richard Zhang, and Jun-Yan Zhu. 2023. Ablating Concepts in Text-to-Image Diffusion Models. In 
+
+Proceedings of the IEEE/CVF International Conference on Computer Vision . 22634– 22645. [26] Uichan Lee, Jeonghyeon Kim, and Sangheum Hwang. 2026. Localized Con-cept Erasure in Text-to-Image Diffusion Models via High-Level Representation Misdirection. In International Conference on Learning Representations .[27] Fengpeng Li, Kemou Li, Qizhou Wang, Bo Han, and Jiantao Zhou. 2026. AEGIS: Adversarial Target-Guided Retention-Data-Free Robust Concept Erasure from Diffusion Models. In International Conference on Learning Representations .[28] Leyang Li, Shilin Lu, Yan Ren, and Adams Wai-Kin Kong. 2025. Set you straight: Auto-steering denoising trajectories to sidestep unwanted concepts. In Proceed-ings of the ACM International Conference on Multimedia . 9257–9266. [29] Lijun Li, Zhelun Shi, Xuhao Hu, Bowen Dong, Yiran Qin, Xihui Liu, Lu Sheng, and Jing Shao. 2025. T2ISafety: Benchmark for Assessing Fairness, Toxicity, and Privacy in Image Generation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 13381–13392. [30] Yizhou Lin, Nisha Huang, Kaer Huang, Henglin Liu, Yiqiang Yan, Jie Guo, Tong-Yee Lee, and Xiu Li. 2025. ICE: Intercede Concept Erasure in Text-to-Image Diffusion Models. In Proceedings of the ACM International Conference on Multi-media . 11328–11336. [31] Buhua Liu, Shitong Shao, Bao Li, Lichen Bai, Zhiqiang Xu, Haoyi Xiong, James T Kwok, Sumi Helal, and Zeke Xie. 2026. Alignment of diffusion models: Fun-damentals, challenges, and future. Comput. Surveys 58, 9, Article 244 (2026), 37 pages. [32] Tong Liu, Zhixin Lai, Jiawen Wang, Gengyuan Zhang, Shuo Chen, Philip Torr, Vera Demberg, Volker Tresp, and Jindong Gu. 2025. Multimodal pragmatic jailbreak on text-to-image models. In Proceedings of the Annual Meeting of the Association for Computational Linguistics . 4681–4720. [33] Kevin Lu, Nicky Kriplani, Rohit Gandikota, Minh Pham, David Bau, Chinmay Hegde, and Niv Cohen. 2025. When Are Concepts Erased From Diffusion Models?. In Advances in Neural Information Processing Systems , Vol. 38. 16521–16545. [34] Shilin Lu, Zilan Wang, Leyang Li, Yanzhu Liu, and Adams Wai-Kin Kong. 2024. MACE: Mass Concept Erasure in Diffusion Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 6430–6440. [35] Zhiyuan Ma, Yuzhu Zhang, Guoli Jia, Liangliang Zhao, Yichao Ma, Mingjie Ma, Gaofeng Liu, Kaiyan Zhang, Ning Ding, Jianjun Li, and Bowen Zhou. 2025. Efficient Diffusion Models: A Comprehensive Survey From Principles to Practices. 
+
+IEEE Transactions on Pattern Analysis and Machine Intelligence 47, 9 (2025), 7506– 7525. [36] Chenlin Meng, Yutong He, Yang Song, Jiaming Song, Jiajun Wu, Jun-Yan Zhu, and Stefano Ermon. 2022. SDEdit: Guided Image Synthesis and Editing with Stochastic Differential Equations. In International Conference on Learning Representations .[37] Matthias Minderer, Josip Djolonga, Rob Romijnders, Frances Hubis, Xiaohua Zhai, Neil Houlsby, Dustin Tran, and Mario Lucic. 2021. Revisiting the calibration of modern neural networks. Advances in Neural Information Processing Systems 
+
+34 (2021), 15682–15694. [38] Ron Mokady, Amir Hertz, Kfir Aberman, Yael Pritch, and Daniel Cohen-Or. 2023. Null-text Inversion for Editing Real Images using Guided Diffusion Models. In 
+
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition .6038–6047. [39] Thanh Tam Nguyen, Thanh Trung Huynh, Zhao Ren, Phi Le Nguyen, Alan Wee-Chung Liew, Hongzhi Yin, and Quoc Viet Hung Nguyen. 2025. A Survey of Machine Unlearning. ACM Transactions on Intelligent Systems and Technology 16, 5, Article 108 (2025), 46 pages. [40] Alexander Quinn Nichol and Prafulla Dhariwal. 2021. Improved Denoising Diffusion Probabilistic Models. In Proceedings of the 38th International Conference on Machine Learning , Vol. 139. 8162–8171. [41] Gaurav Parmar, Krishna Kumar Singh, Richard Zhang, Yijun Li, Jingwan Lu, and Jun-Yan Zhu. 2023. Zero-shot Image-to-Image Translation. In ACM SIGGRAPH 2023 Conference Proceedings (Los Angeles, CA, USA) (SIGGRAPH ’23) . Article 11, 11 pages. [42] William Peebles and Saining Xie. 2023. Scalable Diffusion Models with Trans-formers. In Proceedings of the IEEE/CVF International Conference on Computer Vision . 4172–4182. MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al. 
+
+[43] Vitali Petsiuk and Kate Saenko. 2024. Concept arithmetics for circumventing concept inhibition in diffusion models. In European Conference on Computer Vision . Springer, 309–325. [44] Fan Qi, Ao Liu, Zixin Zhang, and Changsheng Xu. 2025. FORGET ME: Federated Unlearning for Face Generation Models. In Proceedings of the ACM International Conference on Multimedia . 11288–11297. [45] Jie Ren, Kangrui Chen, Yingqian Cui, Shenglai Zeng, Hui Liu, Yue Xing, Jiliang Tang, and Lingjuan Lyu. 2025. Six-CD: Benchmarking Concept Removals for Text-to-Image Diffusion Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 28769–28778. [46] Elad Richardson, Kfir Goldberg, Yuval Alaluf, and Daniel Cohen-Or. 2024. Con-ceptLab: Creative Concept Generation using VLM-Guided Diffusion Prior Con-straints. ACM Transactions on Graphics 43, 3, Article 34 (2024), 14 pages. [47] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. 2022. High-Resolution Image Synthesis with Latent Diffusion Models. In 
+
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition .10674–10685. [48] Nataniel Ruiz, Yuanzhen Li, Varun Jampani, Yael Pritch, Michael Rubinstein, and Kfir Aberman. 2023. DreamBooth: Fine Tuning Text-to-Image Diffusion Models for Subject-Driven Generation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 22500–22510. [49] Matan Rusanovsky, Shimon Malnick, Amir Jevnisek, Ohad Fried, and Shai Avidan. 2025. Memories of forgotten concepts. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 2966–2975. [50] Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily L Denton, Kamyar Ghasemipour, Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Salimans, Jonathan Ho, David J Fleet, and Mohammad Norouzi. 2022. Photore-alistic Text-to-Image Diffusion Models with Deep Language Understanding. In 
+
+Advances in Neural Information Processing Systems , Vol. 35. 36479–36494. [51] Patrick Schramowski, Manuel Brack, Björn Deiseroth, and Kristian Kersting. 2023. Safe Latent Diffusion: Mitigating Inappropriate Degeneration in Diffusion Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 22522–22531. [52] Christoph Schuhmann, Romain Beaumont, Richard Vencu, Cade Gordon, Ross Wightman, Mehdi Cherti, Theo Coombes, Aarush Katta, Clayton Mullis, Mitchell Wortsman, Patrick Schramowski, Srivatsa Kundurthy, Katherine Crowson, Lud-wig Schmidt, Robert Kaczmarczyk, and Jenia Jitsev. 2022. LAION-5B: An open large-scale dataset for training next generation image-text models. In Advances in Neural Information Processing Systems , Vol. 35. 25278–25294. [53] Reza Shokri, Marco Stronati, Congzheng Song, and Vitaly Shmatikov. 2017. Mem-bership Inference Attacks Against Machine Learning Models. In 2017 IEEE Sym-posium on Security and Privacy (SP) . 3–18. [54] Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Ste-fano Ermon, and Ben Poole. 2021. Score-Based Generative Modeling through Stochastic Differential Equations. In International Conference on Learning Repre-sentations .[55] Gan Sun, Wenqi Liang, Jiahua Dong, Jun Li, Zhengming Ding, and Yang Cong. 2024. Create Your World: Lifelong Text-to-Image Diffusion. IEEE Transactions on Pattern Analysis and Machine Intelligence 46, 9 (2024), 6454–6470. [56] Yu-Lin Tsai, Chia-Yi Hsu, Chulin Xie, Chih-Hsun Lin, Jia-You Chen, Bo Li, Pin-Yu Chen, Chia-Mu Yu, and Chun-Ying Huang. 2024. Ring-A-Bell! How Reliable are Concept Removal Methods For Diffusion Models?. In The Twelfth International Conference on Learning Representations .[57] Juozas Vaicenavicius, David Widmann, Carl Andersson, Fredrik Lindsten, Jacob Roll, and Thomas Schön. 2019. Evaluating model calibration in classification. In 
+
+Proceedings of the Twenty-Second International Conference on Artificial Intelligence and Statistics , Vol. 89. 3459–3467. [58] Corban Villa, Shujaat Mirza, and Christina Pöpper. 2025. Exposing the Guardrails: Reverse-Engineering and Jailbreaking Safety Filters in DALL·E Text-to-Image Pipelines. In 34th USENIX Security Symposium . 897–916. [59] Yixin Wu, Ning Yu, Michael Backes, Yun Shen, and Yang Zhang. 2025. On the Proactive Generation of Unsafe Images From Text-To-Image Models Using Benign Prompts. In 34th USENIX Security Symposium . 917–936. [60] Yutong Wu, Jie Zhang, Florian Kerschbaum, and Tianwei Zhang. 2025. THEMIS: Regulating Textual Inversion for Personalized Concept Censorship. In Network and Distributed System Security (NDSS) Symposium .[61] Yuchen Yang, Bo Hui, Haolin Yuan, Neil Gong, and Yinzhi Cao. 2024. SneakyPrompt: Jailbreaking Text-to-image Generative Models. In IEEE Sym-posium on Security and Privacy (SP) . 897–912. [62] Fangneng Zhan, Yingchen Yu, Rongliang Wu, Jiahui Zhang, Shijian Lu, Lingjie Liu, Adam Kortylewski, Christian Theobalt, and Eric P. Xing. 2023. Multimodal Image Synthesis and Editing: The Generative AI Era. IEEE Transactions on Pattern Analysis and Machine Intelligence 45, 12 (2023), 15098–15119. [63] Gong Zhang, Kai Wang, Xingqian Xu, Zhangyang Wang, and Humphrey Shi. 2024. Forget-Me-Not: Learning to Forget in Text-to-Image Diffusion Models. In 
+
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops . 1755–1764. [64] Lvmin Zhang, Anyi Rao, and Maneesh Agrawala. 2023. Adding Conditional Control to Text-to-Image Diffusion Models. In Proceedings of the IEEE/CVF Inter-national Conference on Computer Vision . 3813–3824. [65] Yimeng Zhang, Xin Chen, Jinghan Jia, Yihua Zhang, Chongyu Fan, Jiancheng Liu, Mingyi Hong, Ke Ding, and Sijia Liu. 2024. Defensive Unlearning with Adversarial Training for Robust Concept Erasure in Diffusion Models. In Advances in Neural Information Processing Systems , Vol. 37. 36748–36776. [66] Yihua Zhang, Chongyu Fan, Yimeng Zhang, Yuguang Yao, Jinghan Jia, Jiancheng Liu, Gaoyuan Zhang, Gaowen Liu, Ramana Rao Kompella, Xiaoming Liu, and Sijia Liu. 2024. UnlearnCanvas: Stylized Image Dataset for Enhanced Machine Unlearning Evaluation in Diffusion Models. In Advances in Neural Information Processing Systems, Datasets and Benchmarks Track , Vol. 37. 96387–96423. [67] Haomin Zhuang, Yihua Zhang, and Sijia Liu. 2023. A Pilot Study of Query-Free Adversarial Attack Against Stable Diffusion. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops . 2385–2392. 
+
+## A Theoretical Remarks A.1 Calibration, Observation Noise, and Governance Bounds 
+
+Risk profiling assumes access to measurable concept events. In practice, events are observed through imperfect judges. Let 𝑌 (𝑡 )
+
+𝑘 
+
+denote the latent semantic event, represented by a human-reference annotation on audited samples, and let 𝐸 (𝑡 )
+
+𝑘 denote the separately thresholded judge event. Under the conditionally symmetric model, for 0 ≤ 𝜂 𝑘 < 1/2, 
+
+P(𝐸 (𝑡 )
+
+𝑘 = 1 | 𝑌 (𝑡 )
+
+𝑘 = 0) = 𝜂 𝑘 ,
+
+P(𝐸 (𝑡 )
+
+𝑘 = 0 | 𝑌 (𝑡 )
+
+𝑘 = 1) = 𝜂 𝑘 ,
+
+let 𝑅 (𝑡 )★ = E[𝑌 (𝑡 )
+
+𝑘 ] and 𝑅 (𝑡 )
+
+obs = E[𝐸 (𝑡 )
+
+𝑘 ]. Then 
+
+
+
+𝑅 (𝑡 )
+
+obs (𝑘, 𝑚, 𝜒 ) = (1 − 2𝜂 𝑘 ) 𝑅 (𝑡 )★ (𝑘, 𝑚, 𝜒 ) + 𝜂 𝑘 ,
+
+𝑅 (𝑡 )
+
+obs (𝑘, 𝑚, 𝜒 ) − 𝑅 (𝑡 )★ (𝑘, 𝑚, 𝜒 ) ≤ 𝜂 𝑘 .
+
+(16) Thus, concept-dependent judge noise can systematically distort absolute risk. Equation (16) is a conditional model; seed-level con-fidence intervals quantify sampling uncertainty and do not verify that 𝜂 𝑘 is constant across model, channel, protocol, or intervention. Calibration is performed on sample-level score–label pairs. Let 
+
+𝑗 index a pair, with channel 𝜒 𝑗 , label 𝑦 𝑗 , cosine score 𝑠 𝑗 , fixed raw proxy 𝑟 𝑗 = clip [0,1] (𝑠 𝑗 ), and calibrated probability 𝑞 𝑗 = ℎ𝜙,𝜒 𝑗 (𝑟 𝑗 ).For a held-out configuration slice I𝑐 , define 𝑁 cal ,𝑐 = |I 𝑐 |, b𝑅 cal (𝑐 ) =
+
+𝑁 −1cal ,𝑐 
+
+Í𝑗 ∈ I 𝑐 𝑞 𝑗 , and the finite human-reference frequency b𝑅 H (𝑐 ) =
+
+𝑁 −1cal ,𝑐 
+
+Í𝑗 ∈ I 𝑐 𝑦 𝑗 . With BS 𝑐 = 𝑁 −1cal ,𝑐 
+
+Í𝑗 ∈ I 𝑐 (𝑞 𝑗 −𝑦 𝑗 )2, Cauchy–Schwarz gives 
+
+b𝑅 cal (𝑐 ) − b𝑅 H (𝑐 ) ≤√︄ 1
+
+𝑁 cal ,𝑐 ∑︁ 𝑗 ∈ I 𝑐 
+
+(𝑞 𝑗 − 𝑦 𝑗 )2 =√︁ BS 𝑐 . (17) For a policy threshold 𝑎 ∈ ( 0, 1), define Acal = I{b𝑅 cal (𝑐 ) ≥ 𝑎 }
+
+and AH = I{b𝑅 H (𝑐 ) ≥ 𝑎 }. If b𝑅 H (𝑐 ) ≠ 𝑎 , then 
+
+I{A cal ≠ AH } ≤ 
+
+b𝑅 cal (𝑐 ) − b𝑅 H (𝑐 )
+
+b𝑅 H (𝑐 ) − 𝑎 
+
+. (18) This bound becomes vacuous near the policy boundary, motivating an explicit margin condition. Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+Margin Assumption. There exists 𝛾 > 0 such that |b𝑅 H (𝑐 ) − 𝑎 | ≥ 𝛾 .Then 
+
+I{A cal ≠ AH } ≤ 
+
+b𝑅 cal (𝑐 ) − b𝑅 H (𝑐 )
+
+𝛾 ≤√BS 𝑐 
+
+𝛾 . (19) This is a configuration-level human-reference statement. Exper-imentally, raw and calibrated sample actions use I{𝑟 𝑗 ≥ 𝑎 } and 
+
+I{𝑞 𝑗 ≥ 𝑎 }; their disagreement quantifies action sensitivity, not correctness. 
+
+## A.2 Structured Stability and Judge-Noise Robustness 
+
+We now move from the symmetric noise model in Eq. (16) to a more general class-conditional label-noise model with false positive and false negative rates (𝛼 𝑘 , 𝛽 𝑘 ). The symmetric model is recovered when 𝛼 𝑘 = 𝛽 𝑘 = 𝜂 𝑘 .Proposition 1 (Structured Stability via Wasserstein and Margin Mass). Let 𝜌 > 0 and 𝑃, 𝑄 ∈ P 1 (X) , so 𝑊 1 (𝑃, 𝑄 ) < ∞.Assume 𝑓 𝑘 is 𝐿 𝑘 -Lipschitz with respect to the underlying metric. Then 
+
+𝑅 (𝑡 ) (𝑘 ; 𝑃 ) − 𝑅 (𝑡 ) (𝑘 ; 𝑄 )
+
+≤ 𝐿 𝑘 
+
+2𝜌 𝑊 1 (𝑃, 𝑄 ) + 𝑃  |𝑓 𝑘 (𝑥 ) − 𝜏 𝑘 | ≤ 𝜌  + 𝑄  |𝑓 𝑘 (𝑥 ) − 𝜏 𝑘 | ≤ 𝜌 .
+
+(20) Proof. Let 𝜓 𝜏 𝑘 ,𝜌 be the ramp surrogate defined in the main paper. Adding and subtracting its expectations gives 
+
+|𝑃 (𝐸 𝑘 ) − 𝑄 (𝐸 𝑘 )| ≤ 𝑃 (| 𝑓 𝑘 − 𝜏 𝑘 | ≤ 𝜌 ) + 𝑄 (| 𝑓 𝑘 − 𝜏 𝑘 | ≤ 𝜌 )+ E𝑃 [𝜓 𝜏 𝑘 ,𝜌 (𝑓 𝑘 )] − E𝑄 [𝜓 𝜏 𝑘 ,𝜌 (𝑓 𝑘 )] .
+
+Because 𝜓 𝜏 𝑘 ,𝜌 ◦ 𝑓 𝑘 is 𝐿 𝑘 /( 2𝜌 )-Lipschitz, Kantorovich–Rubinstein duality bounds the final term by 𝐿 𝑘  
+
+> 2𝜌
+
+𝑊 1 (𝑃, 𝑄 ). □
+
+Proposition 1 refines the worst-case TV bound into a distribution-shift term and the probability mass near the semantic boundary 
+
+|𝑓 𝑘 (𝑥 ) − 𝜏 𝑘 | ≤ 𝜌 . Borderline generations are intrinsically less stable because small shifts can flip the thresholded event. Proposition 2 (Relative Risk Invariance under Configu-ration-Independent Noise). Assume (𝛼 𝑘 , 𝛽 𝑘 ) are configuration-independent. For any configurations 𝑐 1 and 𝑐 2,
+
+𝑅 (𝑡 ) 
+
+> obs ,𝑐 1
+
+− 𝑅 (𝑡 ) 
+
+> obs ,𝑐 2
+
+= (1 − 𝛼 𝑘 − 𝛽 𝑘 )  𝑅 (𝑡 )★ 
+
+> 𝑐 1
+
+− 𝑅 (𝑡 )★
+
+> 𝑐 2
+
+. (21) 
+
+In particular, the sign of the comparative risk difference is preserved whenever 1 − 𝛼 𝑘 − 𝛽 𝑘 > 0.
+
+Proof. Under the stated condition, each configuration obeys 
+
+𝑅 obs ,𝑐 = 𝛼 𝑘 + ( 1 − 𝛼 𝑘 − 𝛽 𝑘 )𝑅 ★ 
+
+> 𝑐
+
+. Subtracting the two affine equations cancels 𝛼 𝑘 and yields Eq. (21). □
+
+If the rates depend on configuration 𝑐 , then 
+
+𝑅 obs ,𝑐 = 𝑅 ★ 
+
+> 𝑐
+
++ 𝑏 𝑐 , 𝑏 𝑐 = 𝛼 𝑐 (1 − 𝑅 ★ 
+
+> 𝑐
+
+) − 𝛽 𝑐 𝑅 ★ 
+
+> 𝑐
+
+, (22) and (𝑅 obs ,𝑐 1 − 𝑅 obs ,𝑐 2 ) − ( 𝑅 ★ 
+
+> 𝑐 1
+
+− 𝑅 ★ 
+
+> 𝑐 2
+
+) = 𝑏 𝑐 1 − 𝑏 𝑐 2 . Thus a sufficient condition for sign preservation is |𝑅 ★ 
+
+> 𝑐 1
+
+− 𝑅 ★ 
+
+> 𝑐 2
+
+| > |𝑏 𝑐 1 − 𝑏 𝑐 2 |. Propo-sition 2 is therefore a conditional robustness result, not evidence that the fixed judge has configuration-invariant error. 
+
+## B Experimental Supplementary Materials B.1 Reproducible Protocol 
+
+The core manifest contains 64 concepts: 16 each in the identity-related, copyright-sensitive, unsafe/NSFW-sensitive, and core benign-control families used in the main paper. Each entry is associated with a unique identifier, prompt descriptor, learned textual-inversion token, embedding path, and source-image directory. Spillover uses a disjoint auxiliary set Kben of 20 generic benign concepts, so the complete evaluation domain is the union of the core manifest and 
+
+Kben .For the prompt channel , the standard , shifted , and obfuscated 
+
+protocols each contain 5 templates per concept. For the embedding channel , the learned token (e.g., <n000002*> ) is held fixed and inserted into one protocol-specific outer form. The standard form is “a photo of <token> ”, while shifted and obfuscated forms modify the wrapper around the same token. Because prompt and embed-ding outer forms differ, their gap compares declared deployment distributions rather than a causal descriptor-to-token substitution. For each configuration (𝑘, 𝑚, 𝜒, 𝜋, D) , we generate 𝑁 = 50 im-ages using the fixed seeds {0, 1, . . . , 49 }. The conditioning item is drawn from D before generation, so 𝑁 = 50 is the total per cell, not 50 per template. SD1.5/2.1 use 512 × 512, 30 steps, and guid-ance 7 .5; SDXL uses 1024 × 1024, 30 steps, and guidance 7 .0. Thus, within one fixed model–channel–protocol–condition slice, the 48 target concepts contribute 𝑛 = 2,400 outputs, the 16 core benign controls contribute 𝑛 = 800, and the 20 auxiliary spillover controls contribute 𝑛 = 1,000. Concept events are scored with the fixed CLIP judge openai/ clip-vit-large-patch14. For concept 𝑘 , 𝑠 𝑖𝑘 = 𝑓 𝑘 (𝑥 𝑖 ) is cosine sim-ilarity, 𝑟 𝑖𝑘 = clip [0,1] (𝑠 𝑖𝑘 ) is the fixed raw probability proxy, and 
+
+𝐸 𝑘 (𝑥 𝑖 ) = 1{𝑠 𝑖𝑘 ≥ 𝜏 𝑘 } is the operational event. Calibration targets the separate human-reference annotation 𝑦 𝑖𝑘 = 𝑌 𝑘 (𝑥 𝑖 ). Each core concept contributes 30 prompt-channel and 30 embedding-channel images, totaling 3 ,840; the 20 auxiliary benign concepts contribute an additional 1 ,200 labels with the same channel allocation, used only to fit and verify their spillover-event thresholds. A concept– channel-stratified 70 /30 split is fixed in each pool; no image appears in both partitions. Core thresholds and two channel-level calibrators pooled across concepts and available protocol slices use only the 2,688-pair core development partition. Reliability diagrams, ECE, and Brier use only the 1 ,152-pair core held-out partition, sliced by the reported configuration. The default 𝜏 𝑘 maximizes development F1; the ablation targets development FPR = 0.05. The archived aggregate distinguishes 𝜋 ∅ from one opaque, indi-visible post-condition labeled 𝜋 post . The label is an archive-stable condition key, not a component specification, and results support no checkpoint-, filter-, or optimizer-level attribution. All paired cells reuse the same protocols and seed identifiers. For each 𝑏 ∈ K ben ,first compute b𝐷 𝑏 = [b𝑅 ∅ 
+
+> 𝑏
+
+− b𝑅 𝜋 post  
+
+> 𝑏
+
+]+ from its two 𝑁 = 50 cells, and then average 𝐷 = |K ben |−1 Í𝑏 b𝐷 𝑏 . The indicator S𝑏 (𝜖 ) = 1{b𝐷 𝑏 ≥ 𝜖 }
+
+uses 𝜖 = 0.05; because empirical frequencies move in steps of 0 .02, it first triggers at a drop of 0 .06. Main-paper Table 2 and Fig. 3(d) report 𝐷 , not the binary rate. For probabilistic calibration, 𝑞 𝑖𝑘 = ℎ𝜙,𝜒 (𝑟 𝑖𝑘 ) maps the raw proxy to a sample probability. Isotonic regression is the primary monotone fit and Platt scaling, 𝑞 = 𝜎 (𝑎𝑟 + 𝑏 ), is the parametric baseline; no neural risk network is trained. One map per channel pools development pairs across concepts and available protocol slices, MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al. 
+
+then remains frozen for all held-out configuration slices. Shifted and obfuscated rows therefore assess this pooled multi-protocol calibrator, not standard-only transfer. Governance scans compare 
+
+1{𝑟 𝑖𝑘 ≥ 𝑎 } with 1{𝑞 𝑖𝑘 ≥ 𝑎 }; disagreement measures sensitivity, while held-out ECE/Brier measure probability reliability. 
+
+## B.2 Experimental Setup and Evaluation Protocols 
+
+Sampling and Event Construction. Fixed seeds produce empirical Bernoulli frequencies under each output law. Reproduction denotes the nominal baseline or matched standard post-intervention dis-tribution. Standard bypass uses a distinct post-intervention attack distribution, and obfuscated bypass uses its obfuscated variant. Spillover is the population-level benign-risk diagnostic above, not a sample-level event type. Operational event risks are estimated by sample averaging and reported with Wilson intervals. 
+
+Judge and Calibration Split. The fixed primary judge is openai/ clip-vit-large-patch14. Its thresholded score defines operational event frequency, while calibration targets separate human-reference annotations. The 64 core concepts each contribute 30 prompt and 30 embedding images (3 ,840 labels); the 20 auxiliary benign concepts contribute the same 60-image allocation (1 ,200 labels) solely for their spillover-event thresholds and are excluded from the channel calibrators and Table 3. For both pools, a concept–channel-stratified 70% /30% split is fixed. Core development pairs fit the concept thresh-olds and two channel-level calibrators pooled across available proto-col slices; core held-out pairs are used only for reliability diagrams, ECE, and Brier evaluation. Thus shifted and obfuscated rows assess a pooled multi-protocol calibrator, not transfer of a standard-only calibrator. An operational Bernoulli trial is positive exactly when 𝐸 𝑘 (𝑥 ) =
+
+I{𝑠 𝑘 (𝑥 ) ≥ 𝜏 𝑘 } = 1; 𝑌 𝑘 remains a separate human-reference label for development and held-out reliability evaluation. For example, 12 positive outcomes among 50 seeded generations in one fixed cell give an empirical operational risk of 12 /50 = 0.24; the same seed identifiers are reused only across paired cells. The default 𝜏 𝑘 maxi-mizes development F1, and the supplement reports an FPR@0.05 alternative. These tensor values remain conditional on the fixed CLIP judge: the available calibration analysis does not establish configuration-invariant FPR/FNR or eliminate judge-specific bias. If 𝑆 configuration cells are instantiated, the audit requires 𝑆𝑁 
+
+generations and fixed-judge evaluations; cells and seeds are compu-tationally parallelizable, while matched-seed comparisons remain statistically paired. Risk aggregation is linear in 𝑆𝑁 . Post-hoc cali-bration acts only on the labeled pairs. This states analytical scaling and parallelism, not measured wall-clock or hardware efficiency. 
+
+Judges, Thresholds, and Calibration Data. The reported experi-ments use the fixed CLIP judge identified above; no unlisted special-ized detector is assumed. Concept thresholds and post-hoc maps are fitted only on development annotations. Raw metrics use 𝑟 ,calibrated metrics use 𝑞 , and all reliability diagrams, ECE values, and Brier values use the held-out partition. 
+
+Comparative Metrics and Governance Evaluation. The pipeline outputs a risk tensor indexed by concept, model, channel, interven-tion, protocol, and event type. We compute absolute risks and the signed channel/model gaps defined in Sec. 3.2. Governance analysis scans policy thresholds 𝑎 ∈ ( 0, 1) and compares actions induced by 
+
+𝑟 and 𝑞 .
+
+Implementation and traceability. The evaluation pipeline sepa-rates protocol construction, generation, judging, risk estimation, post-hoc calibration, threshold scanning, tensor merging, and re-port generation. Aggregation cells are keyed by model, channel, archived condition label, protocol, image size, guidance scale, in-ference steps, and seed set. The opaque 𝜋 post key identifies an end-to-end condition only; no result is interpreted as a component- or method-independent intervention effect. 
+
+Computational scaling. Let 𝑆 be the number of instantiated config-uration cells and 𝐿 dev the number of labeled core development pairs used by a channel calibrator. Generation and fixed-judge evaluation require 𝑆𝑁 calls and are computationally parallel over cells and seeds, but matched contrasts reuse seed identifiers and must pre-serve this pairing statistically; risk aggregation is 𝑂 (𝑆𝑁 ). Isotonic fitting costs 𝑂 (𝐿 dev log 𝐿 dev ) including score sorting and linear-time pool-adjacent-violators fitting, while Platt fitting is 𝑂 (𝐿 dev ) per optimization iteration. Here 𝑁 = 50, 𝐿 dev = 2,688, and the total labeled core pool is 𝐿 core = 3,840. These are analytical complexity statements rather than empirical wall-clock or hardware-efficiency claims. 
+
+Judge threat boundary. Shifted and obfuscated protocols stress the generator and intervention pipeline, not an adaptive attack on the judge. A judge-aware attacker may seek human-positive outputs with 𝑌 𝑘 = 1 but 𝐸 𝑘 = 0, producing configuration-dependent false negatives that calibration and seed intervals cannot rule out. The held-out annotations and threshold-selection ablation support probability and threshold analysis, but do not by themselves certify judge robustness across configurations or against a second judge. Reported tensor entries should therefore be read as operational risks under the named fixed judge. 
+
+Empirical and artifact scope. Experiments cover SD1.5, SD2.1, and SDXL only. For a closed API, the schema can audit observable prompt–output cells, while unavailable embedding, checkpoint, seed-control, or intervention axes must be marked unavailable rather than assigned zero risk. Exact reproduction additionally re-quires the concept and prompt manifest, per-sample scores and hu-man labels, split identifiers, thresholds, calibrator metadata, model and condition revisions, and aggregation scripts. The reported re-sults are therefore scoped to the named aggregate slices and the opaque 𝜋 post condition, without component-level intervention at-tribution. 
+
+## B.3 Audit Counts and Descriptive Marginal Intervals 
+
+Table 4 restates the non-intervention, standard-protocol slice for all three backbones using one common configuration rule. Target rows pool 48 × 50 = 2,400 fixed-judge outcomes, while core-benign rows pool 16 × 50 = 800. The same seed identifiers are reused between the prompt and embedding cells. The point summaries preserve the two descriptive patterns re-ported in the main paper under a matched protocol: embedding frequencies exceed prompt frequencies for the target families, and both channel frequencies decrease from SD1.5 to SDXL. The target-family prompt-to-embedding point gaps are 0 .257, 0 .247, and 0 .240 Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+Table 4: Matched standard-protocol reproduction-frequency summary under 𝜋 ∅. Wilson intervals are pooled-image working-independence descriptors conditional on the fixed judge; they are not concept-clustered or matched-seed paired confidence intervals. Gap vs P is a point difference only.                                                                                              
+
+> Backbone Channel Prot. Scope 𝑛 ˆ𝑅 (rep )95% Wilson HW Gap vs P
+> SD1.5 PStd Target mean 2400 0.320 [0.302, 0.339] 0.019 –EStd Target mean 2400 0.577 [0.557, 0.596] 0.020 0.257 PStd Core benign 800 0.070 [0.054, 0.090] 0.018 –EStd Core benign 800 0.100 [0.081, 0.123] 0.021 0.030 SD2.1 PStd Target mean 2400 0.263 [0.246, 0.281] 0.018 –EStd Target mean 2400 0.510 [0.490, 0.530] 0.020 0.247 PStd Core benign 800 0.060 [0.046, 0.079] 0.017 –EStd Core benign 800 0.090 [0.072, 0.112] 0.020 0.030 SDXL PStd Target mean 2400 0.197 [0.181, 0.213] 0.016 –EStd Target mean 2400 0.437 [0.417, 0.457] 0.020 0.240 PStd Core benign 800 0.050 [0.037, 0.067] 0.015 –EStd Core benign 800 0.080 [0.063, 0.101] 0.019 0.030
+
+for SD1.5, SD2.1, and SDXL, respectively; core-benign gaps are 0.030. The displayed Wilson intervals summarize marginal pooled fre-quencies only. Concepts induce clustering and paired cells reuse seeds, so the intervals are not used to test channel or backbone contrasts. Confirmatory contrast inference should instead use a concept-clustered, matched-seed bootstrap over per-concept paired records. All entries also remain conditional on the thresholded judge and do not establish configuration-invariant human-reference ac-curacy. 
+
+## B.4 Threshold-Selection Ablation for Concept Event Construction 
+
+The main paper resolves concept-event thresholds using an F1-maximization rule on the threshold-fitting split. To assess the sen-sitivity of the operational event comparison to this choice, we compare the default rule with a conservative alternative targeting development FPR = 0.05. Figure 7(a) anchors the default fixed-judge frequencies, and panel (b) compares the prompt-to-embedding gap under the two event-threshold rules. Human-reference probability calibration is logically separate from this ablation. Panel (a) reports the default F1-max event frequencies for the representative SD1.5-Std, SD2.1-Shf, and SDXL-Obf slices. It is an anchor for interpreting the event scale, not a second calibration tar-get. In every displayed slice, the embedding operational frequency exceeds the prompt frequency. Panel (b) recomputes the channel difference after threshold selec-tion. The displayed gap changes from 0 .25 to 0 .24 for SD1.5-Std and remains 0 .22 and 0 .23 (to the reported precision) for SD2.1-Shf and SDXL-Obf. Thus the sign of the operational channel difference is un-changed in these representative slices. This is a threshold-sensitivity statement for the fixed judge, not a claim about human-reference prevalence. Panel (c) is included only as a threshold-independent reliability reference and reproduces the corresponding held-out values from main-paper Table 3. The calibrator maps the continuous proxy 𝑟 
+
+to the separate human-reference label 𝑌 ; changing 𝜏 𝑘 changes the operational event 𝐸 𝑘 but does not change 𝑟 , 𝑌 , 𝑞 , ECE, or Brier. Ac-cordingly, no calibration improvement or degradation is attributed to the event-threshold rule. 
+
+## B.5 Threshold-Scan Summary for Calibration-Induced Action Sensitivity 
+
+The main paper shows that raw-versus-calibrated sample actions differ most near intermediate policy thresholds. To compare this sen-sitivity across settings, we summarize each action-disagreement– threshold curve using three scalar statistics: its area under the curve (AUC), its peak, and the threshold at which that peak occurs. Fig-ure 8 reports these descriptive quantities for representative configu-rations under both Raw-vs-Isotonic and Raw-vs-Platt comparisons. Action sensitivity remains visible after aggregation over the full threshold scan. As shown in Fig. 8(a), Raw-vs-Isotonic yields larger action-disagreement AUC than Raw-vs-Platt across the representa-tive settings, indicating a larger departure from raw-score actions. The largest displayed AUC values occur in embedding-based and obfuscated slices; this is a descriptive slice comparison, not a causal attribution to channel or protocol. The same pattern appears in the peak statistic. Figure 8(b) shows that peak action disagreement is smallest for SDXL-P-Std and largest for SD2.1-E-Obf, with SD1.5-E-Std and SDXL-E-Obf also exhibiting elevated peaks. In the largest displayed slice, Raw-vs-Isotonic peak disagreement reaches roughly 0 .17, so calibration changes allow/flag/intervene outputs for a non-trivial fraction of samples. This statistic measures change relative to raw scores; it is not an accuracy or regret rate. Figure 8(c) shows that the peak action-disagreement threshold lies in the intermediate regime, approximately 0 .45–0 .60, rather than near either extreme. Around the center of the score distribu-tion, more samples lie close to the decision boundary, so moderate probability corrections can change downstream actions. At very low or very high thresholds, most samples fall decisively on one side of the cutoff, leaving less room for raw-versus-calibrated action disagreement. MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. Kun Xu et al.   
+
+> 1.5-Std 2.1-Shf XL-Obf
+> 00.10.20.30.40.50.60.30.26 0.21 0.55 0.48 0.44
+> b𝑅  (rep )
+
+(a) Default F1-max event frequency       
+
+> Prompt Embedding 1.5-Std 2.1-Shf XL-Obf
+> 00.05 0.10.15 0.20.25 0.25 0.22 0.23 0.24 0.22 0.23
+> ΔP→E
+
+(b) Operational channel gap    
+
+> F1-max FPR@0.05 1.5-P-Std 2.1-P-Shf XL-E-Obf
+> 00.04 0.08 0.12 0.16
+> 0.114 0.129 0.161 0.051 0.061 0.074
+> ECE
+
+(c) Held-out ECE ( 𝜏 -independent)  
+
+> Raw Isotonic
+
+Figure 7: Threshold-selection analysis. (a) Default F1-max operational reproduction frequencies for three representative slices. (b) Prompt-to-embedding operational gap under F1-max and development-FPR@0.05 rules. (c) Threshold-independent held-out ECE reference for the named Table 3 slices (SD1.5-P-Std, SD2.1-P-Shf, and SDXL-E-Obf): because calibration maps 𝑟 to the separate human label 𝑌 , these ECE values are not an effect of 𝜏 𝑘 .SD1.5-P-Std SD1.5-E-Std SD2.1-P-Shf SD2.1-E-Obf SDXL-P-Std SDXL-E-Obf 0.00 0.01 0.02 0.03 0.04 0.05 AUC 
+
+> 0.039 0.049 0.041 0.057 0.031 0.051 0.026 0.032 0.028 0.038 0.020 0.034 0.000 0.000
+
+(a) AUC of disagreement 
+
+> SD1.5-P-Std SD1.5-E-Std SD2.1-P-Shf SD2.1-E-Obf SDXL-P-Std SDXL-E-Obf 0.00 0.05 0.10 0.15 Peak Dis.  0.123 0.147 0.131 0.169 0.097 0.151 0.091 0.105 0.096 0.126 0.071 0.117 0.000 0.000
+
+(b) Peak disagreement 
+
+> SD1.5-P-Std SD1.5-E-Std SD2.1-P-Shf SD2.1-E-Obf SDXL-P-Std SDXL-E-Obf 0.450 0.475 0.500 0.525 0.550 0.575 0.600 Thr. of Peak
+> 0.50 0.50 0.55 0.55 0.50 0.50 0.60 0.60 0.45 0.45 0.55 0.55
+
+(c) Threshold of peak disagreement  
+
+> Raw vs Iso Raw vs Plt
+
+Figure 8: Summary of calibration-induced action sensitivity over threshold scans. Raw-vs-Isotonic action disagreement is larger than Raw-vs-Platt in the displayed slices, and peak sensitivity occurs at intermediate thresholds ( ≈ 0.45 –0.60 ). These rates measure action changes relative to raw scores, not decision accuracy or regret. 
+
+## C Governance Implications 
+
+The empirical results suggest that concept-level governance for diffusion foundation models cannot be reduced to a single global safety score or a one-shot content filter. Instead, governance must re-flect the structured nature of semantic risk. In our experiments, risk varies systematically across concept families, conditioning channels, model architectures, and protocol distributions. Deployment-time oversight should therefore move from monolithic safety evalua-tion toward concept-resolved risk auditing , in which governance decisions are tied to identifiable semantic events rather than un-differentiated model-level assessments. A model that appears safe on average may still retain substantial exposure on a small but governance-critical subset of concepts, and such exposure remains invisible without a structured risk tensor. This framework also implies that governance must be both 
+
+interface-aware and comparative . The consistent prompt–embedding gap shows that semantic risk depends not only on which concept is queried, but also on how it is accessed. Similarly, the evaluated newer checkpoints exhibit lower risk along some dimensions with-out eliminating it uniformly across access paths. Governance should therefore avoid relying on prompt-only benchmarks or aggregate claims about a model family. Instead, risk reports should distinguish conditioning channels, protocol distributions, and model variants explicitly, so that decisions are grounded in comparative evidence rather than nominal model identity alone. This is especially im-portant for systems that expose both natural-language prompting and embedding-based extensibility, since the latter can materially reshape the effective risk surface. The results further show that intervention evaluation must ex-tend beyond average suppression on the intended target family. Effective auditing must also account for residual bypass risk and semantic spillover onto unrelated benign concepts. Intervention is therefore not a binary success condition: a control that reduces aver-age target risk while leaving substantial obfuscated bypass, or while degrading benign semantic fidelity, remains governance-relevant even if it appears successful under a narrow benchmark. At mini-mum, intervention audits should jointly report target-family sup-pression, bypass under shifted or indirect protocols, and spillover Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models MM ’26, November 10–14, 2026, Rio de Janeiro, Brazil. 
+
+on benign controls. Such reporting makes the trade-off between harm reduction and collateral capability loss explicit. More broadly, governance evaluation should incorporate distri-bution shift and stress-test protocols as standard components rather than optional adversarial extensions. The main paper shows that both concept realization and intervention robustness degrade under shifted or obfuscated conditions, implying that conclusions drawn from standard prompting alone are likely to be overly optimistic. In deployment, users do not interact through a single canonical prompt form: they vary phrasing, use indirection, compose attributes, and access concepts through alternative interfaces. Shifted and obfus-cated protocols should therefore be treated as part of the normal evaluation surface. Otherwise, a model may appear well controlled under nominal prompts while retaining substantial exposure under more realistic access patterns. The calibration results add a further operational requirement: policy thresholds should be applied to calibrated concept-risk proba-bilities , not raw detector scores or uncalibrated confidences. Miscal-ibration is amplified under shifted protocols and embedding-based access, and these errors translate directly into disagreement near governance thresholds. A score that is useful for ranking risky samples may still be unreliable for threshold-based policy actions. Governance pipelines should therefore separate scoring , calibra-tion , and decision-making as distinct stages, and threshold policies should be validated on calibrated probabilities under both nomi-nal and stress-test distributions. In this framework, calibration is not merely a statistical refinement; it is what makes concept-level risk estimates interpretable enough to support stable downstream decisions. These observations suggest a practical workflow for concept-level governance. A system should first estimate configuration-specific concept risks under the relevant conditioning channels and protocol distributions, fit the calibrator on development annota-tions, verify reliability on the untouched held-out partition, and only afterward apply predeclared policy thresholds or interven-tion rules. This separation clarifies three questions that are often conflated in practice: whether a concept can be realized at all, how likely that realization is under a concrete deployment protocol, and whether that estimated probability is reliable enough to justify an allow/flag/intervene decision. In this sense, calibration serves not only a statistical role but also a procedural one: it links empirical risk estimation to stable governance action. 
+
+Operational use. CLRC is an audit protocol, not a safety interven-tion. An evaluator fixes the concept inventory, accessible channels, protocol distributions, intervention state, judge, and seeds; records operational events and separate human-reference pairs; reports reproduction, bypass, and benign-loss slices; fits calibration on de-velopment annotations; and verifies reliability on an untouched partition before applying predeclared policy thresholds. Any change to the model, judge, channel, intervention, or deployment protocol triggers renewed validation rather than automatic transfer of the previous report.

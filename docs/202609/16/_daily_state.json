@@ -1,0 +1,281 @@
+{
+  "date": "20260916",
+  "date_label": "",
+  "generated_at": "2026-09-16 22:22:06 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.09909v1",
+      "route": "202609/16/2609.09909v1-interpreting-object-dependent-concept-brittleness-in-text-to-image-diffusion-models",
+      "title": "Interpreting Object-Dependent Concept Brittleness in Text-to-Image Diffusion Models",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "解读文生图扩散模型的提示遵循失败与去噪轨迹",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.10723v1",
+      "route": "202609/16/2609.10723v1-acflow-controlling-text-to-image-diffusion-transformers-via-learned-conditional-activation-flow",
+      "title": "AcFlow: Controlling Text-to-Image Diffusion Transformers via Learned Conditional Activation Flow",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "控制文本到图像扩散Transformer",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.11804v1",
+      "route": "202609/16/2609.11804v1-logit-refiner-improving-visual-autoregressive-models-via-intra-scale-dependency-modeling",
+      "title": "Logit Refiner: Improving Visual Autoregressive Models via Intra-Scale Dependency Modeling",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "视觉自回归图像生成与尺度内依赖建模",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.12431v1",
+      "route": "202609/16/2609.12431v1-an-end-to-end-automated-pipeline-for-controllable-crack-data-synthesis",
+      "title": "An End-to-End Automated Pipeline for Controllable Crack Data Synthesis",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "双ControlNet扩散实现可控裂缝数据合成",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.12830v1",
+      "route": "202609/16/2609.12830v1-balancing-emotional-alignment-and-semantic-consistency-in-image-generation-via-reinforcement-learning-with-valence-arousal-anchoring",
+      "title": "Balancing Emotional Alignment and Semantic Consistency in Image Generation via Reinforcement Learning with Valence-Arousal Anchoring",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "基于强化学习的可控文生图情感条件生成",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.15647v1",
+      "route": "202609/16/2609.15647v1-meddime-efficient-latent-diffusion-with-adaptive-masking-for-medical-counterfactual-generation",
+      "title": "MedDiME: Efficient Latent Diffusion with Adaptive Masking for Medical Counterfactual Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "潜在空间分类器引导扩散实现可控图像编辑",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.08253v1",
+      "route": "202609/16/2609.08253v1-revisiting-spectral-representations-in-generative-diffusion-models",
+      "title": "Revisiting Spectral Representations in Generative Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "生成扩散模型中的谱表示学习与采样质量",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.09143v1",
+      "route": "202609/16/2609.09143v1-studying-image-tokenizers-as-visual-languages-in-unified-multimodal-models",
+      "title": "Studying Image Tokenizers as Visual Languages in Unified Multimodal Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "纯自回归实验平台研究文生图与图像分词",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.09890v1",
+      "route": "202609/16/2609.09890v1-streetdiff-multi-view-street-scenes-generation-via-cross-view-consistent-multi-view-stable-diffusion-with-structure-prompts",
+      "title": "StreetDiff: Multi-view Street Scenes Generation via Cross-view Consistent Multi-view Stable Diffusion with Structure Prompts",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "多视图扩散图像生成与跨视图一致性",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.10811v1",
+      "route": "202609/16/2609.10811v1-overpainting-localized-context-aware-diffusion-image-editing",
+      "title": "Overpainting: Localized Context-aware Diffusion Image Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "局部可控的扩散图像编辑",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.12691v1",
+      "route": "202609/16/2609.12691v1-semantically-aligned-gradient-driven-context-preserving-image-editing",
+      "title": "Semantically Aligned Gradient-Driven Context-Preserving Image Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "指令引导图像编辑与语义验证,可控生成编辑",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.15643v1",
+      "route": "202609/16/2609.15643v1-principal-timestep-restricted-init-via-sparse-matrix-decomposition-in-flow-matching",
+      "title": "Principal-timestep Restricted Init via Sparse Matrix-decomposition in Flow-matching",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "流匹配扩散模型用于高保真视觉生成与高效微调",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.08153v1",
+      "route": "202609/16/2609.08153v1-geodesic-informed-generative-diffusion-model-for-topology-preserved-image-video-generation",
+      "title": "Geodesic-informed Generative Diffusion Model For Topology-preserved Image Video Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "测地线引导的生成扩散模型用于拓扑保持的图像与视频生成",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.08282v1",
+      "route": "202609/16/2609.08282v1-dreaming-in-flow-generative-grounding-feedback-for-self-evolving-unified-multimodal-models",
+      "title": "Dreaming in Flow: Generative Grounding Feedback for Self-Evolving Unified Multimodal Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文本提示驱动的图像生成与生成式接地反馈",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.08517v1",
+      "route": "202609/16/2609.08517v1-concept-level-risk-and-calibration-for-governance-in-diffusion-foundation-models",
+      "title": "Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散模型概念可控性与安全治理",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.09123v1",
+      "route": "202609/16/2609.09123v1-mask-forcing-improving-autoregressive-video-diffusion-distillation-via-dual-noise-masking-rollout",
+      "title": "Mask Forcing: Improving Autoregressive Video Diffusion Distillation via Dual-Noise Masking Rollout",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "自回归视频扩散生成与掩码展开蒸馏",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    },
+    {
+      "paper_id": "2609.09486v1",
+      "route": "202609/16/2609.09486v1-efficient-fairness-auditing-across-guidance-scales-in-text-to-image-diffusion-models-via-causal-abstraction",
+      "title": "Efficient Fairness Auditing Across Guidance Scales in Text-to-Image Diffusion Models via Causal Abstraction",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文本到图像扩散模型公平性审计",
+      "first_seen_at": "2026-09-16 22:22:06 UTC",
+      "updated_at": "2026-09-16 22:22:06 UTC"
+    }
+  ]
+}

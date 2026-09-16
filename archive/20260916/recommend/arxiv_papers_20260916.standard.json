@@ -1,0 +1,693 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-16T22:17:19.334251+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 6,
+    "deep_cap": 6,
+    "deep_selected": 6,
+    "quick_candidates": 16,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2609.09909v1",
+      "source": "arxiv",
+      "title": "Interpreting Object-Dependent Concept Brittleness in Text-to-Image Diffusion Models",
+      "abstract": "Although text-to-image diffusion models generally exhibit strong prompt-following ability, we identify a persistent and previously underexplored failure pattern in which a small subset of prompts differing only in the object consistently fails to realize the same target concept under identical generation settings. We term this phenomenon object-dependent concept brittleness. Such cases suggest systematic internal blind spots rather than random sampling noise. In this paper, we present an interpretability-oriented framework to audit and minimally correct these failures. Our key idea is to analyze denoising trajectories in a step-wise sparse autoencoder (SAE) space, where abstract style and attribute concepts become more separable than in the raw denoising representation. This sparse space enables us to compare successful and failed generations, identify concept dimensions whose evidence is missing, weakened, or temporally delayed, and construct class-level concept prototypes from reliable class-consistent samples. Based on this audit process, we introduce a lightweight inference-time correction strategy that interpolates denoising features toward the corresponding prototype in SAE space. Rather than serving as a task-specific retraining method, this intervention acts as a validation of the diagnosed concept deficiency. We evaluate the proposed framework on style and attribute failure cases across multiple diffusion backbones, with significant improvements in concept consistency, text fidelity, and repair success. Further analyses show that deeper denoising representations provide clearer concept structure, while early-stage intervention offers the strongest correction leverage. Code is available at https://github.com/Metecade/Object-Dependent-Concept-Brittleness.",
+      "authors": [
+        "Yifan Yuan",
+        "Xiangyu Liu",
+        "Hongming Shan",
+        "Yu Han",
+        "Yu Jiang",
+        "Hao Tan",
+        "Junping Zhang",
+        "Linlin Shen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.MM"
+      ],
+      "published": "2026-09-09T09:07:40+00:00",
+      "link": "https://arxiv.org/pdf/2609.09909v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "interpreting text-to-image diffusion prompt-following failures and denoising trajectories",
+      "llm_evidence_cn": "解读文生图扩散模型的提示遵循失败与去噪轨迹",
+      "llm_evidence": "解读文生图扩散模型的提示遵循失败与去噪轨迹",
+      "canonical_evidence": "解读文生图扩散模型的提示遵循失败与去噪轨迹",
+      "llm_tldr_en": "Identifies object-dependent concept brittleness in text-to-image diffusion models and proposes a sparse-autoencoder based framework to audit and minimally correct failures.",
+      "llm_tldr_cn": "本文研究文本到图像扩散模型在提示遵循上的一种系统性失败模式:仅改变对象的小部分提示在相同生成设置下持续无法实现目标概念,作者称之为对象依赖的概念脆弱性。他们提出面向可解释性的框架,在逐步稀疏自编码器空间中分析去噪轨迹,使风格与属性概念更易分离,从而审计失败原因并进行最小化纠正。该工作揭示了模型内部盲点而非随机采样噪声,为理解和改进文生图模型的提示理解能力提供了新视角。",
+      "llm_tldr": "本文研究文本到图像扩散模型在提示遵循上的一种系统性失败模式:仅改变对象的小部分提示在相同生成设置下持续无法实现目标概念,作者称之为对象依赖的概念脆弱性。他们提出面向可解释性的框架,在逐步稀疏自编码器空间中分析去噪轨迹,使风格与属性概念更易分离,从而审计失败原因并进行最小化纠正。该工作揭示了模型内部盲点而非随机采样噪声,为理解和改进文生图模型的提示理解能力提供了新视角。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.10723v1",
+      "source": "arxiv",
+      "title": "AcFlow: Controlling Text-to-Image Diffusion Transformers via Learned Conditional Activation Flow",
+      "abstract": "Text-to-image diffusion transformers (DiTs) are powerful generators, yet direct prompting provides limited control interface for style intensity and can fail to suppress unwanted concepts. To enable these controls, we introduce AcFlow, an inference-time controller that transports intermediate layer image-token activations through a learned concept-conditioned velocity field while keeping the base DiT frozen. A textual concept description specifies the desired intervention, while the integration horizon provides a continuous control parameter. The field produces token-varying, activation-dependent updates. With parameters shared across concepts within each task family, the field supports fine-grained descriptions and generalizes to concepts unseen during training without per-concept fitting. On style control, AcFlow achieves the best style--content trade-off among the evaluated baselines in the high-style-alignment regime. At a fixed operating point, AcFlow attains style--content alignment of 0.5365/0.2860, compared with 0.4397/0.2684 for the baseline with the highest style alignment. Qualitative results demonstrate suppression of diverse concepts, including cases where direct prompting fails. Our analyses support the learned velocity field as an adaptive control mechanism, with update directions varying across tokens and depend on their activation states. Our code is available at https://github.com/Nove1yst/AcFlow.",
+      "authors": [
+        "Junran Wang",
+        "Zehao Jin",
+        "Tianyu Luan",
+        "Xinjie Shen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-09T18:16:38+00:00",
+      "link": "https://arxiv.org/pdf/2609.10723v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "controlling text-to-image diffusion transformers",
+      "llm_evidence_cn": "控制文本到图像扩散Transformer",
+      "llm_evidence": "控制文本到图像扩散Transformer",
+      "canonical_evidence": "控制文本到图像扩散Transformer",
+      "llm_tldr_en": "Text-to-image diffusion transformers offer limited control over style intensity and concept suppression via prompting. AcFlow is an inference-time controller that transports image-token activations through a learned concept-conditioned velocity field with a frozen base DiT.",
+      "llm_tldr_cn": "文本到图像扩散Transformer虽生成能力强，但直接提示对风格强度控制有限且难以抑制不想要的概念。本文提出AcFlow，一种推理时控制器，在冻结基础DiT的同时，通过学习到的概念条件速度场传输中间层图像token激活，文本概念描述指定干预，积分时长提供连续控制参数。该方法实现细粒度风格控制与概念抑制，且参数跨概念共享具备泛化性。",
+      "llm_tldr": "文本到图像扩散Transformer虽生成能力强，但直接提示对风格强度控制有限且难以抑制不想要的概念。本文提出AcFlow，一种推理时控制器，在冻结基础DiT的同时，通过学习到的概念条件速度场传输中间层图像token激活，文本概念描述指定干预，积分时长提供连续控制参数。该方法实现细粒度风格控制与概念抑制，且参数跨概念共享具备泛化性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.11804v1",
+      "source": "arxiv",
+      "title": "Logit Refiner: Improving Visual Autoregressive Models via Intra-Scale Dependency Modeling",
+      "abstract": "Visual Autoregressive Models (VAR) generate images through next-scale prediction, producing all tokens within each scale in parallel. We show that this parallel decoding constitutes a mean-field-style approximation that discards spatial dependencies among same-scale tokens, causing locally incoherent samples regardless of backbone capacity -- a limitation of the decoding rule. Addressing this limitation, we introduce the Logit Refiner, a lightweight autoregressive module that restores intra-scale dependencies by sequentially sampling tokens conditioned on frozen backbone features. Adding only ~10% parameters and less than 5% of the base model's training compute, it plugs into any pretrained VAR checkpoint without retraining. Controlled ablations isolate joint intra-scale sampling -- rather than additional capacity or training -- as the critical ingredient. Across backbones from 310M to 2B parameters on class-conditional ImageNet 256x256, the refiner consistently improves generation quality, enabling a 1.1B-parameter model to surpass one twice its size. The approach further generalizes to text-to-image generation, confirming that the mean-field bottleneck persists across VAR variants and is effectively alleviated by our method.   Project page: https://compvis.github.io/logit-refiner/",
+      "authors": [
+        "Meimingwei Li",
+        "Stefan Andreas Baumann",
+        "Felix Krause",
+        "Björn Ommer"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-09-10T16:57:05+00:00",
+      "link": "https://arxiv.org/pdf/2609.11804v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "visual autoregressive models for image generation with intra-scale dependency modeling",
+      "llm_evidence_cn": "视觉自回归图像生成与尺度内依赖建模",
+      "llm_evidence": "视觉自回归图像生成与尺度内依赖建模",
+      "canonical_evidence": "视觉自回归图像生成与尺度内依赖建模",
+      "llm_tldr_en": "Introduces Logit Refiner, a lightweight module that restores intra-scale spatial dependencies in visual autoregressive image generation via sequential token sampling.",
+      "llm_tldr_cn": "本文针对视觉自回归模型通过下一尺度预测生成图像时,同尺度内令牌并行解码构成平均场近似、丢弃空间依赖并导致局部不一致的问题,提出Logit Refiner模块。该轻量自回归模块在冻结主干特征条件下顺序采样令牌,恢复尺度内依赖,仅增加约10%参数与不到5%训练算力,即可插入任意预训练VAR检查点而无需重训。该工作为自回归图像生成解码规则的改进提供了高效通用方案,提升了生成图像的空间一致性。",
+      "llm_tldr": "本文针对视觉自回归模型通过下一尺度预测生成图像时,同尺度内令牌并行解码构成平均场近似、丢弃空间依赖并导致局部不一致的问题,提出Logit Refiner模块。该轻量自回归模块在冻结主干特征条件下顺序采样令牌,恢复尺度内依赖,仅增加约10%参数与不到5%训练算力,即可插入任意预训练VAR检查点而无需重训。该工作为自回归图像生成解码规则的改进提供了高效通用方案,提升了生成图像的空间一致性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.12431v1",
+      "source": "arxiv",
+      "title": "An End-to-End Automated Pipeline for Controllable Crack Data Synthesis",
+      "abstract": "Automated crack inspection increasingly relies on deep learning, yet its reliability is limited by scarce and weakly controllable defect data. Existing generative augmentation methods often treat crack synthesis as a generic image-generation task, offering insufficient control over morphology, boundary fidelity, and scene context. This paper proposes an end-to-end automated pipeline for controllable crack data synthesis that formalizes crack geometry and inspection context into reusable computational constraints. First, procedurally sampled Bézier-curve skeletons are translated into realistic crack masks using a GAN, enabling scalable generation of diverse crack morphologies without manual mask design. Second, a dual-ControlNet diffusion framework disentangles appearance guidance from geometric guidance, with an edge-based branch enforcing strict boundary consistency. The framework supports both background-free synthesis and context-aware inpainting. Experiments on CRACK500 and CrackTree200 show consistent gains over existing augmentation baselines, demonstrating a scalable engineering informatics workflow for automated crack-inspection data generation.",
+      "authors": [
+        "Conghui Li",
+        "Muxin Pu",
+        "Chern Hong Lim",
+        "Weiyao Lin",
+        "Xin Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-11T04:40:01+00:00",
+      "link": "https://arxiv.org/pdf/2609.12431v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "dual-ControlNet diffusion for controllable crack data synthesis",
+      "llm_evidence_cn": "双ControlNet扩散实现可控裂缝数据合成",
+      "llm_evidence": "双ControlNet扩散实现可控裂缝数据合成",
+      "canonical_evidence": "双ControlNet扩散实现可控裂缝数据合成",
+      "llm_tldr_en": "The paper proposes an end-to-end pipeline for controllable crack data synthesis, combining GAN-generated crack masks from Bezier skeletons with a dual-ControlNet diffusion framework to control morphology, boundary fidelity and scene context.",
+      "llm_tldr_cn": "自动裂缝检测依赖深度学习，但缺陷数据稀缺且可控性弱，现有生成式增强方法将裂缝合成视为通用图像生成任务，对形态、边界保真度和场景上下文控制不足。作者提出端到端可控裂缝数据合成流程，先用程序化采样的贝塞尔曲线骨架经GAN翻译为真实裂缝掩码，再以双ControlNet扩散框架控制生成。该流程无需手工设计掩码即可规模化生成多样裂缝形态。该工作为可控图像生成在工业缺陷检测中的应用提供了实用范式。",
+      "llm_tldr": "自动裂缝检测依赖深度学习，但缺陷数据稀缺且可控性弱，现有生成式增强方法将裂缝合成视为通用图像生成任务，对形态、边界保真度和场景上下文控制不足。作者提出端到端可控裂缝数据合成流程，先用程序化采样的贝塞尔曲线骨架经GAN翻译为真实裂缝掩码，再以双ControlNet扩散框架控制生成。该流程无需手工设计掩码即可规模化生成多样裂缝形态。该工作为可控图像生成在工业缺陷检测中的应用提供了实用范式。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.12830v1",
+      "source": "arxiv",
+      "title": "Balancing Emotional Alignment and Semantic Consistency in Image Generation via Reinforcement Learning with Valence-Arousal Anchoring",
+      "abstract": "Continuous emotion control in text-to-image generation requires a model to improve affective alignment without changing the objects, layout, or scene described by the prompt. Existing supervised emotion-injection methods often optimize feature-space proxies and may therefore exhibit emotion-semantic drift, in which stronger emotional conditioning is accompanied by unintended content changes. We address this problem with a flow-matching image-generation framework that combines continuous valence-arousal (VA) conditioning, Group Relative Policy Optimization (GRPO), and a neutral semantic anchor. The deterministic probability-flow ODE is converted into a marginal-preserving SDE, yielding non-degenerate transition densities for trajectory sampling and policy-ratio estimation. A frozen CLIP-based VA regressor supplies a terminal reward measuring the distance between the predicted and target VA coordinates, while an image generated from the same prompt under zero VA conditioning provides a feature-space reference for semantic preservation. A reduced denoising schedule is used for online RL sampling, whereas the original schedule is retained at inference. Experiments on 3,300 prompt-emotion combinations show substantially lower valence and arousal errors than the VA-conditioned baseline and an improved CLIPScore relative to EmotiCrafter, with a measurable trade-off in reference-free image quality. The results support anchor-regularized Flow-GRPO as a practical approach to balancing emotional alignment and semantic consistency in continuous-affect image synthesis.",
+      "authors": [
+        "Jisheng Dang",
+        "Zhenxuan Wang",
+        "Bin Li",
+        "Ronghao Lin",
+        "Bin Hu",
+        "Tat-Seng Chua"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-11T13:24:35+00:00",
+      "link": "https://arxiv.org/pdf/2609.12830v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "controllable text-to-image generation with emotion conditioning via reinforcement learning",
+      "llm_evidence_cn": "基于强化学习的可控文生图情感条件生成",
+      "llm_evidence": "基于强化学习的可控文生图情感条件生成",
+      "canonical_evidence": "基于强化学习的可控文生图情感条件生成",
+      "llm_tldr_en": "Proposes a flow-matching text-to-image framework combining valence-arousal conditioning, GRPO and a neutral semantic anchor to control emotion without content drift.",
+      "llm_tldr_cn": "本文针对文本到图像生成中连续情感控制易产生情感-语义漂移、改变对象布局与场景的问题,提出一种流匹配图像生成框架。该方法结合连续效价-唤醒条件、组相对策略优化与中性语义锚点,并将确定性概率流ODE转换为保持边缘分布的SDE,以实现非退化生成。该设计在增强情感对齐的同时保持提示所描述的语义一致性,为可控图像生成提供了一种兼具情感调节与内容稳定的强化学习方案。",
+      "llm_tldr": "本文针对文本到图像生成中连续情感控制易产生情感-语义漂移、改变对象布局与场景的问题,提出一种流匹配图像生成框架。该方法结合连续效价-唤醒条件、组相对策略优化与中性语义锚点,并将确定性概率流ODE转换为保持边缘分布的SDE,以实现非退化生成。该设计在增强情感对齐的同时保持提示所描述的语义一致性,为可控图像生成提供了一种兼具情感调节与内容稳定的强化学习方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.15647v1",
+      "source": "arxiv",
+      "title": "MedDiME: Efficient Latent Diffusion with Adaptive Masking for Medical Counterfactual Generation",
+      "abstract": "Medical counterfactual generation modifies images to change model predictions for interpretability. However, existing diffusion-based approaches are often prohibitively slow and memory-intensive, making them difficult to apply in high-resolution settings. Moreover, existing masking strategies are tightly coupled with pixel-space representations, making them incompatible with latent-space diffusion editing. To address these challenges, we propose MedDiME, a latent-space classifier-guided diffusion framework that reduces computational and memory overhead while introducing a latent-compatible, gradient-driven adaptive masking mechanism for spatially precise medical counterfactual generation. Extensive experiments demonstrate that MedDiME achieves high-quality counterfactual generation with significant efficiency gains compared to prior classifier-guided diffusion baselines, achieving up to 40 times faster inference and 13 times lower peak GPU memory usage.",
+      "authors": [
+        "Yan Zeng",
+        "Changlu Guo",
+        "Anders Nymark Christensen",
+        "Morten Rieger Hannemose",
+        "Anders Bjorholm Dahl"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-14T14:32:17+00:00",
+      "link": "https://arxiv.org/pdf/2609.15647v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "latent-space classifier-guided diffusion for controllable image editing",
+      "llm_evidence_cn": "潜在空间分类器引导扩散实现可控图像编辑",
+      "llm_evidence": "潜在空间分类器引导扩散实现可控图像编辑",
+      "canonical_evidence": "潜在空间分类器引导扩散实现可控图像编辑",
+      "llm_tldr_en": "MedDiME is a latent-space classifier-guided diffusion framework with gradient-driven adaptive masking that cuts compute and memory while enabling spatially precise medical counterfactual image generation at high resolution.",
+      "llm_tldr_cn": "医学反事实生成通过修改图像改变模型预测以提升可解释性，但现有扩散方法速度慢、内存开销大，难以用于高分辨率场景，且掩码策略与像素空间耦合，无法兼容潜在空间编辑。为此作者提出MedDiME，一个潜在空间分类器引导的扩散框架，并引入与潜在空间兼容、由梯度驱动的自适应掩码机制。实验表明该方法在降低计算与内存开销的同时实现了空间精确的医学反事实生成。该工作为高效、可控的医学图像编辑提供了新思路。",
+      "llm_tldr": "医学反事实生成通过修改图像改变模型预测以提升可解释性，但现有扩散方法速度慢、内存开销大，难以用于高分辨率场景，且掩码策略与像素空间耦合，无法兼容潜在空间编辑。为此作者提出MedDiME，一个潜在空间分类器引导的扩散框架，并引入与潜在空间兼容、由梯度驱动的自适应掩码机制。实验表明该方法在降低计算与内存开销的同时实现了空间精确的医学反事实生成。该工作为高效、可控的医学图像编辑提供了新思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "latent diffusion models for high-resolution image synthesis",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.08253v1",
+      "source": "arxiv",
+      "title": "Revisiting Spectral Representations in Generative Diffusion Models",
+      "abstract": "Diffusion models have shown remarkable performance on diverse generation tasks. Recent work finds that imposing representation alignment on the hidden states of diffusion networks can both facilitate training convergence and enhance sampling quality, yet the mechanism driving this synergy remains insufficiently understood. In this paper, we investigate the connection between self-supervised spectral representation learning and diffusion generative models through a shared perspective on perturbation kernels. On the diffusion side, samples (e.g., images, videos) are produced by reversing a stochastic noise-injection process specified by Gaussian kernels; on the spectral representation side, spectral embeddings emerge from contrasting positive and negative relations induced by random perturbation kernels. Motivated by this, we propose a self-supervised spectral representation alignment method to facilitate diffusion model training. In addition, we clarify how joint spectral learning can benefit diffusion training from a geometric perspective. Furthermore, we find that the optimization of the spectral alignment objective is in an equivalent form of diffusion score distillation in the representation space. Building on these findings, we integrate a spectral regularizer into diffusion training objectives to improve the performance of diffusion models on multiple datasets. Experiments across images and 3D point clouds show consistent gains in generation quality. Code is released at https://github.com/yuehaowang/spectral-reg-diffusion.",
+      "authors": [
+        "Yuehao Wang",
+        "Peihao Wang",
+        "Hanwen Jiang",
+        "Ziyi Yang",
+        "Qixing Huang",
+        "Zhangyang Wang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-09-08T04:54:02+00:00",
+      "link": "https://arxiv.org/pdf/2609.08253v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "spectral representation learning in generative diffusion models for sampling quality",
+      "llm_evidence_cn": "生成扩散模型中的谱表示学习与采样质量",
+      "llm_evidence": "生成扩散模型中的谱表示学习与采样质量",
+      "canonical_evidence": "生成扩散模型中的谱表示学习与采样质量",
+      "llm_tldr_en": "Investigates the connection between self-supervised spectral representation learning and diffusion generative models via shared perturbation kernels to explain improved sampling.",
+      "llm_tldr_cn": "本文针对扩散模型中表示对齐为何能同时加速训练收敛并提升采样质量这一机制尚不清楚的问题展开研究。作者从扰动核的共同视角出发,将自监督谱表示学习与扩散生成模型联系起来:扩散侧通过反转高斯核的噪声注入过程生成图像等样本,谱表示侧则由正负样本对比产生谱嵌入。该分析揭示了二者协同作用的机理,为提升扩散图像生成模型的训练与采样质量提供了理论解释与实用指导。",
+      "llm_tldr": "本文针对扩散模型中表示对齐为何能同时加速训练收敛并提升采样质量这一机制尚不清楚的问题展开研究。作者从扰动核的共同视角出发,将自监督谱表示学习与扩散生成模型联系起来:扩散侧通过反转高斯核的噪声注入过程生成图像等样本,谱表示侧则由正负样本对比产生谱嵌入。该分析揭示了二者协同作用的机理,为提升扩散图像生成模型的训练与采样质量提供了理论解释与实用指导。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.08153v1",
+      "source": "arxiv",
+      "title": "Geodesic-informed Generative Diffusion Model For Topology-preserved Image Video Generation",
+      "abstract": "Generative diffusion models have emerged as a class of powerful techniques for various imaging applications, including but not limited to synthesis, reconstruction, and segmentation. Despite their success, current generative models pose two key limitations. First, they primarily rely on image intensity and texture information, with limited attention to underlying object geometry. As a result, they do not guarantee geometric or topological consistency during the generation process, which is a crucial requirement for high-stakes domains such as computational anatomy, biology, and robotics, where preserving object structure is critical. Second, existing models fail to explicitly learn or represent shape changes in the generative process. Such deformation dynamics remain occluded within network parameters; hence leaving the transformation process uninterpretable and physically uninformed. To address these challenges, we introduce IGG (Image Generation informed by Geodesic dynamics), a novel framework that integrates topology-preserving geodesic principles into the diffusion-based generative process. In contrast to conventional methods that operate in image intensity space, IGG learns and synthesizes diverse samples within geodesic deformation spaces, where geometric object changes are learned as smooth and invertible smooth mappings from a given template/source image. Our code is publicly available at https://github.com/nellie689/IGG.",
+      "authors": [
+        "Nian Wu",
+        "Nivetha Jayakumar",
+        "Jiarui Xing",
+        "Miaomiao Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CV",
+        "cs.GR"
+      ],
+      "published": "2026-09-08T02:37:50+00:00",
+      "link": "https://arxiv.org/pdf/2609.08153v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "geodesic-informed generative diffusion model for topology-preserved image and video generation",
+      "llm_evidence_cn": "测地线引导的生成扩散模型用于拓扑保持的图像与视频生成",
+      "llm_evidence": "测地线引导的生成扩散模型用于拓扑保持的图像与视频生成",
+      "canonical_evidence": "测地线引导的生成扩散模型用于拓扑保持的图像与视频生成",
+      "llm_tldr_en": "A geodesic-informed generative diffusion model explicitly models object geometry to preserve topological consistency during image and video generation, targeting structure-sensitive domains like anatomy and robotics.",
+      "llm_tldr_cn": "生成扩散模型已广泛用于合成、重建与分割，但现有方法主要依赖图像强度与纹理，忽视物体几何，难以保证生成过程中的几何与拓扑一致性，而这对计算解剖、生物与机器人等高风险领域至关重要。论文提出测地线引导的生成扩散模型，在生成过程中显式学习并保持形状的几何与拓扑结构。实验表明该方法能在结构敏感任务中实现拓扑保持的图像与视频生成。其贡献在于为需要结构保真的场景提供了几何感知的生成建模方案。",
+      "llm_tldr": "生成扩散模型已广泛用于合成、重建与分割，但现有方法主要依赖图像强度与纹理，忽视物体几何，难以保证生成过程中的几何与拓扑一致性，而这对计算解剖、生物与机器人等高风险领域至关重要。论文提出测地线引导的生成扩散模型，在生成过程中显式学习并保持形状的几何与拓扑结构。实验表明该方法能在结构敏感任务中实现拓扑保持的图像与视频生成。其贡献在于为需要结构保真的场景提供了几何感知的生成建模方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.09143v1",
+      "source": "arxiv",
+      "title": "Studying Image Tokenizers as Visual Languages in Unified Multimodal Models",
+      "abstract": "Image tokenizers define the ``visual language'' of unified multimodal models, yet are commonly studied through isolated metrics or generation-/understanding-only evaluations. These evaluations do not fully capture how visual tokens behave when modeled jointly with text. We build a controlled pure-autoregressive testbed and track task-specific validation losses during multimodal continual pretraining across text, image, text-to-image (T2I), and image-to-text (I2T) prediction. We examine how these losses scale and relate to downstream performance, then use them to study multimodal learnability---how well image and text tokens are jointly modeled---and tokenizer design. We find that (1) losses should be analyzed by task, since they exhibit distinct scaling behavior and rank tokenizers differently. (2) The loss--performance relationship depends on the predicted token space: for a fixed tokenizer, T2I and I2T losses correlate with generation quality, but across tokenizers, the T2I loss--performance relationship shifts with the image-token space, whereas I2T loss, computed over a shared text vocabulary, provides a more consistent signal. I2T loss also correlates with both generation and visual understanding performance after supervised finetuning. Using losses as a lens, we show that (3) better reconstruction does not necessarily yield lower task-specific losses or stronger downstream performance, and that (4) image tokenizer choice can affect text modeling under joint optimization. As case studies, we revisit three tokenizer design axes---the discriminator, semantic supervision, and vocabulary size---to examine their effects on joint modeling and downstream performance. Together, our testbed offers a complementary perspective on image tokenizers as visual languages, highlighting their interplay with text in joint multimodal training.",
+      "authors": [
+        "Siting Li",
+        "Zhengyang Wang",
+        "Simon Shaolei Du",
+        "Xi Chen",
+        "Yang Liu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.CL"
+      ],
+      "published": "2026-09-08T17:57:53+00:00",
+      "link": "https://arxiv.org/pdf/2609.09143v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "pure-autoregressive testbed for text-to-image and image tokenization",
+      "llm_evidence_cn": "纯自回归实验平台研究文生图与图像分词",
+      "llm_evidence": "纯自回归实验平台研究文生图与图像分词",
+      "canonical_evidence": "纯自回归实验平台研究文生图与图像分词",
+      "llm_tldr_en": "Image tokenizers define visual language in unified multimodal models yet are evaluated in isolation. A pure-autoregressive testbed tracks per-task losses (text, image, T2I, I2T) during continual pretraining to study tokenizer design.",
+      "llm_tldr_cn": "图像分词器构成统一多模态模型的视觉语言，但现有评估多依赖孤立指标或仅针对生成或理解单一任务，无法反映视觉与文本联合建模时的行为。本文构建纯自回归受控实验平台，在多模态持续预训练中按文本、图像、文生图、图生文任务分别跟踪验证损失。实验表明各任务损失随规模变化的规律不同，必须分任务分析，且损失与下游性能关系各异。该工作为视觉语言的联合可学习性与分词器设计提供了任务级诊断框架。",
+      "llm_tldr": "图像分词器构成统一多模态模型的视觉语言，但现有评估多依赖孤立指标或仅针对生成或理解单一任务，无法反映视觉与文本联合建模时的行为。本文构建纯自回归受控实验平台，在多模态持续预训练中按文本、图像、文生图、图生文任务分别跟踪验证损失。实验表明各任务损失随规模变化的规律不同，必须分任务分析，且损失与下游性能关系各异。该工作为视觉语言的联合可学习性与分词器设计提供了任务级诊断框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.08282v1",
+      "source": "arxiv",
+      "title": "Dreaming in Flow: Generative Grounding Feedback for Self-Evolving Unified Multimodal Models",
+      "abstract": "Unified multimodal models integrate visual understanding and generation within a single network, yet the two capabilities are commonly optimized as separate tasks. We introduce Generative Grounding Feedback(GGF), a self-evolving post-training framework that uses only text prompts and the model's own visual experience. Given a prompt, the model first generates a visual ``dream.'' Flow-level feedback compares text-, image-, and repair-conditioned predictions at the same noisy latent state, transferring image-grounded generation directions to the prompt condition. Dream replay grounding replays this dream through captioning and re-imagination, training claim-level evidence to remain consistent across the replay while separating unrelated visual experiences. Jointly optimized, these two directions let generation provide visual grounding for understanding and understanding refine subsequent generation without paired image--text supervision. Experiments across unified models with different understanding--generation integration designs show consistent improvements in text-to-image generation together with modest gains in visual understanding.",
+      "authors": [
+        "Ke Hao",
+        "Yuanzhi Liang",
+        "Tingxi Chen",
+        "Rui Li",
+        "Haibin Huang",
+        "Chi Zhang",
+        "Yun Gu",
+        "Xuelong Li"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-08T05:52:53+00:00",
+      "link": "https://arxiv.org/pdf/2609.08282v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "text-prompt-driven image generation with generative grounding feedback",
+      "llm_evidence_cn": "文本提示驱动的图像生成与生成式接地反馈",
+      "llm_evidence": "文本提示驱动的图像生成与生成式接地反馈",
+      "canonical_evidence": "文本提示驱动的图像生成与生成式接地反馈",
+      "llm_tldr_en": "GGF is a self-evolving post-training framework for unified multimodal models that uses only text prompts and the model's own generated dreams, comparing text-, image- and repair-conditioned predictions to transfer image-grounded generation directions to the prompt condition.",
+      "llm_tldr_cn": "统一多模态模型虽在同一网络中整合视觉理解与生成，但两种能力通常被分开优化，导致文本提示下的图像生成缺乏视觉接地。作者提出生成式接地反馈GGF，一种自演化后训练框架，仅用文本提示和模型自身生成的视觉梦境，在相同噪声潜在状态上比较文本、图像与修复条件下的预测，将图像接地的生成方向迁移到提示条件。通过梦境回放接地，训练主张级证据在重放中保持一致。该工作为提升文本到图像生成质量提供了自监督式新途径。",
+      "llm_tldr": "统一多模态模型虽在同一网络中整合视觉理解与生成，但两种能力通常被分开优化，导致文本提示下的图像生成缺乏视觉接地。作者提出生成式接地反馈GGF，一种自演化后训练框架，仅用文本提示和模型自身生成的视觉梦境，在相同噪声潜在状态上比较文本、图像与修复条件下的预测，将图像接地的生成方向迁移到提示条件。通过梦境回放接地，训练主张级证据在重放中保持一致。该工作为提升文本到图像生成质量提供了自监督式新途径。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.09890v1",
+      "source": "arxiv",
+      "title": "StreetDiff: Multi-view Street Scenes Generation via Cross-view Consistent Multi-view Stable Diffusion with Structure Prompts",
+      "abstract": "Multi-view diffusion models have shown strong performance in scenes with strong geometric priors and sparse semantics, such as indoor rooms or simple outdoor environments (e.g., fields, courtyards). However, they often fail to maintain cross-view consistency under camera rotation, especially in structurally complex urban environments. Without explicit modeling of spherical correspondence across views, existing approaches tend to produce object duplication, structural distortion, and layout inconsistency. To address this limitation, we propose StreetDiff, a multi-view diffusion framework that explicitly enforces cross-view alignment during denoising. StreetDiff introduces a Panorama--Perspective Synergy design to decouple global layout reasoning from local detail synthesis, and incorporates a Panorama Alignment Module (PAM) that establishes spherical-projection-based attention constraints across views. By injecting structured alignment constraints without modifying the diffusion backbone, our framework achieves robust cross-view coherence in challenging urban street scene generation tasks. In addition, we construct Street360, a large-scale HDR multi-view urban panorama dataset. Extensive experiments demonstrate that StreetDiff significantly improves structural consistency and visual fidelity compared to prior multi-view diffusion generation methods.",
+      "authors": [
+        "Qi Zhang",
+        "Yanyifan Wang",
+        "Weiyuan Zhang",
+        "Hui Huang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-09T08:46:34+00:00",
+      "link": "https://arxiv.org/pdf/2609.09890v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "multi-view diffusion image generation with cross-view consistency",
+      "llm_evidence_cn": "多视图扩散图像生成与跨视图一致性",
+      "llm_evidence": "多视图扩散图像生成与跨视图一致性",
+      "canonical_evidence": "多视图扩散图像生成与跨视图一致性",
+      "llm_tldr_en": "Multi-view diffusion models lose cross-view consistency in complex urban scenes; StreetDiff enforces cross-view alignment during denoising with a panorama-perspective synergy and structure prompts for consistent street scene generation.",
+      "llm_tldr_cn": "现有多视图扩散模型在结构复杂的城市街景中易出现物体重复、结构畸变与布局不一致，缺乏对跨视图球面对应的显式建模。本文提出StreetDiff，在去噪过程中显式施加跨视图对齐，引入全景-透视协同机制与结构提示来保持一致性。实验表明该方法显著提升多视图街景生成的跨视图一致性与几何合理性，推动了扩散模型在复杂城市场景图像生成中的应用。",
+      "llm_tldr": "现有多视图扩散模型在结构复杂的城市街景中易出现物体重复、结构畸变与布局不一致，缺乏对跨视图球面对应的显式建模。本文提出StreetDiff，在去噪过程中显式施加跨视图对齐，引入全景-透视协同机制与结构提示来保持一致性。实验表明该方法显著提升多视图街景生成的跨视图一致性与几何合理性，推动了扩散模型在复杂城市场景图像生成中的应用。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.08517v1",
+      "source": "arxiv",
+      "title": "Concept-Level Risk and Calibration for Governance in Diffusion Foundation Models",
+      "abstract": "Diffusion models have become a core paradigm for multimedia generation, offering powerful concept-driven controllability for personalization, semantic editing, and selective unlearning. However, as semantic control extends beyond natural-language prompts to learned embeddings and intervention pipelines, the safety and governance of these systems become increasingly difficult to evaluate in a unified manner, especially for safety-sensitive, identity-linked, and other privacy-relevant concepts. Existing studies mainly rely on heuristic audits, adversarial probing, or task-specific erasure benchmarks, and therefore provide limited support for systematic comparison across models, conditioning channels, and deployment conditions. We present a concept-level probabilistic audit and reporting framework for diffusion models. We formalize governance-relevant concept behaviors as Bernoulli semantic events induced by stochastic generation, and define a Concept Risk Operator that maps model-channel configurations to structured risk profiles, enabling comparison across prompting interfaces, learned embedding channels, models, and recorded conditions. We apply sample-level post-hoc calibration and configuration-level risk aggregation, and show that probability error can change thresholded actions near policy boundaries. Experiments on SD1.5, SD2.1, and SDXL reveal consistent yet non-uniform operational risk patterns across concept families, channels, recorded conditions, and shifted protocols. In particular, embedding-based access and obfuscated prompts expose risks often understated by standard-prompt evaluation. A pooled multi-protocol calibrator improves held-out probability reliability, but we do not claim transfer from a standard-only calibrator. CLRC provides a common audit schema for probabilistic and decision-aware governance of multimedia generation systems.",
+      "authors": [
+        "Kun Xu",
+        "Yushu Zhang",
+        "Tao Wang",
+        "Shuren Qi",
+        "Barbara Carminati",
+        "Elena Ferrari",
+        "Yuming Fang"
+      ],
+      "primary_category": "cs.MM",
+      "categories": [
+        "cs.MM"
+      ],
+      "published": "2026-09-08T10:04:01+00:00",
+      "link": "https://arxiv.org/pdf/2609.08517v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "diffusion models concept-driven controllability and governance",
+      "llm_evidence_cn": "扩散模型概念可控性与安全治理",
+      "llm_evidence": "扩散模型概念可控性与安全治理",
+      "canonical_evidence": "扩散模型概念可控性与安全治理",
+      "llm_tldr_en": "Diffusion models enable concept-driven control beyond text prompts, but unified safety governance is hard. This paper presents a concept-level risk and calibration framework for systematically comparing diffusion foundation models.",
+      "llm_tldr_cn": "扩散模型已成为多媒体生成的核心范式，其概念驱动可控性支持个性化、语义编辑与选择性遗忘，但语义控制从自然语言提示扩展到学习嵌入与干预流程后，系统安全治理难以统一评估。本文提出概念级风险与校准框架，面向安全敏感、身份关联等概念，系统比较不同模型、条件通道与部署条件下的风险。该工作为扩散基础模型的安全治理提供了可比较的评估基础。",
+      "llm_tldr": "扩散模型已成为多媒体生成的核心范式，其概念驱动可控性支持个性化、语义编辑与选择性遗忘，但语义控制从自然语言提示扩展到学习嵌入与干预流程后，系统安全治理难以统一评估。本文提出概念级风险与校准框架，面向安全敏感、身份关联等概念，系统比较不同模型、条件通道与部署条件下的风险。该工作为扩散基础模型的安全治理提供了可比较的评估基础。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.10811v1",
+      "source": "arxiv",
+      "title": "Overpainting: Localized Context-aware Diffusion Image Editing",
+      "abstract": "We present \"overpainting\", an image editing operation which offers both control over the location of the edit and awareness of the previous content in that location. The overpainted area is given by a trimap, where white-annotated pixels must be edited, gray-annotated pixels may be edited, and black-annotated pixels must not be edited. This enables both precise and loose control, depending on user intent.   We implement overpainting by adapting a pretrained image editing diffusion model using a combination of joint attention and low-rank adaption across input images with attention-dropout to balance the information flow between noise, source and mask images. We present a novel, automated, training data generation pipeline that (1) generates a set of candidate image pairs leveraging existing language-based editing models, (2) carefully curates those pairs, and (3) extracts a trimap from each usable pair. We demonstrate the versatility of our overpainting model on a wide range of editing tasks.",
+      "authors": [
+        "Sam Sartor",
+        "Iliyan Georgiev",
+        "Michael Fischer",
+        "Valentin Deschaintre",
+        "Pieter Peers"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-09T20:26:17+00:00",
+      "link": "https://arxiv.org/pdf/2609.10811v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "localized controllable diffusion image editing",
+      "llm_evidence_cn": "局部可控的扩散图像编辑",
+      "llm_evidence": "局部可控的扩散图像编辑",
+      "canonical_evidence": "局部可控的扩散图像编辑",
+      "llm_tldr_en": "The paper presents overpainting, a localized image editing operation with trimap-based control; it adapts a pretrained diffusion editing model via joint attention and low-rank adaptation with attention-dropout.",
+      "llm_tldr_cn": "图像编辑需要同时控制编辑位置并感知该位置的原有内容，现有方法难以兼顾精确与宽松控制。本文提出overpainting操作，用三值掩码区分必须编辑、可编辑与不可编辑区域，实现灵活控制。方法通过联合注意力与低秩适配改造预训练扩散编辑模型，并配以自动化训练数据生成管线。实验表明该方法能在保持上下文一致的前提下完成局部编辑，拓展了可控图像生成与编辑能力。",
+      "llm_tldr": "图像编辑需要同时控制编辑位置并感知该位置的原有内容，现有方法难以兼顾精确与宽松控制。本文提出overpainting操作，用三值掩码区分必须编辑、可编辑与不可编辑区域，实现灵活控制。方法通过联合注意力与低秩适配改造预训练扩散编辑模型，并配以自动化训练数据生成管线。实验表明该方法能在保持上下文一致的前提下完成局部编辑，拓展了可控图像生成与编辑能力。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.09123v1",
+      "source": "arxiv",
+      "title": "Mask Forcing: Improving Autoregressive Video Diffusion Distillation via Dual-Noise Masking Rollout",
+      "abstract": "Autoregressive (AR) video diffusion models have shown great potential in real-time video generation. Recent methods distill pretrained bidirectional video diffusion models into causal AR students through Distribution Matching Distillation (DMD), but the generated videos often suffer from over-saturation and over-smoothing issues, resulting in limited visual quality and realism. The key contributing factor is the mode-seeking behavior of the reverse KL objective in DMD, which can cause the student distribution to collapse onto only a few modes of the teacher distribution. To address this, we propose Mask Forcing, a Dual-Noise Masking Rollout strategy that perturbs the AR student self-rollout to mitigate mode collapse induced by reverse-KL mode seeking. The core idea is to inject cleaner signals into noisy rollout inputs via random masks along spatial and temporal axes during the self-rollout process of AR diffusion distillation. Such perturbations encourage the student rollouts to explore more regions of the teacher distribution, allowing DMD to provide learning signals beyond the modes already covered by the student. Moreover, the cleaner tokens act as denoising guidance for other noisier tokens, improving the intermediate rollout predictions and reducing error accumulation. Extensive experiments demonstrate that our method improves multiple AR video diffusion distillation methods with higher visual quality efficiently, without incorporating real video data or additional post-training stages.",
+      "authors": [
+        "Zhuoran Zhao",
+        "Shengju Qian",
+        "Tongtong Liang",
+        "Xianghao Kong",
+        "Songchun Zhang",
+        "Junchao Huang",
+        "Guian Fang",
+        "Xin Wang",
+        "Pan Hui",
+        "Anyi Rao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-08T17:50:05+00:00",
+      "link": "https://arxiv.org/pdf/2609.09123v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "autoregressive video diffusion generation with masking rollout distillation",
+      "llm_evidence_cn": "自回归视频扩散生成与掩码展开蒸馏",
+      "llm_evidence": "自回归视频扩散生成与掩码展开蒸馏",
+      "canonical_evidence": "自回归视频扩散生成与掩码展开蒸馏",
+      "llm_tldr_en": "Mask Forcing introduces a dual-noise masking rollout to perturb autoregressive student self-rollout, mitigating mode collapse in video diffusion distillation and improving visual quality and realism.",
+      "llm_tldr_cn": "自回归视频扩散模型在实时视频生成中潜力巨大，但通过分布匹配蒸馏得到的学生模型常出现过饱和与过度平滑，视觉质量与真实感受限，根源在于反向KL的模式寻求行为导致模式坍塌。本文提出Mask Forcing，一种双噪声掩码展开策略，通过扰动学生模型的自回归自展开来缓解模式坍塌。该策略提升了生成视频的质量与真实性，为自回归视频扩散蒸馏提供了改进方案。",
+      "llm_tldr": "自回归视频扩散模型在实时视频生成中潜力巨大，但通过分布匹配蒸馏得到的学生模型常出现过饱和与过度平滑，视觉质量与真实感受限，根源在于反向KL的模式寻求行为导致模式坍塌。本文提出Mask Forcing，一种双噪声掩码展开策略，通过扰动学生模型的自回归自展开来缓解模式坍塌。该策略提升了生成视频的质量与真实性，为自回归视频扩散蒸馏提供了改进方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.12691v1",
+      "source": "arxiv",
+      "title": "Semantically Aligned Gradient-Driven Context-Preserving Image Editing",
+      "abstract": "Instruction-guided image editing has a training-time blind spot. Generative editors are never required to semantically verify whether their outputs actually satisfy the instruction. Supervision stops at reconstruction and input textual-level conditioning. This produces incomplete edits, spatial spillover, and poor localization. We present IABEdit, a model-agnostic framework that embeds differentiable semantic verification into training. A frozen vision-language model extracts spatially-aware descriptors from the ground-truth edit. A trainable aligner then reproduces them from the generated output. The residual between the two becomes a gradient that teaches the generator both what to edit and where, with no inference-time VLM cost. IABEdit is compatible with diverse backbones, including U-Net (Stable Diffusion) and MMDiT (FLUX), without altering their inference pipelines. On MagicBrush, it improves structural fidelity by +3.49 DINO-I over the best diffusion baseline and +1.26 over the best overall baseline, while remaining competitive on instruction alignment. It also achieves state-of-the-art instruction adherence performance on RealEdit and EMU Edit benchmarks based on embedding-based metrics. Most consequentially, on the D-LORD surveillance benchmark, it surpasses the proprietary Gemini agent by +5.13 DINO-P under heavy occlusion, where preserving identity is hardest. This shows that gradient-aligned VLM distillation holds up under real-world-like surveillance and occlusion conditions. Human and GPT-4o evaluations confirm perceptually precise, well-localized edits.",
+      "authors": [
+        "Chiranjeev Chiranjeev",
+        "Muskan Dosi",
+        "Mayank Vatsa",
+        "Richa Singh"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-11T10:37:32+00:00",
+      "link": "https://arxiv.org/pdf/2609.12691v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "instruction-guided image editing with semantic verification, controllable generative editing",
+      "llm_evidence_cn": "指令引导图像编辑与语义验证,可控生成编辑",
+      "llm_evidence": "指令引导图像编辑与语义验证,可控生成编辑",
+      "canonical_evidence": "指令引导图像编辑与语义验证,可控生成编辑",
+      "llm_tldr_en": "Proposes IABEdit, a model-agnostic framework embedding differentiable semantic verification from a frozen VLM into training to improve instruction-guided image editing.",
+      "llm_tldr_cn": "本文针对指令引导图像编辑存在训练盲点、生成器从不验证输出是否满足指令的问题,提出IABEdit框架。该方法在训练中嵌入可微语义验证:冻结的视觉语言模型从真实编辑结果提取空间感知描述子,可训练对齐器再从生成输出中复现这些描述子,二者残差作为梯度指导生成器编辑什么与编辑何处,且推理时无VLM开销。该框架与模型无关,可缓解编辑不完整、空间溢出与定位差等问题,提升了可控图像生成与编辑的指令遵循能力。",
+      "llm_tldr": "本文针对指令引导图像编辑存在训练盲点、生成器从不验证输出是否满足指令的问题,提出IABEdit框架。该方法在训练中嵌入可微语义验证:冻结的视觉语言模型从真实编辑结果提取空间感知描述子,可训练对齐器再从生成输出中复现这些描述子,二者残差作为梯度指导生成器编辑什么与编辑何处,且推理时无VLM开销。该框架与模型无关,可缓解编辑不完整、空间溢出与定位差等问题,提升了可控图像生成与编辑的指令遵循能力。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.09486v1",
+      "source": "arxiv",
+      "title": "Efficient Fairness Auditing Across Guidance Scales in Text-to-Image Diffusion Models via Causal Abstraction",
+      "abstract": "Fairness auditing of text-to-image diffusion models often requires generating large numbers of images across sampling configurations, making comprehensive evaluation computationally expensive. We propose a causal-abstraction-based audit instrument for efficiently evaluating fairness under interventions on the classifier-free guidance scale. Given a fixed prompt and a target feature function, we represent the diffusion process as a low-level structural causal model and construct a corresponding high-level model over abstract denoising states. We characterize the projected causal structure, establish identifiability of the fairness-relevant interventional query, and provide sufficient conditions under which the high-level model preserves this query. A probabilistic transformer implements the high-level model as an amortized predictor of target-feature distributions across guidance scales. Experiments evaluate distributional fidelity, fairness-query accuracy, and computational efficiency. We present two auditing demonstrations: one using standard Stable Diffusion 1.5 and another using StayFair, a fairness-enhanced Stable Diffusion model, to examine their behavior across guidance scales.",
+      "authors": [
+        "Nabila Tasfiha Rahman",
+        "Rajatsubhra Chakraborty",
+        "Depeng Xu",
+        "Lu Zhang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CV"
+      ],
+      "published": "2026-09-08T22:05:06+00:00",
+      "link": "https://arxiv.org/pdf/2609.09486v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "fairness auditing of text-to-image diffusion models",
+      "llm_evidence_cn": "文本到图像扩散模型公平性审计",
+      "llm_evidence": "文本到图像扩散模型公平性审计",
+      "canonical_evidence": "文本到图像扩散模型公平性审计",
+      "llm_tldr_en": "Fairness auditing of text-to-image diffusion models requires costly image generation across sampling settings. This paper proposes a causal-abstraction audit instrument to efficiently evaluate fairness under classifier-free guidance interventions.",
+      "llm_tldr_cn": "文本到图像扩散模型的公平性审计通常需在多种采样配置下生成大量图像，计算代价高昂。本文提出基于因果抽象的审计工具，在无分类器引导尺度干预下高效评估公平性，将扩散过程建模为低层结构因果模型并构造抽象去噪状态的高层模型。研究刻画了投影因果结构并证明公平性干预查询的可识别性，为扩散模型公平性评估提供高效手段。",
+      "llm_tldr": "文本到图像扩散模型的公平性审计通常需在多种采样配置下生成大量图像，计算代价高昂。本文提出基于因果抽象的审计工具，在无分类器引导尺度干预下高效评估公平性，将扩散过程建模为低层结构因果模型并构造抽象去噪状态的高层模型。研究刻画了投影因果结构并证明公平性干预查询的可识别性，为扩散模型公平性评估提供高效手段。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.15643v1",
+      "source": "arxiv",
+      "title": "Principal-timestep Restricted Init via Sparse Matrix-decomposition in Flow-matching",
+      "abstract": "Flow-matching diffusion models have recently emerged as a strong paradigm for high-fidelity visual generation. However, their prohibitively high fine-tuning cost limits scalability to downstream tasks. While Low-Rank Adaptation (LoRA) combined with spectral initialization has demonstrated accelerated convergence and improved performance in autoregressive language models by better aligning gradient directions, we find that it fails to deliver similar gains in diffusion fine-tuning, often yielding marginal or even negative improvements over vanilla LoRA.We attribute this discrepancy to a fundamental mismatch between LoRA's low-rank parameterization and the intrinsically high-rank gradients induced by the flow-matching objective. In particular, stochastic timestep sampling introduces directionally heterogeneous gradient signals across training steps, leading to misaligned updates under low-rank constraints.To address this issue, we propose Prism-LoRA,a Principal-timestep Restricted Init via Sparse Matrix-decomposition framework that improves gradient alignment during fine-tuning. Our method consists of two key components: (i) principal timestep selection, which restricts initialization gradients to a subset of dominant timesteps to suppress effective gradient rank, and (ii) principal channel filtering, which removes task-irrelevant channels, enabling the one-step spectral initialization gradient to better align with the long-horizon optimization trajectory. Extensive experiments demonstrate that our method consistently improves both convergence speed and final performance across multiple diffusion fine-tuning benchmarks, including subject-driven generation, controllable generation, and deblurring, achieving not only performance improvement but also earlier stages of convergence over baseline LoRA and other spectral-init methods.",
+      "authors": [
+        "Jiayang Gu",
+        "Zheng Fang",
+        "Lichaun Xiang",
+        "Fanghui Liu",
+        "Xu Cai",
+        "Hongkai Wen"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-09-14T14:30:54+00:00",
+      "link": "https://arxiv.org/pdf/2609.15643v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "flow-matching diffusion models for high-fidelity visual generation and efficient fine-tuning",
+      "llm_evidence_cn": "流匹配扩散模型用于高保真视觉生成与高效微调",
+      "llm_evidence": "流匹配扩散模型用于高保真视觉生成与高效微调",
+      "canonical_evidence": "流匹配扩散模型用于高保真视觉生成与高效微调",
+      "llm_tldr_en": "Addresses high fine-tuning cost of flow-matching diffusion models by proposing a sparse matrix-decomposition based restricted initialization aligned with principal timesteps.",
+      "llm_tldr_cn": "本文针对流匹配扩散模型微调代价过高、难以扩展到下游任务的问题展开研究。作者发现将LoRA与谱初始化结合在扩散微调中并不像自回归语言模型那样带来增益,根源在于低秩参数化与流匹配目标产生的高秩梯度不匹配。为此他们提出基于稀疏矩阵分解的主时间步受限初始化方法,使梯度方向更好对齐。该工作提升了扩散图像生成模型微调的收敛速度与效果,为高保真视觉生成的下游适配提供了高效方案。",
+      "llm_tldr": "本文针对流匹配扩散模型微调代价过高、难以扩展到下游任务的问题展开研究。作者发现将LoRA与谱初始化结合在扩散微调中并不像自回归语言模型那样带来增益,根源在于低秩参数化与流匹配目标产生的高秩梯度不匹配。为此他们提出基于稀疏矩阵分解的主时间步受限初始化方法,使梯度方向更好对齐。该工作提升了扩散图像生成模型微调的收敛速度与效果,为高保真视觉生成的下游适配提供了高效方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

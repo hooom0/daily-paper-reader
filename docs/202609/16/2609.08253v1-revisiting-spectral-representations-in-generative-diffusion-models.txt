@@ -1,0 +1,1898 @@
+Revisiting Spectral Representations in Generative Diffusion Models
+Yuehao Wang 1 Peihao Wang 1 Hanwen Jiang 1 2 Ziyi Yang 1 Qixing Huang 1 Zhangyang Wang 1
+Abstract
+Diffusion models have shown remarkable perfor-
+mance on diverse generation tasks. Recent work
+finds that imposing representation alignment on
+the hidden states of diffusion networks can both
+facilitate training convergence and enhance sam-
+pling quality, yet the mechanism driving this syn-
+ergy remains insufficiently understood. In this
+paper, we investigate the connection between self-
+supervised spectral representation learning and
+diffusion generative models through a shared per-
+spective on perturbation kernels. On the diffusion
+side, samples (e.g., images, videos) are produced
+by reversing a stochastic noise-injection process
+specified by Gaussian kernels; on the spectral
+representation side, spectral embeddings emerge
+from contrasting positive and negative relations
+induced by random perturbation kernels. Moti-
+vated by this, we propose a self-supervised spec-
+tral representation alignment method to facilitate
+diffusion model training. In addition, we clarify
+how joint spectral learning can benefit diffusion
+training from a geometric perspective. Further-
+more, we find that the optimization of the spectral
+alignment objective is in an equivalent form of
+diffusion score distillation in the representation
+space. Building on these findings, we integrate
+a spectral regularizer into diffusion training ob-
+jectives to improve the performance of diffusion
+models on multiple datasets. Experiments across
+images and 3D point clouds show consistent gains
+in generation quality. Code is released at https://
+github.com/yuehaowang/spectral-reg-diffusion.
+1. Introduction
+Diffusion models (Sohl-Dickstein et al., 2015; Song & Er-
+mon, 2019; Ho et al., 2020; Song et al., 2021) have demon-
+1University of Texas at Austin, USA 2Adobe Research, USA.
+Correspondence to: Qixing Huang <huangqx@cs.utexas.edu>,
+Zhangyang Wang <atlaswang@utexas.edu>.
+Proceedings of the 43 rd International Conference on Machine
+Learning, Seoul, South Korea. PMLR 306, 2026. Copyright 2026
+by the author(s).
+strated strong generative capabilities across diverse domains,
+including images (Rombach et al., 2022; Dhariwal & Nichol,
+2021), videos (Brooks et al., 2024; Bao et al., 2024), 3D
+shapes (Nichol et al., 2022; Zhao et al., 2025), molecules
+(Hoogeboom et al., 2022), etc. Their core idea is to re-
+verse a diffusion process defined by a Gaussian perturbation
+kernel (Song et al., 2021). To achieve this, diffusion mod-
+els learn to estimate the time-dependent score functions on
+perturbed data. Notably, this learning setup closely mir-
+rors self-supervised representation learning, where models
+are also trained on data deliberately altered through pertur-
+bations or augmentations (HaoChen et al., 2021; Zbontar
+et al., 2021; Bardes et al., 2022; Sohn, 2016; Oord et al.,
+2018; Tian et al., 2020). In both cases, performance hinges
+on extracting useful structure from perturbed inputs: self-
+supervised methods aim to capture universal representations
+for downstream tasks, while diffusion models are dependent
+on appropriate representations to recover clean samples for
+the specific generation task. This parallel motivates a key
+question: Do diffusion models and self-supervised repre-
+sentation learning share a fundamental connection, and can
+exploiting it improve generative modeling?
+Recent works have begun to explore the link between
+diffusion models and self-supervised representation learn-
+ing (Preechakul et al., 2022; Yang et al., 2022; Abstreiter
+et al., 2021; Mittal et al., 2022). On the one hand, sev-
+eral studies reuse diffusion models as self-supervised rep-
+resentation learners (Chen et al., 2024; Xiang et al., 2023;
+Mukhopadhyay et al., 2023; Zhang et al., 2022), showing
+that meaningful features emerge during diffusion training
+and transfer well to downstream tasks (Tang et al., 2023;
+Park et al., 2023). On the other hand, REPA (Yu et al.,
+2024) takes the opposite direction, demonstrating that rep-
+resentation learning can in turn benefit diffusion models.
+By aligning the hidden states of denoising networks with
+clean-image embeddings from pretrained encoders such as
+DINOv2 (Oquab et al., 2023), REPA achieves faster conver-
+gence and stronger image generation. Nevertheless, REPA
+relies on representations from external foundation models,
+which are often unavailable for other modalities such as
+point clouds or graphs. Moreover, the broader intrinsic
+connection between diffusion and self-supervised learning
+remains unclear.
+In this work, we conduct a pilot study on the synergy be-
+1
+arXiv:2609.08253v1  [cs.LG]  8 Sep 2026
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+tween self-supervised representation learning and diffusion-
+based generative modeling. Specifically, we focus on spec-
+tral representation learning (SRL) within self-supervised
+methods, inspired by prior works that admit multiple effec-
+tive formulations built from perturbation kernels (HaoChen
+et al., 2021; Deng et al., 2022a; Pfau et al., 2018). Through
+the lens of perturbation kernels, we first review and unify the
+formulations of diffusion models and SRL under a shared
+stochastic process parameterization (Section 3.1 and Sec-
+tion 3.2). Given that spectral representations preserve neigh-
+borhood structure on the underlying data manifold (Deng
+et al., 2022a), it is plausible that incorporating spectral rep-
+resentation into diffusion training can inform the denoising
+networks of the latent, time-evolving local data geometry,
+thereby leading to better generative performance. Motivated
+by this, we propose a novel training strategy for diffusion
+models that regularizes the diffusion model’s intermedi-
+ate representations to align with the eigenfunctions of a
+time-varying kernel integral operator defined by a shared
+diffusion perturbation kernel (Section 4.2). Moreover, we
+establish a theoretical duality between representation learn-
+ing and generative modeling (Section 4.3). In particular,
+we show that optimizing our spectral self-supervised objec-
+tive is (in gradient) equivalent to diffusion score distillation
+(Poole et al., 2022) formulated via a KL divergence. This
+distributional alignment induces mode-seeking dynamics in
+representation space: embeddings are pulled toward their
+local data distribution and pushed away from mismatched
+regions, thereby facilitating the goal of generative modeling.
+Experimentally, our proposed self-supervised spectral rep-
+resentation alignment yields consistent gains in diffusion
+training for image generation across four datasets with dif-
+ferent data diversity, scales, and domains. Moreover, on
+point-cloud generation where pretrained encoders are un-
+available, it attains strong performance over the baseline
+method, highlighting the method’s potential to complex gen-
+erative settings in which encoder pretraining is impractical.
+2. Related Work
+Representations in Diffusion Models.
+Recent work
+strengthens diffusion by enhancing internal representations.
+REPA (Yu et al., 2024) aligns denoiser features to pretrained
+vision encoders (e.g., DINOv2), accelerating convergence
+and improving sample quality. Its extensions include U-
+REPA for U-Nets (Tian et al., 2025), REPA-E for joint VAE
+training (Leng et al., 2025), VideoREPA for video (Zhang
+et al., 2025), and VAE-side alignment (Yao et al., 2025).
+REG (Wu et al., 2025) introduces a global semantic token
+to mitigate the lack of alignment at test time, and HASTE
+(Wang et al., 2025) adds holistic representation/attention
+alignment with an alignment-termination criterion to further
+speed training. However, these approaches assume access
+to strong foundation encoders, an assumption often violated
+in resource-constrained domains (e.g., 3D shapes, proteins).
+Relatedly, You et al. (2023) leverages small-scale category
+labels, incurring additional annotation cost. Wang et al.
+(2024) study low-rank representations learned during diffu-
+sion model training, showing that the diffusion objective can
+be equivalent to a canonical subspace clustering problem.
+A more relevant line of work builds on the connection be-
+tween self-supervised representation learning and diffu-
+sion models. Early works in this direction aim to understand
+the internal representations of self-supervised diffusion mod-
+els (Park et al., 2023; Preechakul et al., 2022; Mittal et al.,
+2022; Chen et al., 2024; Xiang et al., 2023; Mukhopadhyay
+et al., 2023; Hudson et al., 2024; Li et al., 2025). They show
+that hidden activations in different time steps encode seman-
+tically meaningful information that can be linearly manipu-
+lated for image editing and analysis (Park et al., 2023; Tang
+et al., 2023). Stoica et al. (2025) apply contrastive learning
+on flow trajectories, improving the uniqueness of flows. A
+concurrent study (Wang & He, 2025) introduces a disper-
+sive loss that encourages internal representations of different
+samples to spread apart. While empirically effective, this ad-
+vance offers primarily an intuitive, self-supervised rationale
+for improving diffusion models.
+Self-supervised representation learning.
+Contrastive
+learning has emerged as a dominant paradigm for self-
+supervised visual representation learning (HaoChen et al.,
+2021; Wang & Isola, 2020; Tian et al., 2020). Early frame-
+works such as SimCLR (Chen et al., 2020) and MoCo (He
+et al., 2020; Chen et al., 2021) establish the importance of
+instance discrimination with large-scale negative sampling.
+Subsequent works remove the need for negatives, including
+BYOL (Grill et al., 2020) and SimSiam (Chen & He, 2021),
+showing that representation quality can emerge purely from
+positive-pair consistency. Other approaches reformulate
+contrastive learning through clustering and redundancy
+reduction, such as SwAV (Caron et al., 2020), Barlow
+Twins (Zbontar et al., 2021), and VICReg (Bardes et al.,
+2022). More recently, DINO (Caron et al., 2021; Oquab
+et al., 2023; Sim´eoni et al., 2025) advanced self-distillation
+with vision transformers, producing strong transferable
+features that have become standard teachers for aligning
+diffusion models. Collectively, these methods provide the
+foundation for self-supervised representation alignment in
+generative models.
+3. Preliminary
+3.1. Diffusion Models from Perturbation Kernels
+In diffusion-based generative models (Ho et al., 2020;
+Song & Ermon, 2019; Song et al., 2021), data samples
+x0 ∼pdata(x0) in d-dimensional space (x0 ∈Rd) are first
+2
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+transported to a standard Gaussian distribution by gradually
+perturbing the original data distribution with random Gaus-
+sian noise. Specifically, the perturbation kernel p0t(xt|x0)
+is defined as N
+ xt; s(t)x0, s(t)2σ(t)2I
+
+, where t is the
+timestep of the diffusion process, s(t) is a scaling coeffi-
+cient, and σ(t) is the noise scale at t. Given this perturbation
+kernel, the SDE of the forward process is determined as fol-
+lows:
+dx = f(t)x dt + g(t)dwt,
+(1)
+where f(t)x is a drift term, g(t) : R →R is the diffusion
+coefficient of x, and wt is the standard Wiener process. The
+following equations describe the relations between f(t),
+g(t), s(t), and σ(t), which illustrate how the SDE can be
+derived from the perturbation kernel (Karras et al., 2022):
+f(t) = ˙s(t)/s(t)
+g(t) = s(t)
+p
+2 ˙σ(t)σ(t).
+(2)
+Conversely, the scaling and noise scale terms in the pertur-
+bation kernel p0t can be rewritten with respect to f(t) and
+g(t):
+s(t) = exp
+Z t
+0
+f(ξ)dξ
+
+σ(t) =
+sZ t
+0
+g(ξ)2
+s(ξ)2 dξ . (3)
+To sample the original data distribution from a randomly
+sampled noise, we can reverse the diffusion process. As
+introduced in the literature (Song et al., 2021), the reverse
+process of Equation 1 can be described as the SDE below:
+dx =
+
+f(t)x −g(t)2∇x log pt(x)
+
+dt + g(t)dwt,
+(4)
+where pt(x) is the perturbed data distribution evolving over
+the process time-dependently, and ∇x log pt(x) is a score
+function which can be estimated by training deep neural
+networks sϕ to match the true scores:
+Ldiff(ϕ) =
+E
+t,x0,xt
+h
+ωt ∥sϕ(xt, t) −∇xt log p0t(xt|x0)∥2
+2
+i
+(5)
+=
+E
+t, x0∼pdata
+xt∼p0t(xt|x0)
+"
+ωt
+sϕ(xt, t) + xt −s(t)x0
+s(t)2σ(t)2
+
+2
+2
+#
+,
+(6)
+where ωt is a time-dependent re-weighting of score-
+matching losses across different t. Formulating diffusion
+processes with perturbation kernels facilitates score match-
+ing in the two aspects: 1) Given x0 and xt, the true scores
+have analytic expressions. 2) The perturbation kernel p0t
+allows for a “simulation-free” forward process, i.e., one
+can sample xt = s(t)x0 + s(t)σ(t)ϵ without numerically
+simulating the SDE in Equation 1. Moreover, flow-based
+diffusion models (Liu et al., 2022) can be defined by pertur-
+bation kernels as well (see Appendix A for the derivation).
+3.2. Spectral Representation from Perturbation Kernels
+In this section, we will revisit a family of self-supervised
+learning approach that restores data representations in the
+spectral domain of kernels, a.k.a spectral representation
+learning (SRL).
+Spectral Contrastive Learning. SCL (HaoChen et al.,
+2021) reframes self-supervised representation learning as a
+spectral decomposition of a population-level augmentation
+graph. Unlike traditional methods that rely on the assump-
+tion that positive pairs are conditionally independent given
+their labels, SCL constructs graphs using data points, where
+edges connect different augmentations of the same under-
+lying data point. By minimizing the contrastive objective
+(Equation 8), the neural network is theoretically guaran-
+teed to perform spectral decomposition on the population
+augmentation graph.
+LSC = −2Ex,x+[ψ(x)⊤ψ(x+)]
+(7)
++ Ex,x′[(ψ(x)⊤ψ(x′))2],
+(8)
+where x and x+ are two views sampled from a perturbation
+kernel p(·|¯x) (augmentation) on the same data point ¯x ∼
+pdata (clean data distribution), x and x′ are two samples
+augmented from independent data points, and ψ is a neural
+network. Johnson et al. (2022) further find that this learning
+objective is a special case of kernel learning. Specifically,
+the target kernel learned by the networks can be written as:
+κ(x, x′) =
+p(x, x′)
+p(x)p(x′),
+(9)
+p(x, x′) = E¯x∼pdata[p(x|¯x)p(x′|¯x)].
+(10)
+Through this perspective, the objective of SCL is to learn
+the kernel principal components.
+Neural Eigenmap. Deng et al. (2022a) propose to for-
+malize spectral representation learning by solving ordered
+eigenfunctions of the kernel integral operator. Given the
+kernel κ(x, x′) in Equation 10, the corresponding kernel
+integral operator is defined in the following way:
+(Tκh)(x) =
+Z
+κ(x, x′)f(x′)p(x′)dx′,
+(11)
+where f ∈L2(X, p), i.e., f is a square-integrable function
+w.r.t p. X is a support, and p is a probability distribution
+defined over the support. Intuitively, this operator can be
+understood as the continuous-domain analogue of matrix
+multiplication. Similar to the result in Johnson et al. (2022),
+Neural Eigenmap trains a neural network to approximate
+the principal eigenfunctions of the kernel integral operator.
+Then, the spectral representation learning objective becomes
+solving the eigenvalue problem. Following NeuralEF (Deng
+et al., 2022b), Neural Eigenmap reformulates the eigenfunc-
+3
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+tion problem of Tκψj = µψj into an optimization problem:
+max
+ψj Rj,j −α
+j−1
+X
+i=1
+R2
+i,j,
+for j = 1, .., K,
+(12)
+R = Ep(x,x′)
+
+ψ(x)ψ(x′)⊤
+≈1
+B
+B
+X
+b=1
+ψ(xb)ψ(x′
+b)⊤,
+(13)
+where K is the number of eigenfunctions, ψ(x)
+=
+
+ψ1(x), ..., ψK(x)
+
+∈RK denotes the vector comprising
+the first K eigenfunctions evaluated at x, B is the num-
+ber of data samples, xb and x′
+b are independently sampled
+from the perturbation kernel p(x|¯xb) conducted on the same
+clean data ¯xb. We can parameterize ψ by a neural network,
+and the network parameters θ can be optimized through the
+following loss function, which bears a strong resemblance
+to other contrastive representation learning objectives (Li
+et al., 2022; Zbontar et al., 2021):
+Lef(θ) = −
+K
+X
+j=1
+ ψθ(XB)ψθ(X′
+B)⊤
+j,j
+(14)
++ α
+K
+X
+j=1
+j−1
+X
+i=1
+ sg(ψθ(XB))ψθ(X′
+B)⊤2
+i,j , (15)
+where sg(·) denotes stop-gradient operator that converts
+its argument as an constant with zero derivative, α is
+the coefficient weighting the regularization applied to the
+upper-triangular elements, XB = [x1, ..., xB], X′
+B =
+[x′
+1, ..., x′
+B] are batched input data, xb and x′
+b are perturbed
+from the same clean data ¯xb for b = 1, ..., B, and B is the
+batch size for mini-batch training. Thereby ψθ(XB) is a
+K × B matrix with the element at j-th row, b-th column
+representing the j-th eigenfunction evaluated at the b-th data
+sample in the training batch.
+The perturbation kernels p(x|¯x) used for SRL are usually
+designed as composed data augmentations. For instance, for
+representation learning on images, p(x|¯x) can be a composi-
+tion of image manipulations, such as color jittering, random
+flip, Gaussian blur, etc.
+4. Bridging Spectral Representations and
+Diffusion Models
+We have reviewed diffusion models and spectral represen-
+tations through the lens of perturbation kernels. Motivated
+by their shared principle of learning from perturbed data,
+we further develop their connections and propose a spectral
+representation alignment approach.
+4.1. Spectral Geometry in Diffusion Process
+To study the synergy of SRL and diffusion models, we
+adopt the same perturbation kernel in diffusion models, i.e,
+xt
+x0
+Pretrained 
+encoder
+𝓛
+p0t(·|x0)
+xt
+𝛁 log p(xt)
+x0
+𝓛s
+p0t(·|x0)
+x’t
+Ѱ(xt)
+Ѱ(x’t)
+𝛁 log p(x’t)
+𝛁 log p(xt)
+REPA
+Ours
+Figure 1. Pipeline comparison between the external encoder-based
+REPA method (Yu et al., 2024) (top) and our self-supervised align-
+ment method (bottom). Given a clean sample, we independently
+draw two noisy views, reusing the perturbation kernel adopted
+by the diffusion model. The model then learns time-dependent
+spectral representations via self-supervised signals that align noisy
+views while implicitly separating unrelated samples.
+p0t(xt|x0). Therefore, once the SDE of a diffusion process
+is given, a time-dependent perturbation kernel κt is also
+determined for SRL:
+κt(x, x′) =
+pt(x, x′)
+pt(x)pt(x′)
+(16)
+pt(x, x′) = Ex0∼pdata[p0t(xt|x0)p0t(x′
+t|x0)].
+(17)
+Using this kernel, we can construct its time-varying kernel
+integral operator Kt:
+(Kth)(x) =
+Z
+κt(x, x′)h(x′)pt(x′)dx′.
+(18)
+Since this operator is time-varying, its eigenfunctions
+also need to be formulated in a time-dependent manner:
+Ktψj
+θ(xt, t) = µtψj
+θ(xt, t). The time-dependent eigenfunc-
+tions preserve the local geometry of data points on a latent,
+time-evolving manifold. This follows the classical spectral
+paradigm: in algorithms such as spectral clustering (Ng
+et al., 2001; Shi & Malik, 2000) and diffusion maps (Coif-
+man & Lafon, 2006; Coifman et al., 2005; Nadler et al.,
+2005), eigenspace embeddings of constructed kernel opera-
+tors yield coordinates that respect neighborhood structure
+and facilitate unsupervised clustering. In our setting, the
+kernel operator Kt varies with time via the SDE-defined
+perturbation (Marshall & Hirn, 2018), and the embeddings
+ψθ(xt, t) track the local connectivity as it evolves following
+the diffusion process. Inspired by (Coifman & Lafon, 2006;
+Nadler et al., 2006; Coifman et al., 2008), we formalize a
+diffusion distance induced by κt(x, x′) to characterize the
+time-varying local connectivity of the data manifold, which
+can be approximated by the eigenfunctions of Kt (Proposi-
+tion 4.2). Unlike existing approaches in the literature, the
+4
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Training Data (2spirals)
+Baseline (2spirals)
+Ours (2spirals)
+Training Data (rings)
+Baseline (rings)
+Ours (rings)
+Figure 2. Results on synthetic 2D data distributions. Our method produces a cleaner, more compact sample distribution than the
+baseline, with fewer outliers.
+diffusion distance in our case is derived from the joint proba-
+bility between two points rather than relying on a predefined
+affinity kernel.
+Definition 4.1. Given the kernel κt(x, x′), diffusion dis-
+tance can be defined as follows.
+D2
+κt(x, x′) =
+Z
+[κt(x, y) −κt(x′, y)]2 pt(y) dy
+(19)
+Proposition 4.2. The diffusion distance D2
+κt(x, x′) admits
+an expansion in the eigenspace of the associated kernel
+integral operator Kt.
+D2
+κt(x, x′) =
+∞
+X
+l=0
+µ2
+t,l
+
+ψl(x, t) −ψl(x′, t)
+2,
+(20)
+where µt,l is the eigenvalue of ψl(x, t).
+4.2. Spectral Representation Alignment
+Recent work REPA (Yu et al., 2024) shows that representa-
+tion alignment can result in better generation performance.
+This motivates us to incorporate SRL as a regularizer within
+diffusion training. Unlike REPA, which aligns the hidden
+states of diffusion transformers with external teacher signals,
+our adopted SRL is a fully self-supervised objective. This
+eliminates dependency on large-scale pretrained encoders,
+such as DINO and CLIP, which are usually computationally
+costly and even unavailable in data-constrained settings.
+To establish compatibility between the two objectives, we
+first recast spectral learning in terms of the diffusion pertur-
+bation kernel p0t(xt|x0) = N(xt; (1 −t)x0, t2I) (the one
+used in rectified flow), where x0 is a clean data sampled
+from pdata. Note that our subsequent analysis is insensitive
+to the specific parameterization of the perturbation kernel;
+the particular choices of s(t) and σ(t) for pdata will not
+affect our following discussion.
+Plugging κt into Neural Eigenmap, we can solve the eigen-
+function problem using the following spectral loss:
+Ls(θ) = E
+t, x0∼pdata
+xt,x′
+t∼p0t(xt|x0)
+
+−Tr
+ ψθ(xt, t)ψθ(x′
+t, t)⊤
++ α
+K
+X
+j=1
+j−1
+X
+i=1
+ sg (ψθ(xt, t)) ψθ(x′
+t, t)⊤2
+i,j
+
+,
+(21)
+where t ∈(0, 1] is a randomly sampled time step, xt and
+x′
+t are two i.i.d perturbed views of the same clean data sam-
+ples x0, and the time-conditioned neural network ψθ(xt, t)
+parameterizes the eigenfunctions of Kt. Comparing Ls and
+Ldiff in Equation 6, both involve sampling random time steps
+t and perturbed data xt ∼p0t(xt|x0), whereas Equation
+21 additionally requires an independently sampled x′
+t. This
+permits a practical implementation that jointly optimizes
+the diffusion and spectral objectives while reusing the same
+perturbed input, leading to our final training objective:
+L(θ, ϕ) = Ldiff(ϕ) + λLs(θ),
+(22)
+where θ denotes parameters of the spectral learner ψθ, ϕ is
+a set of parameters of diffusion networks, and λ is the coef-
+ficient controlling the strength of the spectral regularization.
+As discussed in Section 4.1, the SRL term in the objective
+yields multi-scale representations that reflect the intrinsic
+local connectivity at each t: for small t, data remain well
+separated, so only nearby points have small embedding
+distances; as t increases and noise dominates, eigenspace
+distances progressively collapse and become less discrimi-
+native. Therefore, spectral alignment of the hidden states en-
+ables the diffusion denoiser to characterize the time-varying
+geometric priors inherent in the data manifold. To empiri-
+cally validate this , Section 5.1 evaluates our approach on
+synthetic 2D distributions of special geometric patterns.
+Implementation Details. We follow the implementation of
+representation alignment in REPA. The diffusion denoiser
+and spectral representation learner share the same backbone.
+The output of a specified intermediate layer will be probed
+to a projection head for alignment. The projection head is a
+two-layer MLP. We condition it on the timestep, identical to
+the time modulation in (Peebles & Xie, 2023). We apply L2-
+BN at the final layer to enforce a normalization constraint
+5
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+on the estimated eigenfunctions (Deng et al., 2022b). To
+stabilize training, we also normalize each output embedding
+to bound its magnitude. Figure 1 illustrates the comparison
+between REPA and our method.
+4.3. Spectral Representation Learning as Diffusion
+Score Distillation
+We further look into the self-supervised learning objective
+in Equation 21. Unlike sample-contrastive methods, Equa-
+tion 21 does not explicitly construct negative examples. Con-
+sequently, the spectral regularizer belongs to the dimension-
+contrastive family in Garrido et al. (2022), which is provably
+dual to sample-contrastive learning with positives and neg-
+atives. From this viewpoint, for a given perturbed sample
+as an anchor, instances perturbed from different clean ex-
+amples can be interpreted as negatives, whereas instances
+perturbed from the same clean example play the role of pos-
+itives. Interestingly, in its dual (sample-contrastive) form,
+our spectral regularizer admits a reformulation as diffusion
+score distillation (Poole et al., 2022).
+Proposition 4.3. Minimizing the self-supervised learn-
+ing objective in Equation 21 via a gradient-based op-
+timizer is equivalent to minimizing the KL divergence
+DKL(pψθ
+t (xt) ∥p+), as the following identity shows:
+∂Ls
+∂θ = Ex∼pt
+h
+(∇θψθ(x, t))⊤∇ψθ(x,t)Ls
+i
+(23)
+≡∇θDKL(pψθ
+t
+∥p+)
+(24)
+where ∇xt log pψθ
+t
+is equal to the closed-form diffusion
+scores (Scarvelis et al., 2023) evaluated over negative sam-
+ples, and the target score ∇xt log p+ matches the closed-
+form diffusion scores evaluated over positive samples.
+Complete steps to show the above proposition are provided
+in Appendix C. Intuitively, this KL term measures, at the
+anchor representation ψθ(xt), the discrepancy between a
+distribution of negative samples and a distribution of posi-
+tive samples. Since our spectral regularizer applies a stop-
+gradient to the negatives, minimizing DKL
+ pψθ
+t
+∥p+
+
+up-
+dates θ so that the anchor ψθ(xt) moves to reconcile the
+score fields of the positive and negative distributions. The re-
+sulting dynamics are mode-seeking in representation space,
+tightening clusters of similar samples while pushing dissim-
+ilar ones apart.
+5. Experiments
+We evaluate our approach across 2D pattern fitting (Sec-
+tion 5.1), image (Section 5.2) and point cloud (Section 5.3)
+generation tasks. These experiments are specifically de-
+signed to demonstrate the efficacy of our approach in do-
+mains lacking external pretrained encoders, such as 3D
+point clouds and low-resolution images. In
+5.1. Synthetic Distributions
+We first validate the effectiveness of our approach on syn-
+thetic 2D distributions. We consider the “2-spirals” and
+“rings” patterns, which exhibit intricate geometric structures.
+For each 2D pattern, 1K points are randomly drawn as the
+training set. We then train a simple MLP using either the
+vanilla diffusion loss or the diffusion loss augmented with
+our spectral regularizer. The models are trained for 5K
+epochs on 2-spirals and 10K epochs on rings, respectively.
+In Figure 2, we visualize 3K samples generated by the base-
+line model and our spectral alignment model. Our method
+yields cleaner, more compact samples with markedly fewer
+out-of-distribution points. On the “2-spirals” pattern, it
+recovers the fine spiral geometry that the baseline misses.
+For the “rings” pattern, our model achieves a tighter fit to
+the underlying shape of concentric circles. While the base-
+line samples show noticeable dispersion. Figure 7 presents
+additional results on other 2D data distributions. These re-
+sults illustrate that our proposed method can capture the
+underlying data geometry prior more efficiently.
+5.2. Image Generation
+Dataset. We test our method on CIFAR10 (Krizhevsky et al.,
+2009), CelebA (Liu et al., 2015), FFHQ (Karras et al., 2019),
+ImageNet (Deng et al., 2009) datasets, which are standard
+datasets used for training image generation with different
+data diversity, domain, and scale. For CIFAR10 and CelebA
+datasets, we resize images into 32 × 32 resolution. While
+for FFHQ, images are resized to 64 × 64. For ImageNet,
+we resize images to two different resolutions: 64 × 64 and
+256 × 256. For ImageNet 256 × 256 experiments, each
+image is further encoded to 32 × 32 × 4 latents using Stable
+Diffusion VAE (Rombach et al., 2022), and latent diffusion
+models are trained on those encoded latents. For other image
+generation tasks, we conduct diffusion model training on
+pixel space.
+Training details. We use DiT (Peebles & Xie, 2023) as the
+base model and employ the parameterization and training
+objective of rectified flow (Liu et al., 2022). More details
+are provided in Appendix D.2.
+Evaluation protocol and baselines. We evaluate genera-
+tion quality using Fr´echet Inception Distance (FID) as the
+primary metric, complemented by sFID, Inception Score
+(IS), and the precision/recall pair as secondary measures.
+All the reported metrics are measured on EMA checkpoints.
+For pixel-space diffusion, we compare against a vanilla DiT
+baseline trained under the same setting with ours except no
+use of our proposed representation learning loss. To further
+understand the effectiveness of our proposed method, for
+latent diffusion, we also compare against REPA (Yu et al.,
+2024), a leading representation-alignment method that lever-
+ages encoders pretrained on large-scale external data, which
+6
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Dataset
+Model
+Metric
+FID (↓)
+sFID (↓)
+IS (↑)
+Precision (↑)
+Recall (↑)
+ImageNet
+(res. = 64)
+DiT-L/4 baseline
+9.441
+7.653
+102.069
+0.871
+0.393
+Ours (DiT-L/4)
+7.994
+7.372
+78.366
+0.858
+0.397
+ImageNet
+(res. = 256, latent)
+DiT-XL/2 baseline
+2.508
+5.630
+247.891
+0.822
+0.566
+REPA (DiT-XL/2)
+1.745
+5.459
+296.726
+0.807
+0.615
+Ours (DiT-XL/2)
+2.298
+5.510
+257.741
+0.824
+0.570
+CIFAR10
+(res. = 32)
+DiT-S/2 baseline
+11.588
+10.680
+9.042
+0.719
+0.384
+Ours (DiT-S/2)
+8.742
+6.836
+9.174
+0.735
+0.405
+CelebA
+(res. = 32)
+DiT-S/2 baseline
+28.806
+20.569
+3.431
+0.685
+0.453
+Ours (DiT-S/2)
+25.678
+20.061
+3.388
+0.702
+0.472
+FFHQ
+(res. = 64, uncond.)
+DiT-S/2 baseline
+13.766
+21.982
+2.997
+0.731
+0.331
+Ours (DiT-S/2)
+13.074
+21.915
+2.998
+0.737
+0.340
+Table 1. Evaluation of image generation across four datasets, with image resolutions and model sizes adapted accordingly. We report
+FID as the primary metric, and sFID, Inception Scores, Precision/Recall as secondary metrics.
+Figure 3. Visualization of Training Progress. We plot FID against training iterations for three datasets. These results suggest that our
+representation learning strategy sustains effective optimization and mitigates the mid-training stagnation observed in the baseline.
+serves as the upper bound of performance. We employ Euler
+ODE for pixel-space generation and SDE Euler-Maruyama
+sampler for latent-space generation. For conditional genera-
+tion, we set CFG=2.
+Results. Table 1 compares our method with matched diffu-
+sion baselines under the same backbone and training setting.
+Across the evaluated image-generation benchmarks, our
+spectral regularization consistently improves FID over the
+corresponding baseline. Specifically, our method reduces
+FID by 1.5 on ImageNet-64 with DiT-L/4, 0.2 on ImageNet-
+256 with DiT-XL/2, 2.8 on CIFAR-10, 3.1 on CelebA, and
+0.7 on FFHQ, corresponding to relative improvements of
+15%, 8%, 25%, 11%, and 5%, respectively. These results
+suggest that the proposed self-supervised spectral objective
+can provide a stable improvement over the underlying dif-
+fusion backbone across different resolutions, model scales,
+and both pixel- and latent-space generation settings. For
+latent-space ImageNet-256 generation, REPA achieves the
+best overall performance, while our method improves over
+the baseline without relying on an external pretrained en-
+coder. We further evaluate performance throughout training.
+As shown in Figure 3, our method outperforms the base-
+line in the later stages of training, suggesting that the im-
+provement is not limited to the earliest optimization phase.
+Additional results are provided in Appendix D.2.
+5.3. Point Cloud Generation
+Dataset. Following prior work (Yang et al., 2019; Mo et al.,
+2023), we use the ShapeNet (Chang et al., 2015) Chair,
+Airplane, and Car categories with the same preprocessing
+and data split as Yang et al. (2019). We sample 2,048 points
+for each shape instance.
+Training details. For each subset, we use DiT-3D model
+(Mo et al., 2023) as the base model, which employs 3D
+window attention in transformer blocks. As the dataset of
+3D shapes is relatively small, we use the S/4 configuration
+(33M parameters, patch size 4). We train the models on
+each shape category for 10k iterations. We use the same
+batch-size scheme as in the image-generation experiments.
+Evaluation protocol and baseline. We follow the setup in
+DiT-3D to evaluate the generated samples with 1-nearest
+neighbor accuracy (1-NNA) and generated sample coverage
+(COV). For each metric, Chamfer Distance (CD) and Earth
+Mover’s Distance (EMD) are used to measure the distance
+7
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Dataset
+Iteration
+Model
+1-NNA (↓)
+COV (↑)
+CD
+EMD
+CD
+EMD
+Chair
+5K
+DiT 3D-S/4 baseline
+0.850
+0.875
+0.295
+0.221
+Ours (DiT 3D-S/4)
+0.583
+0.627
+0.488
+0.493
+10K
+DiT 3D-S/4 baseline
+0.565
+0.545
+0.504
+0.511
+Ours (DiT 3D-S/4)
+0.520
+0.527
+0.517
+0.543
+Airplane
+5K
+DiT 3D-S/4 baseline
+0.714
+0.668
+0.522
+0.519
+Ours (DiT 3D-S/4)
+0.601
+0.556
+0.561
+0.523
+10K
+DiT 3D-S/4 baseline
+0.852
+0.785
+0.397
+0.389
+Ours (DiT 3D-S/4)
+0.607
+0.562
+0.570
+0.600
+Car
+5K
+DiT 3D-S/4 baseline
+0.788
+0.738
+0.378
+0.482
+Ours (DiT 3D-S/4)
+0.605
+0.586
+0.458
+0.549
+10K
+DiT 3D-S/4 baseline
+0.730
+0.682
+0.427
+0.427
+Ours (DiT 3D-S/4)
+0.582
+0.500
+0.505
+0.573
+Table 2. Evaluation of 3D point cloud generation on three subsets of ShapeNet objects. We include 1-NNA and COV computed by
+either using chamfer distance (CD) or earth mover’s distance (EMD) as the criterion for shape retrieval.
+DiT-3D
+Ours
+DiT-3D
+Ours
+Figure 4. Visualization of point cloud generation results. We include generated samples on airplanes (top two rows, generated when
+model trained with 3K iterations) and chairs (bottom two rows, generated when model trained with 5K iterations).
+between 3D shapes.
+Qualitative results. Figure 4 shows comparisons between
+generated point clouds of our method and the baseline in
+“Chair” and “Airplane” categories. Our method demon-
+strates significantly faster convergence compared to DiT-3D.
+At an early training stage (3K iterations for airplanes and 5K
+iterations for chairs), the generations from DiT-3D remain
+noisy and fragmented, producing messy point distributions
+without clear geometric structure. In contrast, our approach
+already produces compact and coherent point clouds that
+exhibit well-defined shapes with fine-grained details.
+Quantitative results. Table 2 presents the point cloud gen-
+eration evaluation results, where our method consistently
+demonstrates both faster convergence and superior final
+performance compared to the DiT 3D-S/4 baseline. No-
+tably, after only 5K iterations, our approach already achieves
+substantial improvements across all datasets. For instance,
+on the Chair dataset, the 1-NNA (CD/EMD) drops from
+0.850/0.875 to 0.583/0.627 (31% and 28% relative improve-
+ment, respectively), while the COV (CD/EMD) rises from
+0.295/0.221 to 0.488/0.493 (65% and 123% relative im-
+provement, respectively). Similar trends are observed for
+Airplane and Car, where our model attains a lower 1-NNA
+and a higher COV at the early stage of training. With longer
+training, our method further improves upon these gains,
+achieving the best overall results across all metrics.
+8
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+5.4. Limitations
+Our empirical validation is limited to relatively small-scale
+datasets and model sizes compared with state-of-the-art dif-
+fusion models. Therefore, our results mainly demonstrate
+improvements over matched diffusion backbones under the
+same training and sampling settings. Our method does
+not outperform external-teacher approaches such as REPA,
+which remain stronger in large-scale latent image gener-
+ation by leveraging pretrained encoders. In addition, our
+method introduces extra training overhead because it re-
+quires an additional perturbed view and a projection head
+for representation alignment. Under our implementation and
+experimental setup, the training time increases by approx-
+imately 10% for ImageNet-64 pixel-space diffusion, 70%
+for ImageNet-256 latent-space diffusion due to the larger
+hidden-state dimensionality, and 20% for 3D diffusion on
+Airplane point clouds.
+6. Conclusion
+In this work, we investigate the connection between self-
+supervised spectral representation learning and diffusion
+models through the shared lens of perturbation kernels.
+Leveraging this alignment, we introduce a spectral represen-
+tation alignment approach to diffusion models, offer a geo-
+metric interpretation of why joint spectral learning benefits
+diffusion training, and establish its equivalence to diffusion
+score distillation in representation space. Integrating the
+resulting spectral regularizer into standard diffusion objec-
+tives yields consistent gains on image and 3D point cloud
+generation. These findings suggest a practical, principled
+path for further exploring the synergy between diffusion
+modeling and representation learning.
+Impact Statement
+This work aims to improve the performance of generative
+models, particularly in settings where training data are lim-
+ited or exhibit specialized structure. By enabling more ef-
+fective training of diffusion-based generative models under
+such constraints, the proposed approach has the potential to
+reduce training time and computational cost, thereby con-
+tributing to improved energy efficiency.
+Acknowledgements
+PW is in part supported by Google PhD Fellowship in Ma-
+chine Learning and ML Foundations. QH is supported by
+NSF 2047677, 2413161, 2504906, 2515626, and Gifts from
+Adobe and Google. ZW is supported in part by NSF Awards
+2145346 (CAREER), 2523383 (DMS), and the NSF AI
+Institute for Foundations of Machine Learning (IFML). Au-
+thors acknowledge the computing support on the Vista GPU
+Cluster through the Center for Generative AI (CGAI) and
+TACC at UT Austin.
+References
+Abstreiter, K., Mittal, S., Bauer, S., Sch¨olkopf, B., and
+Mehrjou, A. Diffusion-based representation learning.
+arXiv preprint arXiv:2105.14257, 2021.
+Bao, F., Xiang, C., Yue, G., He, G., Zhu, H., Zheng, K.,
+Zhao, M., Liu, S., Wang, Y., and Zhu, J. Vidu: a highly
+consistent, dynamic and skilled text-to-video generator
+with diffusion models. arXiv preprint arXiv:2405.04233,
+2024.
+Bardes, A., Ponce, J., and Lecun, Y. Vicreg: Variance-
+invariance-covariance regularization for self-supervised
+learning. In International Conference on Learning Rep-
+resentations, 2022.
+Brooks, T., Peebles, B., Holmes, C., DePue, W., Guo, Y.,
+Jing, L., Schnurr, D., Taylor, J., Luhman, T., Luhman,
+E., Ng, C., Wang, R., and Ramesh, A. Video generation
+models as world simulators. 2024.
+Caron, M., Misra, I., Mairal, J., Goyal, P., Bojanowski, P.,
+and Joulin, A. Unsupervised learning of visual features
+by contrasting cluster assignments. Advances in neural
+information processing systems, 33:9912–9924, 2020.
+Caron, M., Touvron, H., Misra, I., J´egou, H., Mairal, J.,
+Bojanowski, P., and Joulin, A. Emerging properties in
+self-supervised vision transformers. In Proceedings of the
+IEEE/CVF international conference on computer vision,
+pp. 9650–9660, 2021.
+Chang, A. X., Funkhouser, T., Guibas, L., Hanrahan, P.,
+Huang, Q., Li, Z., Savarese, S., Savva, M., Song, S.,
+Su, H., et al. Shapenet: An information-rich 3d model
+repository. arXiv preprint arXiv:1512.03012, 2015.
+Chen, R. T. and Lipman, Y. Flow matching on general
+geometries. arXiv preprint arXiv:2302.03660, 2023.
+Chen, T., Kornblith, S., Norouzi, M., and Hinton, G. A
+simple framework for contrastive learning of visual rep-
+resentations. In International conference on machine
+learning, pp. 1597–1607. PmLR, 2020.
+Chen, X. and He, K. Exploring simple siamese represen-
+tation learning. In Proceedings of the IEEE/CVF con-
+ference on computer vision and pattern recognition, pp.
+15750–15758, 2021.
+Chen, X., Xie, S., and He, K. An empirical study of training
+self-supervised vision transformers. In Proceedings of the
+IEEE/CVF international conference on computer vision,
+pp. 9640–9649, 2021.
+9
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Chen, X., Liu, Z., Xie, S., and He, K. Deconstructing
+denoising diffusion models for self-supervised learning.
+arXiv preprint arXiv:2401.14404, 2024.
+Coifman, R. R. and Lafon, S. Diffusion maps. Applied and
+computational harmonic analysis, 21(1):5–30, 2006.
+Coifman, R. R., Lafon, S., Lee, A. B., Maggioni, M., Nadler,
+B., Warner, F., and Zucker, S. W. Geometric diffusions
+as a tool for harmonic analysis and structure definition
+of data: Diffusion maps. Proceedings of the national
+academy of sciences, 102(21):7426–7431, 2005.
+Coifman, R. R., Kevrekidis, I. G., Lafon, S., Maggioni, M.,
+and Nadler, B. Diffusion maps, reduction coordinates,
+and low dimensional representation of stochastic systems.
+Multiscale Modeling & Simulation, 7(2):842–864, 2008.
+Deng, J., Dong, W., Socher, R., Li, L.-J., Li, K., and Fei-Fei,
+L. Imagenet: A large-scale hierarchical image database.
+In 2009 IEEE conference on computer vision and pattern
+recognition, pp. 248–255. Ieee, 2009.
+Deng, Z., Shi, J., Zhang, H., Cui, P., Lu, C., and Zhu,
+J. Neural eigenfunctions are structured representation
+learners. arXiv preprint arXiv:2210.12637, 2022a.
+Deng, Z., Shi, J., and Zhu, J. Neuralef: Deconstructing
+kernels by deep neural networks. In International Con-
+ference on Machine Learning, pp. 4976–4992. PMLR,
+2022b.
+Dhariwal, P. and Nichol, A. Diffusion models beat gans
+on image synthesis.
+Advances in neural information
+processing systems, 34:8780–8794, 2021.
+Garrido, Q., Chen, Y., Bardes, A., Najman, L., and Le-
+cun, Y. On the duality between contrastive and non-
+contrastive self-supervised learning.
+arXiv preprint
+arXiv:2206.02574, 2022.
+Grill, J.-B., Strub, F., Altch´e, F., Tallec, C., Richemond, P.,
+Buchatskaya, E., Doersch, C., Avila Pires, B., Guo, Z.,
+Gheshlaghi Azar, M., et al. Bootstrap your own latent-a
+new approach to self-supervised learning. Advances in
+neural information processing systems, 33:21271–21284,
+2020.
+HaoChen, J. Z., Wei, C., Gaidon, A., and Ma, T. Prov-
+able guarantees for self-supervised deep learning with
+spectral contrastive loss. Advances in neural information
+processing systems, 34:5000–5011, 2021.
+He, K., Fan, H., Wu, Y., Xie, S., and Girshick, R. Mo-
+mentum contrast for unsupervised visual representation
+learning. In Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition, pp. 9729–9738,
+2020.
+Ho, J., Jain, A., and Abbeel, P. Denoising diffusion proba-
+bilistic models. Advances in neural information process-
+ing systems, 33:6840–6851, 2020.
+Hoogeboom, E., Satorras, V. G., Vignac, C., and Welling, M.
+Equivariant diffusion for molecule generation in 3d. In
+International conference on machine learning, pp. 8867–
+8887. PMLR, 2022.
+Huang, C.-W., Aghajohari, M., Bose, J., Panangaden, P.,
+and Courville, A. C. Riemannian diffusion models. Ad-
+vances in Neural Information Processing Systems, 35:
+2750–2761, 2022.
+Hudson, D. A., Zoran, D., Malinowski, M., Lampinen,
+A. K., Jaegle, A., McClelland, J. L., Matthey, L., Hill, F.,
+and Lerchner, A. Soda: Bottleneck diffusion models for
+representation learning. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition,
+pp. 23115–23127, 2024.
+Johnson, D. D., Hanchi, A. E., and Maddison, C. J.
+Contrastive learning can find an optimal basis for ap-
+proximately view-invariant functions.
+arXiv preprint
+arXiv:2210.01883, 2022.
+Karras, T., Laine, S., and Aila, T. A style-based genera-
+tor architecture for generative adversarial networks. In
+Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pp. 4401–4410, 2019.
+Karras, T., Aittala, M., Aila, T., and Laine, S. Elucidating
+the design space of diffusion-based generative models.
+Advances in neural information processing systems, 35:
+26565–26577, 2022.
+Krizhevsky, A. et al. Learning multiple layers of features
+from tiny images. 2009.
+Leng, X., Singh, J., Hou, Y., Xing, Z., Xie, S., and Zheng, L.
+Repa-e: Unlocking vae for end-to-end tuning with latent
+diffusion transformers. arXiv preprint arXiv:2504.10483,
+2025.
+Li, X., Zhang, Z., Li, X., Chen, S., Zhu, Z., Wang, P.,
+and Qu, Q. Understanding representation dynamics of
+diffusion models via low-dimensional modeling. arXiv
+preprint arXiv:2502.05743, 2025.
+Li, Z., Chen, Y., LeCun, Y., and Sommer, F. T.
+Neu-
+ral manifold clustering and embedding. arXiv preprint
+arXiv:2201.10000, 2022.
+Liu, X., Gong, C., and Liu, Q.
+Flow straight and fast:
+Learning to generate and transfer data with rectified flow.
+arXiv preprint arXiv:2209.03003, 2022.
+10
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Liu, Z., Luo, P., Wang, X., and Tang, X. Deep learning face
+attributes in the wild. In Proceedings of International
+Conference on Computer Vision (ICCV), December 2015.
+Lovell, S. C., Davis, I. W., Arendall III, W. B., De Bakker,
+P. I., Word, J. M., Prisant, M. G., Richardson, J. S., and
+Richardson, D. C. Structure validation by calpha geom-
+etry: phi, psi and cbeta deviation. Proteins: Structure,
+Function, and Bioinformatics, 50(3):437–450, 2003.
+Marshall, N. F. and Hirn, M. J. Time coupled diffusion
+maps. Applied and Computational Harmonic Analysis,
+45(3):709–728, 2018.
+Mittal, S., Lajoie, G., Bauer, S., and Mehrjou, A. From
+points to functions: Infinite-dimensional representations
+in diffusion models. In ICLR Workshop on Deep Genera-
+tive Models for Highly Structured Data, 2022.
+Mo, S., Xie, E., Chu, R., Hong, L., Niessner, M., and Li,
+Z. Dit-3d: Exploring plain diffusion transformers for
+3d shape generation. Advances in neural information
+processing systems, 36:67960–67971, 2023.
+Mukhopadhyay, S., Gwilliam, M., Agarwal, V., Padman-
+abhan, N., Swaminathan, A., Hegde, S., Zhou, T., and
+Shrivastava, A. Diffusion models beat gans on image
+classification. arXiv preprint arXiv:2307.08702, 2023.
+Murray, L. J., Arendall III, W. B., Richardson, D. C., and
+Richardson, J. S. Rna backbone is rotameric. Proceedings
+of the National Academy of Sciences, 100(24):13904–
+13909, 2003.
+Nadler, B., Lafon, S., Kevrekidis, I., and Coifman, R. Dif-
+fusion maps, spectral clustering and eigenfunctions of
+fokker-planck operators. Advances in neural information
+processing systems, 18, 2005.
+Nadler, B., Lafon, S., Coifman, R. R., and Kevrekidis, I. G.
+Diffusion maps, spectral clustering and reaction coordi-
+nates of dynamical systems. Applied and Computational
+Harmonic Analysis, 21(1):113–127, 2006.
+Ng, A., Jordan, M., and Weiss, Y. On spectral clustering:
+Analysis and an algorithm. Advances in neural informa-
+tion processing systems, 14, 2001.
+Nichol, A., Jun, H., Dhariwal, P., Mishkin, P., and Chen,
+M. Point-e: A system for generating 3d point clouds
+from complex prompts. arXiv preprint arXiv:2212.08751,
+2022.
+Oord, A. v. d., Li, Y., and Vinyals, O. Representation learn-
+ing with contrastive predictive coding. arXiv preprint
+arXiv:1807.03748, 2018.
+Oquab, M., Darcet, T., Moutakanni, T., Vo, H. V.,
+Szafraniec, M., Khalidov, V., Fernandez, P., Haziza, D.,
+Massa, F., El-Nouby, A., Howes, R., Huang, P.-Y., Xu,
+H., Sharma, V., Li, S.-W., Galuba, W., Rabbat, M., As-
+sran, M., Ballas, N., Synnaeve, G., Misra, I., Jegou, H.,
+Mairal, J., Labatut, P., Joulin, A., and Bojanowski, P.
+Dinov2: Learning robust visual features without supervi-
+sion, 2023.
+Park, Y.-H., Kwon, M., Choi, J., Jo, J., and Uh, Y. Un-
+derstanding the latent space of diffusion models through
+the lens of riemannian geometry. Advances in Neural
+Information Processing Systems, 36:24129–24142, 2023.
+Peebles, W. and Xie, S. Scalable diffusion models with
+transformers. In Proceedings of the IEEE/CVF interna-
+tional conference on computer vision, pp. 4195–4205,
+2023.
+Pfau, D., Petersen, S., Agarwal, A., Barrett, D. G.,
+and Stachenfeld, K. L.
+Spectral inference networks:
+Unifying deep and spectral learning.
+arXiv preprint
+arXiv:1806.02215, 2018.
+Poole, B., Jain, A., Barron, J. T., and Mildenhall, B. Dream-
+fusion: Text-to-3d using 2d diffusion. arXiv preprint
+arXiv:2209.14988, 2022.
+Preechakul, K., Chatthee, N., Wizadwongsa, S., and Suwa-
+janakorn, S. Diffusion autoencoders: Toward a meaning-
+ful and decodable representation. In Proceedings of the
+IEEE/CVF conference on computer vision and pattern
+recognition, pp. 10619–10629, 2022.
+Rombach, R., Blattmann, A., Lorenz, D., Esser, P., and
+Ommer, B. High-resolution image synthesis with latent
+diffusion models. In Proceedings of the IEEE/CVF con-
+ference on computer vision and pattern recognition, pp.
+10684–10695, 2022.
+Scarvelis, C., Borde, H. S. d. O., and Solomon, J. Closed-
+form diffusion models. Transactions on Machine Learn-
+ing Research, 2023.
+Shi, J. and Malik, J. Normalized cuts and image segmenta-
+tion. IEEE Transactions on pattern analysis and machine
+intelligence, 22(8):888–905, 2000.
+Sim´eoni, O., Vo, H. V., Seitzer, M., Baldassarre, F., Oquab,
+M., Jose, C., Khalidov, V., Szafraniec, M., Yi, S.,
+Ramamonjisoa, M., et al.
+Dinov3.
+arXiv preprint
+arXiv:2508.10104, 2025.
+Sohl-Dickstein, J., Weiss, E., Maheswaranathan, N., and
+Ganguli, S. Deep unsupervised learning using nonequi-
+librium thermodynamics. In International conference on
+machine learning, pp. 2256–2265. pmlr, 2015.
+11
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Sohn, K. Improved deep metric learning with multi-class
+n-pair loss objective. Advances in neural information
+processing systems, 29, 2016.
+Song, Y. and Ermon, S. Generative modeling by estimating
+gradients of the data distribution. Advances in neural
+information processing systems, 32, 2019.
+Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A.,
+Ermon, S., and Poole, B. Score-based generative mod-
+eling through stochastic differential equations. In In-
+ternational Conference on Learning Representations,
+2021. URL https://openreview.net/forum?
+id=PxTIG12RRHS.
+Stoica, G., Ramanujan, V., Fan, X., Farhadi, A., Krishna,
+R., and Hoffman, J. Contrastive flow matching. arXiv
+preprint arXiv:2506.05350, 2025.
+Tang, L., Jia, M., Wang, Q., Phoo, C. P., and Hariharan,
+B. Emergent correspondence from image diffusion. Ad-
+vances in Neural Information Processing Systems, 36:
+1363–1389, 2023.
+Tian, Y., Krishnan, D., and Isola, P.
+Contrastive mul-
+tiview coding, 2020. URL https://arxiv.org/
+abs/1906.05849.
+Tian, Y., Chen, H., Zheng, M., Liang, Y., Xu, C., and
+Wang, Y. U-repa: Aligning diffusion u-nets to vits. arXiv
+preprint arXiv:2503.18414, 2025.
+Wang, P., Zhang, H., Zhang, Z., Chen, S., Ma, Y., and Qu, Q.
+Diffusion models learn low-dimensional distributions via
+subspace clustering. arXiv preprint arXiv:2409.02426,
+2024.
+Wang, R. and He, K. Diffuse and disperse: Image gener-
+ation with representation regularization. arXiv preprint
+arXiv:2506.09027, 2025.
+Wang, T. and Isola, P. Understanding contrastive represen-
+tation learning through alignment and uniformity on the
+hypersphere. In International conference on machine
+learning, pp. 9929–9939. PMLR, 2020.
+Wang, Z., Zhao, W., Zhou, Y., Li, Z., Liang, Z., Shi, M.,
+Zhao, X., Zhou, P., Zhang, K., Wang, Z., et al. Repa
+works until it doesn’t: Early-stopped, holistic align-
+ment supercharges diffusion training.
+arXiv preprint
+arXiv:2505.16792, 2025.
+Wu, G., Zhang, S., Shi, R., Gao, S., Chen, Z., Wang, L.,
+Chen, Z., Gao, H., Tang, Y., Yang, J., et al. Represen-
+tation entanglement for generation: Training diffusion
+transformers is much easier than you think. arXiv preprint
+arXiv:2507.01467, 2025.
+Xiang, W., Yang, H., Huang, D., and Wang, Y. Denois-
+ing diffusion autoencoders are unified self-supervised
+learners. In Proceedings of the IEEE/CVF International
+Conference on Computer Vision, pp. 15802–15812, 2023.
+Yang, G., Huang, X., Hao, Z., Liu, M.-Y., Belongie, S.,
+and Hariharan, B. Pointflow: 3d point cloud generation
+with continuous normalizing flows. In Proceedings of the
+IEEE/CVF international conference on computer vision,
+pp. 4541–4550, 2019.
+Yang, X., Shih, S.-M., Fu, Y., Zhao, X., and Ji, S. Your vit
+is secretly a hybrid discriminative-generative diffusion
+model. arXiv preprint arXiv:2208.07791, 2022.
+Yao, J., Yang, B., and Wang, X. Reconstruction vs. gener-
+ation: Taming optimization dilemma in latent diffusion
+models. In Proceedings of the Computer Vision and Pat-
+tern Recognition Conference, pp. 15703–15712, 2025.
+You, Z., Zhong, Y., Bao, F., Sun, J., Li, C., and Zhu, J.
+Diffusion models and semi-supervised learners benefit
+mutually with few labels. Advances in Neural Information
+Processing Systems, 36:43479–43495, 2023.
+Yu, S., Kwak, S., Jang, H., Jeong, J., Huang, J., Shin, J.,
+and Xie, S. Representation alignment for generation:
+Training diffusion transformers is easier than you think.
+arXiv preprint arXiv:2410.06940, 2024.
+Zbontar, J., Jing, L., Misra, I., LeCun, Y., and Deny, S.
+Barlow twins: Self-supervised learning via redundancy
+reduction. In International conference on machine learn-
+ing, pp. 12310–12320. PMLR, 2021.
+Zhang, X., Liao, J., Zhang, S., Meng, F., Wan, X., Yan, J.,
+and Cheng, Y. Videorepa: Learning physics for video
+generation through relational alignment with foundation
+models. arXiv preprint arXiv:2505.23656, 2025.
+Zhang, Z., Zhao, Z., and Lin, Z. Unsupervised represen-
+tation learning from pre-trained diffusion probabilistic
+models. Advances in neural information processing sys-
+tems, 35:22117–22130, 2022.
+Zhao, Z., Lai, Z., Lin, Q., Zhao, Y., Liu, H., Yang, S., Feng,
+Y., Yang, M., Zhang, S., Yang, X., et al. Hunyuan3d
+2.0: Scaling diffusion models for high resolution textured
+3d assets generation. arXiv preprint arXiv:2501.12202,
+2025.
+12
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+A. Perturbation Kernels of Rectified Flow
+We show how to derive the forward SDE of rectified flow (Liu et al., 2022) from its perturbation kernel. Note that, the forward
+process in the original rectified flow is originally defined as xt = (1 −t)x0 + tϵ, x0 ∼pdata, ϵ ∼N(0, I). It appears this
+forward process is a linear interpolation between random noise and clean data samples, rather than in the form of SDE. In fact,
+it can be rewritten as an SDE using the perturbation kernel defined by the interpolation: p0t(xt|x0) = N(xt; (1−t)x0, t2I).
+Then, s(t) = 1 −t, σ(t) =
+t
+1−t. By Equation 2, f(t) = −
+1
+1−t, g(t) =
+q
+2t
+1−t. Then, we can write down the forward SDE
+as:
+dx = −
+1
+1 −t x dt +
+r
+2t
+1 −tdwt.
+(25)
+The corresponding reverse SDE is:
+dx =
+
+−
+1
+1 −t x −
+2t
+1 −t∇x log pt(x)
+
+dt +
+r
+2t
+1 −tdwt.
+(26)
+This SDE can be further converted into an ODE that preserves the marginal distribution pt(x):
+dx = −
+1
+1 −t [x + t∇x log pt(x)]
+|
+{z
+}
+velocity field: vt(x)
+dt,
+(27)
+which yields the velocity field directly adopted in the original rectified flow approach. This relation between the score
+function and the velocity field in rectified flow is also shown in CFDM (Scarvelis et al., 2023).
+B. Geometric Interpretation of Representations in Eigenspace
+In this section, we aim to give an interpretation of the representation learned from the diffusion process. We first define the
+time-dependent perturbation kernel induced by the diffusion process. Let qt(x | x0) := p0t(x | x0). Then, we have:
+pt(x) =
+Z
+qt(x | x0)pdata(x0)dx0.
+(28)
+We define
+pt(x, x′) =
+Z
+qt(x | x0)qt(x′ | x0)pdata(x0)dx0,
+(29)
+and construct the following kernel:
+κt(x, x′) =
+pt(x, x′)
+pt(x)pt(x′).
+(30)
+Equivalently, we can write
+κt(x, x′) =
+Z qt(x | x0)
+pt(x)
+qt(x′ | x0)
+pt(x′)
+pdata(x0)dx0.
+(31)
+We first show that κt is a valid symmetric positive semidefinite kernel. The symmetry directly follows from
+pt(x, x′) =
+Z
+qt(x | x0)qt(x′ | x0)pdata(x0)dx0 = pt(x′, x).
+(32)
+Next, for any finite set of points {xi}n
+i=1 and coefficients {ci}n
+i=1, we have
+n
+X
+i,j=1
+cicjκt(xi, xj) =
+n
+X
+i,j=1
+cicj
+Z qt(xi | x0)
+pt(xi)
+qt(xj | x0)
+pt(xj)
+pdata(x0)dx0
+(33)
+=
+Z " n
+X
+i=1
+ci
+qt(xi | x0)
+pt(xi)
+#2
+pdata(x0)dx0
+(34)
+≥0.
+(35)
+13
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Thus, κt is positive semidefinite.
+For the Gaussian perturbation kernel used in diffusion models,
+qt(xt | x0) = N
+ xt; s(t)x0, s(t)2σ(t)2I
+
+,
+(36)
+if |s(t)|σ(t) > 0, then qt(xt | x0) > 0 for all xt and x0. Hence,
+pt(x) =
+Z
+qt(x | x0)pdata(x0)dx0 > 0
+(37)
+Therefore, κt is symmetric and positive semidefinite.
+We further assume:
+ZZ
+κ2
+t(x, x′)pt(x)pt(x′)dxdx′ < ∞.
+(38)
+Under this condition, the associated kernel integral operator is a compact, self-adjoint, and positive operator on L2(pt).
+(Kth)(x) =
+Z
+κt(x, x′)h(x′)pt(x′)dx′.
+(39)
+Therefore, it admits an orthonormal eigendecomposition {(µt,l, ψt,l)}∞
+l=0 satisfying
+Ktψt,l = µt,lψt,l,
+(40)
+and
+Z
+ψt,l(x)ψt,m(x)pt(x)dx = δlm.
+(41)
+Moreover, the kernel admits the spectral expansion
+κt(x, x′) =
+∞
+X
+l=0
+µt,lψt,l(x)ψt,l(x′).
+(42)
+Now we prove the diffusion-distance expansion. By definition,
+D2
+κt(x, x′) =
+Z
+[κt(x, y) −κt(x′, y)]2 pt(y)dy.
+(43)
+Using the spectral expansion of κt, we have
+κt(x, y) −κt(x′, y) =
+∞
+X
+l=0
+µt,lψt,l(x)ψt,l(y) −
+∞
+X
+l=0
+µt,lψt,l(x′)ψt,l(y)
+(44)
+=
+∞
+X
+l=0
+µt,l [ψt,l(x) −ψt,l(x′)] ψt,l(y).
+(45)
+Substituting this into Equation 43, we obtain
+D2
+κt(x, x′) =
+Z " ∞
+X
+l=0
+µt,l [ψt,l(x) −ψt,l(x′)] ψt,l(y)
+#2
+pt(y)dy
+(46)
+=
+Z
+∞
+X
+l,m=0
+µt,lµt,m [ψt,l(x) −ψt,l(x′)] [ψt,m(x) −ψt,m(x′)] ψt,l(y)ψt,m(y)pt(y)dy
+(47)
+=
+∞
+X
+l,m=0
+µt,lµt,m [ψt,l(x) −ψt,l(x′)] [ψt,m(x) −ψt,m(x′)]
+Z
+ψt,l(y)ψt,m(y)pt(y)dy
+(48)
+=
+∞
+X
+l,m=0
+µt,lµt,m [ψt,l(x) −ψt,l(x′)] [ψt,m(x) −ψt,m(x′)] δlm
+(49)
+=
+∞
+X
+l=0
+µ2
+t,l [ψt,l(x) −ψt,l(x′)]2 .
+(50)
+14
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Therefore, the diffusion distance admits the eigenspace expansion
+D2
+κt(x, x′) =
+∞
+X
+l=0
+µ2
+t,l [ψt,l(x) −ψt,l(x′)]2 .
+(51)
+C. Duality of Spectral Representation Learning and Closed-form Diffusion Score Distillation
+We adopt the result of Garrido et al. (2022) that dimension-contrastive and sample-contrastive self-supervised objectives are
+equivalent when representation embeddings are normalized across channels and mini-batches. The spectral regularization
+can finally have this equivalent form:
+min
+θ
+−
+B
+X
+i=1
+ψθ(xi, t)⊤ψθ(x′
+i, t) +
+B
+X
+i=1
+X
+j̸=i
+ψθ(xi, t)⊤ψθ(xj, t)
+(52)
+⇔min
+θ
+−
+B
+X
+i=1
+ψθ(xi, t)⊤ψθ(x′
+i, t)
+τ
+
++
+B
+X
+i=1
+log
+
+X
+j̸=i
+exp
+ψθ(xi, t)⊤ψθ(xj, t)
+τ
+
+,
+(53)
+where τ denotes a temperature hyperparameter. As the spectral embedding ψ(xi, t) is normalized, the above optimization
+problem can be further re-written as the following one:
+min
+θ
+−
+B
+X
+i=1
+log
+
+exp
+−∥ψθ(xi, t) −ψθ(x′
+i, t)∥2
+2
+τ
+
+|
+{z
+}
+:=L+
+s
+(54)
++
+B
+X
+i=1
+log
+
+X
+j̸=i
+exp
+−∥ψθ(xi, t) −ψθ(xj, t)∥2
+2
+τ
+
+
+|
+{z
+}
+:=L−
+s
+,
+(55)
+where we transform the dot product operations to L2 distance. Interestingly, when ψθ(xj, t) in L−
+s and ψθ(x′
+i, t) in L+
+s are
+detached from gradient propagation (which is true in our adopt NeuralEF (Deng et al., 2022b) approach), their derivatives
+regarding ψθ(xi, t) are in the similar form of batch-wise closed-form score of diffusion models in the representation
+embedding space:
+∇ψθ(xi,t)L+
+s = 2
+τ (ψθ(xi, t) −ψθ(x′
+i, t))
+(56)
+∇ψθ(xi,t)L−
+s = 2
+τ
+X
+k̸=i
+exp
+ −∥ψθ(xi, t) −ψθ(xk, t)∥2
+2/τ
+
+P
+j̸=i exp (−∥ψθ(xi, t) −ψθ(xj, t)∥2
+2/τ) (ψθ(xk, t) −ψθ(xi, t))
+(57)
+The gradient expressions in Equation 57 and 56 resemble the closed-form score of diffusion models (Scarvelis et al., 2023).
+Given a training set D = {xi}D
+i=0 with D samples, the closed-form expression of the score function under the rectified flow
+formulation can be written as:
+∇z log pt(z) = 1
+t2
+D
+X
+k=1
+exp
+ −∥z −(1 −t)xk∥2
+2/2t2
+PD
+j=1 exp (−∥z −(1 −t)xj∥2
+2/2t2)
+((1 −t)xk −z) ,
+(58)
+where z = (1 −t)x + tϵ, x ∼D, ϵ ∼N(0, I), ∀t ∈(0, 1]. By comparing equations 58 and 57: the temperature τ can be
+seen as 2t2, the counterparts of ψθ(xk, t) in the numerator and ψθ(xj, t) in the denominator are (1 −t)xk and (1 −t)xj,
+and data samples for evaluating the gradient in Equation 57 are those negative samples. The notation in Equation 56 is
+defined analogously; the difference is that the score is evaluated at a single positive sample.
+In this sense, the total derivative ∂Ls/∂ψθ(xi, t) = ∇ψθ(xi,t)L+
+s + ∇ψθ(xi,t)L−
+s is a score function evaluated on a sampled
+data batch. Intuitively, ∇ψθ(xi,t)L−
+s points at the direction which is a weighted sum of displacement vectors from ψθ(xi, t)
+15
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Dispersive Loss
+Ours L-3
+Ours L-6
+Ours L-5
+0
+2
+4
+6
+8
+10
+FID
+10.44
+9.07
+8.94
+8.74
+Figure 5. We compare an alternative dispersive loss with our spectral loss on CIFAR10 dataset. In addition, an ablation study is conducted
+to assess the impact of the layer choice for spectral alignment.
+to ψθ(xk, t) for all k̸ = i, k ∈[B]. The pairwise weights decrease with the squared L2 distances and are normalized by the
+softmax function. Once ψθ is learned to represent eigenfunctions, the displacement vectors are weighted by the diffusion
+distance (without eigenvalue weighting) of data samples (see Appendix B). Conversely, ∇ψθ(xi,t)L+
+s points away from the
+positive sample’s representation ψθ(x′
+i, t), akin to the negative-prompting in diffusion models.
+Next, we can show that optimizing our spectral regularization term is actually conducting a score distillation. For x ∼pt(x),
+ψθ(·, t) can be seen as a generator: ψθ(x, t) ∼pψθ
+t , where pψθ
+t
+is a latent distribution of spectral embeddings. A score
+distillation step from pψθ
+t
+to a target distribution ptarget can be achieved by minimizing their KL divergence through a
+gradient-based optimizer. Specifically, the gradient of KL divergence w.r.t θ is:
+∇θDKL(pψθ
+t
+∥ptarget) = Ex∼pt
+h
+(∇θψθ(x, t))⊤
+∇ψθ(x,t) log pψθ
+t
+−∇ψθ(x,t) log ptarget
+i
+(59)
+Let ptarget be a Gaussian mixture centered at positive samples with bandwidth τ (in our case, there is only one positive
+sample), and model the latent distribution pψθ
+t
+as a Gaussian mixture over negative samples with the same bandwidth τ, we
+have ∇ψθ(x,t) log pψθ
+t
+= ∇ψθ(xi,t)L−
+s and ∇ψθ(x,t) log ptarget = −∇ψθ(xi,t)L+
+s .
+Therefore, the gradient of the score distillation step turns out to be:
+∇θDKL(pψθ
+t
+∥ptarget) = Ex∼pt
+h
+(∇θψθ(x, t))⊤ ∇ψθ(x,t)L−
+s + ∇ψθ(x,t)L+
+s
+i
+(60)
+= Ex∼pt
+h
+(∇θψθ(x, t))⊤∇ψθ(x,t)Ls
+i
+(61)
+By the chain rule, the gradient of the original spectral representation objective w.r.t θ is:
+∂Ls
+∂θ = Ex∼pt
+h
+(∇θψθ(x, t))⊤∇ψθ(x,t)Ls
+i
+≡∇θDKL(pψθ
+t
+∥ptarget)
+(62)
+This concludes the proof that shows optimizing the spectral representation regularizer is performing diffusion score
+distillation.
+D. Additional Experiment Details and Results
+D.1. Synthetic Distributions
+In Figure 7, we compare our approach with the baseline on four additional 2D patterns. Overall, our method captures the
+geometric structure of each distribution more tightly at earlier training stages, whereas the baseline samples remain more
+dispersed and noisy. Figure 6 visualizes hidden states probed from our model and the baseline. In the high-noise regime
+(t = 0.5 and 0.7), the two methods produce broadly similar hidden representations. In contrast, in the low-noise regime
+(t = 0.97 and 0.98), our method yields cleaner and more clearly separated representations. This provides further evidence
+that the proposed spectral regularization helps organize the internal feature space, thereby improving the model’s ability to
+fit the geometric structure of 2D patterns.
+16
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Baseline
+x1
+t = 0.5
+t = 0.7
+t = 0.97
+t = 0.98
+samples
+Ours
+Baseline
+x1
+t = 0.5
+t = 0.7
+t = 0.97
+t = 0.98
+samples
+Ours
+Figure 6. Visualization of model hidden states on synthetic 2D patterns using PCA. We project the hidden states of both our method and
+the baseline to three principal components. The visualized hidden states are probed from the third layer of the MLP networks.
+D.2. Image Generation
+Training details. We use DiT (Peebles & Xie, 2023) as the base model and employ the parameterization and training
+objective of rectified flow (Liu et al., 2022). For small datasets (CIFAR-10, CelebA, FFHQ), to mitigate overfitting, we train a
+small DiT (S, 13M parameters) and patchify images into 2×2 pixel patches (patch size 2). For ImageNet 64×64 experiment
+(models work in pixel space), we train an L/4 model (558M parameters, patch size 4). For ImageNet 256 × 256 experiment
+(models work in latent space), we follow the XL/2 configuration of Peebles & Xie (2023), yielding a 681M-parameter model.
+Training schedules are adjusted to the dataset scales: S/2 models on CIFAR-10, CelebA, and FFHQ are trained and evaluated
+at 70K iterations; ImageNet 64 × 64 models are trained and evaluated at 100K iterations; and the latent ImageNet 256 × 256
+model is trained and evaluated at 400K iterations. Since our spectral regularizer requires an additional batch of perturbed
+samples, we halve the base batch size so that each optimizer step processes the same total number of training examples.
+More results. In Figure 5, we present comparison results on CIFAR10 dataset between our model with varying choices of
+alignment layer and dispersive loss (Wang & He, 2025) (an alternative self-supervised alignment approach).
+D.3. Protein/RNA Generation on Manifold
+We extend our evaluation to protein and RNA generation, adhering to the experimental protocols established by Chen &
+Lipman (2023); Huang et al. (2022). We adopt the torsion angle datasets (Lovell et al., 2003; Murray et al., 2003) curated by
+Huang et al. (2022). Our spectral alignment is integrated into a Riemannian flow matching framework defined on 2D and
+7D torus. As shown in Table 3, the spectral-aligned model consistently exceeds the performance of the vanilla baseline.
+In particular, the performance margin widens in the 7D case, suggesting that spectral alignment is particularly effective at
+regularizing flows on this type of more complex high-dimensional manifold.
+Table 3. Test NLL on protein & RNA datasets.
+General (2D)
+Glycine (2D)
+Proline (2D)
+Pre-Pro (2D)
+RNA (7D)
+Riemannian FM
+1.022±0.021
+1.947±0.023
+0.169±0.024
+1.196±0.032
+−4.780±0.196
+Ours
+1.018±0.028
+1.935±0.014
+0.161±0.029
+1.192±0.039
+−5.167±0.083
+17
+
+
+Revisiting Spectral Representations in Generative Diffusion Models
+Baseline
+Training Data
+25% total epochs
+50% total epochs
+75% total epochs
+100% total epochs
+Ours
+Baseline
+Ours
+Baseline
+Ours
+Baseline
+Ours
+circles
+8gaussians
+pinwheel
+swissroll
+Figure 7. Training progress of the baseline diffusion model and our method on four 2D point distributions. We visualize samples from
+checkpoints at 25%, 50%, 75%, and 100% of training progress on circles, 8-gaussians, pinwheel, and swissroll distributions.
+18

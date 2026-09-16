@@ -1,0 +1,1531 @@
+Overpainting: Localized Context-aware Diffusion Image Editing
+SAM SARTOR, College of William & Mary, USA
+ILIYAN GEORGIEV, Adobe Research, United Kingdom
+MICHAEL FISCHER, Adobe Research, United Kingdom
+VALENTIN DESCHAINTRE, Adobe Research, United Kingdom
+PIETER PEERS, College of William & Mary, USA
+“wavy detailed teal jade 
+stone surface”
+“full of espresso”
+“decorative gold metal bands”
+“covered in wavy silk fabric 
+with a purple sheen”
+“whispy cloud of faint steam”
+Fig. 1. A sequence of localized overpainting edits. We propose to use a trimap as input, with gray representing areas where change may occur and white
+where change must occur. This provides strong edit localization while simplifying the masking task, as it does not need to be pixel accurate thanks to the gray
+regions handling borders.
+We present “overpainting”, an image editing operation which offers both
+control over the location of the edit and awareness of the previous content
+in that location. The overpainted area is given by a trimap, where white-
+annotated pixels must be edited, gray-annotated pixels may be edited, and
+black-annotated pixels must not be edited. This enables both precise and
+loose control, depending on user intent.
+We implement overpainting by adapting a pretrained image editing diffu-
+sion model using a combination of joint attention and low-rank adaption
+across input images with attention-dropout to balance the information flow
+between noise, source and mask images. We present a novel, automated,
+training data generation pipeline that (1) generates a set of candidate image
+pairs leveraging existing language-based editing models, (2) carefully curates
+those pairs, and (3) extracts a trimap from each usable pair. We demonstrate
+the versatility of our overpainting model on a wide range of editing tasks.
+1
+Introduction
+Image diffusion models allow users to create fantastic images by
+simply providing a textual description of the picture in their mind.
+As language is an imprecise tool to describe fine details, diffusion
+models necessarily must hallucinate that missing information. This
+generative behavior makes diffusion models an ideal foundation
+for editing tools. Recently, dedicated image editing diffusion mod-
+els [Black Forest Labs et al. 2025; Esser et al. 2024; Wu et al. 2025;
+Z-Image Team 2025] have emerged, allowing the application of high-
+level identity-preserving editing operations based on multi-modal
+input such as a source image and a prompt describing the change.
+However, obtaining satisfactory edits with precise user-directed lo-
+calization, such as those shown in Figure 1, requires careful prompt
+Authors’ Contact Information: Sam Sartor, College of William & Mary, Williams-
+burg, USA, ssartor@adobe.com; Iliyan Georgiev, Adobe Research, United Kingdom,
+igeorgiev@adobe.com; Michael Fischer, Adobe Research, United Kingdom, mifischer@
+adobe.com; Valentin Deschaintre, Adobe Research, United Kingdom, deschain@adobe.
+com; Pieter Peers, College of William & Mary, Williamsburg, USA, ppeers@siggraph.
+org.
+engineering. Even for multi-modal models provided with a mask,
+the models see the mask more as a suggestion than a constraint.
+In this paper we introduce a novel diffusion-based editing opera-
+tion overpainting, which makes local alterations to an image while
+respecting the previous content (e.g., partially altering an object’s
+surface to be made of stone, or to be covered in hair, as shown in
+Figs. 1 and 2). After overpainting, the viewpoint, composition, and
+style of an image will be the same, but depicted objects or parts
+of objects must differ. Each individual pixel is classified as edited
+if its color or other features have been meaningfully altered, and
+unedited otherwise. The key challenge of overpainting is control:
+allowing the user to specify both which pixels should be edited (via
+the mask) and how they should be edited (via the prompt).
+Specifying an exact editing mask around existing image features is
+cumbersome and error-prone (e.g., for thin features or precise object
+boundaries). It is also often ambiguous for edits with ill-defined
+boundaries (e.g., frost forming on a window or smoke dissipating)
+and for to-be-created features whose location depends on the target
+edit itself (e.g., whiskers protruding from an object on which the
+user asked the model to grow hair). We tackle this challenge by
+introducing a trimap that marks not only pixels which must be
+edited (white) and must not be edited (black), but also pixels that
+may or may not be edited (gray; Fig. 2). In contrast to an inexact
+binary mask where the marked region has an ambiguous meaning
+(i.e., it combines “must” and “may be” changed regions), a trimap
+provides unambiguous semantic meaning for editing each region,
+allowing the user to apply different strategies to localize edits: binary
+masks for providing exact control, rough masks with wide gray
+margins for ’loose’ control, or strategically placed thin gray masks
+around intricate details to provide the editing model freedom to
+blend or modify the intricate details naturally.
+We base our overpainting model on a pretrained editing diffu-
+sion model [Black Forest Labs et al. 2025], and adapt the model to
+arXiv:2609.10811v1  [cs.CV]  9 Sep 2026
+
+
+2
+•
+Sartor et al.
+Input
+Fig. 2. Trimap variations on an image of an apple with the prompt “wrapped
+in black twine”. 2nd column: the apple is wrapped by a carefully drawn mask
+without any gray regions, and the prompt will be exactly applied in the
+masked regions only. 3rd column: adding gray regions around the mask
+allows overpainting to make local changes to improve the quality of the
+results (i.e., more variations in the silhouette of the thread). 4th column:
+marking a large region of the apple with a gray mask and only including
+a few white lines provides much greater freedom for overpainting, and
+consequently less control on the actual content by the user. Last column:
+marking most of the apple white results in a very densely wrapped apple.
+adhere to both the trimap and the image content while retaining
+the embedded priors as much as possible. To achieve this goal, we
+balance different information sharing strategies between the dif-
+ferent input images (source, mask, and noise, each representing an
+“image-stream”). In particular, we combine joint attention and Team-
+work (i.e., low-rank adaptors (LoRA) across input images [Sartor
+and Peers 2025]). We observe that both information sharing strate-
+gies trade-off complementary aspects: editing quality versus mask
+adherence. Therefore, we combine joint attention with Teamwork
+and leverage attention-dropout to balance the flow of information
+sharing across both mechanisms.
+Existing image editing datasets (e.g., MagicBrush [Zhang et al.
+2023a] and Pico-Banana-400K [Qian et al. 2025]) are dominated
+by non-overpainting editing operations such as object insertion,
+removal, and global edits, making such datasets unsuited for training
+our overpainting model. Instead, we leverage existing editing models
+to generate a diverse set of paired training exemplars. Such models
+are prone to a number of failures (i.e., under-editing, over-editing,
+and shifting) for which we propose an automatic detection and
+filtering approach. Finally, we introduce a high-quality hand-crafted
+overpainting validation set of 180 exemplars.
+We demonstrate the versatility of our overpainting model on a
+wide range of editing examples that are not possible with existing
+image editing diffusion models.
+In summary our contributions are:
+(1) overpainting: a novel image editing task utilizing trimaps
+which combines local control with content-awareness;
+(2) a combined information sharing strategy between image-
+streams for balancing mask adherence versus edit quality
+control; and
+(3) an automated pipeline for generating overpainting training
+pairs, and a hand-crafted overpainting benchmark compris-
+ing 180 exemplars.
+2
+Related Work
+Diffusion-based Image Editing. The diversity and quality of im-
+ages that can be generated with diffusion denoising models [Ho et al.
+2020; Rombach et al. 2022], especially when conditioned on prompt
+embeddings, has caught the attention of users and researchers alike.
+Recent advances have improved controllability [Zhang et al. 2023b]
+and have seen a gradual shift to more powerful transformer mod-
+els [Peebles and Xie 2023]. Whereas the original image diffusion
+models were focused on modeling the data distribution of natural
+images (i.e., creation), a new class of image editing models [Avra-
+hami et al. 2025; Brooks et al. 2023a; Cao et al. 2023; Hertz et al. 2023;
+Kawar et al. 2023; Lin et al. 2024; Parmar et al. 2023] focuses on mod-
+eling conditional transformations. Editing models take as input a
+source image alongside a prompt describing the desired change, and
+output a modified image that reflects that change. Recent models
+have shown great progress in prompt adherence [Black Forest Labs
+et al. 2025], efficiency [Z-Image Team 2025], flexibility and expand-
+ability [Esser et al. 2024], and text rendering [Wu et al. 2025]. We
+refer the reader to the excellent survey by Huang et al. [2025a] for
+a more in-depth overview. While image-editing models are good at
+making global edits, it is hard to make localized changes without
+global side-effects (e.g., image and colors shifts, changes outside the
+target area, etc.) In this paper, we build on existing image-editing
+foundation models and introduce a new type of localized editing
+operation, namely overpainting.
+Inpainting. As its name suggests, our overpainting paradigm is
+somewhat related to inpainting, which aims to seamlessly (re)synthe-
+size a masked region in an image, conditioned on the content of the
+surrounding area and a prompt [Liu et al. 2021; Lugmayr et al. 2022;
+Manukyan et al. 2025; Podell et al. 2024; Rombach et al. 2022; Saharia
+et al. 2022; Wang et al. 2025a; Yang et al. 2023; Zhuang et al. 2024].
+Inpainting is intended to be used for localized editing, but ignores
+the existing, masked content, regenerating it from scratch. This
+necessarily loses the identity of what was masked and may produce
+unintended “side-edits” in the masked region. Our overpainting
+addresses this shortcoming by allowing the generation to be both
+precisely located and directly conditioned on the existing context
+from the masked region.
+Localized Editing. Blended diffusion [Avrahami et al. 2023, 2022]
+introduces local control by blending a noised version of the original
+image with CLIP-guided latents. However, blended diffusion suf-
+fers from latent drift (e.g., loosing details in the unmasked regions)
+and boundary inconsistencies. BrushEdit [Li et al. 2024] unifies
+inpainting and editing via an agent-based, free-form, interactive
+framework. Both blended diffusion and BrushEdit suffer from bound-
+ary bleeding in case of inaccurately specified masks. Layered dif-
+fusion brushes [Gholami and Xiao 2025] enable interactive mask
+and prompt-based editing. A key innovation is that the method gen-
+erates distinct layers with transparency per edit operation. While
+the quality of the results is less sensitive to the accuracy of the
+mask, an accurate mask is still required to ensure no unwanted
+edits outside the intended target. To alleviate the dependency on
+mask accuracy, several methods infer a region of interest from the
+prompt. Couairon et al. [2023] use a contrastive noise process to
+internally infer masks. Cvejić et al. [2025] learn specialized tokens
+based on segmentation to localize edits. Hu et al. [2025] determine
+localization via chain-of-thought reasoning and VLMs. Simsar et al.
+[2025] leverage intrinsic semantic encoding of intermediate layers
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+3
+to define a region of interest (ROI) that serves as boundary for atten-
+tion regularization (i.e., penalizing unrelated tokens inside the ROI).
+While powerful, these mask-free methods are inherently limited
+to recognizable parts, and finer-grained edits are challenging. To
+balance mask accuracy and precise localization, we take inspiration
+from image matting [Chuang et al. 2001; Sun et al. 2004; Xu et al.
+2017; Yu et al. 2021] and allow the user to specify the ROI via a
+trimap.
+Texture and Material Painting. A specialized set of image editing
+operations focuses on changing the texture or material of an object
+or region. CoatFusion [Levy et al. 2025] allows to ’coat’ an object
+with a new material. Unlike material transfer, CoatFusion keeps the
+fine-details of the underlying object. Texture painting [Ardelean
+and Weyrich 2025; Chen et al. 2024; Hu et al. 2024; Huang et al.
+2025b; Pandey et al. 2025] allows the user to apply a texture from an
+exemplar to a ROI in a target image while following the underlying
+geometry. MatSwap [Lopes et al. 2025] and MaterialFusion [Gar-
+ifullin et al. 2025] further expand on the idea of texture painting
+by adding light and material awareness to the transfer. All these
+methods can be seen as specializations of overpainting that focus
+on a particular task (e.g., material coating or texture painting). Ul-
+traEdit [Zhao et al. 2024] and AlterBute [Reiss et al. 2026] support
+changing intrinsic properties, such as material, texture and even
+shape of a marked object given a prompt and a foreground and
+background mask. For both UltraEdit and Alterbute, inaccuracies
+in the foreground mask lead to boundary bleeding. Overpainting
+departs from the notion of a strict foreground and background mask,
+and instead leverages a trimap that marks the user’s (un)certainty
+in the application of the editing operation in a region.
+3
+Method
+The input to overpainting is a source image, a noisy latent, a prompt
+describing the edit, and a trimap that marks image regions that
+either must be altered to match the prompt (white), may be edited
+(gray), or that should not be modified (black). The output is the
+edited image. We show that existing pre-trained editing models can
+be adapted to overpainting, without requiring complete re-training.
+In particular, we adapt the FLUX.1 Kontext model [Black Forest Labs
+et al. 2025].
+LoRA Adapted Joint Attention. FLUX.1 Kontext already supports
+multiple image-streams via a 3D positional encoding (in which
+the third dimension is the image index). Information is exchanged
+between streams via joint attention: Attn(y𝑝𝑟𝑜𝑚𝑝𝑡, y𝑡𝑎𝑟𝑔𝑒𝑡, y𝑠𝑜𝑢𝑟𝑐𝑒),
+where y𝑡𝑎𝑟𝑔𝑒𝑡and y𝑠𝑜𝑢𝑟𝑐𝑒are the features for the existing input and
+edited images. A third stream of image tokens y𝑚𝑎𝑠𝑘can be handled
+the same way. Then, to adapt the semantic interpretation of the
+three image-streams, a common strategy would be to apply low-rank
+adaption (LoRA) [Hu et al. 2022] on the linear layers. Formally, given
+the frozen linear weights W ∈R𝑚×𝑛of a layer, the adapted weights
+are expressed as: W+ΔW, with ΔW = AB, 𝐴∈R𝑚×𝑟, and B ∈R𝑟×𝑛
+forming a low rank approximation, and thus: y𝑠= Wx𝑠+ ABx𝑠,
+with 𝑠∈{𝑡𝑎𝑟𝑔𝑒𝑡,𝑠𝑜𝑢𝑟𝑐𝑒,𝑚𝑎𝑠𝑘}.
+Teamwork. An alternative strategy for exchanging information
+between different image-streams is Teamwork [Sartor and Peers
+2025] which also applies low-rank adaptation on each linear layer of
+the model, but instead of a single LoRA for all image-streams, com-
+putes a joint-LoRA across the different image-streams (called team-
+mates), followed by a separate per-stream self-attention: Attn(y𝑠).
+Hence, information is not exchanged via joint attention, but through
+the linear layers. Formally, given the inputs x𝑠, Teamwork com-
+putes the outputs y𝑠for each 𝑠∈{𝑡𝑎𝑟𝑔𝑒𝑡,𝑠𝑜𝑢𝑟𝑐𝑒,𝑚𝑎𝑠𝑘} as: y𝑠=
+Wx𝑠+ B𝑠(A𝑡𝑎𝑟𝑔𝑒𝑡x𝑡𝑎𝑟𝑔𝑒𝑡+ A𝑠𝑜𝑢𝑟𝑐𝑒x𝑠𝑜𝑢𝑟𝑐𝑒+ A𝑚𝑎𝑠𝑘x𝑚𝑎𝑠𝑘)1.
+Combining Joint Attention and Teamwork. Empirically we find
+that LoRA adapted joint attention and Teamwork provide comple-
+mentary benefits. A LoRA adapted joint attention model produces
+high quality edits, but it does not adhere well to the user-specified
+mask (Table 1, ’FLUX+LoRA’). Conversely, a Teamwork-only model
+adheres well to the mask, but provides lower edit quality (Table 1,
+’Teamwork’). Intuitively, Teamwork imposes a strong positional bias
+(i.e., only latents with the same (x,y) position exchange information)
+which benefits mask adherence. In contrast, LoRA adapted joint
+attention can attend between pixels at different positions in the
+different image-streams, providing greater flexibility in applying
+the requested edit operation. The two approach coordination from
+opposite directions: FLUX+LoRA communicates through the atten-
+tion layers, Teamwork through the linear layers. This raises the
+question if combining both (i.e., using Teamwork’s LoRA adapta-
+tion across image-streams and also joint attention across image-
+streams) can combine their advantages. However, we found that
+naïvely combining both strategies does not improve performance
+(Table 1 ’naive’). We posit that since training starts from FLUX.1
+Kontext which already has converged joint attention, there is a bias
+towards further optimizing this information sharing channel. To
+better balance the fine-tuning of both information sharing channels,
+we leverage attention-masking to randomly dropout the attention
+from one stream to another, leaving Teamwork as the only mecha-
+nism for coordination some percentage of the time. Empirically, we
+determined that a 50% attention-dropout rate strikes a good balance
+between edit quality and mask adherence (see also Section 4).
+Automated Training Data Generation. To train our overpainting
+model we require paired data in the form of an original image, an
+edited version, a mask, and a prompt describing the edit operation.
+We follow the well-established process of leveraging VLMs and
+image diffusion models to generate training data [Brooks et al. 2023b;
+Qian et al. 2025; Wasserman et al. 2025; Zhang et al. 2023a].
+We randomly sample 11,323 freely licensed photographs from
+www.pexels.com as source photographs. Each image is then passed
+to the Qwen2.5-VL-72B multimodal language model [Wu et al. 2025]
+which is asked to suggest possible editing prompts.
+Next, we feed the generated prompts and the corresponding
+source image into FLUX.1 Kontext to produce the edited photographs.
+While powerful, FLUX.1 Kontext is not perfectly reliable and its
+outputs exhibit several common failure modes. We found that on
+average 6.4% of the generated results are nearly identical to the
+original image (i.e., under-editing). In 7.1% of the cases, FLUX.1
+Kontext ignores the source image and generates an entirely new
+1Sartor and Peers [2025] employ the equivalent notation: y = block(W) +BAx, where
+y, x, A, and B are the stacked tensors of the corresponding tensors from the target,
+source, and mask streams, e.g., y = [y𝑡𝑎𝑟𝑔𝑒𝑡|y𝑠𝑜𝑢𝑟𝑐𝑒|y𝑚𝑎𝑠𝑘].
+
+
+4
+•
+Sartor et al.
+Prompt Generation
+Edit Generation
+Filtering
+Mask Generation
+FLUX Kontext
+Source
+Qwen
+Suggest edits
+replace mirror with a 
+wall covered in plants
+Abbreviate
+covered in plants
+LightGlue
+✔
+BiRefNet
+(Finetuned)
+Randomize
+Training
+“covered in plants”
+Fig. 3. Overview of the training data generation pipeline. Given an image sourced from the public photo collection website Pexels, an editing prompt is
+generated using Qwen. This prompt, together with the source image, is subsequently fed to a pretrained image editing diffusion model (FLUX.1 Kontext), and
+automatically checked for common failure modes such as over-editing, under-editing and shifting. If approved, the source and edited image are passed into a
+mask estimation network. Finally, during training, we convert the estimated alpha mask into a trimap.
+image or makes drastic stylistic global changes without positional
+locality (i.e., over-editing). While the remainder of the results fea-
+ture a suitable edit, 42.7% exhibit an additional global non-affine
+shift of the whole image. We filter out over- and under-edited re-
+sults by finding the most and least changed 16 × 16 image patch.
+For the most-changed patch we require a minimum 75% ratio of
+change and for the least-changed less than 15% should be changed;
+we reject the candidate exemplar if these conditions are not met.
+To filter misaligned images, we extract matching key points using
+LightGlue [Lindenberger et al. 2023], and reject pairs where more
+than 15% of the key points have moved more than 4 pixels or too
+few (< 5) matching key points are found.
+To generate corresponding trimap masks, we adapt BiRefNet [Zheng
+et al. 2024] to accept both the original and edited images, and fine-
+tune it to precisely segment the edit. We found that BiRefNet’s
+priors on foreground/background separation translate naturally.
+Fig. 4 shows a selection of estimated binary masks and correspond-
+ing image pairs. Our finetuned BiRefNet accurately distinguishes
+meaningful edits from noise, even on fine details like hair. We fur-
+ther degrade those precise masks to mimic user-drawn trimaps. We
+do so on-the-fly, during training, by creating randomized gray “may
+edit” regions of random width and center around the boundary of
+the binary mask.
+Fig. 3 summarizes the automated data generation process. We
+refer to the appendices for the implementation details.
+Secondary Task: inpainting. When testing the utility of overpaint-
+ing with a control group, we observe that artists like to combine
+both overpainting and inpainting operations to achieve their vision.
+To cater to both editing paradigms, we also train our overpainting
+model on the secondary task of inpainting by randomly inserting a
+inpainting training exemplar with 15% probability. Each inpainting
+exemplar consists of a random Pexels image as target image, and
+as input the same image with a random shape of area zeroed-out.
+We use the prompt “inpaint” or “inpaint. {VLM description}” with a
+50/50% probability.
+Original
+Edited
+Mask
+Randomized
+Prompt
+cover in 
+shimmering gold 
+sequins
+replace with 
+intricate 
+steampunk gears 
+and metal plates, 
+interlocking in a 
+complex pattern
+replace hair with 
+soft, colorful, 
+detailed, layered 
+feathers
+replace with coral 
+formations
+Fig. 4. Examples of automatically generated paired training images with
+corresponding prompts and on-the-fly generated randomized trimaps.
+4
+Evaluation
+Implementation. We leverage the pre-trained FLUX.1 Kontext
+model which already includes joint-attention between image-streams.
+We augment this model by applying Teamwork-LoRAs to all 𝑊𝑄,
+𝑊𝐾, 𝑊𝑉, 𝑊𝑂matrices, 𝐹𝐹1 and 𝐹𝐹2, and the linear layer within
+each modulation block in FLUX.1 Kontext (but not the scaled-dot-
+product-attention itself). We use rank 64 Teamwork-LoRAs for all
+experiments. To train our overpainting model , we use the standard
+diffusion loss and the paired training images with corresponding
+prompts and on-the-fly generated trimaps. We train our model at
+1024px resolution for 8,000 steps with an effective batch size of 8.
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+5
+Table 1. Quantitative overpainting comparisons over a test set of 180 manually curated overpainting examples. (top) Mask adherence and editing quality
+measurements of prior methods trained on related tasks and applied to overpainting. (middle) Varying the attention-dropout rate trades mask adherence for
+editing quality. (bottom) Ablation results: (a) mask adherence is adversely affected when using only joint attention to integrate cues from the different input
+streams, and (b) training our model without inpainting training data improves overpainting performance at the cost of losing the ability to inpaint.
+Mask Adherence
+Edit Quality
+% Aligned
+% Edited pixels
+𝐹1↑
+CLIP↑
+EditCLIP↑
+AlphaCLIP↑
+EditReward↑
+images↑
+FLUX Fill
+97.8
+88.4
+64.0
+0.2
+0.930
+0.224
+0.170
+0.170
+0.291
+FLUX (Prompted)
+70.0
+70.3
+59.6
+17.8
+0.485
+0.246
+0.200
+0.180
+0.759
+FLUX (Annotated)
+76.1
+58.2
+48.0
+15.0
+0.432
+0.243
+0.198
+0.180
+0.539
+Nano Banana (Prompted)
+56.1
+78.0
+58.1
+12.9
+0.591
+0.241
+0.209
+0.186
+1.063
+Nano Banana (Masked)
+86.1
+72.4
+47.9
+6.3
+0.653
+0.239
+0.214
+0.186
+0.932
+UltraEdit
+97.8
+76.9
+55.9
+2.5
+0.776
+0.229
+0.187
+0.174
+0.310
+BrushNet
+19.4
+98.3
+90.2
+0.7
+0.968
+0.234
+0.184
+0.175
+-0.314
+BrushEdit
+20.6
+91.5
+86.3
+1.3
+0.912
+0.217
+0.155
+0.156
+-0.567
+Blended Latent Diff.
+92.8
+92.4
+75.6
+0.3
+0.947
+0.218
+0.152
+0.159
+-0.368
+SDEdit (FLUX)
+100.0
+97.3
+74.0
+0.2
+0.978
+0.224
+0.175
+0.170
+0.114
+Attn. Dropout
+100%
+Teamwork
+100.0
+96.2
+54.2
+0.4
+0.962
+0.236
+0.202
+0.191
+0.650
+75%
+100.0
+97.5
+53.9
+0.7
+0.956
+0.238
+0.203
+0.190
+0.682
+50%
+Ours
+100.0
+93.0
+48.7
+1.5
+0.900
+0.240
+0.211
+0.193
+0.790
+25%
+100.0
+91.1
+49.5
+1.3
+0.898
+0.240
+0.206
+0.192
+0.759
+10%
+100.0
+88.0
+46.1
+1.9
+0.859
+0.239
+0.209
+0.191
+0.849
+0%
+Naive
+100.0
+93.1
+49.7
+2.2
+0.874
+0.243
+0.215
+0.193
+0.903
+FLUX + LoRA
+100.0
+77.8
+53.9
+16.7
+0.499
+0.239
+0.202
+0.179
+0.744
+Ours (No Inpainting)
+100.0
+94.2
+46.9
+1.3
+0.915
+0.241
+0.210
+0.194
+0.811
+Training requires ∼100 hours of H100 compute. We use the stan-
+dard settings of the Prodigy optimizer [Mishchenko and Defazio
+2024]with an initial learning rate of 1.0, with cosine decay.
+Results. Fig. 10 shows localized overpainting edits on a variety
+of images, prompts, and masks. For each image, we apply four
+different masks (inset) and two different prompts (shown above
+each example). We include examples with very precise masks as
+well as examples with masks with very large gray areas. The support
+of different levels of mask-accuracy allows users with varying skill
+levels to interact with the model however they are most comfortable.
+In some examples, the masks are used to dictate the exact shape
+of the edit (e.g., spiral and vines examples) whereas in other cases
+the mask is simply an identifier of the region to edit and we leave
+it to overpainting to find object boundaries (e.g., fire and smoke
+examples). We also observe that overpainting takes the context
+of the underlying object in account when editing (e.g., grass and
+coffee examples). Overpainting can perform material substitution
+while respecting the underlying shape (e.g., golden statue) as well as
+alterations where an effect is applied to an existing object or scene
+(e.g., smoke example). Overpainting is robust to sequential editing
+(Fig. 1) without significant degradation of the unmasked regions.
+Prior Work Comparison. As overpainting is a new task, no com-
+peting model exists that solves exactly the same task. Instead, we
+repurpose existing models that perform similar tasks to overpaint-
+ing. We quantitatively compare our overpainting model against
+FLUX Fill (an inpainting model), FLUX.1 Kontext and Nano Ba-
+nana (image editing diffusion models) using either (1) a more detail
+prompt describing the edit location (e.g., original: "shiny blue tiles”;
+detailed: "the area around her eyes is covered in shiny blue tiles”),
+or (2) an annotated image with a red outline or a mask with an
+appropriate prompt directing the model how the use the added
+modality, and local diffusion editing models (UltraEdit [Zhao et al.
+2024], BrushNet [Ju et al. 2024], BrushEdit [Li et al. 2024], Blended
+Diffusion [Avrahami et al. 2023]), and SDEdit [Meng et al. 2021]
+with FLUX.1 Dev).
+To evaluate the effectiveness of all models, we manually author
+a diverse set of 180 test cases. Each test case consists of a starting
+image, hand-drawn mask, and an edit prompt. In the test set, 5
+cases have entirely black/gray masks with no white at all, 15 cases
+have entirely white/black masks with no gray, 15 are mostly gray
+with loosely placed white hints, 35 place gray strategically, and 110
+fully outline an otherwise coarse white selection. Test cases have
+no ground-truth edit, so we quantitatively evaluate each method on
+adherence to the input mask and on the quality of the resulting edit.
+See Fig. 11 for a qualitative comparison on some examples.
+For mask adherence, we measure alignment as the percentage of
+edited images that are aligned with the source (using the method
+used during training data generation), editing rate per mask-region
+as the total percentage of pixels altered in each region (ideally this
+should be 100%, ∼50%, and 0% for the white, gray, and black re-
+gions, respectively), and the 𝐹1 harmonic mean of precision and
+recall, where the precision is the fraction of edited pixels which
+
+
+6
+•
+Sartor et al.
+Input
+ 
+Layered Diffusion
+Brushes
+Ours
+Fig. 5. Compared against Layered Diffusion Brushes [Gholami and Xiao
+2025], overpainting better retains the background and only edits the fore-
+ground object. In this example, Layered Diffusion Brushes adds a blue glow
+around the tower and modifies the shape of the trees at the tower base.
+Table 2. Quantitative inpainting comparison of our model versus various
+inpainting models over the MISATO@1K dataset [Wang et al. 2025a] using
+LPIPS [Zhang et al. 2018], FID [Heusel et al. 2017], and Paired/Unpaired
+Inception Discriminative Score (P-IDS/U-IDS) [Zhao et al. 2021].
+U-IDS↑
+P-IDS↑
+LPIPS↓
+FID↓
+Grad↓
+CLIP↑
+FLUX-Fill
+0.245
+0.128
+0.165
+15.10
+48.87
+0.944
+ASUKA (FLUX-Fill)
+0.311
+0.185
+0.149
+13.50
+34.39
+0.942
+ControlNet (SD3)
+0.023
+0.002
+0.298
+56.09
+67.77
+0.838
+Teamwork (SD3)
+0.116
+0.041
+0.204
+25.20
+48.47
+0.900
+FLUX-Kontext
+0.025
+0.013
+0.372
+92.09
+241.41
+0.833
+Ours (No Inpainting)
+0.000
+0.000
+0.475
+151.56
+183.02
+0.722
+Ours
+0.295
+0.131
+0.189
+20.58
+42.39
+0.923
+are white or gray and the recall is the fraction of white pixels
+which are edited. For editing quality, we leverage existing met-
+rics: CLIP-IQA [Wang et al. 2023], EditCLIP [Wang et al. 2025b],
+AlphaCLIP [Sun et al. 2024], and EditReward [Wu et al. 2026] (a
+VLM based metric). From Table 1, we observe that while no single
+model excels in all metrics, our overpainting model strikes a good
+balance between edit quality and mask adherence.
+Compared to other local editing methods, overpainting provides
+more convenient ROI selection as well as better preservation of the
+context of the edited region. In Fig. 5, we contrast the ease of specify-
+ing a trimap in overpainting to Layered Diffusion Brushes [Gholami
+and Xiao 2025] where a very accurate mask is required; without an
+accurate mask, the object might be incompletely modified or the
+background can be affected. Fig. 6 demonstrates that SDEdit [Meng
+et al. 2021] is capable of making local edits similar to overpainting,
+but it requires careful fine-tuning of hyper-parameters to balance
+identity-preservation and editing strength. Finally, PartEdit [Cvejić
+et al. 2025], due to its mask-free interface, only supports a limited
+number of part-types and it suffers from loss of precision in localiz-
+ing edits (Fig. 13).
+Edit Quality vs. Mask Adherence. As indicated in Section 3, there
+exists an inherent trade-off between editing quality and mask ad-
+herence. As quantitatively shown in Table 1, FLUX+LoRA (i.e., pure
+joint attention) achieves high marks on quality, but underperforms
+in mask adherence, while for Teamwork (100% dropout) the opposite
+is true. The naive combination (0% dropout) yields better quality
+but at reduced mask adherence compared to the Teamwork-only
+Input
+SDEdit
+Ours
+“Clean the metal so it is as shiny as a chrome mirror”
+“brick wall”
+“made of polished gold metal”
+“made of polished gold”
+Fig. 6. A comparison against SDEdit [Meng et al. 2021] using FLUX.1 Dev.
+We paint a solid color where the mask is white (shown in the inset) and
+denoise with 0.75 strength, while fixing the latents in black regions. We
+found that with lower strength the surface looks too flat, while higher
+strength further degrades identity preservation.
+model. While the difference in mask adherence appears numerically
+minor, it makes a significant difference qualitatively (Fig. 7), with
+an increased number of cases where the mask is ignored. Attention-
+dropout allow us to balance the influence of joint attention and
+Teamwork. Increasing attention-dropout generally results in better
+mask adherence at the cost of editing quality, as demonstrated quan-
+titatively in Table 1. Plotting mask 𝐹1 versus EditReward (Fig. 8),
+demonstrates that the different dropout variants form a Pareto fron-
+tier and no single best setting exists. Empirically, we find that the
+50%-dropout variant strikes a good balance between mask adher-
+ence (without catastrophic cases where the mask is ignored) and
+edit quality (Fig. 7).
+Inpainting Comparison. Overpainting and inpainting are distinct
+tasks. An inpainting model expects the masked content to be erased,
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+7
+Attention Dropout
+Input
+FLUX + LoRA
+0%
+10%
+25%
+50%
+75%
+100%
+Fig. 7. Varying the attention dropout rate trades-off mask adherence versus edit quality. At low dropout rates, the mask is often ignored (e.g., 0% and 10%). At
+higher dropout rates (75% and 100%), the editing quality degrades (e.g., the fur whiskers protruding from the silhouette appear less plausible). Our model (50%
+dropout) strikes a balance between mask adherence and editing quality.
+−0.5
+0
+0.5
+1
+0.4
+0.6
+0.8
+1
+EditReward
+Mask 𝐹1
+FLUX Fill
+FLUX (Prompt)
+FLUX (Annot.)
+Nano (Prompt)
+Nano (Mask)
+BrushNet
+BrushEdit
+UltraEdit
+SDEdit
+BLD
+FLUX + LoRA
+Ours 0%
+Ours 10%
+Ours 25%
+Ours 50%
+Ours 75%
+Ours 100%
+Fig. 8. Pareto frontier (dotted line) of 𝐹1 mask adherence versus EditReward
+across prior methods and our model with different attention-dropout rates.
+while an overpainting model expects it to be present. However, by
+training on a mix of both tasks, our model achieves comparable
+inpainting quality to FLUX-Fill. Fig. 12 and Table 2 compare over-
+painting’s inpainting capabilities qualitatively and quantitatively to
+dedicated inpainting models. An interesting avenue for future re-
+search would be to apply ASUKA’s [Wang et al. 2025a] enhancement
+strategy to improve inpainting quality.
+For comparison, we also include overpainting (Fig. 12, last col-
+umn) to further illustrate the difference between overpainting and
+inpainting: in the example of tiling the girl’s face, we observe that
+the inpainting models modify the identity of the subject. In contrast,
+overpainting better retains the identity of the masked region.
+It should be noted that a specialized overpainting model outper-
+forms the combined inpainting/overpainting model in quality (com-
+pare Table 1 “ours” with/without inpainting). If the best overpainting
+quality is desired, we recommend to train our model without in-
+painting training data, at the cost of loosing the ability to inpaint
+(Table 2 “no inpainting”). All results in this paper are generated with
+the inpainting-capable overpainting model.
+Trimap Usability Study. To validate the effectiveness of using a
+trimap as a masking interface for directing overpainting, we perform
+a usability study in which 11 participants were asked to replicate a
+given target image by drawing a mask given the input image, fixed
+prompt and fixed seed. Each participant was tasked to replicate the
+target once with a binary mask and once with a trimap (in random
+order). To keep the study brief (< 15min.), we provided only 4 im-
+ages; the result for the first image was discarded as training example
+“a person looking out at the view”
+“no lamp, only bookshelves”
+Fig. 9. Limitations: Overpainting is not suited for tasks where the context of
+the masked region is less important, such as when adding human subjects
+or removing objects.
+for the participant to get hands-on experience with the system (a
+tutorial was also provided at the beginning of the experiment). After
+each example, the participant was asked to indicate their preference
+for either the binary or trimap workflow on a 5-point scale. Out
+of 11 participants, 7 participants preferred the trimap workflow
+(averaged over the 3 test cases), 1 was neutral, and 3 preferred the
+binary mask workflow. Furthermore, while the degree of preference
+varies per test case, we observe that support for the trimap work-
+flow is strongest when target region has intricate details or complex
+occlusions. We refer to the supplementary material for more details.
+Limitations. Our overpainting model is not without limitations.
+First, we observe that there is subjectively some quality loss com-
+pared to the base model due to constraining the changes to a re-
+stricted region. Second, our current overpainting model is sometimes
+unsuccessful when removing an object or when adding a human
+subject (Fig. 9). However, neither are strictly overpainting tasks as in
+both cases the context of the background does not matter. Moreover,
+in the case of human subjects the shape of the mask may impose
+too strong constraints on the shape and pose of the subject and thus
+fall outside the learned space.
+5
+Conclusion
+In this paper we introduced “overpainting”, a novel diffusion-based
+method for making prompt-driven localized edits in an image while
+taking the context of the edited region into account. Overpaint-
+ing differs from prior work on localized editing in its specification
+of the region of interest via a trimap, allowing the user to trade-
+off accuracy of the region of interest versus the precision of the
+edit localization. We showed that there exists an inherent trade-
+off between mask adherence and edit quality, and we balance the
+trade-off in our combined Teamwork - joint attention model via
+
+
+8
+•
+Sartor et al.
+attention-dropout. We described an automated training data gen-
+eration pipeline that: (1) generates a set of candidate image pairs
+leveraging a pretrained diffusion editing model, (2) automatically cu-
+rates the generated image pairs to retain only high quality training
+pairs, and (3) robustly extracts a mask/trimap from the image pairs.
+Finally, we demonstrated the efficacy of our overpainting model on
+a variety of editing operations that are difficult to attain with prior
+editing models.
+References
+Andrei-Timotei Ardelean and Tim Weyrich. 2025. Example-Based Feature Painting on
+Textures. ACM Transactions on Graphics (Proc. SIGGRAPH Asia) (December 2025).
+doi:10.1145/3763301
+Omri Avrahami, Ohad Fried, and Dani Lischinski. 2023. Blended Latent Diffusion.
+ACM Transactions on Graphics (TOG) 42, 4, Article 149 (2023), 11 pages. doi:10.1145/
+3592450
+Omri Avrahami, Dani Lischinski, and Ohad Fried. 2022. Blended Diffusion for Text-
+driven Editing of Natural Images. In CVPR.
+Omri Avrahami, Or Patashnik, Ohad Fried, Egor Nemchinov, Kfir Aberman, Dani
+Lischinski, and Daniel Cohen-Or. 2025. Stable Flow: Vital Layers for Training-Free
+Image Editing. In CVPR. 1–11.
+Black Forest Labs, Stephen Batifol, Andreas Blattmann, Frederic Boesel, Saksham
+Consul, Cyril Diagne, Tim Dockhorn, Jack English, Zion English, Patrick Esser,
+Sumith Kulal, Kyle Lacey, Yam Levi, Cheng Li, Dominik Lorenz, Jonas Müller, Dustin
+Podell, Robin Rombach, Harry Saini, Axel Sauer, and Luke Smith. 2025. FLUX.1
+Kontext: Flow Matching for In-Context Image Generation and Editing in Latent
+Space. doi:10.48550/arXiv.2506.15742 arXiv:2506.15742 [cs].
+Tim Brooks, Aleksander Holynski, and Alexei A. Efros. 2023a. InstructPix2Pix: Learning
+to Follow Image Editing Instructions. In CVPR.
+Tim Brooks, Aleksander Holynski, and Alexei A Efros. 2023b. Instructpix2pix: Learning
+to follow image editing instructions. In CVPR. 18392–18402.
+Mingdeng Cao, Wangbo Zhao, Yi Jiang, Zeyuan Chen, Yan-Pei Cao, Ying Shan, Xiaohu
+Qie, and Yinqiang Zheng. 2023. MasaCtrl: Tuning-Free Mutual Self-Attention
+Control for Consistent Image Synthesis and Editing. In ICCV. 22560–22570. doi:10.
+1109/ICCV51070.2023.02061
+Xi Chen, Yutong Feng, Mengting Chen, Yiyang Wang, Shilong Zhang, Yu Liu, Yu-
+jun Shen, and Hengshuang Zhao. 2024. Zero-shot Image Editing with Reference
+Imitation. arXiv preprint arXiv:2406.07547 (2024).
+Yung-Yu Chuang, Brian Curless, David H Salesin, and Richard Szeliski. 2001. A Bayesian
+approach to digital matting. In CVPR, Vol. 2. IEEE, II–264.
+Guillaume Couairon, Jakob Verbeek, Holger Schwenk, and Matthieu Cord. 2023. DiffEdit:
+Diffusion-based semantic image editing with mask guidance. In ICLR.
+Aleksandar Cvejić, Abdelrahman Eldesokey, and Peter Wonka. 2025. PartEdit: Fine-
+Grained Image Editing using Pre-Trained Diffusion Models. In Proceedings of the
+Special Interest Group on Computer Graphics and Interactive Techniques Conference
+Conference Papers (SIGGRAPH Conference Papers ’25). doi:10.1145/3721238.3730747
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas Müller, Harry
+Saini, Yam Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, et al. 2024. Scaling
+rectified flow transformers for high-resolution image synthesis. In ICML.
+Kamil Garifullin, Maxim Nikolaev, Andrey Kuznetsov, and Aibek Alanov. 2025. Material-
+Fusion: High-Quality, Zero-Shot, and Controllable Material Transfer with Diffusion
+Models. arXiv preprint arXiv:2502.06606 (2025).
+Peyman Gholami and Robert Xiao. 2025. Streamlining Image Editing with Layered
+Diffusion Brushes. In ICCV. 17368–17378.
+Amir Hertz, Ron Mokady, Jay Tenenbaum, Kfir Aberman, Yael Pritch, and Daniel
+Cohen-Or. 2023. Prompt-to-Prompt Image Editing with Cross-Attention Control. In
+ICLR.
+Martin Heusel, Hubert Ramsauer, Thomas Unterthiner, Bernhard Nessler, and Sepp
+Hochreiter. 2017. Gans trained by a two time-scale update rule converge to a local
+nash equilibrium. NeurIPS 30 (2017).
+Jonathan Ho, Ajay Jain, and Pieter Abbeel. 2020. Denoising diffusion probabilistic
+models. In NeurIPS, Vol. 33. 6840–6851.
+Anita Hu, Nishkrit Desai, Hassan Abu Alhaija, Seung Wook Kim, and Maria Shug-
+rina. 2024. Diffusion Texture Painting. In ACM SIGGRAPH 2024 Conference Papers
+(SIGGRAPH ’24). Article 5. doi:10.1145/3641519.3657458
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang,
+Lu Wang, and Weizhu Chen. 2022. LoRA: Low-Rank Adaptation of Large Language
+Models.. In ICLR.
+Yujia Hu, Songhua Liu, Zhenxiong Tan, Xingyi Yang, and Xinchao Wang. 2025. Image
+Editing As Programs with Diffusion Models. arXiv preprint arXiv:2506.04158 (2025).
+Yi Huang, Jiancheng Huang, Yifan Liu, Mingfu Yan, Jiaxi Lv, Jianzhuang Liu, Wei Xiong,
+He Zhang, Shifeng Chen, and Liangliang Cao. 2025a. Diffusion Model-Based Image
+Editing: A Survey. TPAMI (June 2025). doi:10.1109/TPAMI.2025.3541625
+Youze Huang, Penghui Ruan, Bojia Zi, Xianbiao Qi, Jianan Wang, and Rong Xiao.
+2025b. Refaçade: Editing Object with Given Reference Texture. arXiv preprint
+arXiv:2512.04534 (2025).
+Xuan Ju, Xian Liu, Xintao Wang, Yuxuan Bian, Ying Shan, and Qiang Xu. 2024. Brushnet:
+A plug-and-play image inpainting model with decomposed dual-branch diffusion.
+In ECCV. 150–168.
+Bahjat Kawar, Shiran Zada, Oran Lang, Omer Tov, Huiwen Chang, Tali Dekel, In-
+bar Mosseri, and Michal Irani. 2023. Imagic: Text-Based Real Image Editing with
+Diffusion Models. In CVPR.
+Sagie Levy, Elad Aharoni, Matan Levy, Ariel Shamir, and Dani Lischinski. 2025. Coat-
+Fusion: Controllable Material Coating in Images. arXiv preprint arXiv:2512.02143
+(2025).
+Yaowei Li, Yuxuan Bian, Xuan Ju, Zhaoyang Zhang, Junhao Zhuang, Ying Shan, Yuexian
+Zou, and Qiang Xu. 2024. Brushedit: All-in-one image inpainting and editing. arXiv
+preprint arXiv:2412.10316 (2024).
+Yuanze Lin, Yi-Wen Chen, Yi-Hsuan Tsai, Lu Jiang, and Ming-Hsuan Yang. 2024. Text-
+Driven Image Editing via Learnable Regions. In CVPR. 7059–7068.
+Philipp Lindenberger, Paul-Edouard Sarlin, and Marc Pollefeys. 2023. LightGlue: Local
+Feature Matching at Light Speed. In ICCV. Paris, France, 17581–17592. doi:10.1109/
+ICCV51070.2023.01616
+Hongyu Liu, Ziyu Wan, Wei Huang, Yibing Song, Xintong Han, and Jing Liao. 2021.
+PD-GAN: Probabilistic Diverse GAN for Image Inpainting. In CVPR. 9371–9381.
+doi:10.1109/CVPR46437.2021.00925
+Ivan Lopes, Valentin Deschaintre, Yannick Hold-Geoffroy, and Raoul de Charette. 2025.
+MatSwap: Light-aware Material Transfers in Images. Comp. Graph. Forum (2025).
+doi:10.1111/cgf.70168
+Andreas Lugmayr, Martin Danelljan, Andres Romero, Fisher Yu, Radu Timofte, and
+Luc Van Gool. 2022. RePaint: Inpainting using Denoising Diffusion Probabilistic
+Models. In CVPR.
+Hayk Manukyan, Andranik Sargsyan, Barsegh Atanyan, Zhangyang Wang, Shant
+Navasardyan, and Humphrey Shi. 2025. Hd-painter: high-resolution and prompt-
+faithful text-guided image inpainting with diffusion models. In ICRL. 96301–96330.
+Chenlin Meng, Yutong He, Yang Song, Jiaming Song, Jiajun Wu, Jun-Yan Zhu, and
+Stefano Ermon. 2021. SDEdit: Guided Image Synthesis and Editing with Stochastic
+Differential Equations. In ICLR.
+Konstantin Mishchenko and Aaron Defazio. 2024. Prodigy: an expeditiously adaptive
+parameter-free learner. In ICML. Article 1458.
+Karran Pandey, Anita Hu, Clement Fuji Tsang, Or Perel, Karan Singh, and Maria
+Shugrina. 2025. Painting with 3D Gaussian Splat Brushes. ACM SIGGRAPH 2025
+Conference Papers, Article 39 (2025), 10 pages.
+Gaurav Parmar, Krishna Kumar Singh, Richard Zhang, Yijun Li, Jingwan Lu, and Jun-
+Yan Zhu. 2023. Zero-shot Image-to-Image Translation. In ACM SIGGRAPH 2023
+Conference Proceedings (SIGGRAPH ’23). Article 11. doi:10.1145/3588432.3591513
+William Peebles and Saining Xie. 2023. Scalable diffusion models with transformers. In
+ICCV. 4195–4205.
+Dustin Podell, Zion English, Kyle Lacey, Andreas Blattmann, Tim Dockhorn, Jonas
+Müller, Joe Penna, and Robin Rombach. 2024. SDXL: Improving latent diffusion
+models for high-resolution image synthesis. In ICLR. 1862–1874.
+Yusu Qian, Eli Bocek-Rivele, Liangchen Song, Jialing Tong, Yinfei Yang, Jiasen Lu, Wenze
+Hu, and Zhe Gan. 2025. Pico-Banana-400K: A Large-Scale Dataset for Text-Guided
+Image Editing. http://arxiv.org/abs/2510.19808 arXiv:2510.19808 [cs].
+Tal Reiss, Daniel Winter, Matan Cohen, Alex Rav-Acha, Yael Pritch, Ariel Shamir, and
+Yedid Hoshen. 2026. Alterbute: Editing Intrinsic Attributes of Objects in Images.
+arXiv preprint arXiv:2601.10714 (2026).
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer.
+2022. High-Resolution Image Synthesis With Latent Diffusion Models. In CVPR.
+10684–10695.
+Chitwan Saharia, William Chan, Huiwen Chang, Chris Iyer, Ce Liu, Ramin Zabih,
+David J Fleet, and Mohammad Norouzi. 2022. Palette: Image-to-Image Diffusion
+Models. In ACM SIGGRAPH 2022 Conference Proceedings. 1–10. doi:10.1145/3528233.
+3530757
+Sam Sartor and Pieter Peers. 2025. Teamwork: Collaborative Diffusion with Low-rank
+Coordination and Adaptation. In Proceedings of the SIGGRAPH Asia 2025 Conference
+Papers (SA Conference Papers ’25). Article 173. doi:10.1145/3757377.3763870
+Enis Simsar, Alessio Tonioni, Yongqin Xian, Thomas Hofmann, and Federico Tombari.
+2025. LIME: Localized Image Editing via Attention Regularization in Diffusion
+Models. In WACV. 222–232.
+Jianlin Su, Murtadha Ahmed, Yu Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu. 2024.
+Roformer: Enhanced transformer with rotary position embedding. Neurocomputing
+568 (2024), 127063.
+Jian Sun, Jiaya Jia, Chi-Keung Tang, and Heung-Yeung Shum. 2004. Poisson matting.
+ACM Transactions on Graphics (TOG) 23, 3 (2004), 315–321.
+Zeyi Sun, Ye Fang, Tong Wu, Pan Zhang, Yuhang Zang, Shu Kong, Yuanjun Xiong,
+Dahua Lin, and Jiaqi Wang. 2024. Alpha-clip: A clip model focusing on wherever
+you want. In CVPR. 13019–13029.
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+9
+Patrick von Platen, Suraj Patil, Anton Lozhkov, Pedro Cuenca, Nathan Lambert, Kashif
+Rasul, Mishig Davaadorj, Dhruv Nair, Sayak Paul, William Berman, Yiyi Xu, Steven
+Liu, and Thomas Wolf. 2022. Diffusers: State-of-the-art diffusion models. https:
+//github.com/huggingface/diffusers.
+Jianyi Wang, Kelvin CK Chan, and Chen Change Loy. 2023. Exploring clip for assessing
+the look and feel of images. In AAAI, Vol. 37. 2555–2563.
+Qian Wang, Aleksandar Cvejić, Abdelrahman Eldesokey, and Peter Wonka. 2025b.
+EditCLIP: Representation Learning for Image Editing. In ICCV. 15960–15970.
+Yikai Wang, Chenjie Cao, Junqiu Yu, Ke Fan, Xiangyang Xue, and Yanwei Fu. 2025a.
+Towards enhanced image inpainting: Mitigating unwanted object insertion and
+preserving color consistency. In CVPR. 23237–23248.
+Navve Wasserman, Noam Rotstein, Roy Ganz, and Ron Kimmel. 2025. Paint by inpaint:
+Learning to add image objects by removing them first. In CVPR. 18313–18324.
+Chenfei Wu, Jiahao Li, Jingren Zhou, Junyang Lin, Kaiyuan Gao, Kun Yan, Sheng-ming
+Yin, Shuai Bai, Xiao Xu, Yilei Chen, et al. 2025. Qwen-image technical report. arXiv
+preprint arXiv:2508.02324 (2025).
+Keming Wu, Sicong Jiang, Max Ku, Ping Nie, Minghao Liu, and Wenhu Chen. 2026.
+EditReward: A Human-Aligned Reward Model for Instruction-Guided Image Editing.
+In ICLR.
+Ning Xu, Brian Price, Scott Cohen, and Thomas Huang. 2017. Deep image matting. In
+CVPR. 2970–2979.
+Shiyuan Yang, Xiaodong Chen, and Jing Liao. 2023. Uni-paint: A Unified Framework for
+Multimodal Image Inpainting with Pretrained Diffusion Model. (2023), 3190–3199.
+doi:10.1145/3581783.3612200
+Haichao Yu, Ning Xu, Honghui Huang, Yuqian Yang, Humphrey Shi, and Thomas S
+Huang. 2021. High-resolution deep image matting. In AAAI, Vol. 35. 3217–3224.
+Z-Image Team. 2025. Z-Image: An Efficient Image Generation Foundation Model with
+Single-Stream Diffusion Transformer. arXiv preprint arXiv:2511.22699 (2025).
+Kai Zhang, Lingbo Mo, Wenhu Chen, Huan Sun, and Yu Su. 2023a. Magicbrush: A
+manually annotated dataset for instruction-guided image editing. NeurIPS 36 (2023),
+31428–31449.
+Lvmin Zhang, Anyi Rao, and Maneesh Agrawala. 2023b. Adding conditional control to
+text-to-image diffusion models. In ICCV. 3836–3847.
+Richard Zhang, Phillip Isola, Alexei A Efros, Eli Shechtman, and Oliver Wang. 2018.
+The unreasonable effectiveness of deep features as a perceptual metric. In CVPR.
+586–595.
+Haozhe Zhao, Xiaojian Ma, Liang Chen, Shuzheng Si, Rujie Wu, Kaikai An, Peiyu
+Yu, Minjia Zhang, Qing Li, and Baobao Chang. 2024. Ultraedit: Instruction-based
+fine-grained image editing at scale. NeurIPS 37 (2024), 3058–3093.
+Shengyu Zhao, Jonathan Cui, Yilun Sheng, Yue Dong, Xiao Liang, Eric I Chang, and Yan
+Xu. 2021. Large scale image completion via co-modulated generative adversarial
+networks. arXiv preprint arXiv:2103.10428 (2021).
+Peng Zheng, Dehong Gao, Deng-Ping Fan, Li Liu, Jorma Laaksonen, Wanli Ouyang,
+and Nicu Sebe. 2024. Bilateral Reference for High-Resolution Dichotomous Image
+Segmentation. CAAI Artificial Intelligence Research (Dec. 2024). doi:10.26599/AIR.
+2024.9150038
+Junhao Zhuang, Yanhong Zeng, Wenran Liu, Chun Yuan, and Kai Chen. 2024. A Task
+is Worth One Word: Learning with Task Prompts for High-Quality Versatile Image
+Inpainting. In ECCV.
+
+
+10
+•
+Sartor et al.
+“grow green moss with small blue flowers”
+“shiny blue paint, still wet”
+“covered in silver fuzz”
+“dimond gems set into the surface”
+“artistic flickering flames”
+“leafy green vines”
+“the cup is full of coffee”
+“faint cloud of steam”
+“made of polished gold”
+“growing leafy green ferns”
+Fig. 10. Overpainting examples. For each input image, two different prompts (shown above the example), each with two different masks (shown as inset), are
+shown to demonstrate the rich variation in edits that are possible.
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+11
+Original
+FLUX (Prompt)
+FLUX (Annotated) Nano Banana (Prompt) Nano Banana (Mask)
+BrushNet
+Ours
+Fig. 11. Examples for overpainting with FLUX.1 Kontext using a detailed prompt (1st column), FLUX.1 Kontext with red outline annotations on the input image
+to demarcate the mask boundary (2nd column), Nano Banana with a detailed prompt (3rd column), Nano Banana with passing the mask as an additional
+input (4th column), BrushNet [Ju et al. 2024] (5th column), and overpainting (6th column). Only overpainting adheres to the mask and the prompt in all cases.
+Original
+FLUX Fill
+Ours 
+(Inpainting)
+Ours 
+(Overpainting)
+Fig. 12. Inpainting comparison of FLUX Fill against our model using the
+’inpaint’ keywords and overpainting. Our model’s inpainting results are of
+comparable quality to FLUX Fill. However, both inpainting models fail to
+preserve the identity of the target region (e.g., the molding on the wall is
+lost (1st row), the mountains are lost or changed in the background when
+changing the sky to clear (2nd row), and the identity of the girl (3rd row)
+is altered). In contrast, overpainting preserves the identity of the target.
+Input
+PartEdit
+Ours
+<quadruped_head>
+<humanoid_head>
+Fig. 13. Comparison between PartEdit [Cvejić et al. 2025] and overpainting
+on editing a head (one of the recognized parts supported by PartEdit). While
+PartEdit can identify and edit the part, it fails to preserve the identity of
+the subject in contrast to overpainting.
+
+
+12
+•
+Sartor et al.
+Mod
+QKV
+FF1
+FF2
+Attention
+Mod
+QKV
+FF1
+FF2
+Attention
+{
+{
+Double Block ×19
+Single Block ×38
+“fur”
+Mod
+QKV
+FF1
+FF2
+⋮
+⋮
+⋮
+⋮
+⋮
+⋮
+⋮
+        
+Base Layer
+        
+Teamwork-Adapted Layer
+Fig. 14. Architecture overview. We pass the source image and trimap as
+additional condition images, and communicate across the conditions and
+the noise using both teamwork and joint attention.
+A
+Architecture Details
+We demonstrate overpainting by finetuning the FLUX Kontext
+[Black Forest Labs et al. 2025] model. FLUX Kontext accepts latents
+for any number of condition images, as well as noisy latents for the
+image to generate, all concatenated along the sequence dimension.
+As a diffusion transformer (DiT) [Peebles and Xie 2023], FLUX
+Kontext consists of a series of 57 transformer blocks which pro-
+cess all image patches and text tokens as a single sequence. Every
+transformer block contains:
+(1) A modulation layer which produces scale and shift coeffi-
+cients for following AdaLN normalization layers.
+(2) An attention block using traditional multi-head scaled dot-
+product attention, and the usual linear𝑊𝑄,𝑊𝐾,𝑊𝑉, and𝑊𝑂
+projections.
+(3) A feed-forward block which applies an MLP to every im-
+age/text feature, having two linear layers and a GeLU acti-
+vation between them.
+The first 19 blocks of FLUX Kontext are “Double Blocks”, where
+text tokens and image patches are separate streams, each with their
+own layers, sharing only the scaled dot-product attention. The re-
+maining 38 blocks are “Single Blocks” which use the same parame-
+ters for both the image stream and the text stream, treating both as
+a single uniform sequence.
+There is some difficulty in applying Teamwork to FLUX Kontext,
+since the “Batch Trick“ introduced by Sartor and Peers [2025] re-
+quires coordinated images to be arranged along the batch dimension.
+To accommodate the batch trick, we adjust the Diffusers [von Platen
+et al. 2022] implementation of FLUX Kontext to accept image patches
+as a batch-wise 3𝑏× ℎ𝑤/𝑝2 × 𝑛tensor, reshape to a sequence-wise
+𝑏× 3ℎ𝑤/𝑝2 ×𝑛tensor prior to each scaled dot-product attention op-
+eration, and reshape back to batch-wise afterwards. We also altered
+the single block implementation to compute text and image features
+separately (using shared parameters), without Teamwork aggrega-
+tion on text tokens. Alternatively, our Teamwork model could be
+implemented without the batch-trick, keeping the sequence-wise
+shape everywhere and grouping image patches by spatial location
+only within the Teamwork LoRAs. Either way, a random block ma-
+trix is suitable as an attention mask to apply attention dropout
+during training.
+Both our Teamwork and FLUX + LoRA overpainting finetunes ap-
+ply LoRAs to all linear layers of the FLUX Kontext model, excluding
+only the input/ouput projections, timestep+guidance embedding
+projection, and text stream layers within the 19 Double Blocks.
+FLUX Kontext uses 3D RoPE embeddings [Su et al. 2024] to dis-
+ambiguate which image each latent patch belongs to and the spatial
+position of the patch within that image. Base FLUX Kontext uses
+image index 0 for the noisy latents and 1 for the source image to
+edit. We reuse index 1 for our source image and add index 2 for
+the mask image. Note the mask image is VAE encoded in the same
+manner as any other condition image.
+B
+Automated Training Data Generation – Extended
+Description
+Paired Image Generation. To train our overpainting model we
+require paired data in the form of an original image, an edited ver-
+sion, a mask, and a prompt describing the edit operation. Manually
+creating such training data at scale is difficult., Therefore, we follow
+the well-established process of leveraging VLMs and image diffu-
+sion models to generate training data [Brooks et al. 2023b; Qian
+et al. 2025; Wasserman et al. 2025; Zhang et al. 2023a]. In our im-
+plementation the training-data generation model is the same as the
+overpainting base model (i.e., FLUX.1 Kontext), however, there is
+nothing in our pipeline that requires that both need to be the same.
+We start by randomly sampling 11,323 freely licensed photographs
+from www.pexels.com as source photographs. Each image is then
+passed to the Qwen2.5-VL-72B multimodal language model [Wu
+et al. 2025] which is asked to suggest possible editing prompts. To
+promote diversity, we first seed Qwen’s chain-of-thought context by
+asking it to brainstorm twenty random 1- or 2-word concepts that
+include objects, materials, colors, style, or themes. Once Qwen’s
+context is seeded, we ask it to generate five meaningful editing
+prompts of a few sentences, followed by a request to abbreviate the
+prompt to keep it concise (Figure 22).
+Next, we feed the generated prompts and the corresponding
+source image into FLUX.1 Kontext to produce the edited photographs.
+To further improve data quality and diversity, we also hand-select
+60 source images and manually write editing prompts. We leave the
+manually written prompt intentionally ambiguous in order to run
+the same image-prompt pair multiple times through FLUX.1 Kon-
+text with different seeds to generate diverse positional variations.
+In total, we generate 22,822 automatically generated pairs and 1,000
+manual pairs.
+Filtering. While powerful, FLUX.1 Kontext is not perfectly reliable
+and its outputs exhibit several common failure modes. We found
+that on average 6.4% of the generated results are nearly identical to
+the original image (i.e., under-editing). In 7.1% of the cases, FLUX.1
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+13
+Fig. 15. Example of degradation. From left to right: the original image, the
+FLUX.1 Kontext edited image, the absolute pixel-wise difference, and the
+estimated mask. As shown in the inset, FLUX.1 Kontext introduces small
+changes (i.e., degradation) outside the editing mask.
+Table 3. Quantitative ablation of mask estimation techniques. From right
+to left, the L1 difference of the estimated and ground-truth masks, the F1
+similarity, and the intersection-over-union.
+L1↓
+F1↑
+I/U↑
+Thresholded Pixel Diff
+0.060
+0.733
+0.607
++ Spatial Filter
+0.042
+0.841
+0.758
+BiRefNet on Pixel Diff
+0.207
+0.616
+0.518
++ Finetuning (ours)
+0.007
+0.955
+0.916
+⨸
+⊕
+Fig. 16. Given an alpha mask, we generate a trimap with varying gray
+regions by first estimating a signed distance field that we subsequently scale
+by a random thickness threshold (sampled from low-frequency noise), then
+offset by adding (another) low-frequency noise image (clamped positive),
+and finally threshold to three levels corresponding to the trimap regions.
+Kontext ignores the source image and generates an entirely new
+image or makes drastic stylistic global changes without positional
+locality (i.e., over-editing). While the remainder of the results feature
+a suitable edit, 42.7% exhibit an additional global non-affine shift
+of the whole image. Such misalignment is not specific to FLUX.1
+Kontext; we found that other models such as Google’s Nano Banana
+exhibit a similar misalignment.
+We filter out over and under-edited results by finding the most
+and least changed 16 × 16 image patch and measure the factor of
+pixels with more than 0.15 change; for the most-changed patch we
+require a minimum 75% ratio and for the least-changed less than
+15% should be changed. This ensures that the edited image contains
+regions with significant change and regions with minimal change.
+To filter misaligned images, we extract matching key points using
+LightGlue [Lindenberger et al. 2023], and reject pairs where more
+than 15% of the key points have moved more than 4 pixels or if too
+few (< 5) matching key points are found. We found that LightGlue
+is able to reliably find matching features even in the presence of
+moderate stylistic changes. After filtering for misalignment we are
+left with 43.8% or 9,999 good training pairs.
+Mask Estimation. While the paired images would be sufficient to
+train a global editing model, overpainting requires an additional
+mask as input to indicate where edits should occur. Since the above
+“a bright yellow scarf”
+“brick wall”
+“shiny new coat of yellow paint”
+“change surface to shiny blue tiles”
+Fig. 17. The four examples used in the usability study. For each example,
+we show the input image over which the participant draws the mask, and
+the target image shown to the participant as their goal. Each target image
+was made with the same overpainting model accessed by the participants,
+and with the same seed. The yellow scarf is the warm-up example for which
+the results are discarded.
+synthesis pipeline does not generate such masks, we generate them
+post-hoc. The goal of “mask estimation” is to make this post-hoc
+binary prediction for each pixel: whether it was edited or not.
+Naive thresholding is unreliable since image editing models tend
+to introduce small, unintended differences to regions that are meant
+to remain untouched; we refer to these undesired changes as degra-
+dation (Figure 15). Moreover, the edited content can sometimes
+match the original color quite closely, even if the texture is changed.
+We therefore opt for a more robust mask detection scheme by re-
+tasking BiRefNet [Zheng et al. 2024] which was originally trained
+for the related task of background removal, to the task of mask
+detection. We modify BiRefNet to take both the original and edited
+image as input using head expansion. We initialize the weights of
+the expanded head as [𝑊, −𝑊] (with 𝑊the weights of the original
+head), thereby starting the model from a state similar to computing
+the pixel-wise difference between both inputs.
+To train the mask estmimation model, we generate paired training
+data, by randomly selecting an image from Pexels and extracting a
+foreground and mask using the original (untuned) BiRefNet. Next,
+we composite the extracted foreground on another randomly sam-
+pled (background) image from Pexels. The composite, the original
+background, and composite mask then serve as the training exem-
+plars. To make the mask estimation robust to degradation from
+the editing model, we apply random brightness shifts and noise
+in both the background and composited images in the FLUX VAE
+latent space. We finetune the mask estimation network for only
+250 steps. Due to the strong BiRefNet-priors and the [𝑊, −𝑊] head-
+initialization, the mask-estimation network generalizes well to other
+edits.
+In Table 3 we provide a quantitative ablation of the mask esti-
+mation model by computing the accuracy of 4 mask estimation
+methods on 10 images edited by FLUX Kontext, against masks anno-
+tated carefully by hand. The thresholded pixel diff proves unreliable,
+even with spatial filtering to remove noise-induced holes/islands.
+
+
+14
+•
+Sartor et al.
+Immediately after head-expansion, BiRefNet does sometimes iden-
+tify the edited area simply because the large differences there look
+more like "foreground" than the minimal noise elsewhere, but this
+is also unreliable. A little finetuning on synthetic pairs (as described
+above) obtains the best accuracy.
+Figure 4 shows a selection of extracted binary masks and corre-
+sponding image pairs.
+Trimap generation. The above mask-estimation network produces
+very precise alpha masks, not trimaps. While this accuracy is use-
+ful for exactly describing where the edit must happen, we prefer
+less perfect masks to mimic user-drawn trimaps. To simulate this
+imprecision in mask specification, we introduce randomized gray
+“may edit” regions on-the-fly during training. Intuitively, we extend
+the gray region out by two different randomly selected distances
+on either side of the boundary. Practically, in our implementation
+we approximate this efficiently as:
+ sdf(𝑥)/thickness(𝑥) + offset(𝑥)
+ < 1,
+(1)
+where sdf(𝑥) is the signed distance field with respect to the black/whi-
+te boundary, offset(𝑥) is a low-frequency noise pattern clamped
+positive (range: [0, 1]), and thickness(𝑥) is a low-frequency noise
+pattern (range: [−𝑡𝑚𝑎𝑥, +𝑡𝑚𝑎𝑥], with 𝑡𝑚𝑎𝑥the maximum gray band
+thickness); see Figure 16 for a visualization of this process. Note,
+the low-frequency perturbations are critical to avoid generating
+trimaps where the actual boundary always lies in the middle of the
+gray area; the model would quickly overfit to this situation.
+C
+Usability Study Details
+Setup. To validate the effectiveness of using a trimap as a masking
+interface for directing overpainting, we perform a usability study
+in which 11 participants were asked to replicate a target image
+by drawing a mask given the input image, fixed prompt and fixed
+seed. Each participant was tasked to replicate the target once with a
+binary mask and once with a trimap (in random order). To keep the
+study brief (< 15min.), we provided only 4 images (Figure 17); the
+result for the first image was discarded as a warm-up example for
+the participant to get hand-on experience with the system (a tutorial
+was also provided at the beginning of the experiment). We query the
+participant to rate the result they obtained after each result in order
+encourage the participant to produce high quality results. After
+processing each example image with both mask interfaces, we ask
+the participant to indicate their preference for either the binary or
+trimap workflow on a 5-point scale. Figure 21 and the supplementary
+video show a walkthrough of a participant’s sesssion.
+Results Analysis. Figure 18 shows a Wilkinson plot of the per-
+participant average preference over the 3 main examples used in
+the usability study. Only 3 participants preferred the binary mask,
+while 7 leaned more towards preferring the trimap. However, we
+also observe variability per participant between the different test
+cases. Figure 19 shows, for each example from the usability study, a
+Wilkinson plot of the preference rating distribution. As can be seen,
+depending on the complexity of the image/mask, the preference for
+using trimap varies. However, in all cases, the trimap is the most
+preferred interface.
+−2
+−1
+0
++1
++2
+← prefers B&W
+prefers trimap →
+Fig. 18. A Wilkinson plot of the per-participant average preference ratings,
+with a strong preference for the trimap on the right, and the binary mask
+on the left.
+−2
+−1
+0
++1
++2
+← prefers B&W
+prefers trimap →
+window frame
+brick wall
+behind stools
+Fig. 19. A Wilkinson plot of the preference ratings of participants for each
+example image, with a strong preference for the trimap on the right, and
+the binary mask on the left.
+−2
+−1
+0
++1
++2
+← totally different
+exactly matched →
+binary mask
+trimap mask
+Fig. 20. A Wilkinson plot of the similarity ratings of participants for trimaps
+versus binary masks, with higher self-rated similarity to the goal image on
+the right and lower on the left.
+During the usability study we also encouraged the participants to
+produce high quality results via similarity self-rating. Plotting the
+subjective similarity-rating per mask type (Figure 20), reveals that
+the participants were able to obtain better matches with trimaps
+than with binary masks.
+
+
+Overpainting: Localized Context-aware Diffusion Image Editing
+•
+15
+Welcome screen explaining the goal.
+Brief tutorial on trimap (gray) masks.
+Participant paints a trimap.
+1
+2
+3
+Participant rates similarity to the goal image.
+Tutorial on binary (black/white) masks.
+Participant paints a binary mask for the same goal.
+4
+5
+6
+Participant rates the binary-mask result.
+Indicates which mask type was more convenient.
+Next image is presented …
+7
+8
+9
+Fig. 21. Walkthrough of one participant’s session in our trimap usability study.
+System Prompt:
+You are a creative brainstorming assistant.
+Don't ever repeat yourself, instead come up with new ideas.
+Avoid trivial, uninteresting, or very minor suggestions.
+Be concise but unambiguous.
+Seeding Prompt:
+Hello!
+I am creating a photo editing challenge for artists using photoshop.
+Here is the photo in question.
+To start brainstorming, can you give me {total_concepts} or so concepts you think would be interesting to explore?
+Provide just one or two words for each.
+Here are some random words as inspiration: {random_words}.
+In your own list, include many different kinds of objects, materials, textures, colors, styles, and/or themes.
+Prompt Generation Prompt:
+Great!
+Now can you propose {total_suggestions} edits contestants should make to this image?
+Also let me know if the image has nudity, suggestive content, or violence (eg is nsfw).
+Each challenge should require the artist to change the material, texture, or physical properties of one or more objects
+in the scene. For example: changing a wooden table to a glass one, making a fabric look metallic, growing grass on dirt,
+removing hair from a cat, covering a column with tree bark, etc.
+Don't use these ideas directly, be inventive!
+DO NOT ask for trivial color shifts, floating objects, or glowing effects.
+Each change should be challenging to achieve and meaningfully alter the real physical contents of the scene.
+Give specific information about what particular area of the image the artist should modify and what it should look like
+after. But remain concise, instructions should be a few sentences each.
+Fig. 22. System, seeding, and prompt generation prompts provided to Qwen for generating possible overpainting editing operations.

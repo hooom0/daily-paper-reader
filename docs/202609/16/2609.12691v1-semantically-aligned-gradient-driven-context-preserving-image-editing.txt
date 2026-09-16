@@ -1,0 +1,2040 @@
+Semantically Aligned Gradient-Driven
+Context-Preserving Image Editing
+Chiranjeev Chiranjeev1 , Muskan Dosi1 , Mayank Vatsa1 , and Richa
+Singh1
+Indian Institute of Technology Jodhpur, India
+{chiranjeev.1,dosi.1,mvatsa,richa}@iitj.ac.in
+https://github.com/IAB-IITJ/IABEdit
+Previous Works
+IABEdit
+Discriminative 
+contrastive learning 
+for alignment
+No alignment 
+between text and 
+image
+No alignment 
+between text and 
+image
+Cins
+Isrc
+IGedit
+CLIP
+VLM
+Image Encoder/ 
+Decoder
+Instruction
+Source Image
+Edited generated 
+image
+ (a) InstructPix2Pix
+(b) SmartEdit
+(c) InstructDiffusion
+(d) SuperEdit
+Cins
+Isrc
+Loss
+IGedit
+Cins
+Isrc
+Loss
+IGedit
+No alignment 
+between text and 
+image
+Cins
+Isrc
+Loss
+IGedit
+Cins
+Isrc
+Loss
+IGedit
+Cins
+Isrc
+Loss
+IGedit
+Semantic alignment using 
+descriptive instruction 
+backpropagation
+What to Edit
+Where to Edit
+Input Image
+Input Image
+Remove the 
+power lines 
+and towers 
+from the 
+background.
+IABEdit
+Change the 
+background to 
+a busy street 
+scene. 
+IABEdit
+Preservation
+Alignment
+InstructPix2Pix
+SuperEdit
+InstructPix2Pix
+SuperEdit
+Less or no 
+alignment 
+Output 
+aligned 
+with text
+Non edited 
+regions are 
+preserved
+Content not 
+preserved
+(a)
+(b)
+The scene without the current background, featuring a snowy 
+background.
+There is no  brown teddy bear toy on the wooden bridge.
+Input Image
+IABEdit
+Put a blue shirt on the boy and Change the texture of his 
+trousers to denim.
+Replace forest path background with a beach setting while 
+applying a watercolor painting style to the entire image.
+SuperEdit
+(c)
+Fig. 1: (a) Existing editing models rely on static textual features, causing weak align-
+ment and unwanted changes. (b) IABEdit improves both alignment and preservation
+through gradient-enabled semantic supervision. (c) Examples show IABEdit’s stronger
+semantic grounding and localized edits compared to prior methods.
+Abstract. Instruction-guided image editing has a training-time blind
+spot. Generative editors are never required to semantically verify whether
+their outputs actually satisfy the instruction. Supervision stops at recon-
+struction and input textual-level conditioning. This produces incomplete
+edits, spatial spillover, and poor localization. We present IABEdit, a
+model-agnostic framework that embeds differentiable semantic verifica-
+tion into training. A frozen vision-language model extracts spatially-
+aware descriptors from the ground-truth edit. A trainable aligner then
+reproduces them from the generated output. The residual between the
+two becomes a gradient that teaches the generator both what to edit
+and where, with no inference-time VLM cost. IABEdit is compatible
+with diverse backbones, including U-Net (Stable Diffusion) and MMDiT
+(FLUX), without altering their inference pipelines. On MagicBrush, it
+improves structural fidelity by +3.49 DINO-I over the best diffusion base-
+line and +1.26 over the best overall baseline, while remaining competitive
+on instruction alignment. It also achieves state-of-the-art instruction ad-
+herence performance on RealEdit and EMU Edit benchmarks based on
+arXiv:2609.12691v1  [cs.CV]  11 Sep 2026
+
+
+2
+Chiranjeev et al.
+embedding-based metrics. Most consequentially, on the D-LORD surveil-
+lance benchmark, it surpasses the proprietary Gemini agent by +5.13
+DINO-P under heavy occlusion, where preserving identity is hardest.
+This shows that gradient-aligned VLM distillation holds up under real-
+world-like surveillance and occlusion conditions. Human and GPT-4o
+evaluations confirm perceptually precise, well-localized edits.
+Keywords: Image Editing · Semantic Alignment · VLMs
+1
+Introduction
+Recent advances in generative image modeling, including diffusion models [8,13,
+23,30] with U-Net and transformer-based generators, and flow-matching frame-
+works such as FLUX [18] have enabled high-quality and flexible image manip-
+ulation. Instruction-guided image editing extends these capabilities by allowing
+users to modify images through natural language, supporting tasks such as ob-
+ject removal, attribute modification, scene transformation, and semantic style
+transfer. Earlier approaches relied on manually specified spatial masks, limit-
+ing scalability and usability. Modern generative models [9,18,25,27–29] instead
+condition directly using textual instructions, enabling language-based editing.
+Despite their realism, existing instruction-guided editors are weak in instruc-
+tion–edit alignment as shown in Figure 1(b), and share a fundamental limitation:
+the training objective does not explicitly verify whether the generated image
+semantically satisfies the intended edit. While instructions influence the genera-
+tion process, there is typically no mechanism that measures alignment between
+the desired transformation and the produced output beyond reconstruction or
+token-level supervision. Crucially, the model is never required to verify whether
+the progressively denoised image actually satisfies the instruction. As a result,
+this design leads to systematic failure modes: (1) incomplete semantic realization
+(under-editing), (2) spatial mislocalization of edits, and (3) unintended modifica-
+tion of non-target regions (over-editing). The underlying issue is not architectural
+- it is the absence of explicit semantic supervision that enforces instructions.
+We argue that instruction-guided editing should be formulated as a semantic
+alignment problem rather than purely a conditioning problem. To this end, we
+propose IABEdit: Instruction-Aligned Backpropagation Image Editing. IABE-
+dit introduces differentiable semantic verification into the training of generative
+image editors. Instead of relying solely on textual conditioning for obtaining in-
+tended edits, we incorporate high-capacity vision-language reasoning to define
+what a successful edit should represent at a semantic level. The overview of
+IABEdit is shown in Figure 1(a).
+This semantic supervisor evaluates whether the generated image reflects the
+intended transformation, capturing both global changes and localized attributes.
+By making this evaluation differentiable, the generative model is guided by an
+explicit measure of instruction satisfaction during optimization. Editing thus
+becomes a process of minimizing the semantic discrepancy between the intended
+outcome and the generated image. This training paradigm encourages the model
+
+
+IABEdit
+3
+to learn not only what must change, but also what must remain preserved,
+resulting in improved localization, stronger instruction adherence, and better
+structural consistency. IABEdit facilitates better alignment using supervision.
+Importantly, IABEdit operates as an architecture-agnostic training-time su-
+pervision layer. It can be integrated into diffusion models, transformer-based gen-
+erators, including MMDiTs in flow-matching frameworks, without altering their
+inference pipelines. Rich vision-language reasoning supervision is used only dur-
+ing training; at deployment (testing phase), editing remains a standard genera-
+tive process with no additional computational overhead. By reframing instruction-
+guided editing as semantic alignment optimization, IABEdit establishes a prin-
+cipled and scalable framework for semantically grounded image editing. Across
+diverse benchmarks and generative backbones, we demonstrate that enforcing
+semantic consistency during training yields more faithful, localized edits, inde-
+pendent of the underlying architecture. Our key contributions are:
+1. Differentiable Semantic Reasoning-based Verification: We introduce
+a gradient-based training objective that backpropagates VLM-derived se-
+mantic descriptors through the generative backbone, explicitly teaching both
+what to edit and where to edit. To the best of our knowledge, IABEdit is
+among the first methods to embed textual semantic reasoning-oriented in-
+struction verification directly into the diffusion and flux training loop.
+2. Model-Agnostic, VLM-free Inferencing: IABEdit operates as a training-
+time supervision layer requiring no changes to inference pipelines, making
+it directly applicable to UNet, transformers in flow-matching architectures
+with no additional runtime overhead.
+3. State-of-the-Art Results Across Domains: IABEdit demonstrates im-
+provements across diverse editing tasks: Scene-level editing and Identity-
+sensitive Facial editing. IABEdit achieves leading performance on RealEdit,
+MagicBrush, EMU Edit and D-LORD benchmarks.
+1.1
+Related Work
+Earlier image manipulation approaches relied on mask-based editing [5, 32, 33],
+which provided explicit localized control but required manual spatial annota-
+tions. Instruction-based editing methods instead use image generation mod-
+els [2,10,11,19] to embed textual conditions, typically following a triplet setup of
+source image, instruction, and target edited image. Many earlier works [12, 19]
+generated training data by rectifying instructions with LLMs and producing
+edited images via diffusion models. However, current T2I models apply edits in
+unintended regions, resulting in noisy supervision. To improve quality, [10,19,34]
+introduced high-quality editing datasets through image filtering [17]. Despite
+these efforts, most methods still rely on static textual CLIP embeddings [26],
+used purely as external conditioning. This often leads to misalignment between
+fine-grained instructions and edited regions. Accurate localization of instruction-
+relevant elements (e.g., power lines) is crucial for targeted edits (Figure 1b).
+
+
+4
+Chiranjeev et al.
+CLIP Text  
+Encoder
+Add a face mask to the person’s face 
+that covers the lower part of the nose 
+and mouth region, obscuring the 
+lower half of the face. 
+zt
+DVAE
+Denoising U-Net
+EVAE
+s
+Isrc
+IGedit
+z’0
+ Φ
+Descriptive 
+Anchor
+Instruction
+USER: <image>\nBased on the image 
+editing instruction: {[instruction]}, Briefly 
+Describe 
+the 
+image 
+based 
+on 
+this 
+instruction.\nASSISTANT:"
+Prompt
+LM Head
+LM Head
+Predicted 
+Semantic 
+Descriptor
+Semantic 
+Supervision
+Iedit
+Frozen
+Trainable
+Static instruction provided 
+as conditions for editing
+Source image 
+conditioned for 
+better preservation
+Visual-Textual Semantic Understanding
+Instruction-Aligned
+ Backpropagation
+LLM - LoRA
+Instruction 
+Aligner
+Enriched 
+Semantic 
+Descriptor
+Context Preservation
+Fig. 2: IABEdit enables instruction-based image editing through a semantic-supervised
+distillation mechanism. A frozen Descriptive Anchor extracts rich guidance from the
+instruction and ground-truth edit, while an Instruction Aligner learns to align the
+generated image with this guidance. The alignment is enforced via backpropagation,
+guiding the diffusion model toward faithful and controllable edits.
+To improve semantic understanding, recent methods [12,35] incorporate re-
+ward information into text conditions. [15] replace CLIP with VLMs [21,24] to
+obtain richer textual understanding. However, these approaches still treat the in-
+struction only as a prior conditioning signal in the diffusion process, without pro-
+viding active or corrective understandings, limiting fine-grained alignment. They
+also incur high inference cost due to VLM-based conditioning. SuperEdit [19]
+addresses misalignment through rectified prompts and contrastive supervision,
+building a discriminative link. Yet, this operates mainly at the prompt level,
+leaving instruction semantics out of the generation process. Overall, existing
+methods remain constrained by static conditioning, weak localization, and costly
+inference, underscoring the need for methods that achieve deeper, more reliable
+instruction-to-image alignment.
+2
+IABEdit: Instruction-Aligned Editing
+We propose IABEdit, which provides a balance between context preservation
+and semantic editing. As illustrated in Figure 2, our approach consists of two
+components: (1) image context conditioning, which maintains structural fidelity
+through encoder and conditioning-level preservation, and (2) editing through
+gradient-enabled alignment feedback, which provides semantic supervision dur-
+ing training to enforce instruction-consistent modifications.
+2.1
+Editing using context as condition
+We formalize successful image editing as a balance between two competing ob-
+jectives: faithful realization of the instruction and preservation of the original
+visual context. In practice, many editing models rely primarily on static textual
+conditioning while using the input image only as a spatial prior, which conditions
+
+
+IABEdit
+5
+what needs to be edited but does not focus on what needs to be preserved. Thus,
+edits may propagate beyond the intended regions or alter unrelated content.
+To explicitly enforce context preservation, IABEdit introduces structured
+conditioning that separates transformation cues from context cues. The genera-
+tion process is guided by three complementary signals: (i) a textual instruction
+embedding cins that specifies the desired modification, (ii) a source-image em-
+bedding csrc that encodes high-level visual attributes and context information,
+and (iii) the latent representation s of the source image to retain spatial struc-
+ture. By decoupling edit intent from contextual cues, this formulation encourages
+precise modifications while minimizing unintended changes.
+The instruction embedding cins is obtained from a text encoder, while the
+source-image embedding csrc is derived from visual features of the input im-
+age and projected into a conditioning space using a multi-layer linear projector
+(MLP). These signals are injected into the generative model (e.g., via cross-
+attention) to guide the editing process. For clarity, we present the diffusion-
+based formulation in the main paper, while flow-based variants are provided in
+the supplementary material:
+  \l a bel {eq:prop_edit_
+eq} \ begin {aligne
+d} c_{ins }
+ 
+& = \t ex
+t {CLI P}(
+in s t
+r
+uc t io n), \q ua d c_
+{
+s
+rc} = MLP(\phi (I_{src})), \\ z_{t} &= \sqrt {\bar {\alpha }_t} z_{0} + \sqrt {1 - \bar {\alpha }_t} \, \epsilon , \quad \epsilon \sim \mathcal {N}(0, I), \\ \mathcal {L}_{N} &= \mathbb {E} \left [\left \| \epsilon - \epsilon _\theta \left ( z_t \oplus s,\ c,\ t \right ) \right \|_2^2\right ]. \end {aligned} 
+(1)
+Here, zt denotes the noisy latent at timestep t, c denotes all conditioning
+inputs, c = {cins, csrc}. and LN is the standard denoising objective. During
+training, we apply dropout to the instruction embedding cins and spatial latent
+s to enable classifier-free guidance. In contrast, the source-image embedding csrc
+is always preserved, as it encodes identity and contextual cues that must remain
+consistent—particularly in tasks such as face editing.
+Importantly, context preservation and edit fulfillment play fundamentally dif-
+ferent roles during generation. The contextual cues (s) of the source image remain
+constant throughout the denoising trajectory, and therefore can be represented
+as structurally conditioning latents. In contrast, the degree to which the instruc-
+tion has been satisfied evolves dynamically at each iteration of generation. The
+regions requiring modification depend on the current state of the image. Static
+conditioning alone cannot account for this evolving semantic discrepancy.
+This observation motivates the need for a dynamic, output-dependent su-
+pervision signal that continuously evaluates how much editing is still required.
+IABEdit introduces such a mechanism through semantic feedback, enabling the
+model to adaptively refine edits while preserving context.
+2.2
+Semantic Alignment via Gradient-Enabled VLM Supervision
+Conventional instruction-based editing methods encode instructions once via
+CLIP and inject them as static conditioning signals. This pre-conditioning ap-
+proach suffers from two critical limitations: short CLIP embeddings lack expres-
+siveness for complex instructions, and the model never verifies whether generated
+
+
+6
+Chiranjeev et al.
+outputs satisfy the instruction. These limitations manifest as systematic failures,
+as shown visually in Figure 3, where adding a hat "above" rather than "on" the
+cat’s head indicates an abstract semantic understanding of the instruction. Fur-
+ther, the image editing removes both the teddy bear and the child when instructed
+to remove only the bear, which shows the lack of spatial localized understand-
+ing of the context. Thus, the static conditioning focuses on instruction tokens
+but lacks a mechanism to infer the underlying intent of the instruction, such as
+determining edit-remaining regions/tokens.
+We address this limitation by leveraging the semantic reasoning capabilities of
+vision-language models (VLMs). A frozen VLM, Descriptive Anchor, serves as a
+semantic reference, extracting detailed descriptors from the ground-truth edited
+image to capture the intended transformation. A trainable VLM, Instruction
+Aligner, is then optimized to predict these descriptors from the generated output,
+effectively measuring the discrepancy between the realized and desired edits. The
+resulting semantic alignment loss produces gradients proportional to the residual
+discrepancy between the generated image and the intended edit. These gradients
+are backpropagated to the image generative model, providing output-dependent
+supervision that adaptively guides both what should be modified and where
+modifications should be localized.
+Through this continuous semantic correction process, IABEdit transforms
+instruction following from static conditioning into iterative alignment, enabling
+the model to leverage VLM-level understanding during training while learning to
+perform precise and efficient edits. Importantly, this semantic feedback operates
+only during training; inference remains a standard generative process without
+additional computational overhead.
+Ground-Truth Semantic Supervision: We employ a frozen vision-language
+model (VLM) to extract rich semantic representations from the ground-truth
+edited image Iedit conditioned on the instruction prompt P. Unlike simple cap-
+tions, these descriptors encode both global transformations (e.g., “watercolor
+style applied throughout") and fine-grained localized attributes (e.g., “blue hat
+on the cat’s head, covering the ears"). This captures spatial relationships, colors,
+and occlusions far beyond static CLIP embeddings. As they are automatically
+generated through image understanding, no additional annotations are required.
+Learning Semantic Alignment: A trainable VLM, implemented via lightweight
+LoRA adaptation [14], is optimized to reproduce these semantic representations
+from the generated image IGedit. Matching the generated and reference seman-
+tics defines a differentiable alignment objective, enabling gradients to flow back
+into the image generative model and enforce instruction-consistent edits.
+To obtain z′
+0 without full diffusion sampling, we employ single-step denois-
+ing at small timesteps t ≤τ. At these early timesteps, noisy latent z′
+t closely
+approximates clean latent z0 since noise level √1 −¯αt is minimal:
+  \ la
+b e l 
+{ e q: c tr_ pp_eq}
+ z _0 \appr ox z' _0
+ = \frac {z'_t - \sqrt {1 - \bar \alpha _t} \, \epsilon _\theta ((z'_t \oplus s), c_{ins}, c_{src}, t)}{\sqrt {\bar \alpha _t}} 
+(2)
+
+
+IABEdit
+7
+This approximation [20] provides precise estimates while avoiding the mem-
+ory overhead of 50+ DDIM steps per training batch.
+Alignment-Relevant gradient flow: We train our dynamic semantic aligner
+via KL divergence minimization:
+  \ b
+e
+g
+i
+n {
+al
+i
+gned} \
+l
+abel
+ 
+{
+e q:distill_eq
+}
+ \ma
+t
+h
+ca
+l {
+L }
+_
+{
+\
+tex
+t
+ 
+{D}
+} &=
+ \fr
+a
+c { 1}{B
+} \s u m _ {b=1
+} ^{B
+}
+ \ text {KL} \left ( \text {Softmax} \left ( \frac {\mathbf {l}_f^{(b)}}{T} \right ) \Bigg \| \text {Softmax} \left ( \frac {\mathbf {l}_t^{(b)}}{T} \right ) \right ) * T^2 \\ &= \frac {1}{B} \sum _{b=1}^{B} \sum _{i=1}^{N} p_f^{(b)}(i) \left [ \log p_f^{(b)}(i) - \log p_t^{(b)}(i) \right ] * T^2 \end {aligned} 
+(3)
+where l(b)
+f
+and l(b)
+t
+denote the token-level logits from the frozen Descriptive An-
+chor and the trainable semantic aligner for the b-th sample over N tokens. A
+temperature T is used to soften the probability distributions, enabling the aligner
+to learn from fine-grained semantic discrepancies; the T 2 factor compensates for
+gradient scaling during distillation. The corresponding token probabilities are
+denoted as p(b)
+f (i) and p(b)
+t (i).
+Crucially, spatial localization emerges through gradient flow. The alignment
+loss LD is computed from the generated image IGedit, which depends on the
+predicted latent z′
+0 and ultimately on the model’s noise estimator ϵθ. Backprop-
+agating ∇LD therefore injects semantic discrepancy signals directly into the
+generative backbone, guiding updates toward regions that require modification
+to satisfy the instruction. Unlike static conditioning, which provides fixed seman-
+tic priors, IABEdit embeds semantic reasoning verification into the optimization
+objective itself. Instruction adherence is no longer assumed—it is explicitly min-
+imized as part of the training landscape.
+Joint Optimization of Context Preservation: Distillation gradients also
+update the MLP projector mapping ϕ(Isrc) to source embedding csrc. Rather
+than encoding generic features, the projector learns instruction-aware condition-
+ing: emphasizing features in regions requiring edits while preserving unchanged
+areas. This joint optimization of textual (via distillation) and visual (via MLP)
+conditioning enables spatially precise edits.
+This framework enables faithful instruction-guided editing across general scenes;
+however, certain domains such as face editing require additional constraints to
+preserve subject-specific identity characteristics during modification.
+Identity Preservation for Face Editing:
+For face editing applications in
+surveillance and security contexts, maintaining biometric identity under occlu-
+sions (masks, sunglasses) is critical. While semantic distillation ensures instruc-
+tion alignment, it does not explicitly constrain identity preservation. We there-
+fore introduce an identity coherence loss LC that minimizes cosine distance be-
+tween facial embeddings:
+  \ l
+a
+b
+e
+l {
+e
+q : cons_eq} \mathc al {L}_{\tex
+t {C
+}} = \frac {1}{B} \sum _{b=1}^{B} \left (1 - \cos (\phi ^{(b)}(I_{src}), \phi ^{(b)}(\mathcal {D}_{\text {VAE}}(z'_{0})))\right ) 
+(4)
+
+
+8
+Chiranjeev et al.
+where ϕ is a pre-trained face recognition model (ArcFace [7]). This encourages re-
+tention of biometric features in the generated edit DVAE(z′
+0) despite occlusions or
+appearance changes. By operating in the embedding space of a discriminatively
+trained face recognition model, this loss ensures that identity-critical features
+(facial structure, proportions) remain invariant even when instruction-guided
+edits add realistic occlusions that would otherwise distort facial geometry.
+The complete loss function combines all components conditionally:
+  \label 
+{
+eq : ia b _e d it _ eq } \m
+at h c a
+l { L}_
+{\text {IABEdit}} = \left \{ \begin {aligned} \lambda _{N} \cdot \mathcal {L}_{N} + \lambda _{D} \cdot \mathcal {L}_{D} + \lambda _{C} \cdot \mathcal {L}_{C}, & \quad \text {if } t \leq \tau \\ \lambda _{N} \cdot \mathcal {L}_{N}, & \quad \text {otherwise} \end {aligned} \right . 
+(5)
+where \lambda _{\text {N}} , \lambda _{\text {D}} , and \lambda _{\text {C}} are scalar weights that balance the contributions of each
+loss term. τ refers to the timestep threshold, which is a hyper-parameter used
+to determine whether the generated edited image should be utilized for VLM
+fine-tuning and maintaining structural coherence of faces. Distillation (LD) and
+identity (LC) losses apply only at small timesteps (t ≤τ) where generated
+outputs are available via single-step denoising. For general scene editing tasks,
+LC is omitted, and the framework optimizes only LN and LD.
+3
+Experimental Details
+We present a detailed experimental setup for rigorously evaluating our editing
+mechanism with various benchmarks, a model-agnostic generative method and
+balanced evaluation criteria.
+Datasets: For scene image editing tasks, we use Super-40K [19] as a training
+dataset. Evaluation is conducted on RealEdit [12], the MagicBrush [34], and the
+EMU Edit [31] test set to assess image preservation and instruction alignment.
+To assess the performance of the model in identity-sensitive applications such
+as surveillance, we further train and evaluate on the disjoint train-test sets of
+D-LORD [22] dataset 1, which includes facial images under occlusion.
+Architecture and Implementation Details: The IABEdit framework is
+model-agnostic, can work with diffusion and flow-based generative models. Se-
+mantic supervision is provided using a LLaVA-based [21] VLM model. Dur-
+ing inference, IABEdit functions as a lightweight diffusion-only model. It uses
+CLIP-based 77-token instruction embeddings (where instructions comprise 20-
+30 effective textual tokens) and conditional image features (CLIP for scene edits
+and ArcFace for facial edits) with a learned small set of MLP layers. To in-
+corporate deeper semantic guidance with detailed descriptive context, we use
+LLaVA-based 1362-token (with 100 effective generated textual tokens) descrip-
+tors, enabling fine-grained edits aligned with instruction semantics. Additional
+implementation details, and training and testing protocols are provided in the
+supplementary.
+1 The dataset was obtained through: https://dyslai.org/
+
+
+IABEdit
+9
+Original 
+Image
+InstructPix2Pix
+Instruction
+Add a witch’s hat on 
+top of the cat’s head
+Remove the brown teddy 
+bear toy from the wooden 
+bridge
+Replace the monkey with a 
+cat walking on the rope.
+Change the image to 
+appear as watercolor 
+painting
+Change the texture of the 
+boy’s trousers to be made 
+of denim
+Transform the scene to a 
+winter setting, with snow 
+on the lily pads and a thin 
+layer of ice in water.
+MagicBrush
+IABEdit 
+(ours)
+SuperEdit
+BAGEL
+FLUX.1
+Kontext Dev
+Fig. 3: Qualitative results on RealEdit dataset showing comparisons across various
+editing methods. The instruction adherence can be visualized at the fine-grained level.
+The non-targeted regions remain preserved, showcasing precise instruction-aligned edit-
+ing generations. More visual results are available in supplementary.
+Evaluation Metrics (Alignment and Preservation): IABEdit is evaluated
+in terms of quantitative metrics, agent-based assessments, as well as human eval-
+uations. To assess localized edits and structural preservation, we use feature-level
+metrics: CS-P (Content Similarity Preserving) for measuring content retention of
+non-edited regions by computing CLIP-similarity between the source and edited
+image, CLIP-I for measuring similarity to the target-edited image, and CLIP-
+T for instruction alignment that leverages a pre-trained CLIP model. DINO-
+I [3] and L1 scores measure structural and pixel-level similarity to the ground
+truth edited image, while DINO-P is used to measure the facial identity struc-
+tural preservation of the edited face with respect to source face. To capture the
+trade-off between instruction adherence and content preservation, we compute
+Harmonic Mean (HM) between CLIP-T and CS-P, offering a unified measure
+of balanced editing performance. This helps quantify whether an edit faithfully
+follows the instruction without significantly altering the non-editing regions. As
+traditional metrics often miss perceptual and semantic subtleties that humans
+easily identify [12,15,19], we incorporate MLLM agents like GPT-4o [17] to eval-
+uate alignment, spatial precision, and realism, complemented by a user study
+grounded in the same criteria.
+
+
+10
+Chiranjeev et al.
+4
+Results and Analysis
+We evaluate IABEdit across multiple datasets and compare it with state-of-the-
+art instruction-based editing methods. While recent work has improved perfor-
+mance through dataset curation [16, 34] and instruction refinement [12, 19], a
+fundamental challenge remains: directly aligning textual semantics with precise
+spatial editing regions during training. As shown in Figure 3, IABEdit addresses
+this challenge through gradient-based semantic distillation, yielding superior in-
+struction adherence and localization.
+Instruction Alignment and Localized Edit Control: As shown in Figure
+3, existing methods struggle with precise localization. For instance, SuperEdit
+removes not only the teddy bear but also the child (column 2), and adds denim
+texture to both the boy’s trousers and the goat (column 5). Whereas an au-
+toregressive multi-modal generative method, such as BAGEL, also fails to com-
+pletely remove the teddy bear from the bridge (zoom in for a better view), and
+also just changes the color of the trousers without changing their texture to
+denim. Similarly, a lack of understanding of the instructions’ semantics is ob-
+served in recent FLUX.1 Kontext Dev method, it over-edits as it not only adds
+the hat on the cat’s head, but it also puts a jacket on the cat (see Figure 3
+column 1), similarly, it changes the trousers to denim but also increases the
+length of the boy’s legs. These errors reflect weak coupling between instruction
+semantics and spatial edits. In contrast, IABEdit’s gradient-based distillation
+enables fine-grained control, modifying only instruction-relevant regions. Quan-
+titatively also, as shown in Tables 1a and 1b, IABEdit with diffusion achieves the
+highest CLIP-T scores among diffusion-based methods on RealEdit (27.60) and
+MagicBrush (30.97) benchmarks, which is superior to recent diffusion models
+(UltraEdit and SuperEdit) and perform competitive to computationally heavy
+flux-based (FLUX.1 Kontext Dev) and autoregressive (BAGEL) image editing
+methods. IABEdit also achieved a CLIP-I score of 92.41 on the MagicBrush test
+set, indicating strong alignment between the edited image and the target edited
+image, showing the controlled localized edit.
+As shown in Table 1b, IABEdit achieves the best DINO-I score on Mag-
+icBrush (88.26), outperforming the strongest diffusion-based baseline (UltraEdit)
+by +3.49 points, and attains the lowest L1 distance (0.058), indicating sharper
+structural fidelity to the ground-truth edits. Moreover, GPT-4o score evalua-
+tions (Table 2 "Following" dimension) also rank IABEdit highly for instruction
+adherence (3.63), affirming its semantic precision in fine-grained edits.
+Content and Structural Preservation: IABEdit excels at maintaining the
+integrity of non-instructed image regions, preserving both visual content and
+spatial structure. It can be observed from Figure 3, that recent state-of-the-
+art FLUX-based editing method (FLUX.1 Kontext Dev) does not preserve the
+context of the image as shown through the distortion in the background con-
+text behind the lily flowers (column 3, row 6), and in the ‘watercolor-style edit’,
+it fails to preserve the water region present in the original tiger image. Quan-
+titatively, this is reflected by achieving high DINO-P and CS-P scores across
+datasets, indicating that the original image semantics are retained even after
+
+
+IABEdit
+11
+Table 1: (a) Comparing performance of IABEdit (Diffusion+LLaVA) with other image
+editing methods on the RealEdit dataset. (b) Comparing performance of IABEdit
+(Diffusion+LLaVA) with other image editing methods on the MagicBrush benchmark.
+(a)
+Method
+CS-P ↑CLIP-T ↑HM ↑
+MagicBrush [34]
+90.25
+26.98
+41.28
+InstructDiffusion [11]
+74.20
+26.69
+38.71
+InstructPix2Pix [2]
+75.76
+27.00
+39.78
+Reward-InstructPix2Pix [12]
+89.69
+27.31
+41.67
+MGIE [10]
+84.64
+26.20
+39.58
+SmartEdit [15]
+87.70
+26.50
+40.64
+HQ-Edit [16]
+66.32
+27.09
+38.21
+UltraEdit [36]
+84.91
+27.50
+41.39
+SuperEdit [19]
+90.93
+26.01
+40.24
+BAGEL [6]
+90.60
+26.69
+41.00
+FLUX.1 Kontext Dev [18]
+87.64
+27.21
+41.29
+IABEdit (Ours)
+89.65
+27.60
+42.00
+(b)
+Method
+CLIP-I ↑CLIP-T ↑DINO-I ↑L1 ↓
+MagicBrush [34]
+90.70
+30.60
+80.60
+0.062
+InstructDiffusion [11]
+89.20
+30.20
+77.70
+-
+InstructPix2Pix [2]
+85.40
+29.20
+69.80
+0.112
+Reward-InstructPix2Pix [12]
+88.90
+29.80
+-
+-
+MGIE [10]
+90.90
+30.50
+-
+-
+SmartEdit [15]
+90.40
+30.30
+79.70
+0.081
+HQ-Edit [16]
+69.08
+25.88
+51.62
+0.243
+UltraEdit [36]
+90.47
+30.86
+84.77
+0.066
+SuperEdit [19]
+90.50
+30.30
+80.20
+0.106
+BAGEL [6]
+92.13
+31.02
+87.00
+-
+FLUX.1 Kontext Dev [18]
+91.90
+31.28
+86.03
+-
+IABEdit (Ours)
+92.41
+30.97
+88.26
+0.058
+Table 2:
+Performance comparison on the RealEdit dataset (having a sample size of
+560 instruction-image pairs) across various instruction-based image editing methods.
+The evaluations are carried out using GPT-4o.
+Method
+Following ↑
+Preserving ↑
+Quality ↑
+Overall ↑
+Acc (%) Score Acc (%) Score Acc (%) Score Acc (%) Score
+MagicBrush [34]
+51.00
+2.90
+70.00
+3.85
+50.00
+3.67
+57.00
+3.47
+InstructDiffusion [11]
+52.00
+2.87
+54.00
+3.17
+45.00
+3.58
+50.30
+3.21
+InstructPix2Pix [2]
+52.00
+2.94
+53.00
+3.31
+50.00
+3.69
+51.70
+3.31
+Reward-InstructPix2Pix [12]
+63.00
+3.39
+58.00
+3.43
+54.00
+3.80
+58.30
+3.54
+MGIE [10]
+40.00
+2.43
+45.00
+2.79
+38.00
+3.35
+41.00
+2.86
+SmartEdit [15]
+64.00
+3.50
+66.00
+3.70
+45.00
+3.56
+58.30
+3.59
+SuperEdit [19]
+67.00
+3.59
+77.00
+4.14
+65.00
+4.01
+69.70
+3.91
+IABEdit (Ours)
+66.00
+3.63
+72.00
+4.19
+54.00
+3.54
+64.00
+3.78
+editing. Moreover, IABEdit achieves superior DINO-P scores, particularly on
+the D-LORD dataset, demonstrating its strength in preserving identity-specific
+structural features, especially in face editing tasks as compared to a proprietary
+image-generation Gemini-AI agent. The framework’s use of cross-attention and
+latent conditioning enables localized edits without unintended modifications. To-
+gether, these results highlight IABEdit’s ability to perform precise edits while
+preserving the non-edited regions of original image.
+Balanced Editing: Preserving While Transforming: IABEdit optimally
+balances instruction adherence and content preservation, achieving the high-
+est Harmonic Mean (HM) between CLIP-T and CS-P metrics (Table 1a). On
+RealEdit, IABEdit scores HM=42.00, significantly outperforming Reward In-
+structPix2Pix (41.67), UltraEdit (41.39), SuperEdit (40.24), BAGEL (41.00),
+FLUX.1 Kontext Dev (41.29) and other baselines. We also performed Wilcoxon
+signed-rank test with n=560 and observed significant results for all models with
+p < 0.05, whose detailed values are shown in the supplementary.
+IABEdit’s CS-P score of 89.65 is slightly lower than SuperEdit’s 90.93, but
+this difference reflects successful editing rather than a limitation. When instruc-
+tions require substantial changes, the edited image naturally diverges from the
+source. Many competing methods struggle with this balance: they either preserve
+too much content and under-edit (high CS-P but low CLIP-T), or they over-edit
+and introduce unintended changes (low CS-P with inconsistent CLIP-T). IABE-
+
+
+12
+Chiranjeev et al.
+Diffusion +IABEdit
+BAGEL
+FLUX. 1 Kontext Dev
+Original
+plate with dinner 
+on it set on a 
+tablecloth with a 
+knife and more 
+french fries
+car in the 
+background
+pizza with basil 
+leaves
+(a) Comparing IABEdit (trained on UNet-Diffusion) with Distinct Architectural Editing Methodologies.
+Original Image
+FLUX.1 Kontext Dev
+Instruction
+FLUX.1 + IABEdit
+'Insert a wooden 
+bench along the 
+path on the right 
+side.'
+'Replace the 
+monkey with a 
+cat walking on 
+the rope.
+Replace the 
+road in the 
+middle with a 
+grassy lawn.
+(b) Qualitative Results for IABEdit (trained on MMDiT-FLUX.1) 
+Fig. 4: (a) Qualitative comparison of IABEdit (+UNet Diffusion) on MagicBrush
+test-set with other state-of-the-art editing methods. (b) Qualitative visualization of
+RealEdit test-set samples showcasing improvement of FLUX.1 method by training it
+with the IABEdit framework.
+dit’s gradient-based distillation provides precise spatial control, modifying only
+the regions specified by the instruction while leaving other areas unchanged.
+Agent-Based and Human-Centric Evaluation: Table 2 reports GPT-4o
+evaluations on RealEdit across instruction following, content preservation, and
+image quality measures. Score measures fine-grained assessment on a 0-5 scale
+while Accuracy acts as a binary acceptability criterion. Although SuperEdit is
+more consistent at passing the binary baseline, IABEdit attains higher continu-
+ous scores in Instruction Following (3.63) and Content Preservation (4.19), indi-
+cating more precise edits while retaining non-target regions. IABEdit’s percep-
+tual quality score (3.54) is slightly lower than SuperEdit, but the overall score re-
+mains competitive at 3.78 (second-best). The quality-based comparisons are dis-
+cussed in the supplementary material. Overall, it reveals a trade-off: SuperEdit
+offers robustness, while IABEdit provides higher-fidelity edits and preservation.
+On D-LORD facial edits, IABEdit attains an instruction-following score of 4.67
+with 94.8% accuracy, comparable to Gemini-AI (4.53, 92.19%).
+Comparison with Distinct Architectural Editing Methodologies: We
+compare IABEdit against fundamentally different architectures: FLUX.1 Kon-
+text Dev [18] (flow matching) and BAGEL [6] (unified autoregressive multi-
+modal mixture of transformers). Although these methods generate photorealistic
+output, they exhibit three failure modes (Figure 4a): Keyword fixation: focusing
+on isolated words ("fries", "car") rather than full instruction semantics. Spa-
+tial misalignment: inserting objects without respecting scene composition (e.g.,
+overlaying a car on an existing bike). Global distortion: altering color/lighting
+beyond edited regions, and overshooting scale by adding "too large basil leaves"
+without respecting the image content’s scale.
+We observe that, even with a lightweight UNet-based diffusion method in the
+IABEdit framework, it performs better-balanced image editing (refer to Figure
+4(a)–qualitative visualization and quantitative performance observed through
+Table 1a and Table 1b) as compared to the computationally heavy flux and
+autoregressive methods.
+Model Agnostic IABEdit Framework: Table 1a and 1b show results with
+IABEdit using a UNet-based denoising backbone, which outperforms existing
+
+
+IABEdit
+13
+diffusion-based methods such as SuperEdit, InstructPix2Pix and Reward In-
+structPix2Pix. Moreover, when IABEdit is trained over FLUX.1 model, it im-
+proves the image quality of the generated edited image, this property is inherited
+from FLUX’s quality. As we noted that FLUX.1 is instruction’s keyword fixated
+and does not understand the instruction’s semantics, further it also does not
+focus on the image’s context. We solve this problem by training FLUX.1 with
+the IABEdit framework, which improves its image-text semantic alignment and
+also preserves the image context in the generated edited image. After train-
+ing FLUX.1 with IABEdit, it improves FLUX.1 on the RealEdit dataset by
+attaining a CS-P score of 90.20, CLIP-T score of 27.78 and performs bal-
+anced editing by achieving a HM score of 42.28. While FLUX.1 achieves a
+CS-P score of 87.64, a CLIP-T score of 27.21 and performs balanced edit-
+ing by achieving a HM score of 41.29. All these scores achieved on IABE-
+dit+FLUX.1 are significantly higher, as they attained a p-value<0.05. It can
+be observed that IABEdit+FLUX.1 improves the image context preservation
+score compared to the existing FLUX.1 model. Figure 4(b) presents qualita-
+tive results of FLUX.1+IABEdit. It can be observed that the context of the
+original image is preserved in IABEdit (+FLUX.1) while following the editing
+instruction, whereas FLUX.1 (Kontext Dev) destroys the image context. There-
+fore, IABEdit is a model-agnostic framework suitable for all kinds of denoising
+networks, including UNet in Stable Diffusion and MMDiTs in FLUX.1.
+Results on the challenging EMU Edit benchmark [31] across diffusion and
+FLUX-based architectures are provided in the supplementary. IABEdit outper-
+forms the strongest baseline by +1.41 in CLIP-based instruction following, +0.84
+in target-caption alignment, and +9.98 in DINO-based structural preservation,
+demonstrating semantically accurate edits while preserving image structure.
+Table 3:
+Quantitative comparison with
+agent-based generation models on the real-
+world D-LORD dataset for facial editing.
+Generation Technique CS-P ↑CLIP-T ↑HM ↑DINO-P ↑
+SuperEdit [19]
+79.19
+22.96
+35.38
+51.64
+Gemini-AI (Agent) [4]
+78.67
+31.40
+44.79
+50.20
+IABEdit (Ours)
+79.93
+33.10
+46.74
+55.33
+Real-World
+Surveillance
+Sce-
+narios: In real-world surveillance
+scenarios,
+instruction-based
+facial
+editing is particularly challenging
+due to realistic transformations like
+disguises
+(masks
+and
+sunglasses),
+while preserving identity. As shown in Table 3, IABEdit outperforms the Gemini-
+AI (2.5Pro) [4] and SuperEdit methods, achieving higher CS-P (79.93) and
+CLIP-T (33.10) scores. We also performed a Wilcoxon signed-rank test on the
+harmonic mean scores and achieved a p-value of < 0.05. An improvement of
++5.13 DINO-P points over Gemini-AI (agent) method and +3.69 over SuperEdit
+(trained on D-LORD train set and evaluated on disjoint identity test set) indi-
+cates stronger preservation of structural identity. We have also evaluated the
+effectiveness in terms of face recognition performance. While the detailed results
+are included in supplementary, combining the generated edited facial samples
+with the real face dataset improved the recognition performance by 2.82%.
+Ablation Study: (1) IABEdit’s Component Ablation: Figure 5 presents
+the ablation results highlighting the direct impact of the proposed IABEdit
+method based on the loss components introduced in our method. The effective-
+
+
+14
+Chiranjeev et al.
+Fig. 5: Ablation results on
+the Real-Edit dataset.
+Table 4:
+Comparisons on RealEdit dataset using
+3 protocols: (1) with and w/o LoRA-finetuning, (2)
+VLM models, and (3) with and w/o context preser-
+vation conditioning.
+CS-P (↑) CLIP-T (↑) HM (↑)
+Without LoRA-finetuning
+83.44
+24.44
+37.58
+With LoRA-finetuning (IABEdit)
+89.65
+27.60
+42.00
+IABEdit (LLaVA-7B)
+89.65
+27.60
+42.00
+IABEdit (Qwen-VL 2.5-7B)
+89.33
+27.91
+42.27
+IABEdit (w/o context preservation)
+88.91
+25.90
+40.19
+IABEdit (w/ context preservation)
+89.65
+27.60
+42.00
+ness of our method for balanced editing is demonstrated by higher HM scores
+achieved when training the model with combined Denoising (LN) and Distilla-
+tion (LD) loss functions. Incorporating both objectives results in +2.47 perfor-
+mance improvement compared to training with only Denoising loss (LN). This
+underscores the importance of the distillation component with gradient-enabled
+meaningful supervisory signals. It enhances the image generation model’s ability
+to perform semantically aligned edits with natural language instructions.
+(2) Impact of LoRA fine-tuning: Table 4 (first two rows) shows ablation
+results for highlighting the utilization of LoRA adapter for fine-tuning the pre-
+dicted semantic VLM descriptor. Without LoRA adaptation, the Instruction
+Aligner operates on noisy intermediate denoised outputs and produces unsta-
+ble semantic descriptors, resulting in inaccurate gradient updates from ∇LD.
+LoRA adaptation significantly improves robustness to intermediate generations,
+enabling semantic supervision, while the frozen supervisor is a stable reference.
+This "clean expert + noise-robust learner" design outperforms using a single
+frozen VLM for both roles. LoRA-based finetuning results in balanced image
+editing, with a large improvement of +4.42 HM scores compared to w/o LoRA.
+(3) Stronger VLM backbone: To study the impact of different VLMs, we
+replaced LLaVA-7B with Qwen-VL-2.5-7B [1], later further improves alignment
+(CLIP-T: 27.60 →27.91) and balanced editing (HM: 42.00 →42.27), indicating
+that stronger semantic reasoning translates to better guidance.
+(4) Context-preservation conditioning: Table 4(last two rows) present re-
+sults with and without context-preservation conditioning to highlight its effec-
+tiveness. With conditioning, CS-P improves by +0.74, CLIP-T by +1.70, and
+HM by +1.81, demonstrating more balanced image editing.
+Human Study: We have conducted a user study to understand the human-
+centric evaluations on the image editing task. The user study is conducted on
+the challenging RealEdit dataset with 30 subjects aged 20 −45. Evaluations
+are carried out across three dimensions: Instruction following, Non-instructed
+region preservation and Quality of generated edited image. Each participant se-
+lected the best-performing model in each evaluation metric case for the randomly
+provided 30 triplets of generated edited image, original image and the editing in-
+struction. The triplets are provided for multiple instruction-based models such as
+InstructPix2Pix [2], MagicBrush [34], SuperEdit [19] and the proposed IABEdit.
+
+
+IABEdit
+15
+0
+10
+20
+30
+40
+50
+Best Instruction Follower
+Best Content Preserver
+Best Quality Generator
+InstructPix2Pix
+MagicBrush
+SuperEdit
+IABEdit
+Fig. 6: User study results on RealEdit
+dataset. The values indicate the best
+performing model in randomly selected
+30 images. Three metrics for human
+evaluations: Instruction Following, Non-
+Editing Content Preserving and Quality
+of Generated Edited image.
+Figure 6 shows the user responses
+for the best-performing model on 30
+randomly
+selected
+images
+across
+all
+four instruction-based models. IABEdit
+achieves the highest Instruction Follow-
+ing rate of 50.00%, demonstrating more
+accurate adherence to editing instruc-
+tions than the competing methods. It
+also best preserves the non-instructed
+regions, achieving the highest preserva-
+tion rate of 29.83%. In terms of image
+quality, IABEdit attains 37.58%, out-
+performing SuperEdit (31.45%). The
+slight variation in performance as com-
+pared to the GPT-4o model is observed
+due to the variation in sample size (i.e.,
+30 for human evaluation and 560 for GPT-4o evaluation) used for both evalua-
+tion methods. Human study results are in the supplementary.
+Training cost and Limitations: The limitations and training time compar-
+isons are mentioned in the supplementary material.
+5
+Conclusion
+IABEdit reframes instruction-guided editing as a problem of semantic alignment
+rather than conditioning. The argument is simple, a generative editor should not
+be trusted to follow an instruction it was never asked to semantically verify. By
+distilling spatially-aware descriptors from a frozen vision-language model and
+turning the residual into a gradient, IABEdit makes instruction satisfaction part
+of the training objective itself. Adherence is no longer assumed, it is measured,
+and minimized. Because this signal acts only during training, it leaves inference
+untouched and transfers across architectures, strengthening U-Net and MMDiT
+backbones alike. It even surpasses a proprietary baseline on the hardest case we
+tested, identity preservation under heavy occlusion, where curated benchmarks
+give way to real-world conditions. More broadly, IABEdit shows that gradient-
+aligned VLM distillation is a general way to supervise generation against mean-
+ing, not just pixels. The same principle extends naturally to video editing, 3D
+generation, and multimodal content creation, wherever verifying what was pro-
+duced matters as much as producing it.
+Acknowledgment
+This research was supported by the FAE team, AMD India, through GPU re-
+sources and by the IndiaAI Mission and Meta through the Srijan: Centre of Ex-
+cellence for Generative AI. Chiranjeev is partially supported through the PMRF
+Fellowship.
+
+
+16
+Chiranjeev et al.
+References
+1. Bai, S., Chen, K., Liu, X., Wang, J., Ge, W., Song, S., Dang, K., Wang, P., Wang,
+S., Tang, J., Zhong, H., Zhu, Y., Yang, M., Li, Z., Wan, J., Wang, P., Ding, W.,
+Fu, Z., Xu, Y., Ye, J., Zhang, X., Xie, T., Cheng, Z., Zhang, H., Yang, Z., Xu, H.,
+Lin, J.: Qwen2.5-vl technical report. arXiv preprint arXiv:2502.13923 (2025)
+2. Brooks, T., Holynski, A., Efros, A.A.: Instructpix2pix: Learning to follow image
+editing instructions. In: CVPR. pp. 18392–18402 (2023)
+3. Caron, M., Touvron, H., Misra, I., Jégou, H., Mairal, J., Bojanowski, P., Joulin,
+A.: Emerging properties in self-supervised vision transformers. In: ICCV. pp. 9630–
+9640 (2021)
+4. Comanici, G., Bieber, E., Schaekermann, M., Pasupat, I., Sachdeva, N., Dhillon,
+I., Blistein, M., Ram, O., Zhang, D., Rosen, E., et al.: Gemini 2.5: Pushing the
+frontier with advanced reasoning, multimodality, long context, and next generation
+agentic capabilities. arXiv preprint arXiv:2507.06261 (2025)
+5. Couairon, G., Verbeek, J., Schwenk, H., Cord, M.: Diffedit: Diffusion-based seman-
+tic image editing with mask guidance. ICLR (2023)
+6. Deng, C., Zhu, D., Li, K., Gou, C., Li, F., Wang, Z., Zhong, S., Yu, W., Nie, X.,
+Song, Z., Shi, G., Fan, H.: Emerging properties in unified multimodal pretraining.
+arXiv preprint arXiv:2505.14683 (2025)
+7. Deng, J., Guo, J., Xue, N., Zafeiriou, S.: Arcface: Additive angular margin loss for
+deep face recognition. In: CVPR. pp. 4685–4694 (2019)
+8. Dhariwal, P., Nichol, A.: Diffusion models beat gans on image synthesis. NeurIPS
+34, 8780–8794 (2021)
+9. Esser, P., Kulal, S., Blattmann, A., Entezari, R., Müller, J., Saini, H., Levi, Y.,
+Lorenz, D., Sauer, A., Boesel, F., Podell, D., Dockhorn, T., English, Z., Rom-
+bach, R.: Scaling rectified flow transformers for high-resolution image synthesis.
+In: ICML. pp. 12606–12633 (2024)
+10. Fu, T.J., Hu, W., Du, X., Wang, W., Yang, Y., Gan, Z.: Guiding instruction-based
+image editing via multimodal large language models. In: ICLR. pp. 54820–54833
+(2024)
+11. Geng, Z., Yang, B., Hang, T., Li, C., Gu, S., Zhang, T., Bao, J., Zhang, Z., Li, H.,
+Hu, H., Chen, D., Guo, B.: Instructdiffusion: A generalist modeling interface for
+vision tasks. In: CVPR. pp. 12709–12720 (2024)
+12. Gu, X., Li, M., Zhang, L., Chen, F., Wen, L., Luo, T., Zhu, S.: Multi-reward as
+condition for instruction-based image editing. In: ICLR. pp. 82243–82262 (2025)
+13. Ho, J., Jain, A., Abbeel, P.: Denoising diffusion probabilistic models. NeurIPS 33,
+6840–6851 (2020)
+14. Hu, E.J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., Chen,
+W.: LoRA: Low-rank adaptation of large language models. In: ICLR (2022)
+15. Huang, Y., Xie, L., Wang, X., Yuan, Z., Cun, X., Ge, Y., Zhou, J., Dong, C.,
+Huang, R., Zhang, R., Shan, Y.: Smartedit: Exploring complex instruction-based
+image editing with multimodal large language models. In: CVPR. pp. 8362–8371
+(2024)
+16. Hui, M., Yang, S., Zhao, B., Shi, Y., Wang, H., Wang, P., Xie, C., Zhou, Y.: Hq-
+edit: A high-quality dataset for instruction-based image editing. In: International
+Conference on Learning Representations. pp. 73407–73424 (2025)
+17. Hurst, A., Lerer, A., Goucher, A.P., Perelman, A., Ramesh, A., Clark, A., Os-
+trow, A., Welihinda, A., Hayes, A., Radford, A., et al.: Gpt-4o system card. arXiv
+preprint arXiv:2410.21276 (2024)
+
+
+IABEdit
+17
+18. Labs, B.F., Batifol, S., Blattmann, A., Boesel, F., Consul, S., Diagne, C., Dockhorn,
+T., English, J., English, Z., Esser, P., Kulal, S., Lacey, K., Levi, Y., Li, C., Lorenz,
+D., Müller, J., Podell, D., Rombach, R., Saini, H., Sauer, A., Smith, L.: Flux. 1
+kontext: Flow matching for in-context image generation and editing in latent space.
+arXiv preprint arXiv:2506.15742 (2025)
+19. Li, M., Gu, X., Chen, F., Xing, X., Wen, L., Chen, C., Zhu, S.: Superedit: Rectify-
+ing and facilitating supervision for instruction-based image editing. In: ICCV. pp.
+19206–19215 (2025)
+20. Li, M., Yang, T., Kuang, H., Wu, J., Wang, Z., Xiao, X., Chen, C.: Controlnet++:
+Improving conditional controls with efficient consistency feedback. In: ECCV. pp.
+129–147 (2024)
+21. Liu, H., Li, C., Wu, Q., Lee, Y.J.: Visual instruction tuning. NeurIPS 36, 34892–
+34916 (2023)
+22. Manchanda, S., Bhagwatkar, K., Balutia, K., Agarwal, S., Chaudhary, J., Dosi, M.,
+Chiranjeev, C., Vatsa, M., Singh, R.: D-lord: Dysl-ai database for low-resolution
+disguised face recognition. T-BIOM 6(2), 147–157 (2024)
+23. Nichol, A.Q., Dhariwal, P., Ramesh, A., Shyam, P., Mishkin, P., Mcgrew, B.,
+Sutskever, I., Chen, M.: Glide: Towards photorealistic image generation and editing
+with text-guided diffusion models. In: ICML. pp. 16784–16804 (2022)
+24. Pan, X., Dong, L., Huang, S., Peng, Z., Chen, W., Wei, F.: Kosmos-g: Generating
+images in context with multimodal large language models. In: ICLR. pp. 40959–
+40974 (2024)
+25. Podell, D., English, Z., Lacey, K., Blattmann, A., Dockhorn, T., Müller, J., Penna,
+J., Rombach, R.: Sdxl: Improving latent diffusion models for high-resolution image
+synthesis. In: ICLR. pp. 1862–1874 (2024)
+26. Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G.,
+Askell, A., Mishkin, P., Clark, J., Krueger, G., Sutskever, I.: Learning transferable
+visual models from natural language supervision. In: ICML. pp. 8748–8763 (2021)
+27. Ramesh, A., Dhariwal, P., Nichol, A., Chu, C., Chen, M.: Hierarchical text-
+conditional image generation with clip latents. arXiv preprint arXiv:2204.06125
+(2022)
+28. Ramesh, A., Pavlov, M., Goh, G., Gray, S., Voss, C., Radford, A., Chen, M.,
+Sutskever, I.: Zero-shot text-to-image generation. In: ICML. pp. 8821–8831 (2021)
+29. Rombach, R., Blattmann, A., Lorenz, D., Esser, P., Ommer, B.: High-resolution
+image synthesis with latent diffusion models. In: CVPR. pp. 10674–10685 (2022)
+30. Saharia, C., Chan, W., Saxena, S., Li, L., Whang, J., Denton, E.L., Ghasemipour,
+K., Gontijo Lopes, R., Karagol Ayan, B., Salimans, T., Ho, J., Fleet, D.J., Norouzi,
+M.: Photorealistic text-to-image diffusion models with deep language understand-
+ing. NeurIPS 35, 36479–36494 (2022)
+31. Sheynin, S., Polyak, A., Singer, U., Kirstain, Y., Zohar, A., Ashual, O., Parikh,
+D., Taigman, Y.: Emu edit: Precise image editing via recognition and generation
+tasks. In: CVPR. pp. 8871–8879 (2024)
+32. Singh, J., Zhang, J., Liu, Q., Smith, C., Lin, Z., Zheng, L.: Smartmask: Context
+aware high-fidelity mask generation for fine-grained object insertion and layout
+control. In: CVPR. pp. 6497–6506 (2024)
+33. Xie, S., Zhang, Z., Lin, Z., Hinz, T., Zhang, K.: Smartbrush: Text and shape guided
+object inpainting with diffusion model. In: CVPR. pp. 22428–22437 (2023)
+34. Zhang, K., Mo, L., Chen, W., Sun, H., Su, Y.: Magicbrush: A manually annotated
+dataset for instruction-guided image editing. NeurIPS 36, 31428–31449 (2023)
+
+
+18
+Chiranjeev et al.
+35. Zhang, S., Yang, X., Feng, Y., Qin, C., Chen, C.C., Yu, N., Chen, Z., Wang, H.,
+Savarese, S., Ermon, S., Xiong, C., Xu, R.: Hive: Harnessing human feedback for
+instructional visual editing. In: CVPR. pp. 9026–9036 (2024)
+36. Zhao, H., Ma, X., Chen, L., Si, S., Wu, R., An, K., Yu, P., Zhang, M., Li, Q., Chang,
+B.: Ultraedit: Instruction-based fine-grained image editing at scale. NeurIPS 37,
+3058–3093 (2024)
+
+
+IABEdit
+19
+Supplementary Material
+The supplementary is structured as follows:
+– Section 6: IABEdit with FLUX. (In reference to Section 2.1 of the main
+paper)
+– Section 7: Qualitative Results of Human study. (In reference to Sec-
+tion 4 (Human Study) of the main paper)
+– Section 8: Ablation Results on Facial Disguise Image Editing and
+Surveillance Scenarios. (In reference to Section 4 (Real-world Surveil-
+lance Scenarios) of the main paper)
+– Section 9: Implementation Details. (In reference to Section 4, Figure 3
+of the main paper)
+• Section 9.1: Diffusion Model: Stable Diffusion v1.5
+• Section 9.2: Flow Matching Model: FLUX.1-dev
+• Section 9.3: Editing Instruction-based Prompts
+– Section 10: Qualitative Results. (In reference to Section 3 (Architecture
+and Implementation Details) of the main paper)
+• Section 10.1: VLM-focussed Gradient Maps Visualization
+• Section 10.2: Qualitative Results on MagicBrush Benchmark
+• Section 10.3: Results on Complex Instruction Scenarios
+– Section 11: Additional Quantitative Results. (In reference to Section
+4 of the main paper)
+• Section 11.1: Masked CS-P evaluation on RealEdit dataset
+• Section 11.2: Results on EMU Edit test set
+– Section 12: Discussion on Image Quality. (In reference to Section 4
+(Agent-Based and Human-Centric Evaluation) of the main paper)
+– Section 13: Training Cost. (In reference to Section 4 (Training cost and
+Limitations) of the main paper)
+– Section 14: Limitations and Failure modes. (In reference to Section 4
+(Training cost and Limitations) of the main paper)
+
+
+20
+Chiranjeev et al.
+6
+IABEdit with FLUX
+In the main paper, the proposed IABEdit framework is shown with noise-prediction
+diffusion models. However, our IABEdit framework is model-agnostic and is also
+compatible with flow-based generative models such as FLUX. In the FLUX.1-
+dev model, generation is formulated as a continuous flow between Gaussian noise
+and the clean data distribution, where the model learns a velocity field that pro-
+gressively transforms a noisy latent toward the clean latent representation.
+Given a clean latent representation z0 and Gaussian noise ϵ ∼N(0, I), the
+forward interpolation process constructs an intermediate latent zt as:
+  z _t = (1 - t
+) z_0 + t \epsilon , \quad \epsilon \sim \mathcal {N}(0, I) 
+(6)
+In flow-matching models, it is implemented using a multi-modal diffusion
+transformer (MMDiT) in FLUX,which predicts a velocity field vθ that trans-
+forms the latent state toward the clean data manifold. In IABEdit for FLUX
+model, the conditioning consists of the textual instruction embedding from the
+CLIP-ViT-L/14 text encoder (cins), T5-XXL text encoder (ct5ins), the source-
+image embedding (csrc), and the source latent (s) used for context and structural
+preservation:
+  c_ { \text {ins}} = \te xt {CL I P}(\text {instru ctio n }); \, c_{{t5}_{\text {ins}}} = \text {T5}(\text {instruction}); \, c_{\text {src}} = \text {MLP}(\phi (I_{\text {src}})) 
+(7)
+The velocity predictor is trained using the standard flow-matching objective
+LN:
+  \ mathca
+l
+ {L}_{ \ te xt { N }} = \ma
+t
+hbb {E}_{t,s,c} \left [ \left \|v_\theta (z_t \oplus s, c, t) - (\epsilon - z_0) \right \|_2^2\right ] 
+(8)
+where c = (cins, csrc, ct5ins) denotes the combined conditioning signal, zt de-
+notes the noisy latent at timestep t, and ⊕represents latent concatenation with
+the source context. During edited image latent generation, the predicted velocity
+provides a one-step estimate of the clean latent by integrating the flow field:
+  z _0
+ \ ap p r ox z_0 ' = z_t - t \, v_\the ta ((z_t \oplus s), c_{\text {ins}}, c_{\text {src}}, c_{{t5}_{\text {ins}}}, t). 
+(9)
+This one-step estimate is employed for small timesteps t ≤τ (τ=200), to
+obtain an approximate (z′
+0) of clean latent (z0). This one-step latent z′
+0 is passed
+to the VAE decoder (DVAE) to obtain the generated edited image (IGedit =
+DVAE(z′
+0)), which is passed as an input to the VLM (LLaVA) model to analyze
+the generated edited image and provide gradient-based feedback to the FLUX-
+model for performing precise localised edits.
+Therefore, this formulation enables IABEdit to operate seamlessly with flow-
+based backbones such as FLUX, while retaining the structured conditioning and
+gradient-based semantic alignment mechanisms introduced in our framework.
+
+
+IABEdit
+21
+Fig. 7: Illustrating the overall best performing models according to the user responses
+for a few sets of samples. Below every image, it depicts the percentage of people saying
+it is the best-performing model in terms of Instruction Following/Non-editing required
+region Preservation/Quality of Generated image.
+7
+Human Study Qualitative Results
+Figure 7 illustrates qualitative examples alongside corresponding user study re-
+sponses for a representative set of samples. It showcases the best-performing
+model for each sample, with the percentage of people saying it is the best-
+performing model in terms of Instruction Following, Preserving, and Quality.
+Human Study Protocol: We conducted a human study on the RealEdit dataset
+with 30 participants aged 20-45 to evaluate image editing performance from a
+human-centric perspective. Volunteer participants who are not involved in the
+proposed research were chosen. Each participant evaluated 30 randomly sampled
+instances, each consisting of the original image, editing instruction, and edited
+outputs from different models. The evaluation was performed in a blinded set-
+ting, where model identities were hidden and outputs were presented in random
+order. Participants selected the best-performing model based on instruction fol-
+lowing, preservation of non-instructed regions, and overall image quality. Finally,
+the results were obtained by aggregating participant values across all 30 samples
+and the complete per-sample breakdown.
+8
+Facial Image Editing and its impact on Surveillance
+scenarios
+This section discusses the significance of each component used for performing im-
+age editing tasks in facial disguise settings and the effectiveness of facial editing
+in enhancing surveillance scenarios.
+
+
+22
+Chiranjeev et al.
+Table 5: Ablation study on D-LORD dataset for disguised facial image editing task.
+Loss Component CS-P ↑CLIP-T ↑HM ↑DINO-P ↑
+LN
+68.70
+30.67
+41.71
+50.41
+LN + LD
+74.64
+31.95
+44.68
+53.59
+LN + LD + LC
+79.93
+33.10
+46.74
+55.33
+8.1
+Ablation Results on Facial Disguise Image Editing
+Table 5 highlights the significance of each component of the IABEdit method
+by assessing based on the ablation results on the facial disguise editing task on
+the real-world D-LORD face dataset. We achieve the higher HM scores as the
+model is trained by introducing each new loss component. The results in Table 5
+show that training the IABEdit framework with all Denoising (LN), Distillation
+(LD) and coherence (LC) loss functions, together leads to the best balanced im-
+age editing with achieving the highest HM score of 46.74 and DINO-preserving
+score of 55.33. The combined inclusion of all components significantly improves
+the model’s editing capability (CS-P: +11.23, CLIP-T: +2.43, HM: +5.03 and
+DINO-P: +4.92) as compared to the model trained with only Diffusion loss (LN).
+As each new loss component is introduced for training the IABEdit framework,
+its performance improves consistently. Therefore, this signifies the importance of
+the distillation component and the facial identity component, which are enhanced
+by gradient-enabled meaningful supervisory signals. This strengthens the diffu-
+sion model’s ability to produce accurate, semantically aligned edits from natural
+language instructions.
+8.2
+Surveillance Results in Low-Resolution Setting
+Figure 8 illustrates that generated edited facial outputs accurately adhere to the
+given instructions, achieving precise localization of occlusions on the target facial
+regions. The facial mask editing examples exhibit strong coverage of the lower
+half of the face without significant distortion of surrounding regions, indicating
+effective structural consistency. Similarly, the sunglasses-editing examples main-
+tain correct alignment with the eye region while preserving facial attributes such
+as structure and texture across the non-edited regions, reflecting high identity
+retention.
+In terms of visual quality, the generated edits demonstrate natural blending
+with minimal artifacts, despite the low-resolution nature of the original surveil-
+lance images. The ability to preserve the inherent characteristics of the unedited
+regions while introducing realistic occlusions highlights the robustness of the pro-
+posed IABEdit framework. It effectively handles real-world face editing scenarios
+even in low-resolution settings by maintaining strong instruction adherence and
+high visual quality in the generated results.
+These synthetically edited images are then used to train a face recognition
+model, highlighting how semantically controlled editing can enhance biometric
+
+
+IABEdit
+23
+Original 
+Image
+Instruction
+Generated
+Add
+Sunglass
+Add Mask
+Fig. 8: Visualizing the generated edited samples for low-resolution (LR) real-world
+surveillance face images on D-LORD dataset. The original LR images are edited based
+on the instructions: (i) "Add a face mask to the person’s face, which covers the nose
+and mouth region, obscuring the lower half of the face." and (ii) "Add sunglasses to
+the person’s face, which covers the eyes and upper part of the nose region.".
+58.69
+52.7
+59.45
+61.51
+Accuracy @ 1% FPR
+50
+52
+54
+56
+58
+60
+62
+Real
+Synthetic
+Real + 
+synthetic (sc)
+Real + 
+synthetic (ft)
+Fig. 9: Recognition performance across training setups using real and IABEdit-
+generated face pairs. Fine-tuning on combined data yields the best accuracy, showing
+the value of instruction-based editing for occluded face recognition.
+
+
+24
+Chiranjeev et al.
+systems under occlusion. We generate a training dataset comprising 40,000 pos-
+itive image pairs and 120,000 negative pairs each for real and synthetic data.
+A ResNet-18 model is trained using a contrastive loss objective, with two set-
+tings: training from scratch (sc) and fine-tuning (ft) on the edited data. Our
+test set includes images at varied distances and having variations in occlusions
+covering different regions of face captured from surveillance camera, showcasing
+real-world surveillance scenarios.
+As shown from the results mentioned in Figure 9 , the model trained on only
+real data achieves 58.69% accuracy @1% FPR. Incorporating only synthetic data
+yields 52.7%, reflecting the challenge of using synthetic images alone. However,
+combining both real and synthetic data and training from scratch improves per-
+formance to 59.45%, suggesting that synthetic data adds complementary vari-
+ance. Notably, fine-tuning the recognition model on the combined dataset leads
+to the best performance at 61.51%, showcasing that IABEdit-generated edits
+help improve recognition robustness by simulating realistic facial variations.
+These results confirm the practical applicability of IABEdit in surveillance-
+driven biometric pipelines. The model enables high-quality, instruction-guided
+face edits that can simulate challenging real-world occlusions. When used for
+training, these edits enhance recognition accuracy, offering a powerful tool for
+augmenting face datasets in low-visibility and occlusion-heavy environments.
+9
+Implementation Details
+In this section, we provide the implementation details of the components utilized
+in the proposed algorithm. We also make the resources available for the research
+community at this link: https://github.com/IAB-IITJ/IABEdit
+9.1
+Diffusion Model: Stable Diffusion v1.5
+IABEdit is trained in a latent diffusion technique (LDM) for generation purposes,
+and the LLaVA-7B (LLaVA-v1.6-Mistral-7B) model is used as a Descriptive An-
+chor and Instruction Aligner for the semantic-supervised distillation process.
+Stable Diffusion v1.5 weights are used as the pre-trained weights for the edit-
+ing diffusion model with the UNet’s denoising architecture. LDM is conditioned
+with the textual instruction obtained from CLIP text-encoder, and image con-
+ditioning is done with CLIP (ViT-B/32) image-encoder in case of scene editing
+and face recognition (ResNet-18) model pre-trained with ArcFace loss for face
+editing. Also, we enable classifier-free diffusion guidance for both image and text
+conditions. The diffusion model operates on an input image of size 512 × 512,
+whereas LLaVA processes the generated denoised edited image after resizing it
+to 336 × 336 dimensions. The hyperparameter setting for training the IABEdit
+framework includes the learning rate of 1e-5, weight decay of 1e-2, a training
+batch size of 2, and a constant with warmup scheduler is utilized with a warmup
+ratio of 500 steps. The temperature T in LD loss in Equation 3 (in the main
+paper) is set to 5.0. Overall, the IABEdit is trained for 118400 training steps for
+
+
+IABEdit
+25
+Table 6:
+Demonstrating results based on single-step diffusion-based denoising at
+different timestep thresholds τ.
+τ
+CS-P ↑CLIP-T ↑HM ↑
+200
+89.65
+27.60
+42.00
+300
+93.77
+26.13
+40.67
+the scene editing task and 58000 training steps for the face editing task. While
+λN, λD and λC are kept as 1.0. The timestep scheduler threshold τ is set to
+200, as the latent samples with timesteps less than 200 are less noisy. The pre-
+dicted original latent sample from these noisy latents, using one-step denoising,
+is highly similar to the ground-truth original latent. The inference stage remains
+VLM free. The DDIM noise scheduler is utilized with the inference sampling
+steps of 30 and has a text and image guidance of 7.5 and 2.0, respectively. All
+comparing instruction-based editing models are evaluated at their peak perfor-
+mances with their best setting combination of sampling steps, text and image
+guidance. Further, for performing ablation with another strong VLM, we have
+utilized Qwen2.5-VL (Qwen2.5-VL-7B-Instruct).
+Table 6 presents the image editing performance on the RealEdit benchmark
+when selecting different timestep threshold (τ). These results reflect the selec-
+tion of (τ) to perform efficient latent estimation (z′
+0) via a single-step denoising
+step as shown in Equation 2 in Section 2.2. τ = 200 yields the highest edit-
+ing performance (CLIP-T and HM) , demonstrating better instruction following
+with balanced editing (HM=42.00) compared to performance values at τ = 300
+reflects under-editing (less instruction adherence. Increasing τ to 300 results in
+higher CS-P (93.77) because fewer image regions are modified, leading to stronger
+content preservation but weaker instruction adherence (CLIP-T: 26.13). Conse-
+quently, the overall harmonic mean (HM) decreases, indicating under-editing.
+Therefore, τ = 200 provides the best balance between faithful instruction fol-
+lowing and context preservation. The latent at τ = 200 is less noisy, hence
+iterative denoising can be replaced with denoising in a single step, and further
+the resulting latent can be converted to an image using the VAE decoder. The
+final single-step denoised image is used as input to other models, such as VLMs.
+These results led to the choice of selecting τ = 200 as the latent zt (t ≤τ)
+can be used to compute the latent z′
+0 using a simple formulation (mentioned in
+Equation 2 in the main paper), which is very similar to the original latent z0.
+9.2
+Flow Matching Model: FLUX.1
+FLUX-based image editing is built on a FLUX.1-dev base model, which adopts
+the Multi-Modal Diffusion Transformer (MMDiT) architecture. The proposed
+IABEdit + FLUX.1 model is trained using backward gradient supervision de-
+rived from the VLM LLaVA, enabling instruction-aligned editing through VLM-
+guided gradient flow. The model is trained for 26,000 iterations on the SuperEdit-
+40K dataset. This dataset consists of paired images obtained from several exist-
+
+
+26
+Chiranjeev et al.
+EDITING INSTRUCTION
+PROMPT
+Scene Image Editing 
+Modify the bottom row of images to natural 
+underwater scenes with detailed coral and sandy 
+surroundings. Enhance the texture details on the 
+turtle's fins and shell and adjust all smaller image 
+lighting and color tones to natural underwater hues.
+USER: 
+<image>\nBased 
+on 
+the 
+image editing instruction: {[“Modify 
+the bottom row of images to natural 
+underwater scenes with detailed 
+coral 
+and 
+sandy 
+surroundings. 
+Enhance the texture details on the 
+turtle's fins and shell and adjust all 
+smaller image lighting and color 
+tones 
+to 
+natural 
+underwater 
+hues.”]}, Briefly Describe the image 
+based 
+on 
+this 
+instruction.\nASSISTANT:"
+EDITING INSTRUCTION
+PROMPT
+Disguised Face Editing        
+USER: 
+<image>\nBased 
+on 
+the 
+image editing instruction: {[“Add 
+sunglasses to the person’s face, 
+which covers the eyes and upper 
+part of the nose region.”]}, Briefly 
+Describe the image based on this 
+instruction.\nASSISTANT:"
+Add sunglasses to the person’s face, which covers 
+the eyes and upper part of the nose region.
+(a)
+(b)
+Fig. 10: Examples of editing instruction-following based prompts for vision language
+models (VLMs), on (a) scenes and (b) facial datasets.
+ing editing datasets introduced in prior works, including InstructPix2Pix, Mag-
+icBrush, and the Seed-Data-Edit Dataset, which provide diverse instruction-
+guided image editing samples. This FLUX-based image editing is performed for
+the scene image editing task trained with denoising and distillation loss for τ =
+200.
+The IABEdit method with the Diffusion and VLMs-based architecture is trained
+on an 80 GB A100 GPU, while the computationally heavy FLUX and VLMs-
+based architecture is trained on MI325X AMD GPUs.
+9.3
+Editing Instruction-based Prompts
+Figure 10 presents sample VLM prompt inputs for both scene and facial editing
+scenarios. These prompts are constructed directly from the underlying editing
+instructions. This design allows the VLMs to better interpret the semantic in-
+tent behind each editing instruction. It enables them to explicitly describe how
+precisely the diffusion model performed the spatially localized edits by adhering
+to the requested intended modifications while preserving the regions that were
+not meant to be edited.
+10
+Additional Qualitative Results
+10.1
+VLM-focussed Gradient Maps Visualization
+Illustrating the backward gradient flow from VLM (LLaVA), which impacts the
+image regions of the denoised edited image to perform editing for what and
+where to edit context, we have shown Grad-CAM visualisation in Figure 11.
+These maps highlight how the model localizes semantic concepts from the editing
+instruction and how it preserves surrounding context during editing. The analysis
+
+
+IABEdit
+27
+“sail”
+“boat”
+“water”
+“white”
+“reflection”
+Source 
+Image
+Denoised Edited
+Image
+“tower”
+“square”
+“vibrant”
+“reflection”
+“urban”
+Context Preservation
+Editing Regions
+"Transform the gothic towers on a bridge over a river
+to a central tower in a colorful town square with
+vibrant colors and bright lighting."
+“yellow”
+“sun”
+“sunlight”
+“snow”
+“trees”
+"Replace the orange rowboat with a larger white,
+black, and brown sailboat with raised sails. Maintain
+consistent lighting and reflection with the new boat."
+"Adjust the lighting to warmer tones and change the
+sky's color to gradient hues of yellow, orange, and
+pink to create a sunset or sunrise scene with
+enhanced sunlight reflection on the snow and trees.
+No changes needed for the overall layout or shapes
+and textures."
+Fig. 11: Grad-CAM visualization for LLaVA based gradient backprop showcasing
+token-level attention during instruction-guided image editing. The figure highlights
+editing regions (e.g., sail, boat, tower, square) where the model focuses to perform
+semantic modifications, and context preservation regions (e.g., reflection, water, trees,
+urban) where attention remains on the surrounding environment to maintain scene
+structure and visual consistency during editing.
+is interpreted across three main aspects: localization, context preservation, and
+localized editing behavior.
+1. Localization of Editing Regions: The Grad-CAM maps reflecting editing
+regions demonstrate that the model precisely localizes regions corresponding
+to the instructions that drive the editing.
+– In Figure 11 (first row), the boat editing example, attention for tokens
+such as "sail" and "boat" concentrates on the central object, particularly
+the hull and sail region where the rowboat is transformed into a sailboat.
+Similarly, the "white" instruction token produces a localized response
+over the modified boat surface, indicating that the model associates color
+modification with the correct spatial region.
+– In Figure 11 (second row), the winter landscape example, tokens like
+"yellow", "sun", and "sunlight" show strong activation near the sky and
+illumination region, precisely where the lighting conditions are altered.
+– In Figure 11 (third row), the tower and town square transformation
+example, tokens such as "tower", "square", and "vibrant" produce at-
+tention around architectural structures and the central plaza, confirming
+
+
+28
+Chiranjeev et al.
+that structural changes are localized to the intended area. The square
+and town keywords make the semantic contextual understanding to edit
+the bridge scenario with the town square.
+These observations indicate that the model learns semantic token-to-region
+correspondence, enabling spatially accurate alignment of textual instructions
+to precise locations in the image.
+2. Context Preservation: The "Context Preservation" block in Figure 11 il-
+lustrates how the model maintains structural and environmental consistency
+while performing the required edits.
+– The descriptive tokens, such as "reflection" and "water", generated by
+the VLM model highlight attention to preserve the non-editable regions
+such as water surfaces in the boat scene, ensuring that reflections remain
+coherent with the newly inserted sailboat.
+– In the snowy forest example, attention for "snow" and "trees" spreads
+across the ground and tree structures, indicating that these elements are
+preserved rather than modified.
+– In the urban square transformation, context-understanding VLMs’ de-
+scriptive tokens, such as "reflection" and "urban", attend to buildings
+and ground structures, maintaining scene layout and environmental re-
+alism.
+This demonstrates that the IABEdit framework not only focuses on edit-
+ing regions but also actively supports contextual elements, helping maintain
+global scene coherence and physical consistency by leveraging ground-truth
+edited-image understanding through Descriptive Anchor’s distillation and
+passing this distilled long-contextual descriptive knowledge to the image
+generative model and the trainable context preserving image conditioning
+module shown in Figure 2 of the main paper.
+3. Evidence of Localized Editing Behavior: The combined attention pat-
+terns confirm that the editing process is spatially selective rather than glob-
+ally destructive with the careful key observations from Figure 11 as follows:
+– High attention is concentrated in semantically relevant regions, where
+modifications occur.
+– Surrounding areas receive lower but structured attention, ensuring they
+remain unchanged or minimally affected.
+– Distinct token activations correspond to different semantic components,
+indicating compositional editing capability.
+Overall, Figure 11 demonstrates that the proposed IABEdit framework achieves
+localized semantic manipulation through VLM-based backward semantic gradi-
+ent flow along IGedit →DVAE →z′
+0 →ϵθ, together with the proposed context-
+preserving trainable module. As a result, the denoising network and the context-
+preserving module become semantically aligned with both the textual instruc-
+tions and the intended image editing. Therefore, during inference, the image
+editing model, without relying on a VLM, modifies only the required editing
+regions while preserving overall scene context consistency.
+
+
+IABEdit
+29
+Original 
+Image
+GroundTruth
+Instruction
+make the field a cornfield.
+Let's add some flowers in 
+the field.
+Have an orange instead 
+of a baseball.
+IABEdit 
+(ours)
+Let the desktop be black.
+The bus is yellow.
+Fig. 12: Qualitative comparison of IABEdit on the Magic Brush Dataset. Each row
+illustrates the comparison between (b) the ground-truth edited image and (c) the image
+generated by our framework, IABEdit, on (a) the original image. The modifications
+are done based on the editing instructions shown on the left.
+10.2
+Qualitative Results on MagicBrush Benchmark
+Figure 12 illustrates the qualitative comparisons of IABEdit with respect to the
+ground truth edits under various editing instructions. Each row presents an orig-
+inal image, the corresponding ground-truth edit, and the output generated by
+IABEdit. Our framework consistently produces visually coherent and semanti-
+cally accurate edits aligned with the given instructions.
+For instance, in the first example, the instruction "Let’s add some flowers in
+the field" is correctly interpreted, with IABEdit adding flowers while preserving
+the zebra and overall scene composition. However, the ground truth image indeed
+shows only a few small flowers added in the background, whereas IABEdit seems
+to add flowers more prominently and naturally in the scene. While IABEdit also
+
+
+30
+Chiranjeev et al.
+Table 7: Performance on complex instruction scenarios for RealEdit benchmark
+dataset. We generated the complex editing instructions for each of the different se-
+mantic types of instructions using Gemini-AI Pro 2.5.
+Semantic Types in Complex Instructions
+CS-P ↑CLIP-T ↑HM ↑
+Direct Simple Instructions (Reward-InstructPix2Pix)
+89.69
+27.31
+41.67
+Morphological Instructions (Reward-InstructPix2Pix)
+90.72
+27.01
+41.44
+Lexical Instructions (Reward-InstructPix2Pix)
+90.43
+27.43
+41.93
+Syntactic Instructions (Reward-InstructPix2Pix)
+89.55
+27.67
+42.09
+Direct Simple Instructions (SuperEdit)
+90.93
+26.01
+40.24
+Morphological Instructions (SuperEdit)
+92.38
+25.99
+40.38
+Lexical Instructions (SuperEdit)
+92.05
+26.03
+40.41
+Syntactic Instructions (SuperEdit)
+92.43
+26.20
+40.64
+Direct Simple Instructions (IABEdit)
+89.65
+27.60
+42.00
+Morphological Instructions (IABEdit)
+89.03
+27.51
+41.74
+Lexical Instructions (IABEdit)
+87.83
+27.69
+41.79
+Syntactic Instructions (IABEdit)
+87.11
+27.98
+42.12
+preserves the fine-grained detail in the image, like the back toe of the zebra.
+For structural edits such as "make the field a cornfield", IABEdit introduces the
+new background while preserving foreground objects like the tractor and horse.
+In the instruction "Let the desktop be black", our method applies localized,
+very fine changes to the desktop region without distorting surrounding objects.
+Finally, for "The bus is yellow", the proposed IABEdit model accurately and
+sharply recolors the bus while preserving other elements of the scene, whereas
+in the ground truth image, instead of just changing the color of the actual bus,
+the whole bus is modified. In the second row for instruction: "Have an orange
+instead of a baseball", our model is not able to replace the baseball with an
+orange, but it tried to reduce the seam of the ball to make it look like an orange,
+in contrast, the ground truth image changes the color of the ball to an orange
+color ball, by creating seams on the original image.
+Overall, these results demonstrate that IABEdit is capable of performing
+localized edits while preserving non-editing context, ensuring that both style
+and structure remain consistent with the original image.
+10.3
+Results on Complex Instruction Scenarios
+To assess the vulnerability of editing models, we evaluated the editing methods
+across distinct types of complex editing instruction scenarios. We modified the
+editing instructions based on various semantic types (Direct Simple, Morpholog-
+ical, Lexical and Syntactic instructions), while maintaining the actual meaning
+of the instructions. We created the modified editing instruction sets benchmark
+for the complete RealEdit dataset. The modified instructions based on different
+semantic types are created using the GeminiAI Pro 2.5 model. The Morphologi-
+cal types of instructions include words like "non-yellow" and "unfluffy". Lexical
+editing instructions include "empty" and "devoid", while Syntactic editing in-
+structions consist of words such as "without" and "do not". Furthermore, the
+
+
+IABEdit
+31
+complex instruction scenario-based image editing will be incorporated into the
+training mechanism by handling them specifically for a wide variety of acceptable
+prompt-based image editing tasks in future research directions.
+Table 7 shows that different editing methods perform better with direct sim-
+ple instructions, while IABEdit being the best method (HM=42.00) for balanced
+editing. Whereas in cases of other types of editing instructions with different se-
+mantic types but the same meaning, all methods often face difficulty in precisely
+editing the image. However, even in such cases as well IABEdit performs better
+in terms of editing the image while preserving the non-editable regions of the
+original image. This is validated through the outperforming HM scores in vari-
+ous semantic types of editing instructions, including Direct Simple Instructions
+(42.00), Morphological Instructions (41.74), Syntactic Instructions (42.12), and
+achieving competitive results on Lexical Instructions (41.79). While IABEdit
+significantly and consistently outperforms the very recent SuperEdit method.
+These results highlight the efficacy of IABEdit in aligning the semantics with
+the image edits. Wilcoxon signed-rank tests on RealEdit (n = 560) on sim-
+ple editing instructions confirm significance (p < 0.05): IABEdit achieves effect
+sizes of r = 0.33 against InstructPix2Pix (p = 1.625 × 10−19) and r = 0.14
+against MagicBrush (p = 1.238 × 10−7). In contrast, Reward-InstructPix2Pix
+shows a smaller effect (r = 0.09, p = 0.0103). These results confirm that our im-
+provements are both statistically significant and practically meaningful. Figure
+13 shows the qualitative visual results, illustrating how the editing generations
+vary as the instructions range from simple to complex.
+IABEdit understands the instruction semantics and performs precise edits
+even in many complex instruction scenarios (Figure 13 (left part)), but in certain
+cases where words include "devoid", "off" and "less" (Figure 13 (right part)),
+both the models fail to understand the instructions.
+11
+Additional Quantitative Results
+This section shows additional results on the RealEdit benchmark and EMU Edit
+test set.
+11.1
+Masked CS-P evaluation on RealEdit dataset
+IABEdit and SuperEdit achieve masked CS-P scores of 99.68 and 99.60, re-
+spectively. Masks are generated for instructions with known edit regions, such
+as "Remove", "Erase", "Replace", "Object Transform", or "Change Region".
+However, masked-CS-P is less precise for "Add" or "Insert" instructions, since
+the original image lacks the object, a reference mask cannot be accurately es-
+tablished, given the vast potential for varied model localizations.
+11.2
+Results on EMU Edit test set
+Table 8 presents results on the challenging EMU Edit test set benchmark.
+CLIPdir measures whether the semantic change in the edited image follows the
+
+
+32
+Chiranjeev et al.
+Fig. 13: The qualitative results showcasing the (left part) successful cases of the IABE-
+dit against SuperEdit in the complex instruction scenarios. The right part shows the
+failure cases where both the models fail with complex editing instructions, where they
+perform correct edits with the direct simple editing instructions.
+Table 8: Results on EMU Edit test set.
+Method
+CLIPdir ↑CLIPimg ↑DINO ↑CLIPout ↑
+UltraEdit
+8.39
+81.29
+74.53
+23.11
+EMU Edit
+10.37
+82.89
+81.04
+23.65
+MagicBrush
+9.00
+83.80
+77.60
+22.20
+IABEdit (+Diffusion)
+9.01
+85.66
+83.78
+24.03
+IABEdit (+FLUX.1)
+11.21
+88.81
+91.02
+25.06
+intended editing instruction, while CLIPout evaluates the alignment between the
+edited image and the target caption. CLIPimg measures similarity between the
+edited and input images, whereas DINO evaluates structural content preserva-
+tion between the input source and generated edited images.
+IABEdit (+FLUX.1) achieves the best performance across all metrics. It
+attains the highest CLIPdir score (11.21), indicating more accurate instruction-
+following edits, and the highest CLIPout score (25.06), demonstrating stronger
+alignment with the target description. It also achieves the highest CLIPimg
+(88.81) and DINO (91.02) scores, showing that the edited images preserve the
+original content and structural details while performing the desired modifica-
+tions. Compared with the strongest baseline (EMU Edit), IABEdit (+FLUX.1)
+improves CLIPdir by +0.84, CLIPout by +1.41, CLIPimg by +5.92, and DINO
+
+
+IABEdit
+33
+by +9.98, demonstrating that gradient-aligned semantic supervision effectively
+balances precise instruction following with faithful content preservation.
+12
+Discussion on Image Quality
+IABEdit does not improve the image quality (see Table 2 in the main paper),
+as the image editing task is to maintain the quality of the edited image the
+same as the original, without any lighting or appealing improvements. Thus, our
+overall evaluation focused on semantic alignment measured through instruction
+following, and preserving the context (including quality), proven through the
+preservation score of 4.19 (best) (same metric for baseline).
+13
+Training Cost
+Training IABEdit method leads to 9.03% increase in FLOPs (SD+LLAVA) (∼
+6624 GFLOPs) as compared to SuperEdit (∼733 GFLOPs). While editing meth-
+ods like SmartEdit incur higher GFLOPs than IABEdit, it includes two-stage
+training with additional components, such as Q-Former, Bidirectional Interac-
+tion Module and LLaVA-13B with LoRA. There are only 95.68 M extra train-
+able parameters introduced in IABEdit as compared to SuperEdit (59.53 M).
+IABEdit performs VLM-free testing, taking 3s/image on a single GPU for 30
+timesteps, which is similar to SuperEdit.
+14
+Limitations and Failure Modes
+The failure cases are shown in Figure 13 and also discussed in Section 5.3 for com-
+plex editing instruction scenarios. Failure cases occur when editing instructions
+include words like "devoid", "off", and "less", the model is unable to under-
+stand them and makes incorrect edits. Another limitation of our method is the
+increased computational overhead during training due to the use of VLM-based
+gradient supervision.
