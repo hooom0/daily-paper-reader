@@ -25,3 +25,49 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: image-gen
+      description: 图像生成
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: diffusion model
+          keyword_cn: 扩散模型
+          query: diffusion probabilistic models for image generation
+        - keyword: text-to-image synthesis
+          keyword_cn: 文本到图像合成
+          query: synthesizing images from textual descriptions
+        - keyword: latent diffusion model
+          keyword_cn: 潜在扩散模型
+          query: latent diffusion models for high-resolution image synthesis
+        - keyword: autoregressive image generation
+          keyword_cn: 自回归图像生成
+          query: autoregressive models for image generation
+      intent_queries:
+        - query: How do diffusion models generate images from text prompts?
+          query_cn: 扩散模型如何从文本提示生成图像？
+          enabled: true
+          source: manual
+          note: ''
+        - query: What are the methods for controllable image generation?
+          query_cn: 可控图像生成有哪些方法？
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-09-16T06:37:49.632Z'
+source_backends:
+  arxiv:
+    papers_table: arxiv_papers
+    use_vector_rpc: true
+    vector_rpc: match_arxiv_papers
+    vector_rpc_exact: match_arxiv_papers_exact
+    use_bm25_rpc: true
+    bm25_rpc: match_arxiv_papers_bm25
+    sync_table: arxiv_sync_status
+    sync_success_value: success
+    schema: public
+    kind: supabase
+    enabled: true
+    url: https://lyucdwgefyfbmaiopjbk.supabase.co
+    anon_key: sb_publishable_lX-oi64Uxyd7SIVv3_w2Uw_MTOojeKq
