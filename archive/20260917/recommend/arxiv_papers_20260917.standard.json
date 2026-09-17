@@ -1,0 +1,533 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-17T21:42:55.528886+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 2,
+    "deep_cap": 6,
+    "deep_selected": 2,
+    "quick_candidates": 11,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2609.17987v1",
+      "source": "arxiv",
+      "title": "Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation",
+      "abstract": "The traditional Batak Ulos weaving industry faces growing challenges in producing diverse, innovative motifs due to limitations in conventional, manually driven design methods. This study proposes a multimodal generative framework integrating a fine-tuned Latent Diffusion Model (Stable Diffusion XL v1.0 via LoRA) with a Multimodal Large Language Model (LLaMA 1.5-7B) to enable controllable, culturally faithful Ulos motif generation. Four complementary conditioning mechanisms: text, image, representation, and semantic map (via ControlNet) jointly guide the generation process, each governing a distinct aspect from semantic intent to spatial layout. A five level ablation study across three scenarios (shape transformation, colour variation, and high-complexity input) shows that conditioning effectiveness is not proportional to the number of mechanisms combined: Text + Image + Semantic Map achieved the best FID (270) and CLIP Score (0.65 - 0.70) but the weakest SSIM (0.65), while Text + Image + Representation offered the best overall balance, with stable SSIM (0.84) and competitive FID (280). Combining all four mechanisms yielded the weakest FID (330), indicating conflicting optimization signals. Qualitative evaluation by nine weavers and thirty public participants confirmed statistically significant positive acceptance (Wilcoxon, p=0.007 and p<0.001, respectively). A web-based prototype supporting text-to-image and image-to-image generation was also developed, offering a practical digital design tool for cultural heritage preservation.",
+      "authors": [
+        "Humasak Simanjuntak",
+        "Tamara Yunika Sianipar",
+        "Bronson T. M Siallagan",
+        "Difya Laurensya Ambarita",
+        "Arlinta Barus"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-09-16T01:18:57+00:00",
+      "link": "https://arxiv.org/pdf/2609.17987v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "controllable culturally faithful motif generation via multimodal conditioning",
+      "llm_evidence_cn": "多模态条件实现可控且文化忠实的花纹生成",
+      "llm_evidence": "多模态条件实现可控且文化忠实的花纹生成",
+      "canonical_evidence": "多模态条件实现可控且文化忠实的花纹生成",
+      "llm_tldr_en": "Traditional Batak Ulos weaving struggles to produce diverse motifs. This work fine-tunes SDXL with a multimodal LLM and four conditioning mechanisms (text, image, representation, semantic map via ControlNet) for controllable, culturally faithful motif generation, validated by ablations.",
+      "llm_tldr_cn": "传统巴塔克Ulos织造依赖手工设计，难以高效产出多样且创新的花纹。本文提出多模态生成框架，微调潜扩散模型Stable Diffusion XL并融合多模态大语言模型，通过文本、图像、表示与语义图四种条件联合引导生成。五级消融与三种场景实验表明，各条件分别控制语义意图到空间布局等不同方面。该工作实现了可控且文化忠实的花纹生成，为传统工艺设计提供新工具。",
+      "llm_tldr": "传统巴塔克Ulos织造依赖手工设计，难以高效产出多样且创新的花纹。本文提出多模态生成框架，微调潜扩散模型Stable Diffusion XL并融合多模态大语言模型，通过文本、图像、表示与语义图四种条件联合引导生成。五级消融与三种场景实验表明，各条件分别控制语义意图到空间布局等不同方面。该工作实现了可控且文化忠实的花纹生成，为传统工艺设计提供新工具。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.16572v1",
+      "source": "arxiv",
+      "title": "Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models",
+      "abstract": "Text-to-image diffusion models often use a fixed number of denoising steps, balancing time costs and image quality. However, the optimal number of steps depends on the complexity of the input text prompt. We propose an adaptive diffusion controller that dynamically adjusts the number of steps to generate high-quality images efficiently, without additional model training. By leveraging a mixture of step schedules with varying step sizes and evaluating the error term discrepancy at each timestep, our method transitions between schedules to optimize performance. Experiments on COCO and DiffusionDB show that our approach reduces inference time while maintaining visual fidelity, offering a more efficient alternative for text-to-image diffusion models.",
+      "authors": [
+        "Kuluhan Binici",
+        "Cihan Acar",
+        "Shivam Aggarwal",
+        "Siying Liu",
+        "Tulika Mitra"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-15T03:14:52+00:00",
+      "link": "https://arxiv.org/pdf/2609.16572v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "efficient text-to-image generation via adaptive step schedule for diffusion models",
+      "llm_evidence_cn": "通过自适应步数调度提升文生图扩散生成效率",
+      "llm_evidence": "通过自适应步数调度提升文生图扩散生成效率",
+      "canonical_evidence": "通过自适应步数调度提升文生图扩散生成效率",
+      "llm_tldr_en": "This paper proposes a training-free adaptive diffusion controller that dynamically adjusts denoising steps by switching among schedules of varying step sizes, reducing inference time for text-to-image generation while maintaining visual fidelity.",
+      "llm_tldr_cn": "针对文生图扩散模型固定去噪步数难以兼顾时间成本与图像质量、且最优步数随提示复杂度变化的问题，本文提出一种无需额外训练的自适应扩散控制器，通过混合不同步长的调度并评估各时间步的误差差异来动态切换步数。在COCO与DiffusionDB上的实验表明，该方法在保持视觉保真度的同时缩短了推理时间，为文生图生成提供了更高效的采样方案。",
+      "llm_tldr": "针对文生图扩散模型固定去噪步数难以兼顾时间成本与图像质量、且最优步数随提示复杂度变化的问题，本文提出一种无需额外训练的自适应扩散控制器，通过混合不同步长的调度并评估各时间步的误差差异来动态切换步数。在COCO与DiffusionDB上的实验表明，该方法在保持视觉保真度的同时缩短了推理时间，为文生图生成提供了更高效的采样方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.11519v1",
+      "source": "arxiv",
+      "title": "Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates",
+      "abstract": "In this paper, we address the problem of graphic design template creation, which generates a background image and a layout of foreground elements over the background to form a harmonious composition from an input text.   Prior work on graphic design generation mostly adopts a sequential paradigm, where design elements are generated sequentially. We argue that such a sequential scheme falls short of faithfully capturing the dependency between the background and layout (and thus the joint image-layout distribution), which limits the quality of generated design templates.   To overcome this limitation, we propose a model, InterIL, which jointly generates the two modalities, background image and layout, in a single generative process. The novel design of our joint model connects the backbones of pretrained image and layout diffusion models with a learnable communication module to explicitly model bidirectional image-layout interaction. During training, the image and layout backbones are frozen to maintain and leverage the vast pretrained single-modality prior knowledge, while only the communication module is updated, so that the model can focus on learning image-layout interaction and thereby better capture the joint image-layout distribution for improved composition harmony.   Our model has no design-specific inductive bias, which allows it to better preserve the original characteristics of realistic designs. We further introduce a test-time guidance strategy to enable users to impose their specific preferences on generated results.   Our experiments show that, compared with prior approaches, our model can generate significantly better results in terms of image, layout and image-layout harmonization, producing outputs closer to real samples. We also demonstrate the flexibility of our model in enforcing user preferences at inference without retraining.",
+      "authors": [
+        "Shirong Yang",
+        "Bo Yang",
+        "Ying Cao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.GR"
+      ],
+      "published": "2026-09-10T13:22:23+00:00",
+      "link": "https://arxiv.org/pdf/2609.11519v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "jointly generates background image and layout from input text for design templates",
+      "llm_evidence_cn": "由输入文本联合生成背景图像与版式，构建设计模板",
+      "llm_evidence": "由输入文本联合生成背景图像与版式，构建设计模板",
+      "canonical_evidence": "由输入文本联合生成背景图像与版式，构建设计模板",
+      "llm_tldr_en": "Prior graphic design generation uses sequential element generation, which poorly captures the joint dependency between background and layout; InterIL instead jointly generates both modalities from text in a single model to improve template quality.",
+      "llm_tldr_cn": "图形设计模板生成需由文本同时产出背景图像与前景元素版式，已有工作多采用顺序生成范式，难以忠实刻画背景与版式之间的依赖关系，限制模板质量。作者提出InterIL模型，在单一生成过程中联合生成背景图像与版式两种模态，显式学习图像与版式先验的交互。该联合建模提升了设计模板的和谐度与文本一致性，属于文本驱动图像生成与可控版式生成方向的方法贡献。",
+      "llm_tldr": "图形设计模板生成需由文本同时产出背景图像与前景元素版式，已有工作多采用顺序生成范式，难以忠实刻画背景与版式之间的依赖关系，限制模板质量。作者提出InterIL模型，在单一生成过程中联合生成背景图像与版式两种模态，显式学习图像与版式先验的交互。该联合建模提升了设计模板的和谐度与文本一致性，属于文本驱动图像生成与可控版式生成方向的方法贡献。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.10363v1",
+      "source": "arxiv",
+      "title": "SceneHI: High-Resolution 3D-Consistent Scene Texturing with Controllable Illumination",
+      "abstract": "SceneHI is a framework that lifts high-resolution, illumination-aware priors from 2D diffusion models to perform 3D texture synthesis. It is the first to demonstrate that high-resolution textures, previously limited to 2D synthesis, can be generated directly on 3D objects without model fine-tuning or optimization. Designed for complex, multi-object environments, SceneHI uniquely combines 3D-consistency, high-resolution fidelity, and physically plausible baked shadows within a single generative pipeline. To enforce strict geometric coherence, we introduce an exact analytical pixel-to-texel mapping that aligns diffusion trajectories across multiple viewpoints. We utilize High-Resolution Latent Textures (HRLTs) as a persistent canvas for gradually denoised textures, while camera views perform the denoising steps in latent pixel space. This ensures a shared base texture that can be subsequently refined to high resolution without compromising multi-view consistency. Finally, a light-aware generative pass embeds realistic geometry-consistent shadows directly into the atlases, bridging the gap to production workflows. SceneHI achieves high visual fidelity while reducing generation time by 80% compared to existing scene-level methods.",
+      "authors": [
+        "Athanasios Tragakis",
+        "Marco Aversa",
+        "Daniela Ivanova",
+        "Chaitanya Kaul",
+        "Roderick Murray-Smith",
+        "Daniele Faccio",
+        "Paul Henderson"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.GR"
+      ],
+      "published": "2026-09-09T15:56:02+00:00",
+      "link": "https://arxiv.org/pdf/2609.10363v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "lifts high-resolution illumination-aware priors from 2D diffusion models for controllable 3D texture synthesis",
+      "llm_evidence_cn": "从二维扩散模型提取高分辨率光照先验，实现可控三维纹理合成",
+      "llm_evidence": "从二维扩散模型提取高分辨率光照先验，实现可控三维纹理合成",
+      "canonical_evidence": "从二维扩散模型提取高分辨率光照先验，实现可控三维纹理合成",
+      "llm_tldr_en": "SceneHI lifts high-resolution, illumination-aware priors from 2D diffusion models to synthesize 3D textures without fine-tuning, using an analytical pixel-to-texel mapping for cross-view consistency and controllable lighting.",
+      "llm_tldr_cn": "高分辨率纹理生成此前多局限于二维合成，难以在三维对象上直接获得一致且光照合理的结果。SceneHI把二维扩散模型中的高分辨率、光照感知先验提升到三维纹理合成，通过精确的像素到纹素解析映射对齐多视角扩散轨迹，并引入高分辨率潜在纹理作为持久画布。该方法无需微调或优化即可在复杂多物体场景中同时实现三维一致性、高分辨率保真与物理合理阴影，拓展了扩散先验在可控生成中的应用。",
+      "llm_tldr": "高分辨率纹理生成此前多局限于二维合成，难以在三维对象上直接获得一致且光照合理的结果。SceneHI把二维扩散模型中的高分辨率、光照感知先验提升到三维纹理合成，通过精确的像素到纹素解析映射对齐多视角扩散轨迹，并引入高分辨率潜在纹理作为持久画布。该方法无需微调或优化即可在复杂多物体场景中同时实现三维一致性、高分辨率保真与物理合理阴影，拓展了扩散先验在可控生成中的应用。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.16591v1",
+      "source": "arxiv",
+      "title": "FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation",
+      "abstract": "Traditional multimodal representation learning and generation are two stages: a contrastive or self-supervised visual encoder is trained first, followed by a separate downstream generative model. This setup bottlenecks generative performance behind frozen embeddings. To bridge this gap, we revisit joint multimodal representation learning and generation to produce linearly interpolatable embeddings that are directly consumable by generative decoders. We present FLAT (Flexible-Length Aligned Transmodal representations), a representation pre-training framework that jointly optimizes a shared multimodal encoder alongside downstream text-to-image (T2I) and image-to-text (I2T) decoders. By combining contrastive alignment with bidirectional cross-modal generative objectives, FLAT ensures its representations function as both discriminative semantic descriptors and generative conditions. Architecturally, FLAT maps visual and textual inputs into a unified continuous 1D sequence space, applying nested dropout over prefix-K tokens to enable dynamic output lengths. A single pre-training stage allows FLAT to perform cross-modal retrieval and generation across variable prefix K, achieving a T2I GenEval score of 71.1. Task-specific fine-tuning aligns model performance with state-of-the-art baselines: 83.1 GenEval on T2I generation; 40.5 BLEU-4 and 138.6 CIDEr on MS-COCO image captioning; and Recall@5 scores of 86.8 (I2T) / 75.8 (T2I) on MS-COCO alongside 98.3 (I2T) / 93.6 (T2I) on Flickr30K. Finally, qualitative evaluations demonstrate that FLAT representations natively support linear interpolation, latent space arithmetic, and zero-shot composed retrieval.",
+      "authors": [
+        "Guangyu Sun",
+        "Shlok Kumar Mishra",
+        "Wentao Bao",
+        "Robert Zhenheng Yang",
+        "Xiao Wang",
+        "Xiyuan Wang",
+        "Yujunrong Ma",
+        "Chen Yuan",
+        "Max Xiangjun Fan",
+        "Jun Xiao",
+        "Jianpeng Cheng"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-15T03:35:59+00:00",
+      "link": "https://arxiv.org/pdf/2609.16591v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "joint multimodal pretraining feeding text-to-image and image-to-text decoders",
+      "llm_evidence_cn": "联合多模态预训练，直接服务文生图与图生文解码器",
+      "llm_evidence": "联合多模态预训练，直接服务文生图与图生文解码器",
+      "canonical_evidence": "联合多模态预训练，直接服务文生图与图生文解码器",
+      "llm_tldr_en": "FLAT jointly optimizes a shared multimodal encoder with text-to-image and image-to-text decoders, producing linearly interpolatable transmodal token embeddings that avoid the bottleneck of frozen representations in two-stage pipelines.",
+      "llm_tldr_cn": "传统多模态表示学习与生成分为两阶段，冻结的视觉嵌入限制了下游生成性能。FLAT提出联合优化的表征预训练框架，把共享多模态编码器与文生图、图生文解码器一起训练，将图像与文本重采样为可变长度、线性可插值的一维对齐跨模态词元。该表示可直接供生成解码器使用，从而打通表示学习与生成，提升文生图与图生文任务效果，为文本描述合成图像提供了统一的表示与生成框架。",
+      "llm_tldr": "传统多模态表示学习与生成分为两阶段，冻结的视觉嵌入限制了下游生成性能。FLAT提出联合优化的表征预训练框架，把共享多模态编码器与文生图、图生文解码器一起训练，将图像与文本重采样为可变长度、线性可插值的一维对齐跨模态词元。该表示可直接供生成解码器使用，从而打通表示学习与生成，提升文生图与图生文任务效果，为文本描述合成图像提供了统一的表示与生成框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.12163v1",
+      "source": "arxiv",
+      "title": "Certifying Concept Unlearning in Text-to-Image Diffusion Models",
+      "abstract": "Existing evaluations of concept unlearning in text-to-image (T2I) diffusion models primarily rely on attack success rates obtained through automated adversarial prompt search. However, these metrics provide only empirical evidence over a finite set of queries and leave residual leakage over the broader prompt space largely unquantified. This limitation can lead to overestimating unlearning effectiveness and underestimating safety risks. To address this gap, we introduce a novel certification framework for T2I concept unlearning that provides high-confidence guarantees with bounded error on residual concept leakage. Our approach combines statistical certification with worst-case analysis along concept-relevant embedding directions to derive explicit upper bounds on leakage probability under user-specified confidence levels. We evaluate our framework across three major concept categories namely NSFW content, artistic styles, and celebrity identities, and six state-of-the-art unlearning methods. Certified leakage bounds consistently exceed standard attack success rates by 16.2%, uncovering substantial residual risks missed by existing evaluation protocols. Crucially, our results demonstrate that empirical attack-based evaluations can significantly underestimate residual leakage and establish certification as a necessary complement for reliable auditing of concept unlearning in T2I diffusion models.",
+      "authors": [
+        "Mansi",
+        "Luca Marzari",
+        "Francesco Leofante"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-09-10T19:51:28+00:00",
+      "link": "https://arxiv.org/pdf/2609.12163v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "certification of concept unlearning in text-to-image diffusion models",
+      "llm_evidence_cn": "文本到图像扩散模型中的概念遗忘认证",
+      "llm_evidence": "文本到图像扩散模型中的概念遗忘认证",
+      "canonical_evidence": "文本到图像扩散模型中的概念遗忘认证",
+      "llm_tldr_en": "It certifies concept unlearning in text-to-image diffusion models, combining statistical certification with worst-case analysis along concept-relevant embedding directions to bound residual leakage.",
+      "llm_tldr_cn": "现有文本到图像扩散模型的概念遗忘评估依赖有限查询上的攻击成功率，无法量化更广提示空间中的残余概念泄漏。为此作者提出认证框架，将统计认证与沿概念相关嵌入方向的最坏情况分析相结合，推导残余泄漏的显式上界。该方法能以高置信度、有界误差地保证遗忘效果，避免高估遗忘有效性、低估安全风险，为扩散模型的安全评估提供了可证明的手段。",
+      "llm_tldr": "现有文本到图像扩散模型的概念遗忘评估依赖有限查询上的攻击成功率，无法量化更广提示空间中的残余概念泄漏。为此作者提出认证框架，将统计认证与沿概念相关嵌入方向的最坏情况分析相结合，推导残余泄漏的显式上界。该方法能以高置信度、有界误差地保证遗忘效果，避免高估遗忘有效性、低估安全风险，为扩散模型的安全评估提供了可证明的手段。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.17414v1",
+      "source": "arxiv",
+      "title": "SlotDiT: Object-Centric Representations for Diffusion Transformers",
+      "abstract": "Text-conditioned latent diffusion models perform strongly in video generation and are promising backbones for robotic applications. However, existing approaches rely on pixel-level or VAE-based latent representations that lack explicit semantic structure, leaving the impact of the representation space largely unexplored. Slot-based object-centric representations offer a structured alternative by decomposing scenes into object-level latents, or slots. While they have shown success in dynamics modeling and planning, they have not yet been explored for diffusion-based generative modeling. We introduce SlotDiT, a text-guided Diffusion Transformer (DiT) that operates in a slot-based latent space. Given a reference image and a language instruction, SlotDiT decomposes the scene into object-centric slots representing individual entities. Conditioned on the instruction and observed scene context, the model autoregressively denoises future slot trajectories to predict scene dynamics. To systematically investigate latent-space design for diffusion transformers, we compare slot-based representations against VAE-based and semantics-aligned alternatives within a unified DiT framework. Our experiments show that using slots as DiT latents yields competitive video generation quality while consistently improving task-completion rates across four robotic datasets. Furthermore, their compact representation provides a computationally efficient alternative to VAE-based and semantics-aligned latent spaces. Overall, our results demonstrate that object-centric structure is a powerful inductive bias for diffusion-based generative modeling in robotic environments. The project page is available at https://slot-dit.github.io/.",
+      "authors": [
+        "Gjergj Plepi",
+        "Sven Behnke"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.RO"
+      ],
+      "published": "2026-09-15T16:38:33+00:00",
+      "link": "https://arxiv.org/pdf/2609.17414v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "text-guided latent diffusion transformer with object-centric slot latents",
+      "llm_evidence_cn": "文本引导的潜在扩散Transformer与槽位表示",
+      "llm_evidence": "文本引导的潜在扩散Transformer与槽位表示",
+      "canonical_evidence": "文本引导的潜在扩散Transformer与槽位表示",
+      "llm_tldr_en": "SlotDiT is a text-guided Diffusion Transformer operating in a slot-based object-centric latent space, replacing pixel or VAE latents with structured object-level representations for generative modeling and robotics.",
+      "llm_tldr_cn": "本文针对文本条件潜在扩散模型依赖像素或VAE表示、缺乏显式语义结构的问题，提出SlotDiT，一种在槽位式物体中心潜在空间中运作的文本引导扩散Transformer。给定参考图像与语言指令，模型在结构化潜在空间中进行生成。该工作首次将物体中心槽位表示引入扩散生成建模，为文本条件图像/视频生成提供了更具语义结构的新范式。",
+      "llm_tldr": "本文针对文本条件潜在扩散模型依赖像素或VAE表示、缺乏显式语义结构的问题，提出SlotDiT，一种在槽位式物体中心潜在空间中运作的文本引导扩散Transformer。给定参考图像与语言指令，模型在结构化潜在空间中进行生成。该工作首次将物体中心槽位表示引入扩散生成建模，为文本条件图像/视频生成提供了更具语义结构的新范式。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "latent diffusion models for high-resolution image synthesis",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.12731v1",
+      "source": "arxiv",
+      "title": "GRACE: Adaptive Concept Erasure with Geometry-Guided Retention in Diffusion Models",
+      "abstract": "Text-to-image (T2I) diffusion models inevitably internalize sensitive or non-compliant concepts from large-scale pretraining data, necessitating post-hoc concept erasure. However, existing erasure methods often lack explicit constraints on parameter updates, leading to over-intervention and unintended semantic drift. In addition, many methods rely on manually crafted counterfactual supervision, such as surrogate prompts, which incurs substantial data construction costs that limit scalability to new concepts. To address these limitations, we propose GRACE, a structured concept erasure framework designed to enable localized and selective intervention. Specifically, we introduce a semantically weighted sensitive subspace estimation to precisely lock intervention directions, and employ lightweight subspace-constrained adapters to prevent global semantic disturbance. To eliminate the dependency on manual prompt engineering, we design an automatically decoupled safe-anchor mechanism. To mitigate semantic drift induced by excessive intervention, we introduce an energy-driven dynamic gating mechanism that adaptively controls the timing and strength of intervention at inference. Extensive experiments demonstrate that our method achieves a superior balance between erasure effectiveness and generation fidelity. Compared with the average performance of five state-of-the-art (SOTA) concept erasure methods, our method improves the fine-grained NSFW reduction rate by $17.86\\%$, while reducing the macro-averaged target CLIP Score and preservation-oriented Fréchet Inception Distance (FID) by $4.75\\%$ and $50.58\\%$, respectively, indicating stronger concept suppression with substantially improved preservation of the original model's generative utility.",
+      "authors": [
+        "Qinghui Gong",
+        "Yihuai Liang",
+        "Yuanlun Xie",
+        "Deepak Kumar Jain",
+        "Vitomir Štruc",
+        "Zhengchun Zhou"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-11T11:29:37+00:00",
+      "link": "https://arxiv.org/pdf/2609.12731v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "concept erasure in text-to-image diffusion models",
+      "llm_evidence_cn": "文本到图像扩散模型中的概念擦除",
+      "llm_evidence": "文本到图像扩散模型中的概念擦除",
+      "canonical_evidence": "文本到图像扩散模型中的概念擦除",
+      "llm_tldr_en": "GRACE performs structured concept erasure in text-to-image diffusion models via semantically weighted sensitive subspace estimation, enabling localized selective intervention without surrogate prompts.",
+      "llm_tldr_cn": "文本到图像扩散模型会从大规模预训练数据中内化敏感或不合规概念，需要事后擦除，但现有方法缺乏对参数更新的显式约束，易过度干预并造成语义漂移，且依赖人工构造的替代提示等反事实监督。作者提出GRACE，通过语义加权的敏感子空间估计实现局部、选择性的结构化擦除。该方法减少了过度干预与语义漂移，降低数据构建成本并可扩展到新概念。",
+      "llm_tldr": "文本到图像扩散模型会从大规模预训练数据中内化敏感或不合规概念，需要事后擦除，但现有方法缺乏对参数更新的显式约束，易过度干预并造成语义漂移，且依赖人工构造的替代提示等反事实监督。作者提出GRACE，通过语义加权的敏感子空间估计实现局部、选择性的结构化擦除。该方法减少了过度干预与语义漂移，降低数据构建成本并可扩展到新概念。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.17814v1",
+      "source": "arxiv",
+      "title": "GazeDiT: Gaze-Accurate Diffusion Image Generation for Eye Tracking via Spatial Conditioning",
+      "abstract": "Diffusion models are increasingly used to generate synthetic training data, but precise label control remains difficult when the conditioning signal is low-dimensional and coarse. Text-conditioned images are judged by broad prompt consistency, whereas supervised training requires precise correspondence between each image and its numerical label. This is challenging in eye tracking, where a 4D binocular gaze is expressed through subtle, spatially localized pupil and iris geometry. We introduce GazeDiT, a diffusion model that generates images for a requested 4D gaze through an internally constructed spatial condition that grounds the global gaze label in this local geometry. During training, a frozen SegFormer extracts pupil/iris geometry from diverse real images, allowing the model to learn realistic appearance conditioned on that geometry. At inference, a physical eye renderer samples gaze-consistent geometries by varying anatomy and camera state, enabling diverse synthesis without a source image. GazeDiT achieves substantially lower tail gaze-label error than other diffusion baselines, approaching the error of the same frozen gaze estimator on real images. Its generated data also improves the downstream eye tracker, reducing gaze error on difficult cases from 3.05° to 2.80° in the smallest cohort.",
+      "authors": [
+        "Dongze Wu",
+        "David Colmenares",
+        "Fengting Yang",
+        "Jogendra Nath Kundu",
+        "Yao Xie",
+        "Ali Behrooz",
+        "Conny Lu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-15T20:30:24+00:00",
+      "link": "https://arxiv.org/pdf/2609.17814v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "diffusion image generation with precise spatial conditioning control",
+      "llm_evidence_cn": "带精确空间条件控制的扩散图像生成",
+      "llm_evidence": "带精确空间条件控制的扩散图像生成",
+      "canonical_evidence": "带精确空间条件控制的扩散图像生成",
+      "llm_tldr_en": "Precise label control is hard for diffusion models when conditioning is low-dimensional and coarse. GazeDiT generates eye-tracking images for a requested 4D gaze via an internally constructed spatial condition grounding the global label in pupil and iris geometry, using a frozen SegFormer. It enables precise label-image correspondence for synthetic training data.",
+      "llm_tldr_cn": "针对扩散模型在低维粗粒度条件下难以实现精确标签控制、生成图像与数值标签难以严格对应的问题，本文以眼动追踪为例提出GazeDiT，通过内部构建的空间条件将全局4D注视标签落地到瞳孔与虹膜局部几何。训练时用冻结的SegFormer提取瞳孔虹膜几何作为条件。该模型能生成与请求注视精确对应的图像，为合成训练数据提供了精细可控的生成手段。",
+      "llm_tldr": "针对扩散模型在低维粗粒度条件下难以实现精确标签控制、生成图像与数值标签难以严格对应的问题，本文以眼动追踪为例提出GazeDiT，通过内部构建的空间条件将全局4D注视标签落地到瞳孔与虹膜局部几何。训练时用冻结的SegFormer提取瞳孔虹膜几何作为条件。该模型能生成与请求注视精确对应的图像，为合成训练数据提供了精细可控的生成手段。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.15863v1",
+      "source": "arxiv",
+      "title": "LynnReal-Omni: Native multi-modal Video Generation for Agentic Visual Workflows",
+      "abstract": "Video diffusion models are stochastic and hard to control: precise content often requires repeated sampling without guaranteed success, and long-horizon scenes drift in appearance, interactions, and temporal coherence. Agentic visual creation provides explicit references, editable 3D scenes, or executable game states for stable control, but does not by itself guarantee high object or character fidelity. Combining the two can enable stable, high-quality generation. To realize this combination, we present LynnReal-Omni, a native multimodal video generation framework built on a 32B shared multimodal diffusion transformer that unifies text-to-video, image-conditioned generation, reference-guided generation, structural control, editing, degraded video restoration, and long-video generation. It accepts heterogeneous visual inputs, including appearance references, editable 3D renders, and game recordings, allowing agents to compose visual conditions within a unified model. We also train a dedicated 27B Flash shared multimodal diffusion transformer for real-time rendering. We build a systematic data pipeline for video cleaning, subject association, multimodal annotation, and aligned control construction, yielding a curated corpus of multi-shot audiovisual segments, and introduce MSAVP, a 100-prompt, 20-metric evaluation design that separates instruction following, generating plausibility, visual quality, temporal behavior, and audio coordination. LynnReal-Omni-Flash further reduces inference cost through model and decoding acceleration, including a lightweight VAE decoder; on one H100, warm generation and decoding of a 22-frame 540p video take 843 ms with LynnReal-Omni and 377 ms with Flash. These results provide a foundation for real-time streaming video generation, making LynnReal-Omni a unified, controllable, and efficient basis for agentic visual creation.",
+      "authors": [
+        "Xiaofeng Mao",
+        "Peijia Lin",
+        "Shaohao Rui",
+        "Yibo Zhang",
+        "Haibin Wan",
+        "Weijie Ma"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-14T16:55:25+00:00",
+      "link": "https://arxiv.org/pdf/2609.15863v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "controllable multimodal video generation with diffusion transformer",
+      "llm_evidence_cn": "基于扩散Transformer的可控多模态视频生成",
+      "llm_evidence": "基于扩散Transformer的可控多模态视频生成",
+      "canonical_evidence": "基于扩散Transformer的可控多模态视频生成",
+      "llm_tldr_en": "Video diffusion models are stochastic and hard to control, drifting in long-horizon scenes. LynnReal-Omni builds a 32B multimodal diffusion transformer unifying text-to-video, image-conditioned, and structurally controlled generation for stable, high-fidelity output.",
+      "llm_tldr_cn": "视频扩散模型具有随机性且难以精确控制，长时场景常出现外观、交互与时间一致性漂移。本文提出LynnReal-Omni，基于32B共享多模态扩散Transformer，统一文本到视频、图像条件生成、参考引导、结构控制与编辑等多种能力。通过融合智能体视觉创作提供的显式参考与可编辑状态，实现稳定且高保真的生成。该工作展示了可控多模态扩散生成在智能体工作流中的应用潜力。",
+      "llm_tldr": "视频扩散模型具有随机性且难以精确控制，长时场景常出现外观、交互与时间一致性漂移。本文提出LynnReal-Omni，基于32B共享多模态扩散Transformer，统一文本到视频、图像条件生成、参考引导、结构控制与编辑等多种能力。通过融合智能体视觉创作提供的显式参考与可编辑状态，实现稳定且高保真的生成。该工作展示了可控多模态扩散生成在智能体工作流中的应用潜力。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.18065v1",
+      "source": "arxiv",
+      "title": "A Design Space for Visual Interfaces for Generative Image Models",
+      "abstract": "Interactive visual interfaces have become an important means of controlling generative image models, enabling users to manipulate generation through prompts, direct manipulation, and a range of interactions. However, existing techniques are typically presented as independent systems, making it difficult to understand how they relate, compare their interaction mechanisms, or identify opportunities for new interface designs. We introduce a design space for interactive visual interfaces for generative image models derived from 51 research systems and practitioner tools. The framework decomposes each system into three complementary components: the user interface (U), the controllable model objects (Z), and the mapping function ($φ$) that translates user interaction into model operations. This decomposition provides a common representation for analyzing heterogeneous interaction techniques across model families, revealing recurring design patterns and underexplored regions of the design space. We further present an interactive corpus explorer that support comparative analysis, and discuss usage scenarios for both educational settings and HCI/AI practitioners identifying research and design opportunities.",
+      "authors": [
+        "Susie S. Y. Li",
+        "Mingwei S. G. Li",
+        "Remco Chang"
+      ],
+      "primary_category": "cs.HC",
+      "categories": [
+        "cs.HC"
+      ],
+      "published": "2026-09-16T03:11:12+00:00",
+      "link": "https://arxiv.org/pdf/2609.18065v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "design space for interactive interfaces controlling generative image models",
+      "llm_evidence_cn": "面向生成式图像模型的可控交互界面设计空间",
+      "llm_evidence": "面向生成式图像模型的可控交互界面设计空间",
+      "canonical_evidence": "面向生成式图像模型的可控交互界面设计空间",
+      "llm_tldr_en": "A design space for interactive visual interfaces to generative image models, derived from 51 systems, decomposes each into UI, controllable model objects, and mapping functions to compare control mechanisms.",
+      "llm_tldr_cn": "针对生成式图像模型的交互界面各自独立、难以比较的问题，作者从51个研究系统与实用工具中提炼出一个交互设计空间。该框架把系统拆解为用户界面、可控模型对象以及连接二者的映射函数三个组件。通过这一分解，研究揭示了不同交互机制之间的关系并识别出新的界面设计机会，为可控图像生成的人机交互研究提供了统一视角。",
+      "llm_tldr": "针对生成式图像模型的交互界面各自独立、难以比较的问题，作者从51个研究系统与实用工具中提炼出一个交互设计空间。该框架把系统拆解为用户界面、可控模型对象以及连接二者的映射函数三个组件。通过这一分解，研究揭示了不同交互机制之间的关系并识别出新的界面设计机会，为可控图像生成的人机交互研究提供了统一视角。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.16409v1",
+      "source": "arxiv",
+      "title": "Reasoning with Image Generation",
+      "abstract": "Chain-of-thought reasoning has revolutionized natural language processing by enabling large language models (LLMs) to decompose problems into intermediate steps before answering. Yet confining reasoning to the textual domain presents limitations for tasks requiring direct manipulation of visual representations. Recent efforts augment multimodal LLMs with external visual expert tools such as depth estimation or object detection modules, but these remain fundamentally limited by their reliance on narrow, rigid operations that cannot flexibly generate or transform visual content. We propose ReImaGin, which leverages image generation models as a flexible visual reasoning mechanism for multimodal LLMs: unlike fixed-function tools, they accept natural language commands and can perform open-ended visual operations, like removing an occlusion or generating a floorplan from multiple disjoint views of a room. Across six diverse visual reasoning tasks including multi-view spatial reasoning and collision prediction, ReImaGin consistently outperforms both text-only reasoning and specialist vision-tool baselines, with gains of up to 25\\%, demonstrating the advantage of flexible, generative visual reasoning.",
+      "authors": [
+        "Nishad Singhi",
+        "Hector Garcia Rodriguez",
+        "Aditya Arora",
+        "Marcus Rohrbach",
+        "Anna Rohrbach"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-14T22:29:03+00:00",
+      "link": "https://arxiv.org/pdf/2609.16409v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "image generation models as flexible visual reasoning mechanism",
+      "llm_evidence_cn": "以图像生成模型作为灵活视觉推理机制",
+      "llm_evidence": "以图像生成模型作为灵活视觉推理机制",
+      "canonical_evidence": "以图像生成模型作为灵活视觉推理机制",
+      "llm_tldr_en": "ReImaGin leverages image generation models as a flexible visual reasoning mechanism for multimodal LLMs, replacing rigid fixed-function visual tools with open-ended generation.",
+      "llm_tldr_cn": "将推理局限于文本域限制了需要直接操作视觉表示的任务，而现有为多模态LLM附加的外部视觉工具依赖狭窄僵化的操作，无法灵活生成或变换视觉内容。作者提出ReImaGin，把图像生成模型作为多模态LLM的灵活视觉推理机制，使其接受自然语言命令进行开放式生成。相比固定功能工具，该方案扩展了多模态推理能力，表明图像生成模型可作为通用视觉推理工具。",
+      "llm_tldr": "将推理局限于文本域限制了需要直接操作视觉表示的任务，而现有为多模态LLM附加的外部视觉工具依赖狭窄僵化的操作，无法灵活生成或变换视觉内容。作者提出ReImaGin，把图像生成模型作为多模态LLM的灵活视觉推理机制，使其接受自然语言命令进行开放式生成。相比固定功能工具，该方案扩展了多模态推理能力，表明图像生成模型可作为通用视觉推理工具。",
+      "llm_tags": [
+        "query:image-gen:composite"
+      ],
+      "matched_query_tag": "query:image-gen:composite",
+      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
+      "matched_requirement_id": "req-composite-image-gen",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.17691v1",
+      "source": "arxiv",
+      "title": "Accelerating Diffusion Sampling via Speculative Draft Trees",
+      "abstract": "Speculative sampling accelerates diffusion model generation by drafting inexpensive candidate states and correcting them under a coupling that preserves the target distribution exactly, reducing the number of expensive target evaluations. Existing diffusion samplers, notably those based on reflection maximal coupling, are topologically constrained: their lookahead drafts form a chain graph, a single linear sequence, which inherently limits the acceptance rate per target evaluation. We connect speculative sampling in diffusion models to relative entropy coding (REC). This perspective shows the lookahead need not be linear and motivates our central contribution, draft trees, which enrich the candidates considered per round and lower the target function evaluations. We further adopt greedy rejection sampling, an REC algorithm, as the draft-target coupling, improving acceptance while guaranteeing exact target samples. Experiments across diverse target and draft models demonstrate up to 8.3% acceleration over the reflection coupling baseline in practical settings.",
+      "authors": [
+        "Marcello Bullo",
+        "Yanxiao Liu",
+        "Öykü Sıla Güner",
+        "Arpan Mukherjee",
+        "Deniz Gündüz"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "stat.AP"
+      ],
+      "published": "2026-09-15T18:04:10+00:00",
+      "link": "https://arxiv.org/pdf/2609.17691v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "accelerating diffusion model sampling via speculative draft trees preserving target distribution",
+      "llm_evidence_cn": "以推测草稿树加速扩散模型采样并保持目标分布",
+      "llm_evidence": "以推测草稿树加速扩散模型采样并保持目标分布",
+      "canonical_evidence": "以推测草稿树加速扩散模型采样并保持目标分布",
+      "llm_tldr_en": "Speculative sampling in diffusion models is limited by linear lookahead chains; the paper connects it to relative entropy coding and proposes draft trees that enrich candidates per round and cut target function evaluations.",
+      "llm_tldr_cn": "扩散模型生成采样代价高，推测采样通过廉价草稿与精确校正减少目标函数评估，但现有方法的前瞻草稿受链式拓扑限制，接受率难以提高。作者把扩散模型中的推测采样与相对熵编码相联系，指出前瞻结构不必是线性的，进而提出草稿树，使每轮候选状态更丰富。该方法在保持目标分布精确的前提下降低目标函数评估次数，加速了扩散图像生成的采样过程，属扩散模型推理效率方向的方法贡献。",
+      "llm_tldr": "扩散模型生成采样代价高，推测采样通过廉价草稿与精确校正减少目标函数评估，但现有方法的前瞻草稿受链式拓扑限制，接受率难以提高。作者把扩散模型中的推测采样与相对熵编码相联系，指出前瞻结构不必是线性的，进而提出草稿树，使每轮候选状态更丰富。该方法在保持目标分布精确的前提下降低目标函数评估次数，加速了扩散图像生成的采样过程，属扩散模型推理效率方向的方法贡献。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-16</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-17</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 17 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 13 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>6</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-16 22:22:06 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-17 21:46:03 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,10 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-09-16 日报共收录 17 篇论文（精读 6、速读 11），主线集中在文生图扩散模型的可解释性与可控生成。</p>
-<p>最值得看的是两篇 8.0 分精读：一篇剖析文生图扩散模型中&quot;物体相关概念脆弱性&quot;的成因，另一篇 AcFlow 用学习到的条件激活流来操控扩散 Transformer；速读中 7.0 分的《Revisiting Spectral Representations》《Studying Image Tokenizers as Visual Languages》《StreetDiff》则分别覆盖谱表示、视觉 tokenizer 与多视角街景生成。</p>
-<p>普通读者可先读两篇 8.0 分精读把握可控生成思路，再按兴趣从 7.0 分速读里挑一篇浏览即可。</p>
+<p>今日共生成 13 篇推荐（精读 2 篇，速读 11 篇）</p>
+<p>精读：《Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation》（9.0/10）, 《Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models》（8.0/10）</p>
+<p>速读：《Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates》（7.0/10）, 《FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation》（7.0/10）, 《SlotDiT: Object-Centric Representations for Diffusion Transformers》（7.0/10）</p>
+<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -80,12 +81,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Interpreting Object-Dependent Concept Brittleness in Text-to-Image Diffusion Models">Interpreting Object-Dependent Concept Brittleness in Text-to-Image Diffusion Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="AcFlow: Controlling Text-to-Image Diffusion Transformers via Learned Conditional Activation Flow">AcFlow: Controlling Text-to-Image Diffusion Transformers via Learned Conditional Activation Flow</span></li><li><span class="dpr-home-dashboard-paper-title" title="Logit Refiner: Improving Visual Autoregressive Models via Intra-Scale Dependency Modeling">Logit Refiner: Improving Visual Autoregressive Models via Intra-Scale Dependency Modeling</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation">Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models">Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>6</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -96,7 +97,7 @@
     <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Revisiting Spectral Representations in Generative Diffusion Models">Revisiting Spectral Representations in Generative Diffusion Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Studying Image Tokenizers as Visual Languages in Unified Multimodal Models">Studying Image Tokenizers as Visual Languages in Unified Multimodal Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="StreetDiff: Multi-view Street Scenes Generation via Cross-view Consistent Multi-view Stable Diffusion with Structure Prompts">StreetDiff: Multi-view Street Scenes Generation via Cross-view Consistent Multi-view Stable Diffusion with Structure Prompts</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates">Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates</span></li><li><span class="dpr-home-dashboard-paper-title" title="FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation">FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="SlotDiT: Object-Centric Representations for Diffusion Transformers">SlotDiT: Object-Centric Representations for Diffusion Transformers</span></li></ul>
   </div>
   <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
 </section>
