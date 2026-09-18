@@ -1,0 +1,2713 @@
+Preprint
+REFINEMENT IS INHERENTLY EDITABLE: TRAINING-
+FREE PROMPT-TO-PROMPT IMAGE EDITING
+WITH
+GENERATIVE REFINEMENT NETWORK
+Yulong Chen▲♠∗, Ziqian Zhang▲∗, Haoyu Zhang♠, Ao He▲, Senmao Li♣†, Kai Wang▲†,
+▲City University of Hong Kong (Dongguan), Guangdong, China
+♠City University of Hong Kong, Hong Kong, China
+♣Mohamed bin Zayed University of Artificial Intelligence, Masdar, Abu Dhabi
+yulong.chen@cityu-dg.edu.cn
+72500044@cityu-dg.edu.cn
+hzhang2838-c@my.cityu.edu.hk
+ao.he@cityu-dg.edu.cn
+senmaonk@foxmail.com
+kai.wang@cityu-dg.edu.cn
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+(f) MasaCtrl
+“[spiderman -> robot] on the roof”
+“a dark grassy hillside with snow covered mountains in the background [and a goat eating grass]”
+“a young woman [in sunglasses] driving an old car”
+“a woman in white holding flowers with eyes looking [down -> forward]”
+“[blue -> green] butterflies and mushrooms in the forest at night”
+Figure 1: Visual comparisons of text-guided image editing results from RefineEdit (Ours), LED-
+its++ (Brack et al., 2024), Flowedit (Kulikov et al., 2025), Chordedit (Lu et al., 2026), and Masac-
+trl (Cao et al., 2023).
+ABSTRACT
+Text-guided image editing must introduce the requested changes while preserving
+unrelated source content. Diffusion-based editors rely on spatial controls whose
+inaccuracies can leave edits incomplete or alter unrelated regions. Causal autore-
+gressive editors face a further constraint: their fixed decoding order limits revision
+∗Indicates equal contribution.
+†Corresponding authors.
+1
+arXiv:2609.20633v1  [cs.CV]  17 Sep 2026
+
+
+Preprint
+of earlier decisions. We introduce RefineEdit, a training-free prompt-to-prompt
+image editing framework built on a Generative Refinement Network (GRN). Our
+key idea is to couple edit localization with content generation through the global
+refinement of binary image codes, allowing editing evidence to be reassessed as
+the image evolves. RefineEdit initializes an editing branch from an intermediate
+source state, reusing the emerging layout. We compare the probabilities assigned
+by the two branches to the same source-sampled bits, using their signed differ-
+ences to select editable positions and bits. Selected bits follow editing refine-
+ment, while the remaining bits copy the evolving source state. To stabilize editing
+across refinement steps, adaptive spatial freezing limits unnecessary mask expan-
+sion, while finite bit locking keeps recently selected bits editable. The frame-
+work requires no additional training, external masks, or attention control. Across
+nine editing categories of PIE-Bench, RefineEdit achieves the best background-
+preservation scores in PSNR, LPIPS, MSE and SSIM, together with the highest
+whole-image and edited-region CLIP scores among the evaluated methods.
+1
+INTRODUCTION
+Text-to-image models can now generate high-quality images that closely follow a text prompt (Rom-
+bach et al., 2022; Labs et al., 2025; Sun et al., 2024; Esser et al., 2024; Han et al., 2025). Yet visual
+creation is often iterative, and users may want to revise a generated image rather than start over.
+Text-guided image editing aims to make the changes specified by an editing prompt while preserv-
+ing unrelated source content (Lu et al., 2026; Cao et al., 2023; Hertz et al., 2023; Kulikov et al.,
+2025; Brack et al., 2024). Balancing these goals is difficult: stronger edits may alter unrelated re-
+gions, while stronger preservation may weaken the intended change. The key challenge is to identify
+where the source conflicts with the editing prompt and make the required change without disturbing
+the rest of the image.
+Most training-free editors address this challenge by adding spatial control to a pretrained generator.
+Diffusion methods use masks, attention maps, or injected features (Hertz et al., 2023; Avrahami
+et al., 2022; Cao et al., 2023; Brooks et al., 2023; Tumanyan et al., 2023), while autoregressive
+methods select between source and editing predictions during decoding (Wang et al., 2025). These
+controls determine which parts of the source may change, making their accuracy and evolution im-
+portant to editing quality. An overly narrow editing region may leave the requested change incom-
+plete, whereas an overly broad region may alter unrelated content. Causal autoregressive models
+further make early decisions difficult to revise (Chang et al., 2022; Esser et al., 2021; Sun et al.,
+2024; Kondratyuk et al., 2023; Tian et al., 2024; Wang et al., 2026). This raises a question: Can the
+evolving generation process itself provide the evidence needed to revise edit localization?
+The Generative Refinement Network (GRN) (Han et al., 2026) offers a useful setting for exploring
+this question. As shown in Fig. 2, GRN repeatedly updates the full visual token map, moving from
+noise1 to coarse structure and then fine details. Intermediate source states already contain useful
+spatial structure, allowing the editing branch to reuse this layout while revising object appearance.
+This resembles an artist developing the same rough feline sketch into a cat or a tiger. Beyond provid-
+ing a reusable layout, GRN represents images with Hierarchical Binary Quantization (HBQ) codes
+whose spatial and channel coordinates align across branches. At the branching step, conditioning the
+shared state on the source and editing prompts yields different bit probabilities. These differences
+can serve as editing evidence at individual binary coordinates, suggesting a way to select editing
+updates while retaining source bits elsewhere. As refinement changes the edited state, subsequent
+predictions provide new evidence for bit selection. These selections guide the next content update,
+allowing localization and content generation to evolve together. Localization and content genera-
+tion thus evolve together rather than acting as separate stages. This leads to our central insight:
+Refinement is inherently editable. These properties make GRN a natural basis for editing through
+selective bit updates.
+Motivated by these observations, we propose RefineEdit, a training-free framework for prompt-to-
+prompt editing of GRN-generated images. To the best of our knowledge, RefineEdit is the first
+1Noise refers to a random binary code whose bits are independently sampled as 0 or 1 with equal probability.
+2
+
+
+Preprint
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+R
+F
+R
+R
+F
+R
+R
+F
+R
+R
+R
+F
+R
+R
+R
+F
+F
+R
+R
+F
+R
+R
+F
+F
+R
+R
+R
+F
+F
+R
+F
+F
+R
+F
+F
+F
+F
+F
+F
+R
+R
+F
+R
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+F
+S
+S
+S
+S
+S
+E
+E
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+R
+E
+S
+S
+S
+E
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+E
+E
+S
+S
+E
+R
+S
+S
+S
+S
+S
+S
+S
+S
+S
+S
+E
+E
+S
+S
+E
+E
+S
+S
+S
+S
+S
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+0
+0
+0
+0
+0
+1
+1
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+0
+0
+1
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+0
+1
+1
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+0
+1
+1
+0
+0
+0
+0
+0
+0.40
+0.25
+0.76
+0.08
+0.08
+0.58
+0.80
+0.23
+0.52
+0.08
+0.39
+0.36
+0.36
+0.71
+0.26
+0.17
+0.35
+0.43
+0.18
+0.73
+0.73
+0.41
+0.19
+0.66
+0.82
+0.46
+0.56
+0.49
+0.49
+0.65
+0.83
+0.70
+0.82 0.46 0.56 0.49
+0.45 0.80 0.76 0.65
+0.74 0.27 0.39 0.83
+0.78 0.41 0.26 0.70
+0.60
+0.75
+0.24
+0.08
+0.08
+0.58
+0.80
+0.23
+0.48
+0.92
+0.61
+0.36
+0.36
+0.71
+0.26
+0.17
+0.65
+0.57
+0.82
+0.73
+0.73
+0.41
+0.19
+0.66
+0.28
+0.54
+0.44
+0.49
+0.49
+0.65
+0.83
+0.70
+0.28 0.54 0.44 0.49
+0.55 0.20 0.76 0.65
+0.26 0.73 0.61 0.83
+0.78 0.41 0.26 0.70
+Source trajectory: bread on a wooden table with tomatoes and a napkin
+Editing trajectory: meat on a wooden table with tomatoes and a napkin
+Step 1: Noise
+Step 2: Branch
+Step 3: Refine
+Step 4: Refine
+End
+100% Random Noise
+Sample 25% Prediction
+Sample 50% Prediction
+Sample 75% Prediction
+Sample 100% Prediction
+Inactive
+Source / Editing Probability
+Signed Probability Drop
+Mask Start
+Mask Refine
+Refine Content and Localization Together
+Local Editing Bits
+Wait Outline Appear
+F
+Newly filled token
+F
+Kept fill token
+R
+Erased token
+R
+Blank random token
+S
+Source copied token
+E
+Editing retained  token
+Figure 2: Top: GRN progressively develops image structure from a random binary code. Middle:
+Source and editing probabilities, illustrated by the blue and green cubes, are compared at the same
+source-sampled bits. Black mask entries indicate editable positions. Bottom: Selected bits follow
+editing refinement, while unselected bits copy the evolving source state.
+method to adapt GRN to training-free image editing, extending its use beyond image generation
+and prior training-based video editing (Xie et al., 2026). At a switch step, RefineEdit initializes
+an editing branch from the current source state, and both branches continue refinement under their
+respective prompts. At each step, we compare the probabilities assigned by the two branches to
+the same source-sampled bits. The resulting signed probability drops define a spatial mask that
+selects editable positions and a bitwise mask that determines which bits within them may change.
+Source-anchored bit routing accepts editing updates at selected coordinates and copies the evolv-
+ing source state at all remaining coordinates.To stabilize these routing decisions across refinement
+steps, adaptive spatial freezing limits unnecessary mask expansion, while finite bit locking keeps re-
+cently selected bits editable. This control operates directly on binary codes, without external editing
+masks or attention control. Across nine editing categories of PIE-Bench (Ju et al., 2024), RefineEdit
+achieves the best background-preservation scores in PSNR, LPIPS, MSE and SSIM, together with
+the highest whole-image and edited-region CLIP scores among the compared methods.
+Our contributions are summarized as follows:
+• To the best of our knowledge, RefineEdit is the first training-free framework for prompt-to-
+prompt editing of GRN-generated images. We formulate editing as a coupled refinement
+process in which edit localization and content generation evolve together.
+• We introduce spatial and bitwise control based on signed probability drops, separating ed-
+itable positions from editing permission at individual bits. Source-anchored routing retains
+unselected bits from the evolving source, while adaptive spatial freezing and finite bit lock-
+ing stabilize editing decisions across steps.
+• Experiments across nine editing categories of PIE-Bench demonstrate a strong balance
+between background preservation and alignment with editing prompts.
+2
+RELATED WORK
+2.1
+TEXT-TO-IMAGE GENERATION
+Text-to-image generation has evolved through several generative paradigms. Diffusion and flow-
+based models have established strong image fidelity and text alignment (Peebles & Xie, 2023; Sauer
+et al., 2024; Podell et al., 2024; Rombach et al., 2022; Esser et al., 2024; Ma et al., 2024). Recent
+autoregressive models show that, with improved visual tokenizers and model scaling, discrete next-
+token prediction can achieve competitive or even superior generation quality (Ramesh et al., 2021;
+Yu et al., 2022; Sun et al., 2024). However, their causal order prevents earlier tokens from being
+3
+
+
+Preprint
+revised once generated. Visual autoregressive models reorganize generation as next-scale or bitwise
+prediction (Tian et al., 2024; Han et al., 2025), improving efficiency and discrete modeling but still
+committing to a fixed coarse-to-fine order. GRN (Han et al., 2026) overcomes this restriction through
+near-lossless Hierarchical Binary Quantization and global random refinement, allowing every binary
+coordinate to be repeatedly reconsidered. Its globally revisable binary representation provides a
+natural interface for image editing, enabling changes to be localized and controlled at the bit level.
+2.2
+TRAINING-FREE IMAGE EDITING
+Training-free image editing repurposes pretrained generators without parameter updates. Diffusion-
+based approaches commonly use mask blending, attention control, or intermediate-feature injection
+to introduce target semantics while retaining source structure (Hertz et al., 2023; Avrahami et al.,
+2022; Cao et al., 2023; Brooks et al., 2023; Tumanyan et al., 2023; Brack et al., 2024; Rout et al.,
+2025). However, such continuous control often trades edit strength for background fidelity. Flow-
+based methods improve semantic transport and efficiency by constructing paths between source and
+target distributions (Kulikov et al., 2025; Lu et al., 2026), yet editable support remains implicit
+rather than enforced at native coordinates. Discrete autoregressive editing instead exploits token-
+distribution differences to localize changes (Wang et al., 2025; Hu et al., 2025), but its control fol-
+lows a fixed causal order and does not directly match GRN’s globally revisable generation (Xie et al.,
+2026). RefineEdit uses aligned-trajectory contrast to route only prompt-sensitive bits to editing and
+anchor the rest to the evolving source. Adaptive spatial freezing and finite bit locking stabilize this
+routing.
+3
+PRELIMINARIES
+Binary image representation.
+A frozen a frozen Hierarchical Binary Quantization (HBQ) tok-
+enizer EHBQ encodes an image I as Y = EHBQ(I) ∈{0, 1}N×D, where N is the number of spatial
+positions and D is the number of bits per position. Each coordinate (n, d) identifies one bit at spatial
+position n.
+Generative refinement.
+GRN initializes Y0 = Z, where each bit of Z is sampled once as 0 or 1
+with equal probability. The same random code is reused throughout refinement. Given the current
+binary input Yt and text condition c, GRN predicts all binary coordinates in parallel:
+Pt = softmax(Gθ(Yt, c, t)) ,
+bYt ∼Cat(Pt).
+(1)
+Here, Gθ is the frozen GRN Transformer, which outputs two logits per binary coordinate. Softmax
+converts these logits into the distribution Pt(n, d, ·) over {0, 1}. Cat samples each bit of bYt from its
+corresponding distribution.
+The next state combines sampled predictions with the fixed random code:
+Yt+1 = St ⊙bYt + (1 −St) ⊙Z,
+(2)
+where ⊙denotes element-wise multiplication.
+The selection mask satisfies St,n,d
+∼
+Bernoulli(λt+1): it equals 1 with probability λt+1 and 0 otherwise. Thus, λt+1 controls the ex-
+pected proportion of predictions retained in the next state. As this proportion increases, refinement
+moves from random bits toward a complete image. The selection mask St is resampled at every
+step, so a coordinate may return to its initial random value. All coordinates are predicted again at
+the next step rather than permanently fixed.
+4
+METHOD
+4.1
+REFINEMENT-GUIDED BIT ROUTING
+Figure 3 provides an overview of RefineEdit. Given a source prompt cs and an editing prompt ce,
+RefineEdit first runs source refinement under cs. At the switch step ts, we initialize the editing
+branch from the current source state, Y e
+ts = Y s
+ts. Both branches then continue under their respective
+prompts, sharing the fixed random code Z and refinement schedule. The editing branch therefore
+inherits the source’s intermediate structure.
+4
+
+
+Preprint
+0
+1
+0
+1
+1
+0
+0
+0
+0
+1
+1
+1
+1
+0
+1
+1
+0
+1
+0
+0
+0
+0
+1
+1
+0
+1
+1
+0
+0
+1
+1
+0
+0
+1
+1
+0
+0
+0
+0
+1
+0
+1
+1
+1
+1
+0
+0
+0
+GRN
+1
+0
+1
+0
+0
+1
+1
+0
+1
+0
+0
+0
+0
+1
+0
+0
+0
+0
+0
+1
+1
+1
+0
+1
+1
+1
+1
+0
+0
+0
+1
+1
+1
+1
+1
+0
+1
+1
+0
+0
+0
+0
+0
+1
+1
+1
+0
+1
+Probabilities
+𝑷𝒕
+𝒔 / 𝑷𝒕
+𝒆
+Sampled Bits
+𝒀$𝒕
+𝒔/ 𝒀$𝒕
+𝒆
+Current Bits Code
+Z →𝒀𝒕
+𝒔/ 𝒀𝒕
+𝒔 →𝒀𝒕
+𝒆
+1
+0
+1
+0
+0
+1
+1
+0
+1
+0
+0
+0
+0
+1
+0
+1
+0
+0
+0
+1
+1
+1
+0
+0
+1
+1
+1
+0
+0
+0
+0
+1
+1
+1
+1
+0
+1
+1
+0
+0
+0
+0
+0
+0
+1
+1
+1
+1
+HBQ
+Decoder
+Source prompt: “spiderman on the roof”
+Next Refinement Step
+0
+1
+0
+1
+1
+0
+0
+0
+0
+1
+1
+1
+1
+0
+1
+1
+0
+1
+0
+0
+0
+0
+1
+1
+0
+1
+1
+0
+0
+1
+1
+0
+0
+1
+1
+0
+0
+0
+0
+1
+0
+1
+1
+1
+1
+0
+0
+0
+GRN
+1
+0
+0
+0
+0
+1
+1
+0
+1
+1
+1
+1
+1
+1
+0
+0
+0
+0
+1
+1
+1
+0
+0
+0
+0
+1
+1
+0
+0
+1
+1
+1
+0
+1
+1
+0
+1
+0
+0
+1
+0
+1
+0
+1
+1
+1
+1
+1
+Combination
+1
+1
+0
+0
+0
+1
+1
+0
+1
+1
+1
+1
+1
+1
+0
+1
+0
+0
+0
+1
+1
+0
+0
+0
+1
+1
+1
+0
+0
+1
+1
+1
+1
+1
+1
+0
+1
+0
+0
+1
+0
+1
+0
+1
+1
+1
+1
+1
+Next Refinement Step
+Source prompt: “robot on the roof”
+Combination
+HBQ
+Decoder
+Bit Routing
+M=1: Editing
+M=0: Original
+Original Image
+Editing Image
+0
+1
+0
+0
+0
+0
+1
+1
+1
+0
+1
+1
+1
+0
+1
+1
+0
+1
+0
+1
+1
+0
+1
+0
+1
+1
+1
+0
+0
+1
+0
+1
+1
+1
+1
+0
+1
+1
+0
+1
+0
+0
+0
+0
+0
+0
+1
+1
+Random 
+Noise Z
+Source trajectory
+Editing trajectory
+Next Bits Code
+𝒀𝒕$𝟏
+𝒔
+/ 𝒀𝒕$𝟏
+𝒆
+0.40
+0.25
+0.76
+0.08
+0.08
+0.58
+0.80
+0.23
+0.52
+0.08
+0.39
+0.36
+0.36
+0.71
+0.26
+0.17
+0.35
+0.43
+0.18
+0.73
+0.73
+0.41
+0.19
+0.66
+0.82
+0.46
+0.56
+0.49
+0.49
+0.65
+0.83
+0.70
+0.82
+0.46
+0.56
+0.49
+0.45
+0.80
+0.76
+0.65
+0.74
+0.27
+0.39
+0.83
+0.78
+0.41
+0.26
+0.70
+0.60
+0.75
+0.24
+0.08
+0.08
+0.58
+0.80
+0.23
+0.48
+0.92
+0.61
+0.36
+0.36
+0.71
+0.26
+0.17
+0.65
+0.57
+0.82
+0.73
+0.73
+0.41
+0.19
+0.66
+0.28
+0.54
+0.44
+0.49
+0.49
+0.65
+0.83
+0.70
+0.28 0.54 0.44 0.49
+0.55 0.20 0.76 0.65
+0.26 0.73 0.61 0.83
+0.78 0.41 0.26 0.70
+0.60
+0.75
+0.24
+0.08
+0.08
+0.58
+0.80
+0.23
+0.48
+0.92
+0.61
+0.36
+0.36
+0.71
+0.26
+0.17
+0.65
+0.57
+0.82
+0.73
+0.73
+0.41
+0.19
+0.66
+0.28
+0.54
+0.44
+0.49
+0.49
+0.65
+0.83
+0.70
+0.28 0.54 0.44 0.49
+0.55 0.20 0.76 0.65
+0.26 0.73 0.61 0.83
+0.78 0.41 0.26 0.70
+𝑷𝒕
+𝒆
+1
+0
+1
+0
+0
+1
+1
+0
+1
+0
+0
+0
+0
+1
+0
+0
+0
+0
+0
+1
+1
+1
+0
+1
+1
+1
+1
+0
+0
+0
+1
+1
+1
+1
+1
+0
+1
+1
+0
+0
+0
+0
+0
+1
+1
+1
+0
+1
+0.40
+0.25
+0.76
+0.08
+0.08
+0.58
+0.80
+0.23
+0.52
+0.08
+0.39
+0.36
+0.36
+0.71
+0.26
+0.17
+0.35
+0.43
+0.18
+0.73
+0.73
+0.41
+0.19
+0.66
+0.82
+0.46
+0.56
+0.49
+0.49
+0.65
+0.83
+0.70
+0.82
+0.46
+0.56
+0.49
+0.45
+0.80
+0.76
+0.65
+0.74
+0.27
+0.39
+0.83
+0.78
+0.41
+0.26
+0.70
+𝑷𝒕
+𝒔
+𝒀#𝒕
+𝒔
+𝑷𝒕
+𝒔(𝒀#𝒕
+𝒔)
+𝑷𝒕
+𝒆(𝒀#𝒕
+𝒔)
+Probability Drop
+∆𝒕= 𝑷𝒕
+𝒔(𝒀%𝒕
+𝒔) - 𝑷𝒕
+𝒆(𝒀%𝒕
+𝒔)
+Spatial Mask
+𝒎𝒆𝒂𝒏𝑫 ∆𝒕> 𝝉𝒔𝒑𝒂𝒕𝒊𝒂𝒍
+D
+Adaptive
+Spatial Freezing
+Bitwise Mask
+∆𝒕 > 𝝉𝒑𝒐𝒘𝒆𝒓
+Finite 
+Bit Lock
+Frozen
+Not Frozen
+Final Editing Mask
+Refinement Step
+Bit Routing
+&
+GRN Refinement Pipline
+Editing Trajectory
+Editing Trajectory
+RefineEdit Control
+Adopt Mask
+Discard Mask
+Clone 𝒀𝒕
+𝒆= 𝒀𝒕
+𝒔, when 𝑡= 𝑡$
+Figure 3: Overview of RefineEdit. The editing branch inherits the source state at the switch step.
+Both branches retain GRN’s global prediction and random refinement, while bit routing selects
+editing updates or copies the evolving source state.
+Editing evidence.
+At each editing step, the two branches produce P s
+t and P e
+t using Eq. 1. We
+denote the source-sampled bit at coordinate (n, d) by byt,n,d = bY s
+t,n,d. Its signed probability drop is
+∆t,n,d = P s
+t (n, d, byt,n,d) −P e
+t (n, d, byt,n,d).
+(3)
+A positive value means that the editing branch assigns less probability to the source-sampled bit,
+providing evidence for allowing that coordinate to depart from the source. The branches share the
+same input only at the switch step. Later probability drops reflect both prompt conditioning and the
+evolving branch states.
+Spatial and bitwise mask selection.
+We first define instantaneous spatial and bitwise masks, sepa-
+rating position selection from editing permission at individual bits. We average the evidence across
+all D bits at each position, qt,n = D−1 PD
+d=1 ∆t,n,d. The spatial mask at ∈{0, 1}N and bitwise
+mask mt ∈{0, 1}N×D are then
+at,n = 1[qt,n > τspatial],
+mt,n,d = at,n 1[∆t,n,d > τpower],
+(4)
+where 1[·] equals 1 when its condition holds and 0 otherwise. The spatial threshold selects positions,
+while the power threshold determines which bits within those positions receive editing permission.
+For a fixed spatial mask and fixed probabilities, lowering τpower relaxes bit selection. Changing these
+selections alters subsequent branch states and predictions, so bitwise control can also influence later
+spatial masks.
+Source-anchored routing.
+Standard GRN refinement in Eq.2 produces the next source state Y s
+t+1
+and an editing proposal eY e
+t+1. We then route their bits using mt:
+Y e
+t+1 = mt ⊙eY e
+t+1 + (1 −mt) ⊙Y s
+t+1.
+(5)
+Selected coordinates take values from the editing proposal; all other coordinates copy the source
+state at the same refinement step. Both branches therefore retain global GRN refinement; the mask
+controls which updates enter the next editing state. At the final step, we route the sampled source
+and editing predictions and decode the resulting HBQ code, without mixing in Z.
+Eq. 4 defines instantaneous mask selection. Section 4.2 stabilizes these masks before they are used
+in routing.
+5
+
+
+Preprint
+4.2
+MASK STABILIZATION
+Adaptive spatial freezing.
+Continued mask expansion can introduce changes in unrelated regions.
+We use the initial editing response as a heuristic for deciding whether to retain the spatial mask
+formed at the switch step. The response is
+Ω= {n | ats,n = 1},
+r =
+P
+n∈Ω(qts,n −τspatial)
+max(1, |Ω|)
+,
+(6)
+Here, Ωcontains the positions selected at the switch step, and |Ω| is their number. The response r
+measures their average score margin above τspatial, with r = 0 when no position is selected.
+When r ≥τfreeze, we retain the initial spatial mask by setting at = ats for all t ≥ts. Otherwise, at
+continues to follow Eq. 4. We use τfreeze = 2τspatial by default. The decision is made once at the
+switch step and fixes only spatial selection; bitwise selection and content refinement continue.
+Finite bit locking.
+Instantaneous selection can deactivate a bit when either its spatial or bitwise
+criterion is no longer satisfied. We retain its editing permission if it satisfied both criteria at least
+once within the latest K steps. This replaces the instantaneous rule for mt with
+mt,n,d =
+max
+max(ts,t−K+1)≤j≤t {aj,n 1[∆j,n,d > τpower]} .
+(7)
+Here, j indexes the latest K editing steps, including the current step. The maximum implements
+a logical OR over their instantaneous activations. Setting K = 1 recovers the instantaneous rule.
+When spatial selection remains adaptive, a recently activated bit may remain editable even if its po-
+sition is excluded by the current spatial mask. Thus, the spatial mask gates instantaneous activations,
+while mt also retains recent ones.
+Locking preserves editing permission, not the bit value. Selected bits therefore continue to undergo
+prediction and random refinement. A bit loses permission once it has not passed the selection tests
+for K consecutive steps.
+5
+EXPERIMENT
+5.1
+EXPERIMENTAL SETUPS
+Benchmarks.
+RefineEdit uses a pretrained GRN without additional training and generates images
+at 1024 × 1024 resolution. We evaluate it using the source and editing prompt pairs from nine
+editing categories of PIE-Bench (Ju et al., 2024): object replacement, addition and removal, content
+and pose modification, color and material modification, background modification, and style transfer.
+Both prompts are taken directly from PIE-Bench. For each pair, GRN generates a source image
+from the source prompt. All baselines edit this same image using the corresponding editing prompt,
+providing a common source reference across methods. We use Grounded-SAM (Ren et al., 2024;
+Hu et al., 2025) to obtain foreground masks for regional evaluation. These masks are shared across
+methods and are separate from the dynamic masks predicted by RefineEdit. Since the baselines
+produce 512 × 512 images in our setup, we resize the GRN source images and RefineEdit outputs
+to 512 × 512 before evaluation. The evaluation masks are aligned to the same resolution. Dataset
+details are provided in the Appendix C.1
+Evaluation Metrics.
+We evaluate structural consistency, preservation of unedited content, and
+alignment with the target prompt. Structure Distance (Tumanyan et al., 2022) measures structural
+differences between source and edited images. PSNR (Wang et al., 2004), LPIPS (Zhang et al.,
+2018), MSE (Wang & Bovik, 2009), and SSIM (Wang et al., 2004) measure content preservation
+in unedited regions. We assess semantic alignment using CLIP (Radford et al., 2021) similarity
+between the target prompt and the edited image, computed over both the whole image and the des-
+ignated editing region. We denote these two scores by CLIPtgt and CLIPedit, respectively. All
+methods use the same evaluation images, masks, and metric implementations. Metrics details are
+provided in the Appendix C.2
+6
+
+
+Preprint
+Table 1: Quantitative comparison across nine editing categories of PIE-Bench. Methods are grouped
+by generation paradigm. Bold and underlined values indicate the best and second-best results, re-
+spectively. Background colors represent a diverging heatmap normalized by performance: blue for
+worst, white for average, and pink for best.
+Method
+Model
+Struct.
+Background Preservation
+CLIP Sim.
+Dist.↓
+PSNR↑
+LPIPS↓
+MSE↓
+SSIM↑
+Whole↑
+Edited↑
+Diffusion-Based Methods
+P2P (Hertz et al., 2023)
+SD 1.4
+0.0572
+19.02
+0.149
+0.0172
+0.771
+24.88
+22.26
+MasaCtrl (Cao et al., 2023)
+SD 1.4
+0.0297
+22.25
+0.092
+0.0088
+0.838
+24.30
+21.78
+Pix2Pix-Zero (Parmar et al., 2023)
+SD 1.4
+0.0798
+19.45
+0.170
+0.0184
+0.771
+23.94
+21.92
+PnP (Tumanyan et al., 2023)
+SD 1.5
+0.0271
+22.80
+0.091
+0.0074
+0.842
+25.51
+22.74
+PnP-DirectInv (Ju et al., 2024)
+SD 1.5
+0.0229
+23.37
+0.081
+0.0064
+0.852
+25.57
+22.77
+LEDits++ (Brack et al., 2024)
+SD 1.5
+0.0414
+20.59
+0.100
+0.0120
+0.820
+26.22
+23.29
+ChordEdit (Lu et al., 2026)
+SD-Turbo
+0.0266
+23.02
+0.097
+0.0071
+0.812
+24.94
+22.41
+Flow-Based Methods
+FlowEdit (Kulikov et al., 2025)
+FLUX.1-dev
+0.0162
+25.03
+0.062
+0.0046
+0.902
+24.85
+21.95
+RF-Inversion (Rout et al., 2025)
+FLUX.1-dev
+0.0484
+19.73
+0.176
+0.0148
+0.711
+25.04
+22.44
+GRN-Based Methods (Ours)
+RefineEdit
+GRN
+0.0224
+30.25
+0.032
+0.0045
+0.950
+26.47
+23.30
+Comparison Methods.
+We compare RefineEdit with nine training-free image editing baselines,
+grouped by the generative backbones used in our evaluation.
+Flow-based baselines include
+FlowEdit (Kulikov et al., 2025) and RF-Inversion (Rout et al., 2025). Diffusion-based baselines
+include MasaCtrl (Cao et al., 2023), Prompt-to-Prompt (P2P) (Hertz et al., 2023), Pix2Pix-Zero Par-
+mar et al. (2023), PnP (Tumanyan et al., 2023), PnP-DirInv (Ju et al., 2024), LEDits++ (Brack
+et al., 2024), and ChordEdit (Lu et al., 2026). Comparison methods details are provided in the
+Appendix C.3.
+Implementation details. We build RefineEdit on a frozen pretrained GRN, without additional at-
+tention control. By default, we set ts = 18, τspatial = 0.015, τpower = 0.12, K = 4, and
+τfreeze = 2τspatial. We fix K and τfreeze across all categories, while adjusting the switch step
+and the spatial and bitwise thresholds for different editing tasks. All experiments are conducted on
+a single NVIDIA A100 GPU. Detailed settings are provided in the Appendix A.2.
+5.2
+EXPERIMENTAL RESULTS
+Figure 1 compares representative edits across object replacement, addition, removal, pose adjust-
+ment, and color change. RefineEdit turns spiderman into a robot while retaining the crouching pose
+and roof layout. LEDits++ (Brack et al., 2024) and ChordEdit (Lu et al., 2026) also introduce a
+robot, but change its pose and the surrounding roof, whereas FlowEdit (Kulikov et al., 2025) largely
+retains the source image. For object addition, RefineEdit places a grazing goat on the hillside while
+preserving the mountain scene. It also removes the woman’s sunglasses and redirects woman’s gaze
+in the two human examples, with limited changes to the car interior and bouquet, respectively. Sev-
+eral baselines leave these edits incomplete. In the color example, RefineEdit changes the butterfly
+from blue to green while retaining the mushrooms, moon, and forest composition. These examples
+illustrate how the method introduces target content while keeping unrelated scene details largely
+intact.
+Table 1 reports results over all nine editing categories. RefineEdit ranks first on five of seven metrics.
+It achieves the highest PSNR and SSIM and the lowest LPIPS and MSE in unedited regions, indi-
+cating strong source-content preservation. Compared with FlowEdit, PSNR increases from 25.03 to
+30.50, while LPIPS decreases from 0.062 to 0.037. RefineEdit also attains the highest whole-image
+and edit-region CLIP scores, at 26.51 and 23.30. The edit-region advantage over LEDits++ is small,
+so we interpret it as comparable semantic alignment alongside improved preservation, rather than a
+substantial semantic gain.
+5.3
+ABLATIONS AND ANALYSIS
+Efficiency.
+We measure runtime on a single NVIDIA A100 GPU. Each editing operation is re-
+peated ten times, and we report the average runtime excluding I/O time. As shown in Table 2,
+7
+
+
+Preprint
+Table 2: Runtime comparison with two diffusion-based and
+two flow-based editing methods. Type denotes the genera-
+tion paradigm. Time is the average runtime per editing op-
+eration over ten runs, excluding I/O time.
+Method
+Type
+Resolution
+Time (s)↓
+PnP
+Diffusion
+1K
+79.70
+PnP-DirectInv
+Diffusion
+1K
+79.65
+RF-Inversion
+Flow
+1K
+32.05
+FlowEdit
+Flow
+1K
+27.15
+RefineEdit (Ours)
+GRN
+1K
+26.77
+RefineEdit takes 26.77 seconds per
+edit at 1024 × 1024 resolution. Its
+runtime is comparable to FlowEdit
+and lower than RF-Inversion, while
+providing approximately 3× speedup
+over PnP and PnP-DirectInv.
+Effects of hyper-parameters.
+We
+qualitatively examine the three core
+parameters: the switch step ts, the
+spatial threshold τspatial, and the bit-
+wise threshold τpower.
+Figure 4
+shows the trade-off in choosing when to begin editing. Branching too early introduces target se-
+mantics before a clear source layout has emerged, allowing changes to spread into the background.
+Branching too late better preserves the source structure but leaves the intended transformation in-
+complete. This is consistent with a more established visual state being harder to change and fewer
+remaining steps for editable target refinement; the qualitative comparison alone does not distinguish
+these effects. In the Figure 4, ts = 18 provides a suitable balance between editability and preserva-
+tion.
+Original Image
+𝑡! = 12
+𝑡! = 15
+𝑡! = 18
+𝑡! = 21
+𝑡! = 24
+“an [angel -> demon]  with wings and a golden light”
+“[cars -> boats] driving on a highway at sunset”
+Figure 4: Effect of the switch step. Earlier branching permits stronger changes but can disturb
+the background, whereas later branching retains more source appearance and may leave the edit
+incomplete.
+"bread on a wooden 
+table with tomatoes 
+and a napkin”
+->
+"meat on a wooden 
+table with tomatoes 
+and a napkin”
+𝜏!"#$%#&
+𝜏"'()*
+(a)
+(b)
+Figure 5: Joint effects of spatial and bitwise thresholds. (a) Edited images. (b) Corresponding bit-
+density maps, where darker pixels indicate more active bits. Columns use τspatial = 0.1, 0.2, 0.3
+from left to right; rows use τpower = 0.12, 0.16, 0.20 from top to bottom.
+8
+
+
+Preprint
+With the switch step fixed, Figure 5 illustrates how the two thresholds control spatial coverage and
+bitwise edit strength. Increasing τspatial from left to right reduces the selected region in panel (b),
+leaving more bread unchanged in panel (a). Increasing τpower from top to bottom admits fewer bits
+at each selected position, producing lighter bit-density maps and weaker changes to the target object.
+Darker regions indicate a larger fraction of active bits, rather than a larger change in each bit value.
+Although the thresholds govern different decisions, their effects are coupled through refinement:
+changing the active-bit set changes the editing state and hence the probability evidence used in later
+spatial mask updates. In these examples, stronger bitwise editing also leads to wider mask expan-
+sion. The thresholds must therefore balance editable target coverage and sustained editing against
+unwanted background changes. The results of the quantitative comparison of different parameters
+can be found in the Appendix A.3.
+Original Image
+(a) w/o Adaptive Spatial Freezing
+(b) w/o Finite Bit Lock
+(c) Full Model
+Spatial Mask
+Bitwise Mask
+Spatial Mask
+Bitwise Mask
+Spatial Mask
+Bitwise Mask
+Roof Preservation
+Hand Detail
+Bit density: white=0, black=1
+Figure 6: Qualitative mechanism ablation. Removing freezing
+edits the roof around the robot; removing bit locking leaves the
+fingers incompletely edited. Spatial masks and bit-density maps
+show the corresponding changes in editing support.
+Effects of mask stabilization. We
+separately remove adaptive spa-
+tial freezing and finite bit lock-
+ing while keeping the other set-
+tings unchanged. Figure 6 shows
+their complementary roles. With-
+out freezing, the editing mask
+spreads beyond the robot into the
+surrounding roof and the back-
+ground near its hands, introduc-
+ing unwanted changes.
+Freez-
+ing limits this expansion when
+the initial response is strong,
+although an incomplete initial
+mask can also leave parts of
+the target excluded from editing.
+Without bit locking, the mask remains more localized, but the fingers retain more source appearance
+and are not fully edited. Finite bit locking keeps recently selected bits editable across short-lived
+score fluctuations, allowing continued refinement without fixing their binary values. Longer-lived
+editing activity can, however, also affect later mask expansion. Combining the two mechanisms
+balances sustained target refinement with spatial control, rather than relying on either alone. The
+results of the quantitative can be found in the Appendix A.4.
+Limitations. RefineEdit requires access to GRN-generated source trajectories and does not directly
+support arbitrary input real images. Its performance depends on the pretrained generator and the
+accuracy of probability-based localization. Freezing an incomplete mask can exclude parts of the
+intended editing region, while continued mask expansion can alter unrelated content. Finite bit
+locking keeps selected bits editable but does not guarantee the intended semantic change. The switch
+step and masking thresholds therefore still require tuning. Our category-specific settings are selected
+on the evaluation benchmark, and their generalization to unseen prompts and editing distributions
+remains to be tested.
+6
+CONCLUSION
+We presented RefineEdit, a training-free framework that adapts GRN to prompt-to-prompt image
+editing. Starting from an intermediate source state, it uses aligned bit probability differences to
+guide editing while preserving unselected source coordinates. Adaptive spatial freezing and finite
+bit locking balance spatial control with continued refinement. Experiments across nine PIE-Bench
+editing categories demonstrate strong preservation of unedited content alongside competitive align-
+ment with editing prompts. These results support our central insight that refinement is inherently
+editable: edit localization and content generation can evolve within the same process. Extending
+the method to arbitrary image inputs and reducing category-specific tuning are directions for future
+work.
+9
+
+
+Preprint
+REFERENCES
+Omri Avrahami, Dani Lischinski, and Ohad Fried. Blended diffusion for text-driven editing of
+natural images. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pp. 18208–18218, June 2022.
+Manuel Brack, Felix Friedrich, Katharia Kornmeier, Linoy Tsaban, Patrick Schramowski, Kristian
+Kersting, and Apolinario Passos. Ledits++: Limitless image editing using text-to-image mod-
+els. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), pp. 8861–8870, June 2024.
+Tim Brooks, Aleksander Holynski, and Alexei A Efros. Instructpix2pix: Learning to follow image
+editing instructions. In 2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), pp. 18392–18402. IEEE, 2023.
+Mingdeng Cao, Xintao Wang, Zhongang Qi, Ying Shan, Xiaohu Qie, and Yinqiang Zheng. Masactrl:
+Tuning-free mutual self-attention control for consistent image synthesis and editing. In 2023
+IEEE/CVF International Conference on Computer Vision (ICCV), pp. 22503–22513. IEEE, 2023.
+Huiwen Chang, Han Zhang, Lu Jiang, Ce Liu, and William T Freeman. Maskgit: Masked generative
+image transformer. In 2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), pp. 11305–11315. IEEE, 2022.
+Patrick Esser, Robin Rombach, and Bjorn Ommer. Taming transformers for high-resolution image
+synthesis. In Proceedings of the IEEE/CVF conference on computer vision and pattern recogni-
+tion, pp. 12873–12883, 2021.
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas M¨uller, Harry Saini, Yam
+Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, et al. Scaling rectified flow transformers
+for high-resolution image synthesis. In Forty-first international conference on machine learning,
+2024.
+Jian Han, Jinlai Liu, Yi Jiang, Bin Yan, Yuqi Zhang, Zehuan Yuan, Bingyue Peng, and Xiaobing
+Liu. Infinity: Scaling bitwise autoregressive modeling for high-resolution image synthesis. In
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR),
+pp. 15733–15744, June 2025.
+Jian Han, Jinlai Liu, Jiahuan Wang, Bingyue Peng, and Zehuan Yuan. Generative refinement net-
+works for visual synthesis. In European Conference on Computer Vision, pp. 566–585. Springer,
+2026.
+Amir Hertz, Ron Mokady, Jay Tenenbaum, Kfir Aberman, Yael Pritch, and Daniel Cohen-Or.
+Prompt-to-prompt image editing with cross-attention control. In The Eleventh International Con-
+ference on Learning Representations, 2023.
+URL https://openreview.net/forum?
+id=_CDixzkzeyb.
+Taihang Hu, Linxuan Li, Kai Wang, Yaxing Wang, Jian Yang, and Ming-Ming Cheng. Anchor
+token matching: Implicit structure locking for training-free ar image editing. In 2025 IEEE/CVF
+International Conference on Computer Vision (ICCV), pp. 18166–18176. IEEE, 2025.
+Xuan Ju, Ailing Zeng, Yuxuan Bian, Shaoteng Liu, and Qiang Xu.
+Pnp inversion: Boosting
+diffusion-based editing with 3 lines of code. In International Conference on Learning Repre-
+sentations, volume 2024, pp. 23395–23422, 2024.
+Dan Kondratyuk, Lijun Yu, Xiuye Gu, Jos´e Lezama, Jonathan Huang, Grant Schindler, Rachel
+Hornung, Vighnesh Birodkar, Jimmy Yan, Ming-Chang Chiu, et al. Videopoet: A large language
+model for zero-shot video generation. arXiv preprint arXiv:2312.14125, 2023.
+Vladimir Kulikov, Matan Kleiner, Inbar Huberman-Spiegelglas, and Tomer Michaeli. Flowedit:
+Inversion-free text-based editing using pre-trained flow models. In 2025 IEEE/CVF International
+Conference on Computer Vision (ICCV), pp. 19721–19730. IEEE, 2025.
+10
+
+
+Preprint
+Black Forest Labs, Stephen Batifol, Andreas Blattmann, Frederic Boesel, Saksham Consul, Cyril
+Diagne, Tim Dockhorn, Jack English, Zion English, Patrick Esser, et al.
+Flux. 1 kontext:
+Flow matching for in-context image generation and editing in latent space.
+arXiv preprint
+arXiv:2506.15742, 2025.
+Liangsi Lu, Xuhang Chen, Minzhe Guo, Shichu Li, Jingchao Wang, and Yang Shi. Chordedit:
+One-step low-energy transport for image editing. arXiv preprint arXiv:2602.19083, 2026.
+Nanye Ma, Mark Goldstein, Michael S Albergo, Nicholas M Boffi, Eric Vanden-Eijnden, and Sain-
+ing Xie. Sit: Exploring flow and diffusion-based generative models with scalable interpolant
+transformers. In European Conference on Computer Vision, pp. 23–40. Springer, 2024.
+Gaurav Parmar, Krishna Kumar Singh, Richard Zhang, Yijun Li, Jingwan Lu, and Jun-Yan Zhu.
+Zero-shot image-to-image translation. In ACM SIGGRAPH 2023 conference proceedings, pp.
+1–11, 2023.
+William Peebles and Saining Xie. Scalable diffusion models with transformers. In 2023 IEEE/CVF
+International Conference on Computer Vision (ICCV), pp. 4172–4182. IEEE, 2023.
+Dustin Podell, Zion English, Kyle Lacey, Andreas Blattmann, Tim Dockhorn, Jonas M¨uller, Joe
+Penna, and Robin Rombach. Sdxl: Improving latent diffusion models for high-resolution image
+synthesis. In International Conference on Learning Representations, volume 2024, pp. 1862–
+1874, 2024.
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual
+models from natural language supervision. In International conference on machine learning, pp.
+8748–8763. PmLR, 2021.
+Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray, Chelsea Voss, Alec Radford, Mark
+Chen, and Ilya Sutskever. Zero-shot text-to-image generation. In Marina Meila and Tong Zhang
+(eds.), Proceedings of the 38th International Conference on Machine Learning, volume 139 of
+Proceedings of Machine Learning Research, pp. 8821–8831. PMLR, 18–24 Jul 2021.
+URL
+https://proceedings.mlr.press/v139/ramesh21a.html.
+Tianhe Ren, Shilong Liu, Ailing Zeng, Jing Lin, Kunchang Li, He Cao, Jiayu Chen, Xinyu Huang,
+Yukang Chen, Feng Yan, et al. Grounded sam: Assembling open-world models for diverse visual
+tasks. arXiv preprint arXiv:2401.14159, 2024.
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj¨orn Ommer. High-
+resolution image synthesis with latent diffusion models. In 2022 IEEE/CVF conference on com-
+puter vision and pattern recognition (CVPR), pp. 10674–10685. ieee, 2022.
+Litu Rout, Yujia Chen, Nataniel Ruiz, Constantine Caramanis, Sanjay Shakkottai, and Wen-Sheng
+Chu. Semantic image inversion and editing using rectified stochastic differential equations. In
+The Thirteenth International Conference on Learning Representations, 2025.
+URL https:
+//openreview.net/forum?id=Hu0FSOSEyS.
+Axel Sauer, Dominik Lorenz, Andreas Blattmann, and Robin Rombach. Adversarial diffusion dis-
+tillation. In European Conference on Computer Vision, pp. 87–103. Springer, 2024.
+Peize Sun, Yi Jiang, Shoufa Chen, Shilong Zhang, Bingyue Peng, Ping Luo, and Zehuan Yuan.
+Autoregressive model beats diffusion: Llama for scalable image generation.
+arXiv preprint
+arXiv:2406.06525, 2024.
+Keyu Tian, Yi Jiang, Zehuan Yuan, Bingyue Peng, and Liwei Wang. Visual autoregressive modeling:
+Scalable image generation via next-scale prediction. Advances in neural information processing
+systems, 37:84839–84865, 2024.
+Narek Tumanyan, Omer Bar-Tal, Shai Bagon, and Tali Dekel. Splicing vit features for semantic
+appearance transfer. In 2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), pp. 10738–10747. IEEE, 2022.
+11
+
+
+Preprint
+Narek Tumanyan, Michal Geyer, Shai Bagon, and Tali Dekel. Plug-and-play diffusion features for
+text-driven image-to-image translation. In Proceedings of the IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition (CVPR), pp. 1921–1930, June 2023.
+Jiahuan Wang, Yuxin Chen, Jun Yu, Guangming Lu, and Wenjie Pei. Editinfinity: Image editing
+with binary-quantized generative models. Advances in Neural Information Processing Systems,
+38:50763–50790, 2026.
+Yufei Wang, Lanqing Guo, Zhihao Li, Jiaxing Huang, Pichao Wang, Bihan Wen, and Jian Wang.
+Training-free text-guided image editing with visual autoregressive model. In 2025 IEEE/CVF
+International Conference on Computer Vision (ICCV), pp. 17577–17586. IEEE, 2025.
+Zhou Wang and Alan C Bovik. Mean squared error: Love it or leave it? a new look at signal fidelity
+measures. IEEE signal processing magazine, 26(1):98–117, 2009.
+Zhou Wang, Alan C Bovik, Hamid R Sheikh, and Eero P Simoncelli. Image quality assessment:
+from error visibility to structural similarity. IEEE transactions on image processing, 13(4):600–
+612, 2004.
+Feng Xie, Jiagao Hu, Fuhao Li, Zepeng Wang, Yuxuan Chen, Dahua Gao, Fei Wang, and Daiguo
+Zhou. Grnedit: Efficient general video editing from a new binary-evidence perspective in gener-
+ative refinement networks. arXiv preprint arXiv:2608.16328, 2026.
+Jiahui Yu, Yuanzhong Xu, Jing Yu Koh, Thang Luong, Gunjan Baid, Zirui Wang, Vijay Vasudevan,
+Alexander Ku, Yinfei Yang, Burcu Karagol Ayan, et al. Scaling autoregressive models for content-
+rich text-to-image generation. arXiv preprint arXiv:2206.10789, 2(3):5, 2022.
+Richard Zhang, Phillip Isola, Alexei A Efros, Eli Shechtman, and Oliver Wang. The unreasonable
+effectiveness of deep features as a perceptual metric. In 2018 IEEE/CVF conference on computer
+vision and pattern recognition, pp. 586–595. IEEE, 2018.
+12
+
+
+Preprint
+Appendix Contents
+Appendix A
+Implementation and Hyperparameter Settings . . . . . . . . . . . . . . . . . . . . .
+13
+A.1
+Fixed GRN Settings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+A.2
+RefineEdit Hyperparameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+A.3
+Controlled Hyperparameter Comparisons
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+A.4
+Mechanism Ablations
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+Appendix B
+User Study
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+16
+Appendix C
+Evaluation Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+17
+C.1
+Dataset . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+C.2
+Evaluation Metrics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+C.3
+Compared Methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+Appendix D
+Algorithm of RefineEdit . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+21
+Appendix E
+Additional Qualitative Results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+23
+A
+IMPLEMENTATION AND HYPERPARAMETER SETTINGS
+A.1
+FIXED GRN SETTINGS
+We use the pretrained GRN-2B (Han et al., 2026) text-to-image model with the frozen HBQ tok-
+enizer and UMT5-XXL text encoder. All network weights remain fixed. Table 3 lists the shared
+inference settings. Images are generated at 1024 × 1024 resolution. The corresponding HBQ code
+has 64 × 64 spatial positions and 256 bits per position, obtained from 64 latent channels and four
+quantization rounds. Generation starts from random binary labels, with each bit sampled as 0 or 1
+with equal probability. The two branches share this initial random code, which is reused whenever
+a coordinate returns to a random label. We use separate random generators for source and editing
+sampling, seeded with 42 and 43, respectively.
+Both branches follow the same global refinement schedule and finish at step 49. For the input to
+zero-based step t, the nominal prediction-retention ratio is
+lt = 0.95
+
+1 −cos
+ πt
+2 · 49
+
+,
+t = 0, . . . , 49.
+(8)
+The selection mask is sampled at each step, so its realized prediction fraction can differ slightly from
+this nominal ratio. The implementation uses the realized source fraction for the shared progress em-
+bedding. At the final step, we decode the sampled predictions after applying source/edit routing,
+rather than decoding the intermediate state that still contains random labels. We do not add refine-
+ment steps or restart the noise schedule after editing begins. A switch step ts therefore leaves 50−ts
+editing iterations, including the branching step itself.
+A.2
+RefineEdit HYPERPARAMETERS
+We adjust three parameters by editing category: the switch step ts, the spatial threshold τspatial,
+and the bitwise threshold τpower. Table 4 lists the configurations used for the main quantitative
+comparison across all nine categories. Every image within a category uses the same configuration.
+13
+
+
+Preprint
+Table 3: Fixed GRN settings used for RefineEdit. These settings are shared across editing categories.
+Setting
+Value
+Generative backbone
+GRN-2B, T2I checkpoint 251600
+Visual tokenizer
+HBQ, 64 channels, 4 quantization rounds
+Tokenizer checkpoint
+Image/video tokenizer dated 2026-06-26
+Text encoder
+UMT5-XXL
+Generation resolution
+1024 × 1024
+Spatial code grid
+64 × 64
+Refinement iterations
+50, indexed from 0 to 49
+Classifier-free guidance scale
+3.0
+Sampling temperature
+1.1
+Bit sampling
+Multinomial sampling over {0, 1}
+Prediction-retention schedule
+Cosine schedule, maximum ratio 0.95
+Schedule shift
+1.0
+Source / editing random seeds
+42 / 43
+Negative prompt
+Empty string
+Inference autocast precision
+bfloat16
+Additional attention control
+None
+SELECTION PROTOCOL.
+We jointly select one configuration per category from 1,499 successfully
+completed grid experiments across all nine categories. The selection minimizes pooled Structure
+Distance, subject to whole-image and edited-region CLIP (Radford et al., 2021) scores of at least
+26.23 and 23.30, respectively. We additionally require PSNR (Wang et al., 2004), LPIPS (Zhang
+et al., 2018), MSE (Wang & Bovik, 2009), and SSIM (Wang et al., 2004) to be no worse than
+the strongest evaluated baseline on each metric. Metrics are pooled over individual samples with
+finite values, rather than averaged equally across categories. A single configuration determines all
+reported metrics within each category. These settings are selected using the evaluation data, not a
+separate held-out tuning split.
+Table 4: Category-specific settings used for the main quantitative comparison. All categories use
+K = 4 and τfreeze = 2τspatial.
+Subset
+Editing category
+Images
+ts
+τspatial
+τpower
+1
+Object replacement
+80
+15
+0.013
+0.20
+2
+Object addition
+80
+15
+0.016
+0.10
+3
+Object removal
+80
+10
+0.020
+0.16
+4
+Attribute content change
+40
+12
+0.016
+0.18
+5
+Pose adjustment
+40
+12
+0.018
+0.16
+6
+Color change
+40
+13
+0.018
+0.10
+7
+Material change
+40
+16
+0.020
+0.12
+8
+Background modification
+80
+10
+0.012
+0.16
+9
+Style transfer
+80
+10
+0.010
+0.10
+FIXED MASK STABILIZATION.
+We set K = 4 for all categories. A bit selected in any of the latest
+four refinement steps remains eligible for editing, but its binary value can continue to change. For
+adaptive spatial freezing, we fix the response multiplier to 2, giving τfreeze = 2τspatial. This fixes
+the multiplier, not the absolute threshold across categories. If the mean excess spatial response at
+the switch step reaches this threshold, we freeze the spatial mask immediately. Otherwise, the mask
+remains dynamic through the final step. These mechanisms are evaluated by removing each one
+separately, rather than by sweeping their settings.
+14
+
+
+Preprint
+A.3
+CONTROLLED HYPERPARAMETER COMPARISONS
+Table 5 reports three settings for each core parameter on all 80 object-replacement images in subset
+1. Each block varies only the indicated parameter. The other two parameters, random seeds, GRN
+settings, K = 4, and the adaptive-freezing rule remain fixed. All entries are taken from completed
+grid runs, with the means verified against their per-image evaluation records. These are slices of the
+existing search, not additional runs.
+Table 5: Controlled parameter comparisons on the 80-image object-replacement subset. Only one
+input hyperparameter changes within each block. Background metrics are evaluated outside the
+reference edit mask. Higher PSNR, SSIM, and CLIP and lower LPIPS are better.
+Hyperparameters
+Background Preservation
+CLIP Similarity
+ts
+τspatial
+τpower
+PSNR↑
+LPIPS↓
+SSIM↑
+Whole↑
+Edited↑
+Varying the switch step
+15
+0.016
+0.14
+26.08
+0.042
+0.939
+26.04
+20.12
+18
+0.016
+0.14
+29.18
+0.027
+0.959
+25.05
+19.33
+20
+0.016
+0.14
+31.14
+0.019
+0.969
+24.34
+18.57
+Varying the spatial threshold
+18
+0.010
+0.14
+28.31
+0.029
+0.953
+25.04
+19.57
+18
+0.016
+0.14
+29.18
+0.027
+0.959
+25.05
+19.33
+18
+0.020
+0.14
+30.09
+0.024
+0.964
+25.20
+19.41
+Varying the bitwise threshold
+18
+0.016
+0.10
+27.97
+0.031
+0.952
+24.99
+19.35
+18
+0.016
+0.14
+29.18
+0.027
+0.959
+25.05
+19.33
+18
+0.016
+0.20
+30.45
+0.022
+0.966
+24.95
+19.18
+SWITCH STEP.
+Later branching improves background preservation in this comparison, while both
+CLIP scores decrease. This supports a trade-off between retaining source structure and allowing
+target changes. Because the endpoint stays fixed, changing ts changes both the inherited source
+state and the number of editing iterations. These results do not isolate either factor as the sole cause.
+SPATIAL THRESHOLD.
+A higher threshold admits fewer spatial positions for a fixed score map.
+The measured background metrics improve across the three settings, but edit-region CLIP is not
+monotonic: it decreases from 19.57 to 19.33 and then increases slightly to 19.41. Thus, a stricter
+spatial threshold need not reduce semantic alignment at every setting. Here the freezing rule is
+unchanged, but its absolute response threshold also scales with τspatial. This comparison measures
+the effect of the spatial hyperparameter within the full method, including that coupling.
+BITWISE THRESHOLD.
+Increasing τpower admits fewer bits for a fixed probability difference. In
+the reported comparison, background preservation improves while edit-region CLIP decreases mod-
+estly. Whole-image CLIP varies only slightly and is not monotonic. The two thresholds govern dif-
+ferent decisions, but their effects are coupled through refinement: changing the editable bits changes
+the next visual state and hence later spatial scores. We therefore do not interpret a threshold change
+as guaranteeing a fixed final mask area or a proportional semantic change.
+A.4
+MECHANISM ABLATIONS
+We evaluate adaptive spatial freezing and finite bit locking by disabling one mechanism at a time.
+Without adaptive freezing, the spatial mask is updated at every step while finite bit locking remains
+enabled. Without finite bit locking, only the current step’s candidate bits are active, equivalent to
+K = 1, while adaptive freezing remains enabled. The other settings are unchanged within each
+comparison. We do not conduct additional sweeps over K or the freezing multiplier here. Fig-
+ure 6 presents the qualitative comparison. Table 6 retains the current quantitative layout pending
+replacement with measured ablation results.
+15
+
+
+Preprint
+Table 6: Quantitative mechanism ablation layout. All values are simulated placeholders, not experi-
+mental results, and must be replaced before submission.
+Method
+Structure
+Background Preservation
+CLIP Similarity
+Distance↓
+PSNR↑
+LPIPS↓
+SSIM↑
+Whole↑
+Edited↑
+Full model
+0.028
+30.04
+0.044
+0.932
+26.48
+23.17
+w/o Finite Bit Lock
+0.028
+31.04
+0.041
+0.938
+26.34
+23.01
+w/o Adaptive Spatial Freezing
+0.033
+28.76
+0.050
+0.920
+26.59
+23.30
+Figure 8: User Interface of user study.
+B
+USER STUDY
+We conducted a user study with 20 participants
+to evaluate human preferences for our editing re-
+sults against those of LEDits++, FlowEdit, and
+ChordEdit. The study comprised 20 sets of edit-
+ing results (400 votes in total) randomly sampled
+from a pool spanning all editing categories. As
+illustrated in Fig. 8, participants were shown four
+candidate results with the method names hidden
+and asked to select the best one. As shown in
+Fig. 7, our method received a higher proportion
+of preference votes than each baseline.
+60.25%
+Ours
+10.50%
+chordedit
+11.50%
+LEDits++
+17.75%
+flowedit
+Proportion
+of Votes
+Figure 7: Human preference results
+from the user study.
+16
+
+
+Preprint
+Table 7:
+Composition of our PIE-Bench-derived evaluation set. Examples summarize the edits
+illustrated in Fig. 9.
+Category
+Samples
+Description and example
+Object replacement
+80
+Replace an object with another category, such as cars with boats.
+Object addition
+80
+Introduce a new object, such as flowers on the grass beside a dog.
+Object removal
+80
+Remove an existing object, such as a rose held by a teddy bear.
+Content modification
+40
+Modify an object’s attributes or internal appearance, such as adding black
+and yellow stripes to a tie.
+Pose modification
+40
+Change an object’s pose, action, or orientation, such as making a girl look
+toward the camera.
+Color modification
+40
+Change an object’s color, such as turning a white kitten yellow.
+Material modification
+40
+Change an object’s material appearance, such as giving a person a golden
+appearance.
+Background
+modifica-
+tion
+80
+Change the surrounding scene, such as replacing a beach view with a
+garden.
+Style transfer
+80
+Change the image’s overall visual style, such as converting a photograph
+into a watercolor painting.
+C
+EVALUATION DETAILS
+C.1
+DATASET
+We construct a generation-to-editing evaluation set from PIE-Bench, containing 560 prompt pairs
+across nine editing categories. Each pair consists of a source prompt and a target prompt that speci-
+fies the desired change. Table 7 summarizes the categories and their sample counts.
+For each source prompt, we use GRN to generate a source image at 1024 × 1024 resolution. Re-
+fineEdit edits the corresponding generation trajectory, while all baselines receive the same source
+image. This shared source ensures that content preservation is evaluated against the same refer-
+ence across methods. The source image serves as the reference for preservation, rather than as a
+ground-truth edited target.
+We use Grounded-SAM to obtain source-aligned region annotations for evaluation. The reference
+editing masks specify which regions may change and are distinct from the masks predicted by Refi-
+neEdit. They are used only for evaluation and are not provided to our method during inference.
+Before evaluation, source and edited images are resized to 512 × 512 using Lanczos interpolation.
+Reference masks are decoded at their encoded resolution and resized using nearest-neighbor inter-
+polation to preserve their binary values. This protocol standardizes the evaluation resolution across
+methods.
+Figure 9 presents one example from each category, including the prompt change, source image, and
+outputs from RefineEdit and representative baselines. These examples cover both localized object
+edits and broader changes to the scene or style.
+C.2
+EVALUATION METRICS
+We evaluate structural consistency, preservation of unedited content, and alignment with the target
+prompt. Let Is and Ie denote the source and edited RGB images, and let ce denote the target prompt.
+Let M ∈{0, 1}H×W be the reference editing mask, where M = 1 indicates an editable region. The
+images used to evaluate preservation are
+U = (1 −M) ⊙Is,
+V = (1 −M) ⊙Ie,
+(9)
+where the mask is broadcast across RGB channels. Thus, editable regions are set to zero in both
+images.
+Although we refer to these measures as background preservation, they evaluate all content outside
+the editing mask. For background modification, this preserved content may instead be the fore-
+ground subject.
+17
+
+
+Preprint
+original -> editing prompt:  “[cars -> boats] driving on a highway at sunset”
+Subset: change object
+“a dog lying on the grass [with flowers]”
+Subset: add object
+“a teddy bear sitting on a box [with a rose]”
+Subset: delete object
+“a man wearing a [tie -> black and yellow stripes tie]”
+Subset: change sth’s content
+“a young girl in traditional clothing making bread [looking at the camera]”
+Subset: change sth’s pose
+“a [white -> yellow] kitten sitting on a leopard print blanket”
+Subset: change sth’s color
+“a [golden] woman in a kimono standing in a river”
+Subset: change sth’s material
+“a bedroom with a window looking out onto the [beach -> garden]”
+Subset: change background
+“[watercolor of] a picnic table with a bottle of wine and fruit on it”
+Subset: change style
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 9:
+Examples from the nine editing categories. Each row shows a source image and the
+corresponding results from RefineEdit, LEDITS++, FlowEdit, and ChordEdit. Prompt annotations
+indicate the content to replace, add, or remove.
+18
+
+
+Preprint
+STRUCTURE DISTANCE. (TUMANYAN ET AL., 2022)
+Structure Distance measures changes in
+the relationships between image tokens using a pretrained DINO ViT-B/8. Let ki(I) denote the
+concatenated attention-key features of token i from the final Transformer layer, following the pre-
+processing used by our evaluation implementation. The token self-similarity matrix is
+Aij(I) =
+ki(I)⊤kj(I)
+max(∥ki(I)∥2∥kj(I)∥2, ϵ),
+(10)
+where ϵ ensures numerical stability. Structure Distance is the mean squared difference between the
+source and edited self-similarity matrices:
+Dstructure = 1
+T 2
+T
+X
+i=1
+T
+X
+j=1
+(Aij(Is) −Aij(Ie))2 ,
+(11)
+where T is the number of image tokens, including the class token used by the implementation. This
+metric is computed on the full images. Lower values indicate stronger structural consistency.
+MEAN SQUARED ERROR (MSE). (WANG & BOVIK, 2009)
+MSE measures pixel differences in
+the masked preservation images. With RGB values normalized to [0, 1], it is computed as
+MSE =
+1
+3HW
+H
+X
+h=1
+W
+X
+w=1
+3
+X
+c=1
+(Uhwc −Vhwc)2 .
+(12)
+Following the evaluation implementation, the denominator is the size of the full RGB image, rather
+than the number of unmasked coordinates. Lower values indicate better preservation.
+PEAK SIGNAL-TO-NOISE RATIO (PSNR). (WANG ET AL., 2004)
+PSNR expresses pixel recon-
+struction fidelity on a logarithmic scale. For images normalized to [0, 1], it is
+PSNR = 10 log10
+
+1
+MSE
+
+,
+(13)
+where MSE is defined in Eq. equation 12. Higher PSNR indicates better preservation of the source
+content.
+LEARNED PERCEPTUAL IMAGE PATCH SIMILARITY (LPIPS). (ZHANG ET AL., 2018)
+LPIPS
+measures perceptual differences using pretrained visual features. We use the SqueezeNet-based
+implementation. Let ϕℓ(U)hw and ϕℓ(V )hw be the channel-normalized features at layer ℓand spatial
+position (h, w). LPIPS is
+LPIPS =
+X
+ℓ
+1
+HℓWℓ
+X
+h,w
+w⊤
+ℓ(ϕℓ(U)hw −ϕℓ(V )hw)⊙2 ,
+(14)
+where wℓcontains learned channel weights and ⊙2 denotes element-wise squaring. The masked
+images are mapped from [0, 1] to [−1, 1] before LPIPS preprocessing. The metric is evaluated on
+the complete masked images, without additional normalization by the preserved area. Lower values
+indicate greater perceptual similarity.
+STRUCTURAL SIMILARITY INDEX MEASURE (SSIM). (WANG ET AL., 2004)
+SSIM compares
+local luminance, contrast, and structure. For corresponding local windows u and v from U and V ,
+SSIM(u, v) =
+(2µuµv + C1)(2σuv + C2)
+(µ2u + µ2v + C1)(σ2u + σ2v + C2),
+(15)
+where µu and µv are local means, σ2
+u and σ2
+v are local variances, and σuv is their covariance. For the
+unit intensity range, we use C1 = 0.012 and C2 = 0.032. Local statistics use an 11 × 11 Gaussian
+window with standard deviation 1.5. The final score averages the local SSIM values over the masked
+images and RGB channels. Higher values indicate better preservation.
+19
+
+
+Preprint
+CLIP SIMILARITY. (RADFORD ET AL., 2021)
+We measure semantic alignment using CLIP ViT-
+L/14. Let fI and fT denote its image and text encoders, including their respective preprocessing.
+The image-text score is
+C(I, c) = 100 max
+
+0,
+fI(I)⊤fT (c)
+∥fI(I)∥2∥fT (c)∥2
+
+.
+(16)
+We report alignment with the target prompt for both the full image and the edited region:
+CLIPtgt = C(Ie, ce),
+CLIPedit = C(M ⊙Ie, ce).
+(17)
+For edited-region CLIP, pixels outside the reference editing mask are set to black before CLIP pre-
+processing; the image is not cropped to the mask’s bounding box. Both scores use the complete
+target prompt. Higher values indicate stronger target alignment.
+The evaluator additionally records source-image alignment, C(Is, cs), where cs is the source
+prompt. This score describes the generated source image and is not an editing-performance measure.
+AGGREGATION.
+Metrics are computed separately for each image pair and then averaged over all
+valid samples. For a metric m, let Vm be the set of samples with valid values. The reported mean is
+m =
+1
+|Vm|
+X
+i∈Vm
+mi.
+(18)
+This gives each valid sample equal weight, rather than weighting all categories equally despite their
+different sizes. When the editing mask covers the entire image, preservation metrics are undefined
+and excluded from the corresponding average. Such cases are not assigned zero scores. Structure
+Distance and CLIP Similarity remain applicable to full-image edits.
+C.3
+COMPARED METHODS
+We compare RefineEdit with nine training-free editing methods based on pretrained diffusion or
+rectified-flow models. We group the baselines by the generative backbones used in our evaluation.
+Diffusion-based methods use SD 1.4, SD 1.5, or SD-Turbo, while flow-based methods use FLUX.1-
+dev.
+Diffusion-Based Editing Methods
+PROMPT-TO-PROMPT (P2P). (HERTZ ET AL., 2023)
+Prompt-to-Prompt controls the cross-
+attention maps that connect text tokens to image regions. By replacing, retaining, or reweighting
+these maps during generation, it introduces changes specified by the editing prompt while preserv-
+ing the source layout.
+MASACTRL. (CAO ET AL., 2023)
+MasaCtrl replaces diffusion self-attention with mutual self-
+attention, allowing the editing branch to retrieve related content and textures from the source branch.
+Masks derived from cross-attention help distinguish foreground from background and reduce incor-
+rect feature matching. This supports changes in pose and shape while preserving the source object’s
+appearance.
+PIX2PIX-ZERO. (PARMAR ET AL., 2023)
+Pix2Pix-Zero represents a semantic edit as a direction
+in the text-embedding space. It uses cross-attention guidance to retain the source attention maps
+during editing, helping preserve content outside the intended change. The method requires no task-
+specific training.
+PLUG-AND-PLAY (PNP). (TUMANYAN ET AL., 2023)
+PnP extracts spatial features and self-
+attention information from the source diffusion trajectory and injects them into generation condi-
+tioned on the editing prompt. These features preserve the source layout while the editing prompt
+guides changes in appearance. The method requires no additional training or fine-tuning.
+20
+
+
+Preprint
+PNP WITH DIRECT INVERSION (PNP-DIRINV). (JU ET AL., 2024)
+This baseline combines PnP
+with Direct Inversion, which separates source reconstruction from editing. The source branch pre-
+serves the input, while the editing branch introduces the requested changes. PnP provides additional
+structure control through feature injection. We evaluate this combination separately from standard
+PnP.
+LEDITS++. (BRACK ET AL., 2024)
+LEDITS++ combines an efficient, optimization-free inver-
+sion procedure with semantic editing guidance. Its implicit masks restrict changes to relevant image
+regions. The framework also supports multiple simultaneous edits.
+CHORDEDIT. (LU ET AL., 2026)
+ChordEdit formulates editing as transport between distributions
+defined by the source and editing prompts. Using dynamic optimal transport, it derives a smoothed,
+low-energy editing field that reduces trajectory variance. This enables editing through a single large
+integration step without additional training. We evaluate ChordEdit with the SD-Turbo backbone.
+Flow-Based Editing Methods
+FLOWEDIT. (KULIKOV ET AL., 2025)
+FlowEdit constructs an ordinary differential equation that
+directly transports images between distributions defined by the source and editing prompts. It com-
+bines the corresponding model fields to form an editing trajectory without first recovering a noise
+latent. The method requires neither inversion nor test-time optimization.
+RF-INVERSION. (ROUT ET AL., 2025)
+RF-Inversion supports reconstruction and editing with
+pretrained rectified-flow models. It derives a controlled inversion field using a linear quadratic regu-
+lator and relates the resulting dynamics to a rectified stochastic differential equation. The controlled
+trajectory enables editing while retaining source content, without additional model training.
+D
+ALGORITHM OF RefineEdit
+Algorithm 1 summarizes RefineEdit.
+We use the notation introduced in the main text.
+SampleBits(P) samples each binary coordinate from its predicted distribution over {0, 1}.
+Bernoulli sampling is applied independently to each coordinate. The two branches share a fixed
+random code Z and the same refinement schedule, but use separate random streams. For brevity, Gθ
+includes the standard GRN inference settings for guidance and temperature. The decoder D includes
+conversion from HBQ bits to image features.
+21
+
+
+Preprint
+Algorithm 1: RefineEdit: Training-Free Prompt-to-Prompt Image Editing
+Input: Frozen GRN Gθ and HBQ decoder D; source prompt cs and editing prompt ce; total steps T,
+switch step ts, and prediction-ratio schedule {λt}T
+t=0; thresholds τspatial, τpower, and τfreeze;
+bit-lock duration K.
+Output: Source image Is and edited image Ie.
+1 Zn,d ∼Bernoulli(1/2) for every binary coordinate (n, d);
+2 Y s
+0 ←Z;
+// Source-only refinement
+3 for t = 0, . . . , ts −1 do
+4
+P s
+t ←softmax(Gθ(Y s
+t , cs, t)) ;
+// Eq. equation 1
+5
+bY s
+t ←SampleBits(P s
+t );
+6
+Ss
+t,n,d ∼Bernoulli(λt+1);
+7
+Y s
+t+1 ←Ss
+t ⊙bY s
+t + (1 −Ss
+t ) ⊙Z ;
+// Eq. equation 2
+8 Y e
+ts ←Y s
+ts ;
+// Shared-state branching; Sec. 4.1
+// Coupled localization and refinement
+9 for t = ts, . . . , T −1 do
+10
+for u ∈{s, e} do
+11
+P u
+t ←softmax(Gθ(Y u
+t , cu, t)) ;
+// Eq. equation 1
+12
+bY u
+t ←SampleBits(P u
+t );
+// Compare probabilities of the same source-sampled bit
+13
+byt,n,d ←bY s
+t,n,d;
+14
+∆t,n,d ←P s
+t (n, d, byt,n,d) −P e
+t (n, d, byt,n,d) ;
+// Eq. equation 3
+15
+qt,n ←
+1
+D
+PD
+d=1 ∆t,n,d ;
+// Average evidence across bits
+16
+¯at,n ←1[qt,n > τspatial] ;
+// Instantaneous spatial mask; Eq. equation 4
+// Adaptive spatial freezing; Sec. 4.2
+17
+if t = ts then
+18
+Ω←{n | ¯ats,n = 1};
+19
+r ←
+P
+n∈Ω(qts,n −τspatial)
+max(1, |Ω|)
+;
+// Initial response; Eq. equation 6
+20
+if r ≥τfreeze then
+21
+at ←¯ats ;
+// Reuse the initial spatial mask
+22
+else
+23
+at ←¯at ;
+// Continue updating the spatial mask
+// Instantaneous bit selection before locking
+24
+¯mt,n,d ←at,n 1[∆t,n,d > τpower] ;
+// Eq. equation 4
+// Retain editing permission by element-wise OR over the latest K
+masks
+25
+mt ←
+t_
+j=max(ts,t−K+1)
+¯mj ;
+// Finite bit locking; Eq. equation 7
+// Global GRN refinement before bit routing
+26
+for u ∈{s, e} do
+27
+Su
+t,n,d ∼Bernoulli(λt+1);
+28
+eY u
+t+1 ←Su
+t ⊙bY u
+t + (1 −Su
+t ) ⊙Z ;
+// Eq. equation 2
+29
+Y s
+t+1 ←eY s
+t+1;
+30
+Y e
+t+1 ←mt ⊙eY e
+t+1 + (1 −mt) ⊙Y s
+t+1 ;
+// Source-anchored routing;
+Eq. equation 5
+// Decode final sampled predictions without mixing with Z
+31 Is ←D(bY s
+T −1);
+32 Ie ←D
+
+mT −1 ⊙bY e
+T −1 + (1 −mT −1) ⊙bY s
+T −1
+
+;
+33 return Is, Ie;
+22
+
+
+Preprint
+E
+ADDITIONAL QUALITATIVE RESULTS
+We provide additional qualitative comparisons across the nine editing categories in our evaluation
+set. Figures 10–18 show how different methods introduce the requested changes while preserving
+content unrelated to the target prompt. These examples complement the quantitative evaluation in
+the main text.
+“[fishes -> sharks] in the ocean”
+“a girl and her [dog -> monkey] in a field”
+“[cat -> dog] on the roof at night”
+“a painting of a woman in green [dress -> shirts]”
+“a girl with black hair and a white shirt is holding a [phone -> coffee]”
+“a beautiful woman with [garland-> hat] on head”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 10:
+Qualitative comparison on object replacement. The target prompt replaces a source
+object with another category while leaving unrelated scene content unchanged.
+23
+
+
+Preprint
+“a pink zebra [and a cat] painted on a wall”
+“woman with dark hair [wearing earrings]”
+“a painting of a waterfall [and angels] in the mountains”
+“a small island with a tree [and a girl]”
+“a man standing on a rock looking at the sky with [robot boat]”
+“a leopard walking on unsurfaced road [with a rock on the ground]”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 11: Qualitative comparison on object addition. The task introduces new objects specified by
+the target prompt while preserving existing content and integrating the additions into the scene.
+24
+
+
+Preprint
+“a girl in red dress standing in a field [surrounded by balloons]”
+“a teddy bear sitting on a box [with a rose]”
+“a cup of coffee on a table with [coffee beans and] a coffee grinder”
+“olive oil being poured into a bowl [with olive] on table”
+“two cups of coffee [with a leaf design] on the top, coffee beans”
+“a woman [with flowers on head] in a pink dress and red skirt is walking on the beach”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 12: Qualitative comparison on object removal. The specified object should be removed and
+its former region filled coherently, without unnecessary changes elsewhere.
+25
+
+
+Preprint
+“painting of a [shepherd -> poodle] dog sitting in a laundry room next to a washing machine”
+“a painting of a woman with [colorful -> drab] paint on her face”
+“poppies in the [clear -> cloudy] night sky”
+“a panda bear [close -> open] his mouth”
+a white [horse -> unicorn] running in the dirt
+“a man wearing a [black and yellow stripes] tie ”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 13: Qualitative comparison on content modification. The task changes an object’s attributes
+or internal appearance, such as its expression or pattern, while retaining unrelated object and scene
+characteristics.
+26
+
+
+Preprint
+“a light brown bear [sitting -> stand] on the ground”
+“a woman in a hat and dress [walking -> running] down a path at sunset”
+“anime, the garden, pink, flowers, trees, [curving] path”
+“a young boy standing in the dirt with a jacket on [and hands up]”
+“a woman in a purple dress posing on a gazebo [withs arms cross]”
+“a group of animals in the desert with a [dead -> blooming] tree”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 14:
+Qualitative comparison on pose modification. The target prompt changes a subject’s
+pose, action, or orientation. Successful editing requires the corresponding structural changes while
+maintaining a coherent subject and scene.
+27
+
+
+Preprint
+“a [brown -> black] bear is sleeping with a sign that says no sleep”
+“a [black and white -> colorful and detailed] drawing of a woman with long hair”
+“watercolor painting of a woman with [red -> purple] lipstick wearing flowers in her hair”
+“[red -> purple] roses are in a vase with a blurred background”
+“a man in a [white -> blue] shirt talking on a cell phone”
+“a [brown -> golden] cabin in the snow near a lake”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 15: Qualitative comparison on color modification. The specified color change should remain
+localized to the target object while preserving its shape and the appearance of unrelated regions.
+28
+
+
+Preprint
+“a [woman -> golden woman sculpture] in a kimono standing in a river”
+“a photo of a [bronze] horse in the field”
+“a [wax statue of] woman in a black bikini top and yoga pants is meditating”
+“tomatoes in a [plastic] bowl on a table”
+“a [fabric] ladybug with black spots on its back is sitting on a leaf”
+“a [man -> sculpture] sitting in a room”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 16:
+Qualitative comparison on material modification. The task changes the target object’s
+material appearance, including its texture and reflectance, while retaining its overall form and sur-
+rounding content.
+29
+
+
+Preprint
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+“a colorful cat with splashes of paint on its head [with a blue background]”
+“a man in a white shirt standing in front of [trees -> mountains]”
+“a man is sitting at a desk [in a chaotic office]”
+“a man walking in the [woods -> city] at night”
+“a brown dog with a collar on is looking at the camera [on the grass -> in the water]”
+“a field with [mountains -> cities] in the background”
+Figure 17: Qualitative comparison on background modification. The surrounding scene is changed
+according to the target prompt, while the foreground subject should remain consistent with the
+source image.
+30
+
+
+Preprint
+“a [cartoon -> watercolor] giraffe sitting down on a white background”
+“[a pen and ink sketch of] a woman sitting in the cave with light coming from the light”
+“a [anime] bird is perched on a branch with blue flowers”
+“a [black and white sketch of] man is walking down a street in the rain”
+“[pen and ink sketch of] a white wolf with black eyes and a black nose”
+“a chair and table in front of a window overlooking a castle”
+(a) Original
+(b) Ours
+(c) LEDits++
+(d) Flowedit
+(e) ChordEdit
+Figure 18:
+Qualitative comparison on style transfer. The target style is applied across the image
+while preserving recognizable scene content and composition. Unlike localized editing, this task
+permits changes throughout the image.
+31

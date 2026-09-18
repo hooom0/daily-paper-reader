@@ -1,0 +1,121 @@
+{
+  "date": "20260918",
+  "date_label": "",
+  "generated_at": "2026-09-18 21:31:30 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.19702v1",
+      "route": "202609/18/2609.19702v1-understanding-and-exploiting-diagonal-attention-sparsity-in-autoregressive-image-generation",
+      "title": "Understanding and Exploiting Diagonal Attention Sparsity in Autoregressive Image Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "面向高效自回归图像生成的稀疏注意力",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    },
+    {
+      "paper_id": "2609.20816v1",
+      "route": "202609/18/2609.20816v1-paint-anything-unified-any-color-control-for-image-generation-and-editing",
+      "title": "Paint-Anything: Unified Any-Color Control for Image Generation and Editing",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "面向图像生成与编辑的任意颜色控制",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    },
+    {
+      "paper_id": "2609.14377v1",
+      "route": "202609/18/2609.14377v1-rethinking-camouflage-image-generation-towards-a-training-free-paradigm",
+      "title": "Rethinking Camouflage Image Generation towards a Training-Free Paradigm",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "可控前景背景融合的伪装图像生成",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    },
+    {
+      "paper_id": "2609.20633v1",
+      "route": "202609/18/2609.20633v1-refinement-is-inherently-editable-training-free-prompt-to-prompt-image-editing-with-generative-refinement-network",
+      "title": "Refinement Is Inherently Editable: Training-Free Prompt-to-Prompt Image Editing with Generative Refinement Network",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "基于扩散和自回归编辑器的免训练提示到提示图像编辑",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    },
+    {
+      "paper_id": "2609.16475v1",
+      "route": "202609/18/2609.16475v1-mdn-control-mask-depth-noise-guided-region-control-for-multi-subject-video-editing",
+      "title": "MDN-Control: Mask-Depth-Noise Guided Region Control for Multi-Subject Video Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于掩码-深度-噪声引导的可控扩散生成",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    },
+    {
+      "paper_id": "2609.17169v1",
+      "route": "202609/18/2609.17169v1-mumins-metadata-conditioned-uncertainty-aware-medical-image-next-state-synthesis",
+      "title": "MUMINS: Metadata-conditioned Uncertainty-aware Medical Image Next-state Synthesis",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用于图像合成的高效扩散框架",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    },
+    {
+      "paper_id": "2609.17521v1",
+      "route": "202609/18/2609.17521v1-physstream-streaming-physics-grounded-video-generation-with-structured-scene-memory-and-fine-grained-motion-control",
+      "title": "PhysStream: Streaming Physics-Grounded Video Generation with Structured Scene Memory and Fine-Grained Motion Control",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用于物理接地的图像到视频合成与细粒度运动控制的自回归模型",
+      "first_seen_at": "2026-09-18 21:31:30 UTC",
+      "updated_at": "2026-09-18 21:31:30 UTC"
+    }
+  ]
+}

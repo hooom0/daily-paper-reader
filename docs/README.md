@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-17</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-18</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 13 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 7 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-17 21:46:03 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-18 21:31:30 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,10 +69,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共生成 13 篇推荐（精读 2 篇，速读 11 篇）</p>
-<p>精读：《Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation》（9.0/10）, 《Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models》（8.0/10）</p>
-<p>速读：《Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates》（7.0/10）, 《FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation》（7.0/10）, 《SlotDiT: Object-Centric Representations for Diffusion Transformers》（7.0/10）</p>
-<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
+<p>2026-09-18日报：从7篇生成式视觉论文中精读2篇、速读5篇，聚焦图像生成与编辑的控制、效率。</p>
+<p>最值得看的是两篇8.0精读：自回归图像生成中的对角注意力稀疏性，以及Paint-Anything的任意颜色统一控制，都指向更高效、更可控的生成/编辑。</p>
+<p>普通读者可先读这两篇，再按兴趣扫伪装图像生成、训练免费Prompt-to-Prompt编辑和多主体视频编辑等速读方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -84,7 +83,7 @@
     <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation">Multimodal Conditioning of Fine-Tuned Stable Diffusion XL for Controllable and Culturally Faithful Ulos Motif Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models">Efficient Text-to-Image Generation: An Adaptive Step Schedule Controller for Diffusion Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Understanding and Exploiting Diagonal Attention Sparsity in Autoregressive Image Generation">Understanding and Exploiting Diagonal Attention Sparsity in Autoregressive Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Paint-Anything: Unified Any-Color Control for Image Generation and Editing">Paint-Anything: Unified Any-Color Control for Image Generation and Editing</span></li></ul>
   </div>
   <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
 </section>
@@ -94,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates">Learning Interaction between Image and Layout Priors for Joint Image-Layout Generation in Design Templates</span></li><li><span class="dpr-home-dashboard-paper-title" title="FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation">FLAT: Resampling Image and Text into 1D Flexible-Length Aligned Transmodal Tokens for Retrieval and Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="SlotDiT: Object-Centric Representations for Diffusion Transformers">SlotDiT: Object-Centric Representations for Diffusion Transformers</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Camouflage Image Generation towards a Training-Free Paradigm">Rethinking Camouflage Image Generation towards a Training-Free Paradigm</span></li><li><span class="dpr-home-dashboard-paper-title" title="Refinement Is Inherently Editable: Training-Free Prompt-to-Prompt Image Editing with Generative Refinement Network">Refinement Is Inherently Editable: Training-Free Prompt-to-Prompt Image Editing with Generative Refinement Network</span></li><li><span class="dpr-home-dashboard-paper-title" title="MDN-Control: Mask-Depth-Noise Guided Region Control for Multi-Subject Video Editing">MDN-Control: Mask-Depth-Noise Guided Region Control for Multi-Subject Video Editing</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>5</strong></span></div>
 </section>
 </div>
 

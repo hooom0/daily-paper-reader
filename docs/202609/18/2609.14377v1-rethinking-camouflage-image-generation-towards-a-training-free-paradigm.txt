@@ -1,0 +1,2370 @@
+Rethinking Camouflage Image Generation towards a
+Training-Free Paradigm
+Haodong Yang1†, Zhongling Huang1†, Gong Cheng1*
+1School of Automation, Northwestern Polytechnical University, Xi’an, China.
+*Corresponding author(s). E-mail(s): chenggong1119@gmail.com.
+†These authors contributed equally to this work.
+Abstract
+Camouflage image generation (CIG) aims to synthesize realistic camouflaged images by blending
+foreground objects into concealment-compatible background contexts. Achieving this objective requires
+jointly satisfying three coupled requirements: foreground preservation to retain target integrity, semantic
+compatibility to select plausible concealment contexts, and appearance assimilation to reduce visual
+discrepancies. Recent approaches predominantly rely on task-specific training on camouflage datasets
+to address these requirements, incurring substantial computational cost and limiting generalization
+beyond the training domain. To address these limitations, we formulate training-free CIG as a
+concealment-oriented paradigm that preserves the target while reducing its perceptual separability
+from the synthesized surroundings, rather than maintaining its visual prominence, without parameter
+updates. We instantiate this paradigm with FreeCam based on a frozen inpainting diffusion framework
+to preserve the foreground. Within this framework, a Contextual Reasoning Module exploits frozen
+multimodal priors to infer an environment favorable to concealment, thereby promoting semantic
+compatibility, while an Intrinsic Appearance Module extracts low-level color and texture cues from
+the foreground to guide background synthesis toward appearance assimilation. Extensive experiments
+demonstrate that FreeCam achieves state-of-the-art generation quality and camouflage effectiveness
+without task-specific training, while its generated images provide synthetic supervision for camouflaged
+object detection and reduce target detectability under general object detectors.
+Keywords: Camouflage Image Generation, Training-free Image Generation, Diffusion Models, Multimodal
+Reasoning
+1 Introduction
+Camouflaged objects pose a persistent challenge
+to visual perception, since the visual cues that typ-
+ically distinguish an object from the background,
+such as color contrast and texture discrepancy, are
+suppressed or absorbed by the surrounding con-
+texts [1]. Faithfully modeling such concealment is
+important for visual understanding tasks where
+targets are intrinsically inconspicuous, including
+agricultural pest monitoring [2–5] and healthcare-
+related visual analysis [6–9]. However, constructing
+large-scale Camouflaged Object Datasets (CODs)
+remains inherently difficult: camouflaged targets
+are hard to discover and capture in natural scenes
+due to their low saliency, resulting in limited
+category and scene diversity. Even after collec-
+tion, reliable pixel-level annotation still requires
+substantial manual effort. To alleviate this bot-
+tleneck, Camouflage Image Generation (CIG) has
+1
+arXiv:2609.14377v1  [cs.CV]  13 Sep 2026
+
+
+(c) Generated results on COD data
+Generated
+Image
+Mask
+Input
+(d) Generated results on general data
+(a) Training-free camouflage image generation paradigm
+…
+noise
+Contextual
+Reasoning
+obj.
+descrip.
+Env.
+…
+color
+Intrinsic 
+Appearance
+Perception
+texture
+…
+diffusion
+U-Net 
+U-Net
+U-Net
+MLLM
+Analyze
+(b) Comparison with previous methods
+COD KIDinv↑
+General data 
+KIDinv↑
+Overall 
+KIDinv↑
+COD �b↑
+General data �b↑
+Overall 
+�b↑
+Efficiency ↑
+Diffusion-trained
+CNN-trained
+Ours
+Fig. 1 (a) Illustration of the proposed training-free CIG paradigm, in which contextual reasoning and intrinsic appearance
+conditioning guide a frozen diffusion model toward semantic compatibility and appearance assimilation. (b) Comparison with
+CNN-trained and diffusion-trained CIG methods across seven normalized axes: efficiency; inverted KID on COD, general
+data, and the overall set; and Sb on the same three evaluation sets. All axes are oriented such that larger values are better.
+(c–d) The generated results on (c) COD and (d) general data validate the capability of the proposed paradigm.
+(a) Training-based CNN methods
+Generation
+COD data
+Generative 
+CNN
+x
+ˆx
+ˆ
+( , )
+x x
+L
+(b) Training-based diffusion methods
+COD data
+Diffusion
+U-Net
+One-Step Noise Estimation
+ˆ
+( , )
+
+L
+
+ˆ
+(c) Generic Training-free methods
+Input
+Generative 
+Model
+Output
+Condition
+Concealment 
+Failure
+Fig. 2 (a–b) Training-based CNN and diffusion methods rely on COD-specific optimization. (c) Generic training-free
+generation steers frozen priors and avoids task-specific optimization costs but is not concealment-oriented.
+become a scalable route for synthesizing camou-
+flaged imagery by assimilating foreground objects
+into semantically compatible and visually coherent
+background contexts [10–12]. Unlike conventional
+image generation, which typically seeks to make the
+foreground recognizable and faithfully rendered,
+CIG instead treats perceptual concealment as the
+generation objective, making it a distinct and more
+constrained problem.
+This pursuit of concealment imposes three cou-
+pled requirements on CIG: foreground preservation,
+semantic compatibility, and appearance assimila-
+tion. Foreground preservation requires retaining the
+target’s semantic identity and visual integrity dur-
+ing synthesis. Semantic compatibility requires the
+synthesized surroundings to be both plausible for
+the target and favorable to effective concealment.
+Appearance assimilation requires suppressing per-
+ceptual discrepancies between the target and its
+local surroundings, particularly in color distri-
+bution and texture patterns. An effective CIG
+method is therefore required to preserve the target
+in the final image while reducing its perceptual
+separability from semantically compatible and visu-
+ally coherent surroundings, whereas conventional
+image generation approaches typically maintain or
+enhance target distinctiveness.
+Existing CIG methods can be broadly grouped
+into convolutional neural network-based (CNN-
+based) and diffusion model-based (DM-based)
+approaches. As illustrated in Fig. 2(a), CNN-based
+methods [13, 14] pursue appearance assimilation
+by learning a supervised image-to-image camou-
+flage mapping from COD, but may compromise
+2
+
+
+foreground preservation. More recently, DM-based
+methods [10–12, 15] formulate CIG as conditional
+generation and fine-tune diffusion models on COD
+through task-specific denoising objectives to implic-
+itly address the above three requirements, as
+illustrated in Fig. 2(b). Despite their technical
+differences, both paradigms remain dependent on
+COD supervision to capture camouflage-specific
+generation patterns. This training paradigm not
+only incurs expensive optimization and limits
+deployment efficiency, but also couples the gen-
+erator to COD-specific representations, thereby
+restricting its generalization and applicability to
+general-domain scenarios, as illustrated in Fig. 1(b).
+These limitations raise a more fundamental ques-
+tion: can pretrained generative priors be steered at
+inference time to synthesize realistic camouflaged
+images without COD-specific optimization while
+retaining their broad generative capability?
+Recent advances in training-free image gen-
+eration offer a possible route to this question:
+pretrained diffusion models encode broad genera-
+tive priors that can be controlled at inference time
+through external conditions [16, 17], as illustrated
+in Fig. 2(c). Existing approaches mainly adopt
+prompt-driven [18], reference-conditioned [19], and
+hybrid [17, 20] designs, which steer the frozen
+prior through text prompts, reference images, or
+both. However, these mechanisms are designed for
+conventional generation, where control typically
+preserves subject identity while maintaining or
+enhancing visual prominence, rather than reduc-
+ing the subject’s perceptual separability from its
+surroundings. Consequently, semantic plausibility
+alone does not ensure compatibility with con-
+cealment: placing a fish in water is semantically
+reasonable, yet the generated scene may still leave
+the target visually conspicuous. Moreover, even
+when reference images are provided, these controls
+typically prioritize appearance fidelity, preserving
+target-specific color and texture characteristics
+and thereby maintaining visual distinctiveness.
+Taken together, these limitations indicate that
+generic training-free controls are not designed to
+jointly satisfy the three requirements of CIG, moti-
+vating a dedicated training-free formulation for
+concealment-oriented synthesis.
+In this paper, we formulate training-free CIG
+as a paradigm for reducing the perceptual sepa-
+rability of a preserved foreground target from its
+synthesized surroundings through inference-time
+steering of frozen generative priors. Unlike generic
+training-free generation, realizing this paradigm
+requires addressing two camouflage-specific chal-
+lenges: semantic compatibility for identifying which
+contexts are plausible for the target and favorable
+to concealment, and appearance assimilation for
+determining how to reduce visual discrepancies
+between the synthesized surroundings and the tar-
+get. We instantiate this paradigm with FreeCam, as
+illustrated in Fig. 1(a), which addresses these two
+challenges through a Contextual Reasoning Mod-
+ule (CRM) and an Intrinsic Appearance Module
+(IAM), respectively. The CRM leverages multi-
+modal reasoning priors to infer an environment
+favorable to concealment and encodes it as a
+semantic condition, thereby promoting semantic
+compatibility. The IAM extracts low-level charac-
+teristics of the foreground, particularly color and
+texture cues, and converts them into an appear-
+ance condition that guides background synthesis
+toward appearance assimilation. These conditions
+jointly steer a frozen inpainting diffusion model
+to generate only the background region, thereby
+preserving the original foreground by construction.
+We evaluate FreeCam on the LAKE-RED
+benchmark [10] against representative training-
+based CNN and diffusion methods, and use these
+comparisons to assess the feasibility of training-
+free CIG. Across the camouflaged, salient, and
+general subsets, FreeCam variants achieve state-of-
+the-art (SOTA) generation quality in terms of KID
+without COD-specific optimization. Results on the
+boundary score Sb further indicate that FreeCam
+produces less distinguishable object boundaries,
+providing additional evidence of improved cam-
+ouflage effectiveness. Fig. 1(b) summarizes the
+overall comparison in terms of generation quality,
+camouflage effectiveness, and efficiency. Down-
+stream augmentation experiments further show
+that FreeCam-generated samples improve the per-
+formance of camouflaged object detectors, demon-
+strating their utility as synthetic training data.
+Visual results on inputs from both camouflage and
+general domains, shown in Fig. 1(c–d), further
+illustrate the semantic coherence and appearance
+assimilation achieved by FreeCam.
+The main contributions of this work are sum-
+marized as follows:
+• We
+formulate
+training-free
+camouflage
+image generation as a concealment-oriented
+3
+
+
+paradigm whose objective differs from that of
+generic training-free generation: rather than
+maintaining or enhancing the target’s visual
+prominence, it seeks to reduce the perceptual
+separability between a preserved target and
+its synthesized surroundings.
+• We identify two camouflage-specific design
+principles for realizing this paradigm: seman-
+tic compatibility for selecting which contexts
+are plausible for the target and favorable to
+concealment, and appearance assimilation for
+determining how to reduce visual discrepan-
+cies between the target and the synthesized
+surroundings.
+• We propose FreeCam as an instantiation of
+this paradigm. FreeCam preserves the origi-
+nal foreground by restricting synthesis to the
+background region, while a Contextual Rea-
+soning Module addresses semantic compati-
+bility by inferring an environment favorable
+to concealment and encoding it as a seman-
+tic condition, and an Intrinsic Appearance
+Module addresses appearance assimilation by
+extracting foreground color and texture cues
+as an appearance condition.
+• Extensive experiments evaluate generation
+quality, camouflage effectiveness, computa-
+tional efficiency, and downstream perception
+across diverse evaluation settings. FreeCam
+achieves consistent gains in generalization and
+efficiency over state-of-the-art methods while
+serving as an efficient data engine for cam-
+ouflage image generation, demonstrating the
+feasibility and scope of training-free CIG.
+2 Related Work
+2.1 Camouflage Image Generation
+CIG aims to synthesize images in which a fore-
+ground target is concealed by its surroundings
+while preserving its semantic identity and visual
+integrity. Existing approaches can be broadly
+divided into CNN-based and DM-based methods.
+Early work [21] explored this task using hand-
+crafted features to composite a foreground object
+onto a given background and reduce its percep-
+tual saliency to human observers. Building on this
+formulation, CNN-based methods [13, 14] employ
+deep networks to adapt the foreground appear-
+ance to a given background through style transfer
+and feature fusion. These methods primarily pro-
+mote appearance assimilation, but their direct
+modification of the target may compromise fore-
+ground preservation. More recently, DM-based
+methods [10–12, 15] have become the dominant
+paradigm. Rather than requiring a predefined
+background, these methods preserve the input fore-
+ground and synthesize its surrounding context.
+Leveraging the generative capacity of DMs, they
+formulate CIG as supervised conditional generation
+and fine-tune pretrained DMs on CODs to implic-
+itly learn semantic compatibility and appearance
+assimilation.
+Despite their effectiveness, learning-based meth-
+ods across both paradigms generally require
+COD-specific optimization. This training paradigm
+incurs substantial computational cost and biases
+the learned generator toward camouflage-specific
+data distributions, which can restrict generaliza-
+tion beyond the training domain. As a result,
+whether CIG can preserve the foreground while
+establishing semantic compatibility and appear-
+ance assimilation without COD-specific training
+remains largely unexplored. This work addresses
+this gap by formulating training-free CIG as a
+paradigm and instantiating it with FreeCam.
+2.2 Training-free Image Generation
+Recent advances in large-scale pretrained diffu-
+sion models [22, 23] have enabled a growing class
+of training-free generation methods that reuse
+frozen generative priors and introduce control at
+inference time without task-specific model train-
+ing. These methods can be broadly categorized
+into prompt-driven, reference-conditioned, and
+hybrid designs according to the conditioning sig-
+nals. Prompt-driven methods [18, 24, 25] use
+semantic descriptors to specify scene content and
+composition, primarily providing semantic plausi-
+bility. Reference-conditioned methods [19] impose
+visual constraints from reference images to preserve
+subject identity or appearance fidelity. Hybrid
+methods [26–28] combine textual and visual signals
+to coordinate semantic and appearance control.
+Collectively, these studies demonstrate that frozen
+diffusion priors can be repurposed through distinct
+conditions for diverse controllable synthesis tasks
+without task-specific parameter updates.
+Despite their effectiveness in controllable syn-
+thesis, these mechanisms are not aligned with
+4
+
+
++
+Addition
+·
+Hadamard product
+VAE
+rx
+noise
+Env. 
+Set
+Intensity Aggregation
+L
+A
+B
+L
+A
+B
+toLAB
++
+toRGB
+{Best Env.}
+CLIP 
+Scorer
+MLLM-LLaVA-1.6
+Please analyze this object step by step:
+1. Classify the object type. 
+(Animal/Plant/Human/Man-made object)
+2. Describe its key features.
+3. Select K optimal backgrounds for 
+camouflage from the Env. Set.
+{Env. 1}
+{Env. 2}
+…
+{Env. K}
+{object}
+{description}
+A photo of an {object}, 
+{description},  camouflaged 
+with {Best Env.}. 
+toGray
+High-pass 
+Filter
+Contextual Reasoning Module (CRM)
+Intrinsic Appearance Module (IAM)
+CLIP
+CLIP
+layer8 
+layer8 
+Histogram 
+Equalization
+Image Blur
+·
+M
+Xr
+Xfg
+…
+VAE
+U-Net
+UpBlock-2
+×T
+ZT
+I
+Fig. 3 Framework of FreeCam. Background-only inpainting preserves the original foreground. CRM addresses semantic
+compatibility by constructing a concealment-oriented semantic condition, whereas IAM addresses appearance assimilation
+by extracting foreground color and texture cues as an appearance condition. The two conditions jointly guide the frozen
+diffusion model during background synthesis.
+the concealment objective of CIG. Prompt-driven
+control can establish semantic plausibility, but a
+plausible scene is not necessarily favorable to con-
+cealment. Reference-conditioned control prioritizes
+appearance fidelity, which can preserve target-
+specific characteristics while maintaining visual
+distinctiveness from the surroundings. Hybrid
+methods inherit this objective mismatch despite
+combining both conditions. Consequently, generic
+training-free generation does not address the
+semantic compatibility and appearance assimi-
+lation required by training-free CIG. FreeCam
+instead derives semantic prompts specifying envi-
+ronments favorable to concealment and extracts
+intrinsic foreground appearance cues to promote
+assimilation, thereby aligning inference-time con-
+trol with the concealment objective.
+3 Method
+3.1 Problem Formulation
+We instantiate the training-free CIG paradigm with
+FreeCam, as illustrated in Fig. 3. By restrict-
+ing synthesis to the background region, FreeCam
+preserves the original foreground by construction.
+The remaining challenges are to establish semantic
+compatibility in context selection and appear-
+ance assimilation in color and texture. FreeCam
+addresses them through a Contextual Rea-
+soning Module (CRM), which constructs a
+semantic condition for selecting contexts favorable
+to concealment, and an Intrinsic Appearance
+Module (IAM), which derives an appearance
+condition from foreground color and texture cues.
+Given a reference image Xr ∈RH×W ×3 and
+a binary foreground mask Mfg ∈{0, 1}H×W , we
+extract the foreground as Xfg = Xr ⊙Mfg, where
+⊙denotes the element-wise (Hadamard) product.
+The corresponding inpainting mask is defined as
+Minp = 1−Mfg, such that synthesis is restricted to
+the background region. The objective is to generate
+a composite image I ∈RH×W ×3 that preserves
+the original foreground throughout the generation
+process while reducing its perceptual separability
+from the generated background through semantic
+compatibility and appearance assimilation.
+The background generation is performed in the
+latent space of the pretrained variational autoen-
+coder (VAE) in the frozen inpainting diffusion
+model [22]. CRM and IAM process the foreground
+in parallel to produce a semantic condition Csem
+5
+
+
+Dense 
+Rainforest
+Ivy 
+Covered Wall
+Autumn 
+Foliage
+Dense 
+Rainforest
+w/o Env. Set
+w/ Env. Set
+w/o Env. Set
+w/ Env. Set
+Fig. 4 Visual comparison of images generated with and
+without the environment set. The text above each image
+denotes the inferred environment.
+and an appearance condition Capp, respectively.
+At denoising timestep t, the frozen diffusion model
+predicts the noise conditioned on the standard
+inpainting inputs and the two guidance conditions:
+bϵt = ϵθ (zt, t, Cinp, Csem, Capp) ,
+(1)
+where Cinp denotes the standard inputs of the
+inpainting model, including Minp resized to the
+latent resolution and the latent encoding of Xfg,
+while zt denotes the noisy latent at timestep t.
+The semantic and appearance conditions are
+jointly incorporated into the frozen cross-attention
+layers, where their projected key and value tokens
+are concatenated to form the fused conditioning
+representation:
+Kfused = concat(WK(Csem), WK(Capp)) ,
+Vfused = concat(WV (Csem), WV (Capp)) ,
+(2)
+where WK and WV denote the frozen key and
+value projection layers of the corresponding cross-
+attention block. After denoising, the final latent is
+decoded by the VAE to obtain bX. The final image
+is then constructed as
+I = Xr ⊙Mfg + bX ⊙Minp,
+(3)
+thereby preserving the original foreground and
+using the decoded content only in the background
+region. Detailed descriptions of CRM and IAM are
+provided in Secs. 3.2 and 3.3, respectively.
+3.2 Contextual Reasoning Module
+Existing training-based CIG methods [10, 11, 15]
+learn associations between foreground objects
+and camouflage contexts through optimization on
+CODs. In the training-free paradigm, however, such
+task-specific associations are unavailable. A gen-
+eral multimodal large language model (MLLM)
+provides broad semantic knowledge, but it may
+favor environments that are semantically plausi-
+ble or ecologically typical rather than favorable to
+concealment. To address this, we propose a Con-
+textual Reasoning Module (CRM) using the
+knowledge encoded in a frozen MLLM to identify
+environments that are both semantically plausible
+and favorable to concealment, as shown in Fig. 3.
+Environment reasoning without constraints
+can be unreliable because the general semantic
+knowledge of an MLLM is not aligned with the
+concealment objective, as illustrated in Fig. 4. The
+MLLM may select an ecologically plausible envi-
+ronment that leaves the target visually conspicuous
+(Fig. 4, Left), or it may produce an inaccurate
+environment prediction (Fig. 4, Right). We there-
+fore restrict the reasoning space to a predefined
+candidate environment set Eenv.
+The
+environment
+set
+Eenv
+contains
+100
+environment categories manually curated from
+Places365 [29] and publicly available web sources,
+covering diverse natural and built environments.
+For each input foreground object, CRM follows
+two successive stages: semantic candidate proposal
+and compatibility ranking. The MLLM proposes
+candidate environments using the object category
+and a concise description of its appearance, while
+a frozen CLIP model [30] ranks these candidates
+according to their compatibility with the fore-
+ground. Together, these stages determine a coarse
+semantic context, whereas IAM subsequently regu-
+lates color and texture relations during background
+generation within the diffusion model.
+Specifically, we use a frozen, quantized LLaVA-
+1.6 model [31–33] to propose a subset of candidate
+environments from Eenv. Given the foreground Xfg,
+the MLLM predicts its object category o and a con-
+cise visual description d, and selects K candidate
+environments from Eenv to form Erec, without intro-
+ducing categories outside the predefined set. We
+then use the frozen CLIP model to rank the can-
+didates according to their compatibility with the
+foreground. Specifically, the foreground image Xfg
+and each candidate environment label ei ∈Erec are
+encoded into the shared CLIP embedding space
+using the image encoder fimg and the text encoder
+ftxt, respectively. The candidate with the highest
+cosine similarity is selected as e∗:
+e∗= argmax
+ei∈Erec
+sim (fimg(Xfg), ftxt(ei)) ,
+(4)
+6
+
+
+w/o IAM
+w/ IAM
+w/o IAM
+w/ IAM
+Ivy 
+Covered Wall
+Ivy 
+Covered Wall
+Autumn 
+Foliage
+Autumn 
+Foliage
+Fig. 5 Visual comparison of images generated with and
+without IAM. The text above each image denotes the
+inferred environment.
+where sim(·, ·) denotes cosine similarity.
+Finally, CRM constructs a semantic prompt
+using the template “A photo of an [o] with [d],
+camouflaged in [e∗].” The semantic condition Csem
+is obtained by encoding this prompt with the native
+text encoder configuration of the selected diffusion
+backbone at inference time.
+3.3 Intrinsic Appearance Module
+Although CRM provides a semantic condition
+Csem that identifies an environment favorable to
+concealment, it captures only coarse contextual
+information and does not encode appearance infor-
+mation specific to the foreground instance, such as
+dominant color and texture patterns that are criti-
+cal for concealment. As illustrated in Fig. 5, even
+when CRM selects a suitable environment, the gen-
+erated background may remain inconsistent with
+the foreground in color and texture, particularly
+near the object boundary. For example, the gener-
+ated Autumn Foliage fails to align with the orange
+appearance of the carrot, leaving the object visually
+conspicuous. Similarly, the background generated
+for the butterfly lacks the local high-frequency
+patterns required for texture continuity.
+To address this limitation, we introduce the
+Intrinsic Appearance Module (IAM) to com-
+plement semantic compatibility with appearance
+assimilation. IAM extracts appearance cues from
+the foreground and injects them into the genera-
+tion process, guiding the synthesized background
+toward greater consistency with the target in color
+and texture. Specifically, as illustrated in Fig. 3,
+IAM uses two complementary branches to extract
+chromatic and textural cues from the foreground.
+The chromatic branch captures the dominant
+color distribution and illumination characteristics
+of the foreground while suppressing fine texture
+details. Given the foreground image Xfg, we first
+transform it into the LAB color space to sepa-
+rate luminance from chromatic information. An
+intensity aggregation operator is then applied to
+normalize the chromatic statistics with respect to
+foreground luminance, followed by Gaussian blur-
+ring to suppress fine texture patterns. The resulting
+chromatic representation is encoded as
+Fchr = f (8)
+img (G (Ψagg (LAB(Xfg)))) ,
+(5)
+where G denotes Gaussian blurring and Ψagg(·)
+denotes the intensity aggregation operator. The
+function f (8)
+img(·) represents the feature embedding
+extracted from the eighth block of the frozen CLIP
+image encoder. This intermediate representation
+retains low-level appearance details while preserv-
+ing sufficient semantic structure. An analysis of
+the selected feature layer is provided in Fig. 9.
+The texture branch extracts high-frequency
+cues that describe local surface patterns and details
+near object boundaries, both of which influence
+texture continuity between the target and its sur-
+roundings. We first convert Xfg to grayscale to
+remove chromatic information. Histogram equaliza-
+tion (HE) is then applied to enhance local contrast,
+followed by a high-pass filter (HPF) that suppresses
+low-frequency components. The resulting texture
+representation is encoded as
+Ftex = f (8)
+img (HPF (HE (Gray(Xfg)))) .
+(6)
+Finally, the appearance condition Capp is
+obtained by fusing Fchr and Ftex through element-
+wise addition:
+Capp = Fchr + Ftex.
+(7)
+Using the token concatenation mechanism in Eq. 2,
+Capp is injected only into UpBlock-2 starting
+from the 10th denoising step. These choices avoid
+over-constraining high-resolution generation while
+allowing IAM to refine local color and texture after
+the coarse scene layout has formed, as analyzed in
+Fig. 8(b) and (d).
+4 Experiments
+We organize the experiments around the central
+question of whether training-free CIG is viable
+and how FreeCam performs under this paradigm.
+First, we compare FreeCam with representative
+training-based CIG methods and generic gener-
+ation baselines in terms of generation quality,
+7
+
+
+Table 1 Quantitative comparison on LAKE-RED using FID and KID across the camouflaged objects, salient objects,
+general objects, and overall subsets. Lower scores indicate better generation quality. Bold and underlined values indicate
+the best and second-best results in each column, respectively.
+Camouflaged Objects
+Salient Objects
+General Objects
+Overall
+Method
+Paradigm
+Training
+FID ↓
+KID ↓
+FID ↓
+KID ↓
+FID ↓
+KID ↓
+FID ↓
+KID ↓
+LCGNet [14][TMM]
+CNN
+Yes
+129.80
+0.0504
+136.24
+0.0597
+132.64
+0.0548
+129.88
+0.0550
+TFill [34][CVPR]
+CNN
+Yes
+63.74
+0.0336
+96.91
+0.0453
+122.44
+0.0747
+80.39
+0.0438
+LDM [22][CVPR]
+Diffusion
+Yes
+58.65
+0.0380
+107.38
+0.0524
+129.04
+0.0748
+84.48
+0.0488
+LAKE-RED [10][CVPR] Diffusion
+Yes
+39.55
+0.0212
+88.70
+0.0428
+102.67
+0.0555
+64.27
+0.0355
+FACIG [15][ICME]
+Diffusion
+Yes
+27.61
+0.0099
+82.23
+0.0326
+96.94
+0.0503
+52.87
+0.0229
+CamAny [11][CVPR]
+Diffusion
+Yes
+22.30
+0.0039
+61.78
+0.0211
+74.53
+0.0387
+40.53
+0.0155
+CT-CIG [12][AAAI]
+Diffusion
+Yes
+30.59
+0.0085
+81.60
+0.0230
+104.46
+0.0241
+52.88
+0.0169
+FreeCamSD1.5
+Diffusion
+No
+26.43
+0.0047
+43.75
+0.0097
+44.38
+0.0075
+28.82
+0.0069
+FreeCamSD2.0
+Diffusion
+No
+23.48
+0.0045
+31.71
+0.0079
+54.77
+0.0167
+26.91
+0.0073
+FreeCamSDXL
+Diffusion
+No
+22.16
+0.0032
+28.98
+0.0082
+42.22
+0.0113
+22.73
+0.0065
+Table 2 Quantitative comparison of camouflage effectiveness on the LAKE-RED dataset using SRf and Sb. Since these
+two metrics are not reported in the original papers of the compared CIG methods, all results are re-evaluated by us. ↑
+indicates higher is better. Bold and underlined values indicate the best and second-best results in each column, respectively.
+Camouflaged Objects
+Salient Objects
+General Objects
+Overall
+Method
+Paradigm
+Training
+SRf ↑
+Sb ↑
+SRf ↑
+Sb ↑
+SRf ↑
+Sb ↑
+SRf ↑
+Sb ↑
+LCGNet [14][TMM]
+CNN
+Yes
+0.2724
+0.4223
+0.2845
+0.3923
+0.2212
+0.4161
+0.2618
+0.4030
+TFill [34][CVPR]
+CNN
+Yes
+0.2862
+0.2771
+0.2604
+0.2968
+0.2271
+0.3130
+0.2273
+0.3164
+LDM [22][CVPR]
+Diffusion
+Yes
+0.3361
+0.3480
+0.4012
+0.4539
+0.3692
+0.4317
+0.3804
+0.4576
+LAKE-RED [10][CVPR] Diffusion
+Yes
+0.3715
+0.4208
+0.3941
+0.4764
+0.3209
+0.4621
+0.3533
+0.4436
+FACIG [15][ICME]
+Diffusion
+Yes
+0.5725
+0.4515
+0.3992
+0.4843
+0.3575
+0.4520
+0.4057
+0.4586
+CamAny [11][CVPR]
+Diffusion
+Yes
+0.4780
+0.4329
+0.4074
+0.4430
+0.4611
+0.4522
+0.4329
+0.4206
+CT-CIG [12][AAAI]
+Diffusion
+Yes
+0.5240
+0.6256
+0.4863
+0.5674
+0.4718
+0.6206
+0.5085
+0.6260
+FreeCamSD1.5
+Diffusion
+No
+0.5540
+0.8190
+0.5532
+0.8103
+0.5275
+0.7794
+0.5449
+0.8029
+FreeCamSD2.0
+Diffusion
+No
+0.5412
+0.8166
+0.5262
+0.8387
+0.5977
+0.7989
+0.5617
+0.8114
+FreeCamSDXL
+Diffusion
+No
+0.6053
+0.8201
+0.5852
+0.8283
+0.5923
+0.8359
+0.5976
+0.8347
+camouflage effectiveness, and computational effi-
+ciency. Second, we conduct controlled ablations to
+examine how CRM and IAM address semantic com-
+patibility and appearance assimilation, together
+with the associated conditioning designs. Fore-
+ground preservation is held fixed across all variants
+through the background inpainting formulation.
+We then evaluate, from a downstream per-
+spective, the utility of the generated images as
+synthetic training data for camouflaged object
+detection and examine whether they reduce target
+detectability when evaluated with general object
+detectors. Finally, we analyze controllability, gener-
+alization across scenarios and generative backbones,
+sampling stability, and representative failure cases.
+4.1 Experimental Setup
+Datasets. We conduct the main CIG evalua-
+tion on the LAKE-RED benchmark [10], which
+has been adopted by several recent CIG stud-
+ies [11, 12, 15]. The benchmark contains three
+subsets comprising camouflaged objects (CO),
+salient objects (SO), and general objects (GO).
+The CO subset aggregates concealed targets from
+CAMO [35], COD10K [36], and NC4K [37]. The
+SO subset contains visually prominent foregrounds
+from DUT-OMRON [38] and DUTS [39]. The GO
+subset samples objects from MS-COCO [40]. Each
+subset contains 6,473 image–mask pairs. This pro-
+tocol evaluates performance on CO, SO, and GO
+under consistent settings, with CO being closer to
+camouflage-specific training distributions and SO
+and GO providing a broader test of generalization
+through foreground categories and visual statistics.
+Baselines. Following prior CIG studies [10–12, 15],
+we compare FreeCam with representative CNN
+and diffusion methods, including LCGNet [14],
+TFill [34], LDM [22], LAKE-RED [10], FACIG [15],
+CamAny [11], and CT-CIG [12]. These base-
+lines cover supervised appearance-transfer net-
+works, general-purpose inpainting models, and
+camouflage-specific diffusion generators, enabling
+comparison across different modeling paradigms
+8
+
+
+Image
+Mask
+T2I
+TFill
+LAKE-RED
+CamAny
+Ours (SD-1.5)
+LDM
+FACIG
+CT-CIG
+Fig. 6 Qualitative comparison with representative CIG methods. The first two columns show the input images and masks.
+Table 3 Comparison of preprocessing time and inference
+time. Preprocessing time includes the time required for fine-
+tuning or re-training. Bold indicates the lowest total time.
+Method
+Preprocessing
+Inference
+Total
+LCGNet [14]
+70 min
+0.05 s
+70 min
+LAKE-RED [10]
+5 h
+9.8 s
+5 h
+FACIG [15]
+6 h
+3.7 s
+6 h
+CamAny [11]
+>1 day
+13.2 s
+>1 day
+CT-CIG [12]
+8 h
+23.1 s
+8 h
+FreeCamSD1.5
+0 s
+8.3 s
+8.3 s
+FreeCamSD2.0
+0 s
+17.1 s
+17.1 s
+FreeCamSDXL
+0 s
+28.9 s
+28.9 s
+and levels of task-specific optimization within a
+unified experimental setting.
+Implementation Details. Unless otherwise spec-
+ified, FreeCam uses Stable Diffusion 1.5 Inpaint-
+ing [22] as the default frozen backbone. To
+evaluate its compatibility with different genera-
+tive backbones, we also implement FreeCam with
+Stable Diffusion 2.0 Inpainting [22] and SDXL
+Inpainting [23]. The three variants are denoted as
+FreeCamSD1.5, FreeCamSD2.0, and FreeCamSDXL,
+respectively. All model components remain frozen
+during inference. In CRM, a quantized LLaVA-1.6
+model [31] selects K = 5 candidate environments
+from a predefined set of 100 scene categories. A
+frozen CLIP model then ranks these candidates
+according to their compatibility with the fore-
+ground object. In IAM, the foreground appearance
+condition is extracted from the eighth transformer
+block of CLIP ViT-B/16 [30]. The same CLIP
+model is used for candidate ranking in CRM. The
+appearance condition is fused with the semantic
+condition through the frozen cross-attention lay-
+ers within the diffusion model and injected into
+UpBlock-2 starting from the 10th denoising step.
+All images and masks are resized to 512 × 512.
+We use DDIM [41] with 50 denoising steps for
+sampling. For the main generation metrics, we
+repeat the full generation process with five random
+seeds and report the mean score across the five runs.
+The effects of K, the number of scene categories,
+the injection block, and the injection start step are
+evaluated in the ablation studies. All experiments
+are implemented with the Diffusers library [42] and
+conducted on a single NVIDIA A100 GPU.
+Metrics. We evaluate FreeCam from three per-
+spectives. (i) Generation quality. We report Fr´echet
+Inception Distance (FID) [43] and Kernel Inception
+Distance (KID) [44], computed using InceptionV3
+features [45]. Lower values indicate smaller distri-
+butional discrepancies between synthesized and
+real images. (ii) Camouflage effectiveness. Since
+distributional metrics do not directly measure
+whether the target is concealed, we further adopt
+two complementary scores from [46]. The recon-
+struction fidelity SRf measures how well foreground
+appearance can be reconstructed from nearby back-
+ground patches and provides an indirect measure
+of appearance compatibility. The boundary score
+Sb evaluates the visibility of the object contour
+within a boundary band, with a higher value
+indicating a less distinguishable boundary. (iii)
+Downstream perception. For camouflaged object
+detection, we report the Structure measure (Sα),
+Enhanced-alignment measure (Eϕ), weighted F-
+measure (F w
+β ), and Mean Absolute Error (M),
+where higher Sα, Eϕ, and F w
+β and lower M indicate
+better detection performance. For the YOLOv10-
+X and GroundingDINO-B (G-DINO-B) detectors,
+we report Average Precision (AP) and recall at
+9
+
+
+Table 4 Main ablation of FreeCam. The table summarizes the route from a frozen prior to FreeCam by isolating CRM and
+IAM. KID is scaled by 103. Lower KID and higher Sb are better. Bold indicates the best value for each metric.
+CRM
+IAM-Color
+IAM-Texture
+KID ↓
+Sb ↑
+✗
+✗
+✗
+13.326
+0.2421
+IAM-based ablation without CRM
+✗
+✓
+✗
+8.981
+0.7096
+✗
+✗
+✓
+11.424
+0.6818
+✗
+✓
+✓
+8.655
+0.7631
+CRM-based ablation
+Manual Prompt
+✗
+✗
+12.219
+0.4397
+CRM w/o Env.Set
+✗
+✗
+8.161
+0.5953
+✓
+✗
+✗
+8.244
+0.6439
+✓
+✓
+✗
+7.016
+0.7561
+✓
+✗
+✓
+7.440
+0.7371
+✓
+✓
+✓
+6.926
+0.8029
+Base
+Manual Prompt
+CRM w/ Env.Set
+IAM Color Only
+CRM w/o Env.Set
+IAM Texture Only
+FreeCam
+Fig. 7 Qualitative component ablation showing the progression from the frozen baseline to the complete FreeCam framework.
+IoU thresholds 0.50/0.75, mean Average Preci-
+sion (mAP) over IoU thresholds 0.50:0.05:0.95, and
+intersection over union (IoU).
+4.2 Main Results
+Generation quality. Tab. 1 compares genera-
+tion quality on LAKE-RED using FID and KID.
+The new FreeCam method achieves the lowest
+FID on all four subsets and the lowest KID on
+CO, SO, and Overall without optimization on
+CODs; on GO KID, FreeCamSD1.5 remains the
+best and the new method is second-best. The new
+method reduces the overall FID from 40.53 for the
+strongest training-based baseline to 19.7004, with
+KID decreasing from 0.0155 to 0.005886. These
+gains show that pretrained generative priors can be
+effectively redirected toward camouflage synthesis.
+On CO, which is closer to existing CIG training
+distributions, the new method surpasses CamAny,
+while its advantage is also maintained on SO and
+GO. This contrast suggests that FreeCam benefits
+primarily from preserving the broad domain cov-
+erage of the pretrained diffusion prior rather than
+increasing specialization to camouflage data. The
+variation across backbones further indicates that
+performance depends on the compatibility between
+10
+
+
+Table 5 Ablation analysis of CRM. (a) evaluates prompt composition, and (b) compares environment-selection strategies in
+the CRM scorer. KID is scaled by 103. Lower KID and higher Sb are better. Bold indicates the best value in each subtable.
+(a) Prompt composition
+Prompt
+KID↓
+Sb ↑
+Base (IAM)
+8.655
+0.7631
++Category
+8.135
+0.7697
++Description
+7.315
+0.7846
++Environment w/o Env.Set
+6.859
+0.7959
++Env.Set
+6.926
+0.8029
+(b) CLIP scorer strategy in CRM
+Strategy
+KID↓
+Sb ↑
+Random from top-K
+9.693
+0.7867
+Top-1 by LLaVA-1.6 [31]
+7.136
+0.7953
+sim(ftxt(o, d), ftxt(ei))
+8.005
+0.7992
+sim(fimg(Xr), ftxt(ei))
+7.131
+0.8024
+sim(fimg(Xfg), ftxt(ei))
+6.926
+0.8029
+Table 6 Ablation analysis of IAM. (a) compares filter choices for texture extraction, and (b) evaluates cumulative IAM
+components. KID is scaled by 103. Lower KID and higher Sb are better. Bold indicates the best value in each subtable.
+(a) Filter algorithms in IAM
+Filter
+KID↓
+Sb ↑
+Sobel
+7.099
+0.7994
+Laplacian
+7.203
+0.8011
+Canny
+7.144
+0.8002
+DoG
+7.065
+0.8026
+High-pass
+6.926
+0.8029
+(b) IAM component analysis
+Component
+KID↓
+Sb ↑
+Base (CRM)
+8.244
+0.6439
++LAB
+7.852
+0.7812
++Blur
+7.535
+0.7901
++HE
+7.410
+0.7889
++High-pass
+6.926
+0.8029
+foreground guidance and the visual knowledge
+encoded by each prior. Nevertheless, the strongest
+overall performance of the new method shows
+that training-free CIG can benefit from stronger
+generative backbones without optimization on
+CODs.
+Camouflage effectiveness. Tab. 2 evaluates
+whether the generated backgrounds reduce fore-
+ground separability. FreeCamSDXL achieves the
+best overall SRf and Sb, improving them from
+0.5085 and 0.6260 for the strongest training-based
+competitor to 0.5976 and 0.8347, respectively. The
+advantage is especially consistent for Sb, with all
+FreeCam variants producing substantially less visi-
+ble boundaries across the three subsets. The higher
+SRf also suggests stronger local appearance com-
+patibility between the target and its surroundings.
+This joint pattern, observed at both local and
+boundary levels, reflects the complementary roles
+of CRM and IAM, with CRM selecting contexts
+favorable to concealment and IAM regulating local
+appearance relations.
+Efficiency and qualitative comparison. Tab. 3
+compares the time required to produce the first
+test image, including method-specific training or
+preparation. Training-based CIG methods require
+from 70 minutes to more than one day before
+inference, whereas FreeCamSD1.5 produces its first
+result in 8.3 seconds without parameter optimiza-
+tion for the target task. This advantage concerns
+adaptation and deployment cost rather than per-
+image throughput: LCGNet remains faster after
+training, and its initial cost may be amortized in
+a fixed large-scale workload. FreeCam is therefore
+better suited to changing deployment conditions
+that would otherwise require renewed optimization.
+Fig. 6 further shows that CNN methods tend to
+suppress local texture details, while trained diffu-
+sion methods may produce realistic backgrounds
+that remain incompatible with the target in local
+appearance or scene context. By separating context
+selection from appearance regulation, FreeCam
+redirects the scene synthesis capability of the frozen
+prior toward concealment.
+4.3 Ablation Studies
+We organize the ablation studies around two
+camouflage-specific challenges and their implemen-
+tation in FreeCam. First, we systematically trace
+the progression from a frozen inpainting prior to
+the complete camouflage generator. Second, we
+assess the key CRM and IAM designs for semantic
+compatibility and appearance assimilation. Third,
+we analyze sensitivity to the conditioning schedule,
+environment search space, and underlying foun-
+dation components. Unless stated otherwise, all
+experiments use the SD1.5 backbone, report overall
+KID scaled by 103, and adopt Sb as the boundary
+camouflage metric.
+Ablation of the main design path. Tab. 4 and
+Fig. 7 systematically trace the complete progres-
+sion from a frozen inpainting prior to the complete
+FreeCam framework. The frozen baseline already
+11
+
+
+6.8
+7.1
+7.4
+0.79
+0.80
+0.81
+KID (↓)×10-3
+�b (↑)
+6.8
+7.2
+7.6
+KID (↓)×10-3
+�b (↑)
+0.801
+0.803
+0.799
+7.15
+7.50
+KID (↓)×10-3
+�b (↑)
+0.801
+0.803
+0.799
+6.80
+6.8
+7.1
+7.3
+KID (↓)×10-3
+�b (↑)
+0.801
+0.803
+0.799
+(a) Varying CLIP layers in IAM.
+(b) Injection start timesteps t.
+(c) Ablation on varying K.
+(d) Varying decoder upblocks.
+Fig. 8 Sensitivity analysis of hyperparameters and architectural choices in terms of KID (↓) and Sb (↑).
+5
+6
+8
+9
+7
+10
+11
+12
+Fig. 9 Effect of the CLIP feature layer used for intrinsic appearance extraction. Intermediate features provide the best
+balance between texture preservation and semantic abstraction. The labels 5–12 denote the corresponding layers of CLIP.
+preserves the foreground, yet its poor KID and Sb
+values show that preservation alone is insufficient
+for effective camouflage synthesis. Manual prompt-
+ing reduces part of the semantic mismatch, but the
+selected context is specified by the user rather than
+automatically inferred from the foreground. CRM
+produces a larger overall improvement in KID, indi-
+cating that environment reasoning conditioned on
+the target mainly strengthens semantic compat-
+ibility. In contrast, IAM without CRM yields a
+much larger gain in Sb, showing that foreground
+color and texture cues more directly improve local
+concealment even when context selection remains
+imperfect. Neither component is sufficient alone:
+CRM lacks appearance regulation for the indi-
+vidual target, whereas IAM cannot determine an
+environment favorable to concealment. Their com-
+bination consistently achieves the best overall
+KID and Sb, demonstrating that context selec-
+tion and local appearance assimilation address
+complementary sources of foreground separability.
+Effectiveness of the Contextual Reasoning
+Module. Tab. 5 validates the two components
+of CRM. Adding the object category and visual
+description improves both KID and Sb, indicat-
+ing that context selection benefits from semantic
+cues grounded in the foreground. Although remov-
+ing the environment set slightly improves KID, it
+reduces Sb, showing that distributional realism
+alone does not ensure compatibility with conceal-
+ment. The scorer comparison favors the isolated
+foreground over text-only matching or the reference
+image, since it retains target-specific information
+while avoiding irrelevant background cues.
+Effectiveness of the Intrinsic Appearance
+Module. Tab. 6 examines how IAM extracts
+appearance cues from the foreground. High-pass
+filtering achieves the best overall result, suggesting
+that distributed high-frequency texture variations
+are more useful for appearance assimilation than
+sparse edge responses. The cumulative analysis
+shows that LAB color modeling provides the largest
+improvement in boundary concealment, while
+Gaussian smoothing stabilizes chromatic struc-
+ture and the texture branch further refines local
+continuity. Together, these results confirm that
+IAM benefits from combining color guidance with
+texture cues to reduce appearance discrepancies
+between the target and the generated background.
+12
+
+
+0
+5
+15
+20
+10
+25
+Fig. 10 Fine-grained analysis of the starting timestep for intrinsic appearance injection. Starting at an intermediate denoising
+stage improves appearance consistency while preserving the global scene layout. The labels denote the injection timesteps.
+Table 7 Model-choice sensitivity of FreeCam. (a) evaluates vision encoders used by IAM, and (b) evaluates MLLMs used
+by CRM. KID is scaled by 103. Lower KID and higher Sb are better. Bold indicates the best value in each subtable.
+(a) Various vision encoders
+Model
+KID↓
+Sb ↑
+CLIP (ours)
+6.926
+0.8029
+MAE [47]
+8.058
+0.7567
+SigLIP [48]
+6.676
+0.8093
+DINOv3 [49]
+6.663
+0.8159
+(b) Various MLLMs
+Model
+KID↓
+Sb ↑
+LLaVA-1.6 (ours)
+6.926
+0.8029
+BLIP-2 [50]
+7.132
+0.8022
+InstructBLIP [51]
+6.841
+0.8023
+Qwen2.5-VL [52]
+6.632
+0.8031
+Sensitivity of conditioning design. We fur-
+ther analyze the sensitivity of the conditioning
+design. For IAM, Fig. 8(a) and Fig. 8(b) quan-
+titatively show that, across the evaluated design
+variants, intermediate CLIP features and the 10th
+denoising step provide the best balance between
+appearance assimilation and layout preservation.
+This is consistent with the role of IAM: shallow fea-
+tures or premature injection introduce noisy local
+constraints before the scene structure is stabilized,
+whereas overly semantic features or delayed injec-
+tion weaken the color and texture cues needed for
+appearance assimilation between the foreground
+and its surroundings. The qualitative comparisons
+in Fig. 9 and Fig. 10 support the same conclu-
+sion, showing improved local continuity without
+disrupting the generated scene layout.
+For CRM, Fig. 8(c) shows that K = 5 provides
+a balanced environment search space under our
+evaluated experimental settings. A smaller candi-
+date set may miss camouflage-compatible contexts,
+while a larger one introduces semantically loose or
+visually incompatible environments. This reflects
+a trade-off between candidate diversity and rel-
+evance within the resulting environment search
+space. This supports the CRM design in which
+MLLM reasoning proposes a compact set of plau-
+sible environments and CLIP reranking selects the
+one most compatible with the foreground.
+Fig. 8(d) further studies where the appearance
+condition should be injected into the frozen U-
+Net. UpBlock-2 performs best because it lies at
+an intermediate decoding stage where the global
+background layout has emerged but local texture
+and color patterns remain adjustable throughout
+the remaining denoising steps. Injecting at higher-
+resolution blocks imposes appearance constraints
+locally, which can over-constrain background syn-
+thesis and reduce coherence.
+Model-choice sensitivity. Tab. 7 examines
+whether FreeCam depends on a specific foundation
+component. The default CLIP and LLaVA-1.6 set-
+ting is used for the main experiments to provide
+a reproducible and widely comparable configura-
+tion, rather than because it is numerically optimal.
+Replacing CLIP with stronger visual encoders
+such as SigLIP [48] or DINOv3 [49] improves
+the appearance branch, suggesting that IAM ben-
+efits from richer foreground representations for
+color and texture guidance. Similarly, replacing
+LLaVA-1.6 with Qwen2.5-VL [52] improves the
+reasoning branch, indicating that CRM can lever-
+age stronger multimodal reasoning to propose
+13
+
+
+Table 8 Camouflaged object detection results on four COD benchmarks under different synthetic-data augmentation
+ratios. Higher Sα, Eϕ, and F w
+β and lower M are better. Bold and underlined values denote the best and second-best
+results within each backbone, respectively.
+CHAMELEON
+CAMO
+COD10K
+NC4K
+Methods
+Sα ↑
+Eϕ ↑F w
+β ↑
+M ↓
+Sα ↑
+Eϕ ↑F w
+β ↑
+M ↓
+Sα ↑
+Eϕ ↑F w
+β ↑
+M ↓
+Sα ↑
+Eϕ ↑F w
+β ↑
+M ↓
+SINetv2 [9]
+Base
+0.881 0.933 0.796 0.035 0.806 0.858 0.708 0.081 0.802 0.876 0.656 0.040 0.837 0.887 0.746 0.053
++LAKE-RED100% 0.886 0.934 0.807 0.033 0.811 0.869 0.727 0.078 0.806 0.881 0.661 0.038 0.842 0.901 0.763 0.049
++FreeCam10%
+0.890 0.940 0.811 0.029 0.818 0.875 0.728 0.070 0.812 0.885 0.676 0.031 0.848 0.903 0.767 0.042
++FreeCam30%
+0.894 0.952 0.822 0.027 0.829 0.884 0.739 0.067 0.818 0.890 0.684 0.027 0.856 0.909 0.772 0.036
++FreeCam50%
+0.899 0.957 0.823 0.024 0.834 0.886 0.744 0.064 0.820 0.891 0.683 0.026 0.859 0.913 0.774 0.035
++FreeCam100%
+0.897 0.959 0.825 0.024 0.832 0.888 0.746 0.062 0.819 0.892 0.685 0.025 0.856 0.910 0.774 0.038
+ESCNet [53]
+Base
+0.910 0.952 0.870 0.024 0.882 0.935 0.846 0.042 0.880 0.941 0.808 0.021 0.898 0.943 0.861 0.022
++LAKE-RED100% 0.913 0.957 0.881 0.022 0.889 0.940 0.858 0.036 0.885 0.944 0.821 0.019 0.907 0.946 0.865 0.020
++FreeCam10%
+0.921 0.955 0.882 0.020 0.897 0.936 0.867 0.035 0.891 0.945 0.839 0.018 0.913 0.949 0.873 0.021
++FreeCam30%
+0.926 0.958 0.884 0.019 0.903 0.948 0.869 0.037 0.900 0.948 0.833 0.019 0.911 0.954 0.881 0.019
++FreeCam50%
+0.923 0.953 0.894 0.020 0.916 0.942 0.875 0.035 0.898 0.949 0.842 0.021 0.914 0.955 0.876 0.019
++FreeCam100%
+0.919 0.959 0.891 0.018 0.907 0.950 0.871 0.032 0.898 0.949 0.841 0.018 0.908 0.954 0.877 0.017
+Table 9 Detection degradation on the overall set and
+three subsets using FreeCamSD1.5. The degradation rows
+report changes from Original to FreeCam for each
+evaluated detector. Red decreases and blue increases
+indicate better and worse camouflage, respectively.
+Average Precision
+Recall
+Overlap
+Method
+AP50 ↑AP75 ↑mAP ↑R50 ↑
+R75 ↑
+IoU ↑
+Overall
+YOLOv10-X
+0.393
+0.348
+0.332
+0.680
+0.614
+0.638
++FreeCamSD1.5
+0.372
+0.224
+0.224
+0.533
+0.383
+0.473
+degradation
+↓0.021 ↓0.124 ↓0.108 ↓0.147 ↓0.231
+↓0.165
+G-DINO-B
+0.394
+0.331
+0.311
+0.785
+0.712
+0.738
++FreeCamSD1.5
+0.361
+0.169
+0.186
+0.623
+0.420
+0.562
+degradation
+↓0.033 ↓0.162 ↓0.125 ↓0.162 ↓0.292
+↓0.176
+CO
+YOLOv10-X
+0.253
+0.169
+0.166
+0.359
+0.278
+0.335
++FreeCamSD1.5
+0.121
+0.033
+0.048
+0.217
+0.106
+0.200
+degradation
+↓0.132 ↓0.136 ↓0.118 ↓0.142 ↓0.172
+↓0.135
+G-DINO-B
+0.665
+0.564
+0.528
+0.861
+0.778
+0.809
++FreeCamSD1.5
+0.266
+0.076
+0.109
+0.498
+0.257
+0.468
+degradation
+↓0.399 ↓0.488 ↓0.419 ↓0.363 ↓0.521
+↓0.341
+SO
+YOLOv10-X
+0.487
+0.392
+0.380
+0.700
+0.607
+0.652
++FreeCamSD1.5
+0.433
+0.237
+0.247
+0.578
+0.400
+0.509
+degradation
+↓0.054 ↓0.155 ↓0.133 ↓0.122 ↓0.207
+↓0.143
+G-DINO-B
+0.376
+0.274
+0.269
+0.713
+0.606
+0.659
++FreeCamSD1.5
+0.381
+0.172
+0.192
+0.656
+0.442
+0.576
+degradation
+↑0.005 ↓0.102 ↓0.077 ↓0.057 ↓0.164
+↓0.083
+GO
+YOLOv10-X
+0.583
+0.565
+0.535
+0.982
+0.958
+0.927
++FreeCamSD1.5
+0.571
+0.403
+0.380
+0.805
+0.643
+0.710
+degradation
+↓0.012 ↓0.162 ↓0.155 ↓0.177 ↓0.315
+↓0.217
+G-DINO-B
+0.493
+0.274
+0.250
+0.782
+0.751
+0.747
++FreeCamSD1.5
+0.437
+0.271
+0.266
+0.715
+0.561
+0.640
+degradation
+↓0.056 ↓0.003 ↑0.016 ↓0.067 ↓0.190
+↓0.107
+10
+50
+100
+500
+1000
+0.09
+0.26
+0.78
+0.93
+1.00
+0.10
+0.28
+0.920.98
+0.52
+0.48
+0.76
+0.15
+0.75
+0.14
+0.54
+0.81
+0.12
+0.82
+0.56
+0.80
+0.55
+1.00
+0.05
+0.03
+Fig. 11 Effect of the CRM environment-set size across
+five normalized metrics. KID axes are inverse-normalized
+so that higher values are better.
+more suitable camouflage contexts. These results
+support the modularity of FreeCam: its semantic-
+appearance conditioning is not tied to a particular
+encoder or MLLM, and can naturally benefit from
+advances in off-the-shelf foundation models without
+CIG-specific training.
+Environment-set scale. Fig. 11 analyzes the
+effect of the CRM environment-set size on gen-
+eration quality, camouflage effectiveness, and effi-
+ciency. Across all evaluated scales, the candidate
+environments are manually curated from Places365
+scene categories [29] and publicly available web
+14
+
+
+(a) SD2.0
+(b) SDXL
+Fig. 12 Generation results across different frozen diffusion backbones. FreeCam is applied to (a) SD2.0 and (b) SDXL using
+the same training-free formulation, illustrating that its semantic and appearance conditioning can be transferred across
+pretrained generative models.
+sources. For visualization, the KID axes are inverse-
+normalized so that larger values indicate better
+performance, consistent with SRf, Sb, and FPS.
+A small environment set is efficient, but its lim-
+ited semantic coverage may miss suitable hiding
+contexts, leading to weaker KID and appear-
+ance assimilation. Increasing the set size generally
+improves generation quality and camouflage effec-
+tiveness, as CRM can search from a richer pool
+of environments compatible with the target and
+favorable to concealment. However, the improve-
+ment comes with a clear efficiency cost, and overly
+large sets may introduce weakly related categories
+that dilute the concealment-oriented search space.
+The 100-category setting therefore provides a prac-
+tical balance, preserving strong generation quality
+and camouflage effectiveness while avoiding the
+efficiency loss caused by large candidate pools.
+4.4 Downstream Object Detection
+Beyond the above analysis, we further assess
+FreeCam through complementary downstream
+settings from a task-level perspective. First, syn-
+thesized samples augment camouflaged object
+detection to test whether they provide useful cam-
+ouflage variations for training. Second, we compare
+general object detectors before and after FreeCam
+generation to determine whether the synthesized
+surroundings reduce target detectability. Together,
+these settings assess whether FreeCam improves
+camouflage-aware learning and makes foreground
+objects harder to localize, thereby producing func-
+tional camouflage rather than merely plausible
+inpainted backgrounds.
+COD augmentation protocol. For COD aug-
+mentation, we train the real-data baseline on 4,040
+images from the COD10K training set [36]. We
+then augment this set with FreeCam-generated
+samples at ratios of 10%, 30%, 50%, and 100%,
+producing training sets ranging from 4,444 to 8,080
+images. This protocol tests whether concealment-
+oriented synthetic samples can complement real
+COD data under controlled augmentation ratios.
+For SINetv2 [9], we use Adam [54] with an initial
+learning rate of 1×10−4, a decay factor of 0.1 every
+50 epochs, 100 training epochs, batch size 16, and
+an input resolution of 352 × 352. Gradient clipping
+with a maximum norm of 0.5 is applied for sta-
+ble optimization, and the loss combines weighted
+binary cross-entropy with weighted IoU over multi-
+scale predictions. ESCNet [53] follows the same
+augmentation splits for consistency.
+Camouflaged object detection augmenta-
+tion. Tab. 8 evaluates whether FreeCam can
+serve as a data engine for COD training. Across
+SINetv2 [9] and ESCNet [53], adding FreeCam-
+generated samples improves the real-data baseline
+on CHAMELEON [55], CAMO [35], COD10K [36],
+and NC4K [37] in most metrics, with stronger
+gains typically observed at moderate or large aug-
+mentation ratios. The improvement over both the
+original training set and LAKE-RED augmenta-
+tion suggests that the benefit does not simply come
+from increasing the number of training images.
+Instead, FreeCam introduces concealment-oriented
+variations: CRM expands the range of semantically
+compatible hiding contexts, while IAM encourages
+foreground-background appearance assimilation
+15
+
+
+through color and texture cues. These samples
+therefore complement the limited scene and appear-
+ance coverage of real COD data. The gains are not
+strictly monotonic with the augmentation ratio,
+since synthetic data also changes the training distri-
+bution. Nevertheless, the consistent improvements
+across two detectors and four benchmarks indi-
+cate that FreeCam-generated data provide useful
+supervision for camouflage-aware recognition.
+General object detection degradation. Tab. 9
+evaluates FreeCam from the perspective of inde-
+pendent object detectors. We compare YOLOv10-
+X [56] and G-DINO-B [57] on the original
+images and their FreeCamSD1.5 counterparts. After
+FreeCam generation, almost all AP, recall, and
+IoU scores decrease, with particularly large drops
+on CO and consistent recall and overlap degrada-
+tion across SO and GO. The simultaneous decrease
+in recall and overlap is important, as it indicates
+that the generated camouflage reduces both tar-
+get discoverability and localization quality. This
+suggests that FreeCam affects not only distribution-
+level image quality, but also the perceptual cues
+used by recognition systems to localize objects.
+This trend is consistent with FreeCam’s design:
+CRM provides a plausible hiding context and IAM
+weakens foreground-background appearance sep-
+arability, although the few metric increases on
+non-COD subsets indicate that detector degrada-
+tion should be treated as complementary rather
+than standalone evidence of camouflage quality.
+4.5 Further Analysis
+Generalization across base models. To assess
+cross-backbone scalability, we instantiate FreeCam
+on stronger frozen diffusion priors without CIG-
+specific parameter updates. As shown in Fig. 12,
+the same framework preserves plausible conceal-
+ment when the generative backbone is changed.
+This behavior follows from the formulation of
+FreeCam: camouflage guidance is expressed as
+semantic and appearance conditions and injected
+through frozen cross-attention, rather than learned
+as backbone-specific denoising weights. As a result,
+stronger generative priors can improve visual
+fidelity while the concealment objective remains
+governed by the same guidance mechanism.
+Controllability analysis. To evaluate the con-
+trollability of our method, we restrict the envi-
+ronment set size to 1 and the retrieval parameter
+desert
+slate rocks
+oak tree bark
+moss 
+tropical leaf
+bamboo forest
+moss 
+slate rocks
+(a) Semantic-Match
+(b) Semantic-Mismatch
+oak tree bark
+tropical leaf
+Fig. 13 Controllability analysis under user-designated
+environments. (a) Semantic-match settings use environ-
+ments compatible with the foreground object, whereas (b)
+semantic-mismatch settings force less compatible contexts
+to test controllability.
+(a) Military Imagery
+(b) Underwater Imagery
+Fig. 14 Cross-scenario generalization of FreeCam. The
+examples cover (a) military imagery and (b) underwater
+imagery, showing camouflage synthesis beyond the COD-
+style evaluation setting.
+K = 1, forcing the model to synthesize camou-
+flage strictly conditioned on a specific semantic
+context, as shown in Fig. 13. Here, Semantic-
+Match indicates an environment compatible with
+the foreground, while Semantic-Mismatch means
+an incompatible one. The results indicate that the
+proposed FreeCam can significantly expand gener-
+ative versatility, enabling synthesis of camouflage
+patterns tailored to user-designated environments
+from the candidate set.
+Generalization to diverse scenarios. Fig. 14
+qualitatively examines FreeCam under scenarios
+beyond the standard COD evaluation setting,
+including military and underwater environments
+with distinct visual characteristics. The results
+show that FreeCam can maintain coherent cam-
+ouflage in complex visual environments because
+16
+
+
+Seed1
+Seed2
+Seed4
+Seed5
+Seed3
+Fig. 15 Random-seed sensitivity of FreeCam. For each
+input, five outputs are generated under fixed semantic and
+appearance conditions using different random seeds.
+Flux.1 Fill
+Qwen-Image-Edit
+Fig. 16 Feasibility of FreeCam on larger image-editing
+models. The comparison shows the examples generated with
+FLUX.1 Fill [58] and Qwen-Image-Edit [59].
+the generated context is selected according to
+foreground-aware semantic compatibility and fur-
+ther refined by intrinsic appearance guidance. This
+suggests that FreeCam transfers the frozen inpaint-
+ing prior to concealment-oriented synthesis by
+deriving the semantic context and appearance
+condition from the foreground itself.
+Random-seed stability. We further examine the
+sampling stability of FreeCam under different ran-
+dom seeds, as shown in Fig. 15. Although the frozen
+diffusion sampler introduces stochastic variation in
+the synthesized background, the generated results
+remain guided by the same foreground-derived
+semantic and appearance conditions. The visual
+differences are therefore mainly reflected in local
+layout and texture details, while the intended con-
+cealment conditions and appearance assimilation
+are effectively preserved.
+Large-model
+feasibility.
+Fig.
+16
+explores
+whether the FreeCam protocol can be transferred
+to larger image-editing foundations. The purpose
+is not to claim a new quantitative advantage, but
+Fig. 17 Limitation analysis. The examples show typical
+failure cases, mainly involving highly salient targets such
+as human targets and aircraft in remote sensing imagery.
+to examine whether concealment-oriented guid-
+ance can remain valid when the underlying editing
+prior is replaced. The results show that foreground-
+derived semantic context and appearance cues can
+still guide large editing models toward camouflage
+synthesis at inference time without CIG-specific
+training. This supports the formulation of FreeCam
+as a training-free CIG paradigm rather than a
+specific implementation.
+Limitations. Despite its flexibility, FreeCam still
+exhibits failure modes, as shown in Fig. 17. The
+targets with distinctive semantic or geometric
+structures may remain salient even when the gen-
+erated background is semantically compatible and
+visually consistent with the foreground. These cases
+expose an inherent tension between foreground
+preservation and concealment: FreeCam retains the
+original target, while CRM and IAM regulate only
+the surrounding context and its appearance rela-
+tions. Consequently, separability caused primarily
+by distinctive object geometry cannot be reduced
+through background synthesis alone.
+5 Conclusion
+In this work, we formulate training-free CIG as a
+concealment-oriented paradigm and identify seman-
+tic compatibility and appearance assimilation as
+its two camouflage-specific challenges. FreeCam
+instantiates these principles through CRM and
+IAM, while background-only synthesis preserves
+the original foreground. Extensive experiments
+demonstrate strong generation quality, improved
+camouflage effectiveness, and lower deployment
+overhead than training-based CIG methods, with
+further benefits for downstream camouflaged object
+detection. These findings support training-free CIG
+as a practical direction for camouflage synthesis
+while highlighting the remaining tension between
+foreground preservation and concealment.
+17
+
+
+Data Availability. The LAKE-RED dataset used
+in this study is publicly available through its official
+repository: https://github.com/PanchengZhao/
+LAKE-RED.
+References
+[1] Zhao, P., Fan, D.-P., Cheng, S., Khan, S.,
+Khan, F.S., Clifton, D., Xu, P., Yang, J.: Deep
+learning in concealed dense prediction. arXiv
+preprint arXiv:2504.10979 (2025)
+[2] Ebrahimi, M., Khoshtaghaza, M.H., Minaei,
+S., Jamshidi, B.: Vision-based pest detection
+based on svm classification method. Comput-
+ers and Electronics in Agriculture 137, 52–58
+(2017)
+[3] Wu, D., Wang, M., Sun, J., Jia, X.: Knowledge-
+guided and collaborative learning network
+for camouflaged object detection. Engineer-
+ing Applications of Artificial Intelligence 153,
+110771 (2025)
+[4] Zhang, W., Huang, H., Sun, Y., Wu, X.:
+AgriPest-YOLO: A rapid light-trap agri-
+cultural pest detection method based on
+deep learning. Frontiers in Plant Science 13,
+1079384 (2022)
+[5] Song, J., Cheng, K., Chen, F., Hua, X.:
+RDW-YOLO: A deep learning framework
+for scalable agricultural pest monitoring and
+control. Insects 16(5), 545 (2025)
+[6] Ji, G.-P., Zhang, J., Campbell, D., Xiong,
+H., Barnes, N.: Rethinking polyp segmenta-
+tion from an out-of-distribution perspective.
+Machine Intelligence Research 21(4), 631–639
+(2024)
+[7] Yuan, L., Liu, X., Yu, J., Li, Y.: A full-set
+tooth segmentation model based on improved
+PointNet++. Visual Intelligence 1(1), 21
+(2023)
+[8] Xiao, F., Zhang, P., He, C., Hu, R., Liu, Y.:
+Concealed object segmentation with hierar-
+chical coherence modeling. In: CAAI Interna-
+tional Conference on Artificial Intelligence, pp.
+16–27 (2023). Springer
+[9] Fan, D.-P., Ji, G.-P., Cheng, M.-M., Shao,
+L.: Concealed object detection. IEEE trans-
+actions on pattern analysis and machine
+intelligence 44(10), 6024–6042 (2021)
+[10] Zhao, P., Xu, P., Qin, P., Fan, D.-P., Zhang,
+Z., Jia, G., Zhou, B., Yang, J.: LAKE-RED:
+Camouflaged images generation by latent
+background knowledge retrieval-augmented
+diffusion. In: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern
+Recognition, pp. 4092–4101 (2024)
+[11] Das, B., Gopalakrishnan, V.: Camouflage any-
+thing: Learning to hide using controlled out-
+painting and representation engineering. In:
+Proceedings of the Computer Vision and Pat-
+tern Recognition Conference, pp. 3603–3613
+(2025)
+[12] Qian, Y., Chen, H., Li, W., Liu, N., Qin, J.:
+Text-guided controllable diffusion for realistic
+camouflage images generation. Proceedings of
+the AAAI Conference on Artificial Intelligence
+40(10), 8529–8537 (2026) https://doi.org/10
+.1609/aaai.v40i10.37804
+[13] Zhang, Q., Yin, G., Nie, Y., Zheng, W.-S.:
+Deep camouflage images. In: Proceedings of
+the AAAI Conference on Artificial Intelligence,
+vol. 34, pp. 12845–12852 (2020)
+[14] Li, Y., Zhai, W., Cao, Y., Zha, Z.-J.: Location-
+free camouflage generation network. IEEE
+Transactions on Multimedia 25, 5234–5247
+(2022)
+[15] Chen, P.-C., Yao, Y., Hsu, C.-F., Xie, H.,
+Chen, H.-J., Shuai, H.-H., Cheng, W.-H.:
+Foreground focus: Enhancing coherence and
+fidelity in camouflaged image generation.
+arXiv preprint arXiv:2504.02180 (2025)
+[16] Xia, W., Qin, J., Ye, Z., Liu, J., Liu, Z.:
+TF-IECN: Tuning-free image efficient cus-
+tomization via refined collaborative denoising
+strategies. In: Proceedings of the 2025 Inter-
+national Conference on Multimedia Retrieval,
+pp. 1517–1525 (2025)
+[17] Mao, Q., Chen, L., Gu, Y., Shou, M.Z.,
+Yang, M.-H.: Tuning-free image editing with
+18
+
+
+fidelity and editability via unified latent diffu-
+sion model. arXiv preprint arXiv:2504.05594
+(2025)
+[18] Chen, C.-Y., Shi, M., Zhang, G., Shi, H.:
+T2I-Copilot: A training-free multi-agent text-
+to-image system for enhanced prompt inter-
+pretation and interactive generation. In: Pro-
+ceedings of the IEEE/CVF International Con-
+ference on Computer Vision, pp. 19396–19405
+(2025)
+[19] Zheng, C., Lan, Y., Wang, Y.: LanPaint:
+Training-free diffusion inpainting with exact
+and fast conditional inference. arXiv preprint
+arXiv:2502.03491 (2025)
+[20] Qin, J., Li, S., Gomez-Villa, A., Yang,
+S., Wang, Y., Wang, K., Weijer, J.: Free-
+Lunch
+color-texture
+disentanglement
+for
+stylized image generation. arXiv preprint
+arXiv:2503.14275 (2025)
+[21] Chu, H.-K., Hsu, W.-H., Mitra, N.J., Cohen-
+Or, D., Wong, T.-T., Lee, T.-Y.: Camouflage
+images. ACM Trans. Graph. 29(4), 51–1
+(2010)
+[22] Rombach, R., Blattmann, A., Lorenz, D.,
+Esser, P., Ommer, B.: High-resolution image
+synthesis with latent diffusion models. In: Pro-
+ceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition,
+pp. 10684–10695 (2022)
+[23] Podell, D., English, Z., Lacey, K., Blattmann,
+A., Dockhorn, T., M¨uller, J., Penna, J., Rom-
+bach, R.: SDXL: Improving latent diffusion
+models for high-resolution image synthesis.
+arXiv preprint arXiv:2307.01952 (2023)
+[24] Zhang, J., Yoshihashi, R., Kitada, S., Osanai,
+A.,
+Nakashima,
+Y.:
+VASCAR:
+Content-
+aware layout generation via visual-aware self-
+correction. arXiv preprint arXiv:2412.04237
+(2024)
+[25] Ma, X., Wang, Y., Chen, X., Wong, T.-T.,
+Chen, C.: Training-free stylized text-to-image
+generation with fast inference. arXiv preprint
+arXiv:2505.19063 (2025)
+[26] Li, P., Nie, Q., Chen, Y., Jiang, X., Wu,
+K., Lin, Y., Liu, Y., Peng, J., Wang, C.,
+Zheng, F.: Tuning-free image customization
+with image and text guidance. In: European
+Conference on Computer Vision, pp. 233–250
+(2024). Springer
+[27] Ding, G., Zhao, C., Wang, W., Yang, Z.,
+Liu, Z., Chen, H., Shen, C.: FreeCustom:
+Tuning-free customized image generation for
+multi-concept composition. In: Proceedings
+of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pp. 9089–
+9098 (2024)
+[28] Avrahami, O., Patashnik, O., Fried, O., Nem-
+chinov, E., Aberman, K., Lischinski, D.,
+Cohen-Or, D.: Stable Flow: Vital layers for
+training-free image editing. In: Proceedings of
+the Computer Vision and Pattern Recognition
+Conference, pp. 7877–7888 (2025)
+[29] Zhou, B., Lapedriza, A., Khosla, A., Oliva,
+A., Torralba, A.: Places: A 10 million image
+database for scene recognition. IEEE Trans-
+actions on Pattern Analysis and Machine
+Intelligence (2017)
+[30] Radford, A., Kim, J.W., Hallacy, C., Ramesh,
+A., Goh, G., Agarwal, S., Sastry, G., Askell,
+A., Mishkin, P., Clark, J., et al.: Learn-
+ing transferable visual models from natural
+language supervision. In: International Con-
+ference on Machine Learning, pp. 8748–8763
+(2021). PmLR
+[31] Liu, H., Li, C., Li, Y., Li, B., Zhang, Y., Shen,
+S., Lee, Y.J.: LLaVA-NeXT: Improved rea-
+soning, OCR, and world knowledge (2024).
+https://llava-vl.github.io/blog/2024-01-30-l
+lava-next/
+[32] Liu, H., Li, C., Li, Y., Lee, Y.J.: Improved
+Baselines with Visual Instruction Tuning.
+arXiv:2310.03744 (2023)
+[33] Liu, H., Li, C., Wu, Q., Lee, Y.J.: Visual
+Instruction Tuning. NeurIPS (2023)
+[34] Zheng, C., Cham, T.-J., Cai, J., Phung, D.:
+Bridging global context interactions for high-
+fidelity image completion. In: Proceedings
+19
+
+
+of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pp. 11512–
+11522 (2022)
+[35] Le, T.-N., Nguyen, T.V., Nie, Z., Tran, M.-T.,
+Sugimoto, A.: Anabranch network for camou-
+flaged object segmentation. Computer vision
+and image understanding 184, 45–56 (2019)
+[36] Fan, D.-P., Ji, G.-P., Sun, G., Cheng, M.-
+M., Shen, J., Shao, L.: Camouflaged object
+detection. In: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern
+Recognition, pp. 2777–2787 (2020)
+[37] Lv, Y., Zhang, J., Dai, Y., Li, A., Liu, B.,
+Barnes, N., Fan, D.-P.: Simultaneously local-
+ize, segment and rank the camouflaged objects.
+In: Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition,
+pp. 11591–11601 (2021)
+[38] Yang, C., Zhang, L., Lu, H., Ruan, X., Yang,
+M.-H.: Saliency detection via graph-based
+manifold ranking. In: Proceedings of the IEEE
+Conference on Computer Vision and Pattern
+Recognition, pp. 3166–3173 (2013)
+[39] Wang, L., Lu, H., Wang, Y., Feng, M., Wang,
+D., Yin, B., Ruan, X.: Learning to detect
+salient objects with image-level supervision.
+In: Proceedings of the IEEE Conference on
+Computer Vision and Pattern Recognition,
+pp. 136–145 (2017)
+[40] Lin, T.-Y., Maire, M., Belongie, S., Hays, J.,
+Perona, P., Ramanan, D., Doll´ar, P., Zitnick,
+C.L.: Microsoft COCO: Common objects in
+context. In: European Conference on Com-
+puter Vision, pp. 740–755 (2014). Springer
+[41] Song, J., Meng, C., Ermon, S.: Denois-
+ing diffusion implicit models. arXiv preprint
+arXiv:2010.02502 (2020)
+[42] Platen, P., Patil, S., Lozhkov, A., Cuenca, P.,
+Lambert, N., Rasul, K., Davaadorj, M., Nair,
+D., Paul, S., Berman, W., Xu, Y., Liu, S.,
+Wolf, T.: Diffusers: State-of-the-art diffusion
+models. GitHub (2022)
+[43] Heusel, M., Ramsauer, H., Unterthiner, T.,
+Nessler, B., Hochreiter, S.: Gans trained by
+a two time-scale update rule converge to a
+local nash equilibrium. Advances in neural
+information processing systems 30 (2017)
+[44] Bi´nkowski, M., Sutherland, D.J., Arbel, M.,
+Gretton, A.: Demystifying MMD GANs. arXiv
+preprint arXiv:1801.01401 (2018)
+[45] Szegedy, C., Vanhoucke, V., Ioffe, S., Shlens,
+J., Wojna, Z.: Rethinking the inception archi-
+tecture for computer vision. In: Proceedings of
+the IEEE Conference on Computer Vision and
+Pattern Recognition, pp. 2818–2826 (2016)
+[46] Lamdouar, H., Xie, W., Zisserman, A.: The
+making and breaking of camouflage. In: Pro-
+ceedings of the IEEE/CVF International
+Conference on Computer Vision (ICCV), pp.
+832–842 (2023)
+[47] He, K., Chen, X., Xie, S., Li, Y., Doll´ar, P.,
+Girshick, R.: Masked autoencoders are scal-
+able vision learners. In: Proceedings of the
+IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, pp. 16000–16009
+(2022)
+[48] Zhai, X., Mustafa, B., Kolesnikov, A., Beyer,
+L.: Sigmoid loss for language image pre-
+training. In: Proceedings of the IEEE/CVF
+International Conference on Computer Vision,
+pp. 11975–11986 (2023)
+[49] Sim´eoni, O., Vo, H.V., Seitzer, M., Baldas-
+sarre, F., Oquab, M., Jose, C., Khalidov, V.,
+Szafraniec, M., Yi, S., Ramamonjisoa, M., et
+al.: DINOv3. arXiv preprint arXiv:2508.10104
+(2025)
+[50] Li, J., Li, D., Savarese, S., Hoi, S.: BLIP-
+2: Bootstrapping language-image pre-training
+with frozen image encoders and large lan-
+guage models. In: International Conference on
+Machine Learning, pp. 19730–19742 (2023).
+PMLR
+[51] Dai, W., Li, J., Li, D., Tiong, A., Zhao,
+J., Wang, W., Li, B., Fung, P.N., Hoi,
+S.: InstructBLIP: Towards general-purpose
+20
+
+
+vision-language models with instruction tun-
+ing. Advances in neural information process-
+ing systems 36, 49250–49267 (2023)
+[52] Bai, S., Chen, K., Liu, X., Wang, J., Ge, W.,
+Song, S., Dang, K., Wang, P., Wang, S., Tang,
+J., Zhong, H., Zhu, Y., Yang, M., Li, Z., Wan,
+J., Wang, P., Ding, W., Fu, Z., Xu, Y., Ye,
+J., Zhang, X., Xie, T., Cheng, Z., Zhang, H.,
+Yang, Z., Xu, H., Lin, J.: Qwen2.5-VL Tech-
+nical Report (2025). https://arxiv.org/abs/25
+02.13923
+[53] Ye, S., Chen, X., Zhang, Y., Lin, X., Cao,
+L.: ESCNet: Edge-semantic collaborative net-
+work for camouflaged object detection. In:
+Proceedings of the IEEE/CVF International
+Conference on Computer Vision (ICCV), pp.
+20053–20063 (2025)
+[54] Kingma, D.P.: Adam: A method for stochastic
+optimization. arXiv preprint arXiv:1412.6980
+(2014)
+[55] Skurowski, P., Abdulameer, H., B laszczyk,
+J., Depta, T., Kornacki, A., Kozie l, P.: Ani-
+mal camouflage analysis: Chameleon database.
+Unpublished manuscript 2(6), 7 (2018)
+[56] Wang, A., Chen, H., Liu, L., Chen, K., Lin, Z.,
+Han, J., Ding, G.: YOLOv10: Real-time end-
+to-end object detection. Advances in neural
+information processing systems 37, 107984–
+108011 (2024)
+[57] Liu, S., Zeng, Z., Ren, T., Li, F., Zhang,
+H., Yang, J., Jiang, Q., Li, C., Yang, J.,
+Su, H., et al.: Grounding DINO: Marrying
+DINO with grounded pre-training for open-set
+object detection. In: European Conference on
+Computer Vision, pp. 38–55 (2024). Springer
+[58] Labs, B.F.: FLUX. https://github.com/black
+-forest-labs/flux (2024)
+[59] Wu, C., Li, J., Zhou, J., Lin, J., Gao, K.,
+Yan, K., Yin, S.-m., Bai, S., Xu, X., Chen, Y.,
+et al.: Qwen-Image Technical Report (2025).
+https://arxiv.org/abs/2508.02324
+21
