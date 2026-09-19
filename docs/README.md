@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-18</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-19</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 7 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 2 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>2</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-18 21:31:30 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-19 21:52:38 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-09-18日报：从7篇生成式视觉论文中精读2篇、速读5篇，聚焦图像生成与编辑的控制、效率。</p>
-<p>最值得看的是两篇8.0精读：自回归图像生成中的对角注意力稀疏性，以及Paint-Anything的任意颜色统一控制，都指向更高效、更可控的生成/编辑。</p>
-<p>普通读者可先读这两篇，再按兴趣扫伪装图像生成、训练免费Prompt-to-Prompt编辑和多主体视频编辑等速读方向。</p>
+<p>今日精选两篇速读论文，聚焦AI影视预可视化与空间自适应噪声注入。最值得关注的是PACE提出的剧本驱动精确AI电影表达规范，用类型化标准约束几何一致性。普通读者可优先了解PACE，看AI如何更可控地生成分镜预演。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -80,12 +78,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Understanding and Exploiting Diagonal Attention Sparsity in Autoregressive Image Generation">Understanding and Exploiting Diagonal Attention Sparsity in Autoregressive Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Paint-Anything: Unified Any-Color Control for Image Generation and Editing">Paint-Anything: Unified Any-Color Control for Image Generation and Editing</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -93,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Camouflage Image Generation towards a Training-Free Paradigm">Rethinking Camouflage Image Generation towards a Training-Free Paradigm</span></li><li><span class="dpr-home-dashboard-paper-title" title="Refinement Is Inherently Editable: Training-Free Prompt-to-Prompt Image Editing with Generative Refinement Network">Refinement Is Inherently Editable: Training-Free Prompt-to-Prompt Image Editing with Generative Refinement Network</span></li><li><span class="dpr-home-dashboard-paper-title" title="MDN-Control: Mask-Depth-Noise Guided Region Control for Multi-Subject Video Editing">MDN-Control: Mask-Depth-Noise Guided Region Control for Multi-Subject Video Editing</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="PACE: Precise AI Cinematic Expression: A Typed Specification for Script-Grounded Previsualization and Geometric Conformance">PACE: Precise AI Cinematic Expression: A Typed Specification for Script-Grounded Previsualization and Geometric Conformance</span></li><li><span class="dpr-home-dashboard-paper-title" title="Spatially Adaptive Noise Injection">Spatially Adaptive Noise Injection</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
 </section>
 </div>
 

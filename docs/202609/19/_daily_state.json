@@ -1,0 +1,41 @@
+{
+  "date": "20260919",
+  "date_label": "",
+  "generated_at": "2026-09-19 21:52:38 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.19853v1",
+      "route": "202609/19/2609.19853v1-pace-precise-ai-cinematic-expression-a-typed-specification-for-script-grounded-previsualization-and-geometric-conformance",
+      "title": "PACE: Precise AI Cinematic Expression: A Typed Specification for Script-Grounded Previsualization and Geometric Conformance",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "类型化规范控制文本到图像扩散生成镜头",
+      "first_seen_at": "2026-09-19 21:52:38 UTC",
+      "updated_at": "2026-09-19 21:52:38 UTC"
+    },
+    {
+      "paper_id": "2609.18466v1",
+      "route": "202609/19/2609.18466v1-spatially-adaptive-noise-injection",
+      "title": "Spatially Adaptive Noise Injection",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向扩散图像采样的空间自适应噪声注入",
+      "first_seen_at": "2026-09-19 21:52:38 UTC",
+      "updated_at": "2026-09-19 21:52:38 UTC"
+    }
+  ]
+}

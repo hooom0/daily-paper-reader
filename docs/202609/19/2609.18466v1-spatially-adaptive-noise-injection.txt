@@ -1,0 +1,2272 @@
+Spatially Adaptive Noise Injection
+Frantzeska Lavda1 , Maciej Falkiewicz1,2 , Van Khoa Nguyen1,2 , and
+Alexandros Kalousis1
+1 University of Applied Sciences Western Switzerland, HES-SO Geneva
+2 Computer Science Department, University of Geneva
+frantzeska.lavda@hesge.ch
+Abstract. Diffusion samplers reverse a learned noising process using
+either stochastic (DDPM) or deterministic (DDIM) updates, which rep-
+resent endpoints of a single family controlled by a scalar noise-injection
+variance that is applied identically at every spatial location. This uniform
+approach neglects the geometry of natural images: high-curvature regions
+such as edges and textures, where the denoiser is uncertain, benefit from
+stochastic correction, whereas smooth regions, where the score is precise,
+are degraded by injected noise. This work investigates whether each pixel
+requires stochastic correction at a given timestep and introduces Spatially
+Adaptive Noise Injection (SANI), a novel sampling framework that dy-
+namically adjusts noise application on a per-pixel basis. SANI integrates a
+probabilistic gating mechanism with a derived spatially adaptive variance,
+ensuring that noise is injected precisely where needed to refine complex
+features while preserving well-formed structures. Experimental results
+and decoupling ablations demonstrate that SANI consistently improves
+Fréchet Inception Distance (FID) over the vanilla DDPM and DDIM
+endpoint samplers across diverse sampling timesteps, while remaining
+competitive with variance-learning baselines, highlighting the importance
+of spatial adaptivity in diffusion sampling.
+Keywords: Diffusion models · Sampling · Spatial Adaptivity
+1
+Introduction
+Diffusion Probabilistic Models (DPMs) [8, 24] have become a leading approach
+in generative modeling, achieving state-of-the-art sample quality across images,
+audio, and molecular design. These models learn to reverse a gradual noising
+process by training a denoising network, resulting in a tractable variational
+bound and stable training. During inference, two primary families of samplers
+are typically used. Stochastic samplers [8, 11] inject noise at each step, emulating
+Langevin dynamics to correct approximation errors. In contrast, deterministic
+samplers [13, 14, 22] follow a noise-free probability flow, ordinary differential equa-
+tion (ODE) trajectory, which accelerates generation but limits error correction.
+[22] demonstrated that these two regimes present endpoints of an unified family,
+interpolated by a scalar parameter η that governs the noise injection variance
+at each step. However, a key limitation of both approaches is that the noise
+arXiv:2609.18466v1  [cs.LG]  16 Sep 2026
+
+
+2
+F. Lavda et al.
+injection variance σ2
+t is applied uniformly across all spatial location, discarding
+the geometric heterogeneity inherent in high-dimensional data manifolds.
+High-frequency regions, such as edges, textures, and fine details, correspond
+to areas of high curvature on the data manifold, where the denoiser’s gradient
+changes rapidly and estimation error tends to be higher. These regions benefit
+from stochastic correction [23]. In contrast, smooth regions such as uniform
+backgrounds are situated on locally flat portions of the manifold, where the score
+estimate is accurate and additional noise injection reduces fidelity. Ideally, a
+sampler would adapt its behavior to the local geometry: employing deterministic
+dynamics in regions where the model is confident and stochastic dynamics where
+uncertainty is greater, within the same image and timestep.
+This consideration leads to a central question: how can one determine, at each
+pixel and timestep, whether stochastic correction is necessary? We address this
+by deriving the Fisher Information of the denoising distribution, which provides a
+closed-form per-pixel measure of uncertainty without requiring additional super-
+vision. The analysis begins with the observation that the denoising distribution
+p(x0 | xt) constitutes an exponential family parametrized by the noisy observa-
+tion xt. This structure enables the derivation of the Fisher Information Matrix
+(FIM) of the posterior with respect to xt in closed form. We show that this FIM
+is proportional to both the Jacobian of the optimal denoiser and the posterior
+covariance. The trace of this relationship establishes a direct connection between
+the model’s total sensitivity and reconstruction uncertainty. Regions exhibiting
+large Fisher Information correspond to areas where the model is uncertain about
+the underlying signal, indicating that stochastic correction is most beneficial in
+these locations.
+Building on this insight, we introduce Spatially Adaptive Noise Injection
+(SANI), a sampling framework that modulates stochasticity on a per-pixel basis.
+We derive a closed-form gating function gt,i ∈[0, 1] with a clear probabilistic
+interpretation, representing the probability that the local denoising error at
+pixel i exceeds a specified tolerance threshold (Prop. 2). This gating mechanism
+adjusts noise injection at each pixel, interpolating per pixel between between
+ODE dynamics (gt,i = 0, deterministic) and stochastic DDPM-style update
+(gt,i = 1) within a single image and timestep. As a result, stochasticity increases
+in uncertain pixels while deterministic per-pixel updates are enforced in confident
+regions. The gating function is computed from the per-pixel posterior variance,
+which is directly related to the model’s sensitivity. SANI operates at inference
+time and is compatible with any pre-trained diffusion model.
+In summary, the main contributions are as follows: (i) Theoretical Link.
+We show that the Fisher Information Matrix of the denoising distribution is
+proportional to the denoiser Jacobian and posterior covariance (Prop. 1), estab-
+lishing a computable relationship between local sensitivity and reconstruction
+uncertainty. (ii) Probabilistic gating. We derive a closed-form, per-pixel gating
+function gt,i representing the probability that the local denoising error exceeds
+a specific tolerance (Eq. 7), and show that its spatial structure is robust to the
+choice of the residual-distribution model. (iii) Spatially adaptive sampler. We
+
+
+Spatially Adaptive Noise Injection
+3
+present SANI (Alg. 1), which applies the deterministic (DDIM) and stochastic
+(DDPM-style) update rules on a per-pixel basis. (iv) Empirical Validation. We
+show that SANI consistently improves over vanilla DDPM and DDIM across all
+datasets and step counts, and is competitive with variance-learning DDPM-family
+samplers, with the largest gains in the low-step regime, while its gating maps
+track image geometry without requiring edge supervision.
+2
+Background
+2.1
+Denoising Diffusion Probabilistic Models
+Diffusion models define a forward noising process and a learned reverse denois-
+ing process. Given data x0 ∼q(x0), the forward process adds Gaussian noise
+according to a schedule β1, . . . , βT ∈(0, 1):
+ \la b el {e q :
+f
+orw
+a
+r d _s tep} q(\
+m
+athbf {x}_t \mid \mathbf {x}_{t-1}) = \mathcal {N}\!\big (\mathbf {x}_t;\, \sqrt {1-\beta _t}\,\mathbf {x}_{t-1},\, \beta _t \mathbf {I}\big ). 
+(1)
+Defining αt = 1 −βt and ¯αt = Qt
+s=1 αs, the marginal at any timestep is
+q(xt | x0) = N(xt; √¯αt x0, (1 −¯αt)I), so that xt = √¯αt x0 + √1 −¯αt ϵ with
+ϵ ∼N(0, I). The reverse process learns to invert this chain by parameterizing
+pθ(xt−1 | xt) = N(xt−1; µθ(xt, t), Σθ(xt, t)). Training maximizes the ELBO on
+log pθ(x0) via a noise prediction network ϵθ(xt, t) with the simplified objective
+Lsimple = Et,x0,ϵ[∥ϵ −ϵθ(xt, t)∥2]. This objective provides a learning signal only
+for the mean µθ, the covariance Σθ must be specified separately. Ho et al. [8] set
+it to one of two scalar schedules, σ2
+t = βt or σ2
+t = ˜βt := 1−¯αt−1
+1−¯αt βt, both spatially
+uniform.
+2.2
+Generalized Sampling: Unifying DDPM and DDIM
+The noise prediction network implicitly defines a clean data estimate via Tweedie’s
+formula [7]: ˆx0(xt, t) =
+1
+√¯αt (xt −√1 −¯αt ϵθ(xt, t)). Song et al. [22] showed that
+a family of non-Markovian reverse processes, parameterized by the noise injection
+variance σ2
+t , shares the same marginals as the forward process. The generalized
+update rule is:
+ \la b el {eq :ge
+n
+er
+a
+l_update } \m
+a
+t
+h b f {x} _ {t
+- 1} = \ un
+d
+er
+b
+race {\sq rt {\bar \
+a lp h
+a _{
+t-1}}
+\,\hat {\mathbf {x}}_0}_{\text {denoised mean}} + \underbrace {\sqrt {1-\bar \alpha _{t-1}-\sigma _t^2}\,\boldsymbol {\epsilon }_\theta (\mathbf {x}_t,t)}_{\text {direction correction}} + \underbrace {\sigma _t\,\mathbf {z}}_{\text {noise}}, 
+(2)
+where z ∼N(0, I) for t > 1 and z = 0 for t = 1. Setting σ2
+t = 0 yields DDIM
+(deterministic), setting σ2
+t = ˜βt recovers DDPM (stochastic).
+The spatial uniformity bottleneck. In all of these methods, σ2
+t is a scalar
+applied identically to every spatial location. This ignores the heterogeneous
+geometry of natural images: edges and textures lie on curved manifold regions
+where stochastic correction is beneficial, while smooth regions lie on flat portions
+where noise degrades fidelity. We argue that this trade-off should not be global
+but spatially adaptive.
+
+
+4
+F. Lavda et al.
+3
+Spatially Adaptive Noise Injection
+This section presents the proposed method and the theoretical framework. We
+first show that the local geometry of the diffusion process, as quantified by the
+Fisher Information, is directly related to posterior reconstruction uncertainty.
+This relationship is then leveraged to develop a sampling algorithm. The general
+concept involves deriving a gating function gt,i ∈[0, 1] with clear probabilistic
+interpretation, which is used to modulate the per-pixel noise injection variance.
+This approach enables each pixel to follow its geometrically optimal trajectory
+between deterministic and stochastic dynamics.
+3.1
+Fisher Information, Local Sensitivity and Model’s Uncertainty
+The denoising distribution p(x0 | xt) for any fixed timestep t, indexed by the
+noisy observation xt, belongs to an exponential family. The exponential-family
+structure guarantees that the posterior mean and covariance are related to the
+log-partition function by standard identities, and it enables the application of
+classical results from information geometry, in particular, the Fisher Information
+Matrix.
+Proposition 1 (FIM-Jacobian-Posterior Covariance Correspondence).
+Let ˆx0(xt) = E[x0 | xt] denote the optimal (MMSE) denoiser. The Fisher
+Information Matrix (FIM) of the denoising distribution with respect to xt satisfies
+ \lab e
+l {e
+q : fim
+_jacobia n
+} \
+bo x ed { \mathc a l {I}(\mathbf {x}_t) \;=\; \frac {\sqrt {\bar \alpha _t}}{1 - \bar \alpha _t}\; \mathbf {J}_{\hat {\mathbf {x}}_0}(\mathbf {x}_t) \;=\; \frac {\bar \alpha _t}{(1 - \bar \alpha _t)^2}\; \mathrm {Cov}[\mathbf {x}_0 \mid \mathbf {x}_t], } 
+(3)
+where Jˆx0 = ∂ˆx0(xt)
+∂xt
+∈RD×D is the Jacobian of the optimal denoiser.
+The underlying Jacobian-posterior-covariance relation in Eq. (3) is closely
+related to classical results on conditional mean estimation in Gaussian noise [6],
+and per-pixel posterior moments computed from denoiser derivatives [15]. Propo-
+sition 1 is the information-geometric reading of these identities, identifying the
+shared quantity as the Fisher Information of the denoising distribution, which
+underlies the gating construction developed next.
+The FIM quantifies the sensitivity of a distribution to perturbations in its
+parameters. In the context of the denoising distribution, the primary interest lies in
+sensitivity with respect to the observation xt, specifically, the extent to which the
+posterior belief x0 about changes when xt is perturbed. Proposition 1 characterizes
+model sensitivity and uncertainty via the posterior covariance and the denoiser
+Jacobian. Regions exhibiting high sensitivity correspond to areas where the model
+is uncertain about the underlying clean signal. Furthermore, local sensitivity,
+as measured by the total Fisher Information, is proportional to reconstruction
+uncertainty (mean squared error, MSE), Tr(I) = ¯αt(1 −¯αt)−2, MSE(xt). Areas
+with large Tr(I) indicate high model uncertainty, which are precisely the regions
+where stochastic correction is most beneficial.
+
+
+Spatially Adaptive Noise Injection
+5
+Via Tweedie’s formula, the denoiser Jacobian decomposes as Jˆx0 =
+1
+√¯αt (ID +
+(1 −¯αt)Ht(xt)), where Ht(xt) := ∇xtsθ(xt, t) approximates the Hessian of the
+log-marginal density. Substituting into Eq.(3) yields the posterior in terms of
+the log-marginal density Hessian:
+ \labe l {e q : c ov_
+hes
+s
+ia n } \ mathrm {Co
+v
+}[\mathbf {x}_0\mid \mathbf {x}_t] = \frac {1-\bar \alpha _t}{\bar \alpha _t}\big (\mathbf {I}_D + (1-\bar \alpha _t)\mathbf {H}_t(\mathbf {x}_t)\big ). 
+(4)
+Extracting the diagonal gives the per-pixel posterior variance:
+ \labe l {e
+q
+:v_i} v _i(
+\
+ma t h b f {
+x}_
+t
+, t ) \ ;\coloneqq
+ 
+\;\bigl [\mathrm {Cov}[\mathbf {x}_0\mid \mathbf {x}_t]\bigr ]_{ii} \;=\;\frac {1-\bar \alpha _t}{\bar \alpha _t}\bigl (1+(1-\bar \alpha _t)[\mathbf {H}_t]_{ii}\bigr ). 
+(5)
+The sign of [Ht]ii determines the local uncertainty regime. Strong concavity
+([Ht]ii ≪0) indicates that the marginal distribution is sharply peaked along
+coordinate i, resulting in a small vi and thus high confidence. In contrast, positive
+curvature is indicative of high uncertainty.
+Validity and clamping. The right-hand side of Eq. 4 defines a valid covariance
+matrix if and only if all eigenvalues satisfy λmin(H⋆
+t ) ≥−(1 −¯αt)−1, a condition
+met by the true log-marginal Hessian H⋆
+t by construction. Since the true Hessian
+H⋆
+t is not accessible, it is approximated using either the Hutchinson estimator
+or a learned Hessian network, i.e., Ht(xt) ≈H⋆
+t (xt). The approximate Hessian
+may not satisfy the eigenvalue condition, which can result in the right-hand
+side of Eq. 4 failing to be positive semi-definite (PSD). Such violations, however,
+only occur in regions where the true variance v∗
+i is already close to zero (see
+App. Appendix E). In these cases, vi is clamped as vi ←max(vi, ϵ) with ϵ = 10−6,
+causing the affected pixels to default to deterministic dynamics.
+3.2
+Probabilistic Gating Function
+The per-pixel variance vi(xt, t) is mapped to a gating function gt,i ∈[0, 1] that
+regulates local noise injection.
+Definition 1 (Gating Function). The gate at pixel i and timestep t is defined
+as the probability that the squared denoising error exceeds a tolerance τ:
+ \la be l
+ 
+{eq:g a ting_de f }
+ g _{ t ,i
+}
+\;\coloneqq \;\mathbb {P}\!\bigl ((X_{0,i}-\hat {x}_{0,i})^2>\tau \,\big |\,\mathbf {X}_t=\mathbf {x}_t\bigr ). 
+(6)
+Assuming (A1) that the denoiser approximates the minimum mean squared
+error (MMSE) estimator, ˆx0,i ≈E[X0,i | xt], as justified by the squared-error
+training objective, and (A2) that the per-pixel posterior is approximately Gaussian
+(the maximum-entropy distribution given the first two moments from the score
+network), the residual Ri = X0,i −ˆx0,i | xt is a zero-mean Gaussian with variance
+vi. Standardization under these assumptions yields a closed-form expression for
+the gating function.
+
+
+6
+F. Lavda et al.
+Proposition 2 (Closed-Form Gating). Under Assumptions (A1)-(A2), the
+gating function yields the closed form
+ \la b e
+l
+ { e
+q:
+gating_c lo
+se
+d} g_{t,i}\;=\;2\Bigl (1-\Phi \bigl (\sqrt {\tau /v_i(\mathbf {x}_t,t)}\bigr )\Bigr ), 
+(7)
+where Φ(·) is the standard normal CDF.
+The closed-form expression depends on vi solely through the ratio τ/vi,
+meaning that τ determines the threshold at which a pixel transitions from
+the stochastic regime (vi ≫τ, gt,i →1) to the deterministic regime (vi ≪τ,
+gt,i →0). The clamping operation vi ←max(vi, ϵ) ensures the argument remains
+real-valued. Assumption (A2) holds exactly in the high signal-to-noise ratio
+(SNR) limit (see App. Appendix F.3), and empirical results in Sec. 4.3 indicate
+that the spatial gating pattern is robust to the choice of residual distribution.
+Re-derivation of the gate under Laplace residuals (App. Appendix G) affects only
+the sharpness of the stochastic-to-deterministic transition.
+3.3
+KL-Optimal Per-Pixel Noise Injection
+The gating variable gt,i determines whether a pixel receives stochastic correction.
+Conventional samplers employ a spatially uniform scale σ2
+t ∈{˜βt, βt}, which
+does not account for local reconstruction quality or the model’s prediction
+error. Instead, the proposed approach derives the scale that minimizes the
+expected Kullback-Leibler (KL) divergence between the true reverse transition
+q(xt−1,i | xt, x0,i) and the model transition pθ(xt−1,i | xt), with the model mean
+fixed at the Tweedie estimate ˆµt,i (see App. Appendix H).
+Proposition 3 (KL-Optimal Per-Pixel Variance). With the model mean
+fixed at ˆµt,i, the per-pixel variance that minimizes the expected KL to q(xt−1,i |
+xt, x0,i) is
+ \
+lab e l { e q:
+g amma_o pt}
+ \ ga
+mma ^* _{
+t , i}\
+;=\;\tilde \beta _t+c_t^2\,v_i(\mathbf {x}_t,t), \qquad c_t\;\coloneqq \;\frac {\sqrt {\bar \alpha _{t-1}}\,\beta _t}{1-\bar \alpha _t}. 
+(8)
+The optimal variance has two terms with structurally different roles. This dis-
+tinction drives how we allocate stochasticity in space. The term ˜βt is the variance
+of the true reverse posterior, the irreducible stochasticity of the reverse SDE,
+present even when the denoiser is perfect (vi = 0). The term c2
+tvi, by contrast,
+equals the expected squared error of the Tweedie mean (App. Appendix I),
+ 
+\
+label { eq:mean _e rr
+}
+ \m
+a thbb {E}\!\bigl [(\tilde \mu _{t,i}-\hat \mu _{t,i})^2\,\big |\,\mathbf {x}_t\bigr ] \;=\;c_t^2\,v_i. 
+(9)
+Since SANI substitutes ˆµt,i for the unknown true posterior mean, this variance
+is required for the transition to remain calibrated to the true posterior. It is
+determined by the mean estimate and is not a tunable parameter. This asymmetry
+motivates our spatial allocation strategy, the calibration term c2
+tvi is applied at
+every pixel, while only the exploratory term ˜βt is gated.
+ \
+lab e
+l 
+{ eq
+:sig
+ma_split} \Sigma _{t
+,
+i}^2 \;
+= \; \
+under brace {c_t^
+2\,v_i\vphantom {\tilde \beta _t}}_{\text {mean-error correction}} \;+\;\underbrace {g_{t,i}\,\tilde \beta _t}_{\text {gated exploration}}. 
+(10)
+
+
+Spatially Adaptive Noise Injection
+7
+Gating only ˜βt ensures that mean-error correction is preserved at pixels where the
+substituted Tweedie mean is least reliable. For confident pixels, both gt,i and vi are
+small, resulting in Σ2
+t,i →0 and the update reducing to the deterministic DDIM
+step. In contrast, for uncertain pixels, gt,i →1 and Σ2
+t,i →γt,i, corresponding to
+the KL-optimal variance.
+Scope of the optimality. We emphasize that γ∗
+t,i is KL-optimal for the fully
+stochastic per-pixel transition with the mean fixed at the Tweedie estimate. The
+gated variance Σ2
+t,i coincides with γ∗
+t,i only in the limit gt,i = 1. For gt,i < 1,
+and after the admissibility clip (App. Appendix J), it departs from the KL-
+optimal value in exchange for deterministic updates at confident pixels. γ∗
+t,i
+therefore serves as the stochastic endpoint of the interpolation rather than a
+global optimality guarantee for SANI.
+3.4
+Spatially Adaptive Noise Injection (SANI) Update
+By substituting Eq. 10 into the generalized reverse step from [22], the SANI
+update is obtained.
+Proposition 4 (SANI Update). Let ˆx0 = ¯α−1/2
+t
+(xt −√1 −¯αt ϵθ(xt, t)) de-
+note the Tweedie estimate and z ∼N(0, I). With Σ2
+t,i as in Eq. 10, the SANI
+update at pixel i is
+ \labe l {eq:s ani_u p
+d
+a t e} x_ { t-
+1,i } \; = \;\s qrt {\bar \alpha _{t-1}}\,\hat {x}_{0,i} \;+\;\sqrt {1-\bar \alpha _{t-1}-\Sigma _{t,i}^2}\;\epsilon _{\theta ,i} \;+\;\Sigma _{t,i}\,z_i, 
+(11)
+for t > 1, with z = 0 for t = 1.
+The full procedure is summarized in Algorithm 1.
+Coupled dynamics. The coupling between stochastic and deterministic com-
+ponents is explicit in Eq. 11. As Σt,i increases, the noise term Σt,izi becomes
+larger, while the direction coefficient
+q
+1 −¯αt−1 −Σ2
+t,i decreases. Because Σ2
+t,i =
+c2
+tvi + gt,i ˜βt increases with both vi and gt,i, the predicted direction is automati-
+cally down-weighted and replaced by stochastic exploration in regions where the
+Tweedie mean is unreliable. The same quantity that increases the variance in
+Eq. 9 also indicates the unreliability of the direction. Therefore, a decoupled rule
+that adjusts only the variance would continue to follow an inaccurate direction
+with full weight.
+Computational cost. Evaluating the gate requires the Hessian diagonal [Ht]ii.
+Using the lightweight pretrained network of [18], this adds a single forward pass
+of a model substantially smaller than the score network, i.e., a small constant
+overhead per step. Alternatively, a single Hutchinson probe (one Jacobian-vector
+product per step) requires no auxiliary network at roughly 2× the cost of a
+DDIM step. All remaining SANI operations are elementwise in the pixels. Details
+are provided in App. Appendix K.
+
+
+8
+F. Lavda et al.
+Algorithm 1 SANI Sampling
+Require: xT ∼N(0, I), model ϵθ, schedule {¯αt, ˜βt, ct}, tolerance τ, floor ϵ
+for t = T, . . . , 1 do
+z ∼N(0, I) if t > 1, else z = 0
+ˆϵ ←ϵθ(xt, t);
+ˆx0 ←¯α−1/2
+t
+(xt −√1 −¯αt ˆϵ)
+v ←diag
+ Cov[x0 | xt]
+
+;
+vi ←max(vi, ϵ) {per-pixel variance, Eq 5}
+gt ←2
+ 1 −Φ(
+p
+τ/v)
+
+{per-pixel gate, Eq. 7}
+Σ2
+t ←c2
+t v + gt ⊙˜βt;
+Σ2
+t ←min(Σ2
+t, 1 −¯αt−1) {noise injection, Eq. 10}
+xt−1 ←√¯αt−1 ˆx0 +
+p
+1 −¯αt−1 −Σ2
+t ⊙ˆϵ + Σt ⊙z
+end for
+return x0
+4
+Experiments
+The experimental evaluation follows the logical structure of the proposed method.
+First, we validate empirically the theoretical identities from Sec. 3.1. Next, we
+show the alignment of the gating function with image structure without any
+edge supervision (Sec. 4.2). After confirming the intended mechanism, we test
+the sole distributional approximation on which the method depends (Sec. 4.3)
+and characterize the gating function along its two axes, the tolerance τ and the
+reverse-process time (Sec. 4.4). Finally, we evaluate generation quality (Sec. 4.5),
+showing that spatial adaptivity improves FID over stochastic samplers and we
+conclude with a decoupling ablation (Sec. 4.6) to isolate the contributions of
+per-pixel gating, the asymmetric allocation of the calibration term, and the
+coupling between injected variance and the direction term.
+4.1
+The FIM-Jacobian-Covariance Correspondence
+Proposition 1 establishes that the Fisher Information of the denoising distribution,
+the denoiser Jacobian, and the posterior covariance are proportional (Eq. 3),
+and that the total Fisher Information equals the reconstruction MSE up to a
+schedule-dependent factor. These identities provide the theoretical foundation for
+treating the posterior covariance as a proxy for local reconstruction uncertainty.
+We verify them on held-out validation images. At three noise levels we compute
+and visualize the one-step Tweedie prediction ˆx0, the denoiser Jacobian diagonal
+[Jˆx0]ii, the posterior covariance diagonal [Cov[x0 | xt]]ii, and the per-pixel
+reconstruction accuracy, Fig. 1. The Jacobian and posterior covariance maps
+coincide up to a global scale at every noise level, as Eq. 3 requires. Since this
+proportionality is exact under Tweedie’s identity, the agreement also confirms
+that the Hessian estimators used downstream introduce no systematic bias.
+Reconstruction accuracy is lowest where these maps are largest, which is the
+empirical content of the trace identity. As the noise decreases from 80% to 20%,
+all three maps sharpen and concentrate on edges and contours, tracking the
+denoiser’s increasing precision.
+
+
+Spatially Adaptive Noise Injection
+9
+Fig. 1: Empirical validation of Prop. 1 on
+LSUN Bedroom. Columns: decreasing noise
+(80%, 50%, 20%) and the clean image x0.
+Rows: (1) one-step prediction ˆx0; (2) denoiser
+Jacobian diagonal [Jˆx0]ii; (3) posterior covari-
+ance diagonal [Cov[x0 | xt]]ii; (4) per-pixel
+reconstruction accuracy. Rows 2-3 are pro-
+portional (Eq. 3) and both are spatially anti-
+correlated with reconstruction accuracy.
+Fig. 2: One-step predictions at three
+noise levels (80%, 50%, 20%) and the
+corresponding gating map (dark = 0,
+bright = 1) on LSUN Bedroom. The
+gate assigns high stochasticity to edges
+and textures, near-zero to flat regions,
+with the separation sharpening as noise
+decreases.
+4.2
+Gating Maps Align with Image Geometry
+We now test whether the gate gt,i derived from it allocates stochasticity to
+the geometrically complex regions of an image, through controlled-noise maps,
+correlation with per-pixel error, and alignment with edges during sampling.
+Spatial allocation of stochasticity. Fig. 2 presents gating maps for LSUN
+Bedroom validation images at three noise levels. The gate assigns values near 1
+to complex regions (furniture contours, painting edges) and near 0 to smooth
+regions (walls, uniform bed sheets). As noise decreases, the separation sharpens,
+outlining the image’s geometric structure and concentrating stochasticity at the
+most challenging features. This behavior results solely from the per-pixel gating
+function estimated by the pretrained denoising network.
+Correlation with reconstruction error. We compute the per-pixel gate gt,i
+and the validation loss (x0,i −ˆx0,i)2 on held-out images, measuring their log-space
+Pearson correlation at six noise levels (Fig. 3). The correlation increases mono-
+tonically as noise decreases indicating that pixels with high-gt,i are reconstructed
+less accurately. At high noise, the lower correlation reflects that most gate values
+are compressed near 1, reducing variation across pixels.
+Alignment with edge structure during sampling. The previous tests use
+controlled noise levels. Fig. 4 compares the gate to the Sobel gradient magnitude
+of ˆx0 along the reverse trajectory. At t = 800, the model is globally uncertain
+and gt,i ≈1 everywhere. As sampling progresses (t = 400 to 100), flat regions
+with |∇ˆx0| ≈0 shift to gt,i ≈0, while edges and fine details retain high gt,i. At
+t = 25, gt,i ≈0 globally, with residual stochasticity only at the highest-gradient
+
+
+10
+F. Lavda et al.
+Fig. 3: Per-pixel gating value gt,i vs. validation loss (x0,i −ˆx0,i)2 on LSUN Bedroom
+at six noise levels (left to right: decreasing noise). The log-space Pearson correlation
+rises monotonically from 0.33 to 0.78
+(a) t=800
+(b) t=400
+(c) t=200
+(d) t=100
+(e) t=25
+Fig. 4: Per-pixel gating gt,i vs. Sobel edge map of ˆx0 along a single reverse trajectory
+on LSUN Bedroom. Each subplot shows, for the same generated sample at the indicated
+timestep: the predicted image (left), the Sobel gradient magnitude |∇ˆx0| (center), and
+the gate gt,i (right; blue = 0, red = 1). The gate is near 1 in high noise, progressively
+aligns with edges and textures during denoising, and collapses to ≈0 everywhere except
+for the highest-gradient pixels at the end of the trajectory.
+pixels. This map identifies structural difficulty without requiring explicit training,
+as other methods do [21].
+4.3
+Validating the Residual-Distribution Assumption
+To validate our assumption that the per-pixel posterior residual Ri = X0,i −ˆx0,i |
+xt is Gaussian with variance vi, we compare the empirical distribution of the stan-
+dardized residuals, Zi = Ri/√vi to Gaussian and Laplace unit-variance references
+at four representative timesteps, Fig. 5. The empirical standardized residuals are
+sharply peaked at high noise, resembling the unit-variance Laplace distribution,
+and converge toward N(0, 1) as t decreases. The Kolmogorov-Smirnov (KS) dis-
+tance to the Gaussian drops from 0.23 at t=800 to 0.03 at t=25. This matches the
+high-SNR limit of Lemma 2 in Appendices, where the Gaussian forward kernel
+dominates the posterior. Re-deriving the gate under Laplace residuals (App. Ap-
+pendix G) preserves the spatial gating structure and only affects the sharpness
+of the stochastic-to-deterministic transition. Sampling results confirm that the
+Gaussian and Laplace gates (SANIG and SANIL, Tab. 1) yield comparable FID.
+
+
+Spatially Adaptive Noise Injection
+11
+Fig. 5: Density histograms of standardized residuals Zi = Ri/√vi on CIFAR10 (CS)
+against Gaussian and Laplace unit-variance reference distributions at four reverse-process
+timesteps. The empirical density is sharply peaked at high noise and concentrates toward
+the Gaussian as t decreases.
+(a) τ =10−4
+(b) τ =10−3
+(c) τ =10−2
+(d) τ =10−1
+Fig. 6: Spatial distribution of gating values gt,i along the full reverse trajectory on
+CIFAR-10 (CS), for four tolerances (subplot). Each subplot overlays five timesteps
+t ∈{1000, 500, 250, 125, 20}, with density on a logarithmic scale. The distribution is a
+near-point mass at t = 1000 (spatially uniform uncertainty under pure noise), spreads
+over [0, 1] at intermediate timesteps (spatial discrimination between confident and
+uncertain regions), and collapses toward g = 0 at the final steps. Increasing τ by a
+decade translates this stochastic-to-deterministic transition earlier along the trajectory
+without changing its shape, as predicted by the dependence of the gate on τ/vi alone.
+4.4
+Behavior of the Gating Function
+We analyze the gate along two axes of variation. The tolerance τ, which determines
+its operating point, and reverse-process time t, which governs its evolution. Fig. 6
+presents the spatial distribution of gating values across the full reverse trajectory
+for four tolerances, with density shown a logarithmic scale. The general pattern is
+consistent. A near-point mass at t=1000, broad support over [0, 1] mid-trajectory
+as the gate distinguishes between resolved and unresolved regions, and a collapse
+toward 0 at the end. Increasing τ shifts the stochastic→deterministic transition
+earlier, as expected, since the gate depends only on τ/vi. Fig. 7 summarizes the
+dynamics per-step mean and variance across datasets. The band is widest in the
+middle, reflecting peak spatial heterogeneity.
+4.5
+Quantitative Evaluation
+Table 1 reports FID scores across different sampling steps, likelihoods are reported
+in Appendices, Appendix O. We evaluate two gate variants: (i) SANIG, which
+
+
+12
+F. Lavda et al.
+Fig. 7: Per-step gating statistics over the reverse process at τ = 10−3, averaged over
+1000 generated images per dataset. Solid line: spatial mean ¯gt; dark band: ¯gt ± σg,t
+Light band: per-step [min, max]. The mean decreases monotonically from 1 (stochastic)
+to 0 (deterministic) on every dataset, and the band is widest at intermediate timesteps
+where spatial heterogeneity peaks.
+uses the Gaussian residual assumption, and (ii) SANIL, which follows the Laplace
+assumption (App. Appendix G.1). Since SANI interpolates between stochastic
+and deterministic regimes on a per pixel basis, it does not fit into either family,
+so we compare it to both.
+A primary test for per-pixel interpolation is whether it outperforms the two
+samplers it interpolates. SANIG consistently achieves lower FID than both vanilla
+DDPM and vanilla DDIM across all dataset and step-count configurations, often
+by a significant margin. So adjusting noise levels spatially is consistently as good
+as, and typically outperforms, to applying a uniform global regime.
+The Gaussian and Laplace gates perform comparably across all three settings,
+with neither showing clear superiority. This confirms that sampling is insensitive
+to the residual model. SANI also remains competitive in NLL compared to
+variance-learning baselines (App. Appendix O), indicating that spatial gating
+does not sacrifice likelihood for sample quality. Additionally, the per-pixel gating
+maps (Fig. 4) offer interpretable uncertainty diagnostics.
+4.6
+Ablation: Spatial Allocation and Coupling
+To isolate the contributions of the probabilistic gating mechanism and the spatially
+adaptive variance formulation, we perform a decoupling ablation on CelebA-64
+(Tab. 2). We compare standard endpoint samplers, ungated spatial variances
+(with a fixed gate), and various decoupled gated combinations. The results
+show that combining optimal per-pixel variance with the probabilistic gating
+mechanism (SANI) consistently achieves the best FID across all evaluated step
+counts, confirming that both components are essential for optimal performance.
+5
+Related Work
+Diffusion models and sampling. [8, 24] established the foundational framework
+of diffusion as a hierarchical latent variable model. [22] revealed the probability
+flow ODE connection, enabling deterministic sampling. [10] refined sampling via
+schedule design and higher-order solvers. Our work extends this line of research
+
+
+Spatially Adaptive Noise Injection
+13
+Table 1: FID (↓) across datasets and sampling steps. Bold: best among stochastic
+samplers (DDPM family and SANI). Underline: best in the DDIM family. SANI values
+are additionally underlined when they outperform the best DDIM-family sampler.
+DDPM family
+DDIM family
+Method
+10
+25
+50
+100
+200
+10
+25
+50
+100
+200
+CelebA
+Base, ˜β
+36.69 24.46 18.96 14.31 10.48 20.54 13.54
+9.33 6.60
+4.96
+A-
+28.99 16.01 11.23
+8.08
+6.51 15.62
+9.22
+6.13 4.29
+3.46
+NPR-
+28.37 15.74 10.89
+8.23
+7.03 14.98
+8.93
+6.04 4.27
+3.59
+SN-
+20.60 12.00
+7.88
+5.89
+5.02 10.20
+5.48
+3.83 3.04
+2.85
+OCM-
+21.55 12.71
+9.24
+6.97
+5.92 10.28
+5.72
+4.42 3.54
+3.17
+SANIG
+K=10: 17.09
+K=25: 8.87
+K=50: 5.56
+K=100: 4.64
+K=200: 3.04
+SANIL
+K=10: 16.07
+K=25: 9.84
+K=50: 6.25
+K=100: 3.93
+K=200: 4.52
+CIFAR-10 (LS)
+Base, ˜β
+44.45 21.83 15.21 10.94
+8.23 21.31 10.70
+7.74 6.08
+5.07
+A-
+34.26 11.60
+7.25
+5.40
+4.01 14.00
+5.81
+4.04 3.55
+3.39
+NPR-
+32.35 10.55
+6.18
+4.52
+3.57 13.34
+5.38
+3.95 3.53
+3.42
+SN-
+24.06
+6.91
+4.63
+3.67
+3.11 12.19
+4.28
+3.39 3.23
+3.22
+OCM-
+24.94
+9.19
+5.95
+4.36
+3.48 10.66
+4.35
+3.48 3.27
+3.29
+SANIG
+K=10: 15.27
+K=25: 6.64
+K=50: 6.50
+K=100: 3.82
+K=200: 3.99
+SANIL
+K=10: 17.96
+K=25: 8.13
+K=50: 5.65
+K=100: 4.85
+K=200: 5.85
+CIFAR-10 (CS)
+Base, ˜β
+34.76 16.18 11.11
+8.38
+6.66 34.34 16.68 10.48 7.94
+6.69
+A-
+22.94
+8.50
+5.50
+4.45
+4.04 26.43
+9.96
+6.02 4.88
+4.92
+NPR-
+19.94
+7.99
+5.31
+4.52
+4.10 22.81
+9.47
+6.04 5.02
+5.06
+SN-
+16.33
+6.05
+4.17
+3.83
+3.72 17.90
+7.36
+5.16 4.63
+4.63
+OCM-
+14.32
+5.54
+4.10
+3.84
+3.75 16.70
+6.71
+4.72 4.30
+4.54
+SANIG
+K=10: 17.01
+K=25: 7.35
+K=50: 4.95
+K=100: 3.83
+K=200: 4.17
+SANIL
+K=10: 16.37
+K=25: 6.55
+K=50: 4.88
+K=100: 4.50
+K=200: 3.52
+by introducing a spatial degree of freedom that interpolates between deterministic
+and stochastic dynamics at the pixel level.
+Variance learning. Improved DDPM [17] first proposed learning Σθ via Lvlb.
+Analytic-DPM [3] derived the optimal scalar variance. [2] explored diagonal
+covariances. OCM [18] estimates diagonal covariance by matching the score
+Hessian. However, OCM applies learned variances uniformly, all pixels follow
+the same regime at each step. SANI employs Hessian-diagonal estimates for a
+distinct purpose: deriving per-pixel gating that enables spatially heterogeneous
+interpolation within a single image.
+Adaptive sampling. Dpm-Solver [13] and Dpm-Solver++ [14] adapt step spac-
+ing temporally but not spatially. [12] skip computations in easy regions for
+efficiency, but do not modulate the stochastic properties of the process. MU-
+LAN [20] learns a multivariate noise schedule during training. In contrast, SANI
+derives noise modulation from the pre-trained score network at inference time.
+
+
+14
+F. Lavda et al.
+Table 2: Decoupling ablation on CelebA-64. FID (↓). Gated variants report the best FID
+across a τ sweep at each step count, endpoint and ungated variants are τ-independent.
+Variant/ #Timesteps
+10
+25
+50
+100
+200
+Endpoint samplers
+DDIM
+20.54 13.54
+9.33
+6.60
+4.96
+DDPM (˜βt)
+36.69 24.46 18.96 14.31 10.48
+Ungated variance choices
+OCM-DDPM (γ∗on noise only) 21.55 12.71
+9.24
+6.97
+5.92
+Uniform γ∗(both terms)
+34.13 18.97 13.98 10.66
+9.70
+Gated variants
+gt,i, γ∗
+t,i-coupled
+24.74
+8.81
+7.88
+4.74
+3.20
+SANI-naive (gt,i, ˜βt)
+22.53 7.32
+8.21 4.12
+3.34
+SANI-decoupled
+22.09 13.57 10.40
+8.70
+8.88
+SANI (proposed)
+17.09
+8.87 5.56
+4.64 3.04
+Uncertainty in diffusion models. [5] estimate pixel-wise uncertainty via en-
+sembles, incurring multiple forward passes. [23] show that high-frequency regions
+benefit from stochastic exploration in wavelet-based compression. [9] use poste-
+rior variance for OOD detection. Closest to our use of posterior moments, [15]
+compute per-pixel posterior moments from derivatives of a pretrained denoiser
+for uncertainty quantification and posterior exploration in image restoration. The
+proposed approach derives the same per-pixel uncertainty from the FIM diagonal,
+but uses it to control the sampler itself, gating the noise injection at inference
+time.
+Information geometry. [1] established links between Fisher Information and
+model sensitivity. [25] connected denoising autoencoders to score estimation.
+Tweedie’s formula [7] relates scores to posterior means, and [16] derived uncer-
+tainty bounds via the score Hessian. [4] showed denoiser Jacobian norms correlate
+with sample diversity. This work builds on these identities by interpreting them
+through the Fisher Information of the denoising distribution and by deriving a
+practical sampling algorithm from this relationship.
+Spatially Adaptive Sampling. A recognized limitation of standard diffusion
+models is the uniform allocation of computational resources and stochasticity
+across spatially heterogeneous images. Recent work, such as Patch Forcing [21],
+addresses this limitation by dynamically varying the diffusion timestep per patch,
+advancing “easy” patches faster than “hard” patches. However, such methods typ-
+ically require architectural modifications, such as training a dedicated difficulty
+head, and operate at the coarser patch level. In contrast, SANI addresses spatial
+heterogeneity at inference time without requiring model fine-tuning or structural
+modifications.
+
+
+Spatially Adaptive Noise Injection
+15
+6
+Conclusion
+In this work, we introduced Spatially Adaptive Noise Injection (SANI), a training-
+free inference framework designed to address the spatial uniformity bottleneck in
+standard diffusion samplers. Our approach, grounded in information geometry,
+establishes a formal theoretical link between the Fisher Information Matrix of the
+denoising distribution, the denoiser Jacobian, and the posterior covariance. We
+translated this geometric insight into a tractable, closed-form probabilistic gating
+function that quantifies the probability the local denoising error exceeds a specific
+tolerance, enabling SANI to modulate noise injection per-pixel. By coupling this
+gating mechanism with a spatially adaptive variance, SANI allocates stochastic
+corrections to uncertain, high-curvature regions while preserving deterministic
+DDIM-style updates in confident, smooth areas. Empirically, SANI improves
+generation quality over established DDIM and DDPM samplers across various
+step counts and is competitive with variance-learning DDPM-family baselines,
+with the largest gains in the low-step regime. Our decoupling analysis further
+confirms that the synergy between probabilistic gating and adaptive variance
+is essential for the method’s performance, especially in low-step regime where
+standard samplers are less effective.
+Limitations and Future Work. While SANI establishes a foundation for
+spatially adaptive sampling, our results reveal an asymmetric impact of spa-
+tial gating across sampling steps. At low step counts, gating overcomes the
+imprecision of the underlying model. However, as the number of sampling steps
+increase, the coupled update rule becomes more sensitive to the diagonal Hessian
+approximation. In addition, our quantitative evaluation is restricted to small,
+low-resolution benchmarks (CIFAR-10 at 32 × 32 and CelebA at 64 × 64, with
+qualitative results on LSUN Bedroom at 256 × 256), and the spatially adaptive
+transition carries no marginal-preservation guarantee. Future work should explore
+dynamic tolerance scheduling, adjusting the threshold τ as a function of the
+sampling steps to improve the transition from high-stochasticity exploration to
+high-fidelity deterministic refinement, as well as validation on high-resolution
+and latent-space diffusion models.
+Acknowledgements
+We acknowledge financial support from the Swiss National Science Founda-
+tion through the LegoMol project (grant no. 207428). The computations were
+performed on the Baobab and Yggdrasil cluster at the University of Geneva.
+
+
+Bibliography
+[1] Amari, S.i.: Natural gradient works efficiently in learning. Neural
+Computation 10(2), 251–276 (1998). https : / / doi . org / 10 . 1162 /
+089976698300017746
+[2] Bao, F., Li, C., Sun, J., Zhu, J., Zhang, B.: Estimating the optimal covariance
+with imperfect mean in diffusion probabilistic models. In: Chaudhuri, K.,
+Jegelka, S., Song, L., Szepesvari, C., Niu, G., Sabato, S. (eds.) Proceedings
+of the 39th International Conference on Machine Learning. Proceedings of
+Machine Learning Research, vol. 162, pp. 1555–1584. PMLR (17–23 Jul
+2022), https://proceedings.mlr.press/v162/bao22d.html
+[3] Bao, F., Li, C., Zhu, J., Zhang, B.: Analytic-dpm: an analytic estimate
+of the optimal reverse variance in diffusion probabilistic models. In: Inter-
+national Conference on Learning Representations (ICLR) (2022), https:
+//openreview.net/forum?id=ly5M8mE4v49
+[4] Daras, G., Chung, H., Lai, C., Mitsufuji, Y., Ye, J.C., Milanfar, P., Dimakis,
+A.G., Delbracio, M.: A survey on diffusion models for inverse problems. CoRR
+abs/2410.00083 (2024). https://doi.org/10.48550/ARXIV.2410.00083,
+https://doi.org/10.48550/arXiv.2410.00083
+[5] De Vita, M., Belagiannis, V.: Diffusion model guided sampling with pixel-wise
+aleatoric uncertainty estimation. In: Proceedings of the Winter Conference
+on Applications of Computer Vision (WACV). pp. 3844–3854 (February
+2025)
+[6] Dytso, A., Poor, H.V., Shitz, S.S.: A general derivative identity for the
+conditional mean estimator in gaussian noise and some applications. In:
+2020 IEEE International Symposium on Information Theory (ISIT). pp.
+1183–1188. IEEE (2020)
+[7] Efron, B.: Tweedie’s formula and selection bias. Journal of the American
+Statistical Association 106(496), 1602–1614 (2011)
+[8] Ho, J., Jain, A., Abbeel, P.: Denoising diffusion probabilistic models. In:
+Larochelle, H., Ranzato, M., Hadsell, R., Balcan, M., Lin, H. (eds.) Advances
+in Neural Information Processing Systems. vol. 33, pp. 6840–6851. Curran
+Associates, Inc. (2020), https://proceedings.neurips.cc/paper_files/
+paper/2020/file/4c5bcfec8584af0d967f1ab10179ca4b-Paper.pdf
+[9] Jazbec, M., Wong-Toi, E., Xia, G., Zhang, D., Nalisnick, E., Mandt, S.:
+Generative uncertainty in diffusion models. In: Chiappa, S., Magliacane, S.
+(eds.) Proceedings of the Forty-first Conference on Uncertainty in Artificial
+Intelligence. Proceedings of Machine Learning Research, vol. 286, pp. 1837–
+1858. PMLR (21–25 Jul 2025), https://proceedings.mlr.press/v286/
+jazbec25a.html
+[10] Karras, T., Aittala, M., Aila, T., Laine, S.: Elucidating the design space of
+diffusion-based generative models. In: Koyejo, S., Mohamed, S., Agarwal,
+A., Belgrave, D., Cho, K., Oh, A. (eds.) Advances in Neural Information
+Processing Systems. vol. 35, pp. 26565–26577. Curran Associates, Inc. (2022)
+
+
+Spatially Adaptive Noise Injection
+17
+[11] Kingma, D., Salimans, T., Poole, B., Ho, J.: Variational diffusion models. In:
+Ranzato, M., Beygelzimer, A., Dauphin, Y., Liang, P., Vaughan, J.W. (eds.)
+Advances in Neural Information Processing Systems. vol. 34, pp. 21696–
+21707. Curran Associates, Inc. (2021), https://proceedings.neurips.cc/
+paper_files/paper/2021/file/b578f2a52a0229873fefc2a4b06377fa-
+Paper.pdf
+[12] Liu, Z., Yang, Y., Zhang, C., Zhang, Y., Qiu, L., You, Y., Yang, Y.: Region-
+adaptive sampling for diffusion transformers (2025), https://openreview.
+net/forum?id=gCZYei3PLL
+[13] Lu, C., Zhou, Y., Bao, F., Chen, J., Li, C., Zhu, J.: Dpm-solver: A fast
+ode solver for diffusion probabilistic model sampling in around 10 steps. In:
+Advances in Neural Information Processing Systems (2022)
+[14] Lu, C., Zhou, Y., Bao, F., Chen, J., Li, C., Zhu, J.: Dpm-solver++: Fast solver
+for guided sampling of diffusion probabilistic models. Machine Intelligence
+Research 22(4), 730–751 (Jun 2025). https://doi.org/10.1007/s11633-
+025-1562-4, http://dx.doi.org/10.1007/s11633-025-1562-4
+[15] Manor, H., Michaeli, T.: On the posterior distribution in denoising: Applica-
+tion to uncertainty quantification. In: International Conference on Learning
+Representations. vol. 2024, pp. 49233–49263 (2024)
+[16] Meng, C., Song, Y., Li, W., Ermon, S.: Estimating high order gradients
+of the data distribution by denoising. In: Advances in Neural Information
+Processing Systems. vol. 34, pp. 25364–25377 (2021)
+[17] Nichol, A.Q., Dhariwal, P.: Improved denoising diffusion probabilistic models
+(2021), https://openreview.net/forum?id=-NEXDKk8gZ
+[18] Ou, Z., Zhang, M., Zhang, A., Xiao, T.Z., Li, Y., Barber, D.: Improving
+probabilistic diffusion models with optimal diagonal covariance matching.
+In: The Thirteenth International Conference on Learning Representations
+(2025), https://openreview.net/forum?id=fV0t65OBUu
+[19] Peebles, W., Xie, S.: Scalable diffusion models with transformers. In: Pro-
+ceedings of the IEEE/CVF International Conference on Computer Vision.
+pp. 4195–4205 (2023)
+[20] Sahoo, S.S., Gokaslan, A., De, C., Kuleshov, V.: Diffusion models with
+learned adaptive noise. In: Globerson, A., Mackey, L., Belgrave, D., Fan, A.,
+Paquet, U., Tomczak, J., Zhang, C. (eds.) Advances in Neural Information
+Processing Systems. vol. 37, pp. 105730–105779. Curran Associates, Inc.
+(2024). https://doi.org/10.52202/079017-3354
+[21] Schusterbauer, J., Gui, M., Li, Y., Ma, P., Krause, F., Ommer, B.: Denoising,
+fast and slow: Difficulty-aware adaptive sampling for image generation. In:
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (2026)
+[22] Song, J., Meng, C., Ermon, S.: Denoising diffusion implicit models. In:
+International Conference on Learning Representations (2021), https://
+openreview.net/forum?id=St1giarCHLP
+[23] Song, J., He, J., Yang, L., Feng, M., Wang, K.: High frequency matters:
+Uncertainty guided image compression with wavelet diffusion. arXiv preprint
+arXiv:2407.12538 (2024)
+
+
+18
+F. Lavda et al.
+[24] Song, Y., Sohl-Dickstein, J., Kingma, D.P., Kumar, A., Ermon, S., Poole, B.:
+Score-based generative modeling through stochastic differential equations.
+In: International Conference on Learning Representations (2021), https:
+//openreview.net/forum?id=PxTIG12RRHS
+[25] Vincent, P.: A connection between score matching and denoising autoen-
+coders. Neural Computation 23(7), 1661–1674 (2011)
+
+
+Spatially Adaptive Noise Injection
+1
+Appendix for “Spatially Adaptive Noise Injection”
+A
+Notation
+Let x = (x1, . . . , xD)⊤∈RD denote a point in D-dimensional Euclidean space
+(represented as a column vector), and let Tr(A) = P
+i Aii denote the trace of
+A ∈Rk×k. For a scalar function f : RD →R, ∇xf(x) ∈RD is the gradient
+and ∇2
+xf(x) ∈RD×D is the Hessian. For a vector-valued function f : Rk →Rm,
+∂f/∂x ∈Rm×k is the Jacobian. Throughout we write ¯αt = Qt
+s=1 αs, ˜βt =
+(1 −¯αt−1)βt/(1 −¯αt), and ct = √¯αt−1 βt/(1 −¯αt).
+B
+Recovering DDPM from the Generalized Update
+Proposition A1. Setting σ2
+t = 1−¯αt−1
+1−¯αt
+ 1−
+¯αt
+¯αt−1
+
+in the generalized update Eq. 2
+yields σ2
+t = ˜βt.
+Proof. From ¯αt = ¯αt−1 αt, we have 1 −¯αt/¯αt−1 = 1 −αt = βt, and substitution
+gives σ2
+t = 1−¯αt−1
+1−¯αt βt = ˜βt.
+Remark. The DDIM paper [22] uses αt to denote the cumulative product, which
+corresponds to ¯αt in this work, with the convention α0 := 1. Eq. 2 is presented
+to ensure consistency with the main text.
+C
+Exponential-Family Structure of the Denoising
+Distribution
+Proposition A2 (Exponential Family). The denoising distribution p(x0 | xt)
+belongs to an exponential family with canonical form
+p(x0 | xt) = h(x0) exp
+ η(xt, t)⊤T(x0) −ψ(xt, t)
+
+,
+where
+  h(\ m athbf 
+{x}_0 )& =
+q (\ma
+thbf {x} _
+0),
+\quad \b
+o
+l
+dsymb o l {\ eta }(\
+mathb f { x}_ t,t)=\ B i
+g l (\tfra c {\sq r
+t {\b
+ar \alpha _t}}{1-\bar \alpha _t}\mathbf {x}_t,\;-\tfrac {\bar \alpha _t}{2(1-\bar \alpha _t)}\Bigr ),\\ \mathbf {T}(\mathbf {x}_0)&=(\mathbf {x}_0,\,\|\mathbf {x}_0\|^2),\quad \psi (\mathbf {x}_t,t)=\log p_t(\mathbf {x}_t)+\tfrac {D}{2}\log (2\pi (1-\bar \alpha _t))+\tfrac {\|\mathbf {x}_t\|^2}{2(1-\bar \alpha _t)} .
+Proof. By Bayes’ rule p(x0 | xt) = p(xt | x0)q(x0)/pt(xt), with the Gaussian
+forward kernel p(xt | x0) = N(√¯αt x0, (1−¯αt)I), q the data distribution, and and
+pt(xt) =
+R
+p(xt|x0)q(x0)dx0 is the marginal distribution at time t. Expanding
+and collecting terms in x0:
+  p( \ mat h bf 
+{
+x }
+_ t\mid \m a thbf {
+x}_0)
+ =\exp \
+B
+igl
+ 
+(
+-\t
+frac {D}{2}\l o
+g (2
+\pi ( 1-
+\ ba
+r \alpha _t))-\tfrac {\|\mathbf {x}_t\|^2}{2(1-\bar \alpha _t)}\Bigr ) \exp \Bigl (-\tfrac {\bar \alpha _t}{2(1-\bar \alpha _t)}\|\mathbf {x}_0\|^2+\tfrac {\sqrt {\bar \alpha _t}}{1-\bar \alpha _t}\mathbf {x}_t^\top \mathbf {x}_0\Bigr )
+.
+Substituting and identifying with the canonical form gives the stated parameters.
+
+
+2
+F. Lavda et al.
+D
+Proof of Proposition 1: FIM-Jacobian-posterior
+Covariance Correspondence
+Proof. For an exponential family with natural parameters η, the FIM with respect
+to η equals the covariance of the sufficient statistics: I(η) = Cov[T(x0) | xt].
+Since xt parameterizes the distribution via η(xt), the change-of-variables formula
+gives
+ \lab e
+l
+ {eq
+:app_f
+i
+m_ch
+a
+in} \mathcal {I}(\mathbf {x}_t)=\bigl (\nabla _{\mathbf {x}_t}\boldsymbol {\eta }\bigr )^\top \mathcal {I}(\boldsymbol {\eta })\bigl (\nabla _{\mathbf {x}_t}\boldsymbol {\eta }\bigr ). 
+(A1)
+From Proposition A2, the Jacobian of the first component of η with respect to xt
+is
+√¯αt
+1−¯αt ID and the second component is constant in xt. The relevant block of
+I(η) is Cov[x0 | xt]. Substituting into (A1):
+ \lab e
+l {
+eq : app_f im_cov } \mathcal {I}(\mathbf {x}_t)=\frac {\bar \alpha _t}{(1-\bar \alpha _t)^2}\,\mathrm {Cov}[\mathbf {x}_0\mid \mathbf {x}_t]. 
+(A2)
+By Tweedie’s identity [7], Cov[x0 | xt] = 1−¯αt
+√¯αt Jˆx0(xt). Substituting into (A2)
+yields the result.
+Trace identity. Taking the trace of (A2) yields
+ \
+l
+abel 
+{
+e
+q:a
+pp _ trace _mse} \mathrm {Tr}\bigl (\mathcal {I}(\mathbf {x}_t)\bigr ) =\frac {\bar \alpha _t}{(1-\bar \alpha _t)^2}\,\mathrm {MSE}(\mathbf {x}_t), 
+(A3)
+where MSE(xt) := E[∥x0 −ˆx0∥2 | xt] = Tr(Cov[x0 | xt]) is the optimal recon-
+struction error. Eq. A3 certifies that the total Fisher information is proportional
+to the MMSE, so regions of large Tr(I) are exactly the regions where the model
+is uncertain about the underlying signal.
+Relation to known identities. Combining Eq. (A2) with Tweedie’s identity re-
+covers, in the diffusion parameterization, the general derivative identity for
+the conditional mean estimator in Gaussian noise of Dytsoet al. [6], which
+relates derivatives of the posterior mean to posterior moments and Manoret
+al. [15] exploit the same relation to compute per-pixel posterior moments from
+a pretrained denoiser for uncertainty quantification. Proposition 1 adds the
+information-geometric interpretation of this quantity as the Fisher Information
+of the denoising distribution.
+E
+PSD Condition and Self-Limiting Violations
+Assumption 1 (PSD Condition). For the true log-marginal Hessian H⋆
+t (xt) =
+∇2
+xt log pt(xt), all eigenvalues satisfy λmin(H⋆
+t ) ≥−(1 −¯αt)−1.
+Since Cov[x0 | xt] is PSD by definition and the prefactor (1 −¯αt)/¯αt in Eq. 4
+is positive, ID + (1 −¯αt)H⋆
+t must be PSD, which is equivalent to λmin(H⋆
+t ) ≥
+−(1 −¯αt)−1. Assumption 1 is therefore not an additional restriction on the data
+distribution; it is a structural consequence of the forward process. Its role is to
+make explicit the spectral condition that the true Hessian automatically satisfies,
+so that we can diagnose when a learned approximation Ht ≈H⋆
+t may violate it.
+
+
+Spatially Adaptive Noise Injection
+3
+Proposition A3 (Self-Limiting PSD Violations). Let δi := [Ht]ii −[H⋆
+t ]ii
+denote the per-pixel approximation error. A PSD violation at pixel i (i.e., vi < 0
+in Eq. 5) requires [H⋆
+t ]ii + δi < −(1 −¯αt)−1. For bounded error |δi| ≤∆, the true
+per-pixel variance at any violating pixel satisfies
+ \
+l a b e l {
+eq:
+a
+p p _s e lf_limi
+t } v
+_
+i ^\ s tar =
+\fr
+ac {1-\bar \alpha _t}{\bar \alpha _t}\bigl (1+(1-\bar \alpha _t)[\mathbf {H}_t^\star ]_{ii}\bigr ) \;\leq \;\frac {(1-\bar \alpha _t)^2}{\bar \alpha _t}\,\Delta . 
+(A4)
+Proof. A PSD violation means 1+(1−¯αt)[Ht]ii < 0. Writing [Ht]ii = [H⋆
+t ]ii +δi:
+  1+ ( 1-\bar 
+\ alp h a _ t )[\mat h bf {H}_t^\s t ar ]_{ii}<-(1-\bar \alpha _t)\delta _i\leq (1-\bar \alpha _t)|\delta _i|\leq (1-\bar \alpha _t)\Delta , 
+since a violation requires δi negative with |δi| large. Multiplying by the positive
+prefactor yields (A4).
+Interpretation. At late timesteps (1 −¯αt ≪1), the bound (A4) is extremely
+small: PSD violations can only arise where the true variance is already negligible.
+At early timesteps, the bound is loose, but the gate saturates at gt,i ≈1 for all
+pixels regardless, so the precise value of vi is irrelevant. In both regimes, clamping
+vi ←max(vi, ϵ) correctly defaults violating pixels to near-deterministic dynamics.
+Empirically, the clamp is active for < 0.1% of pixels at any timestep when using
+the Hessian network of Ou et al. [18].
+F
+Gating Function: Derivation and Justification of
+Assumptions
+The following section restates the assumptions, provides justification, and proves
+the closed-form equation for the gating function (Eq. 2).
+F.1
+Assumptions
+(A1) MMSE Optimality. ˆx0,i ≈E[X0,i | xt], justified by the squared-error
+training objective Lsimple, whose Bayes-optimal solution is the MMSE estimator,
+ˆx0,i ≈E[X0,i | xt].
+(A2) Gaussian Marginal Residual. Ri | xt ≈N(0, vi) with Ri := X0,i −ˆx0,i.
+The denoiser network determines only the first two moments of Ri, so (A2)
+is a modeling choice (specifically, the maximum-entropy distribution given those
+moments) rather than a consequence of the model. The justification proceeds in
+two steps.
+F.2
+Residual Moments
+Lemma 1 (Residual Moments). Under (A1), E[Ri | xt] = 0 and Var(Ri |
+xt) = vi(xt, t).
+Proof. Since ˆx0,i = E[X0,i | xt] is a deterministic function of xt, E[Ri | xt] =
+E[X0,i | xt] −ˆx0,i = 0, and Var(Ri | xt) = Var(X0,i | xt) = vi.
+
+
+4
+F. Lavda et al.
+Lemma 1 fixes only the first two moments of Ri but infinitely many dis-
+tributions are consistent with them. Step 2 justifies the Gaussian shape as a
+limit.
+F.3
+Posterior Concentration as a Gaussian
+Lemma 2 (Posterior as Prior × Gaussian Kernel). The denoising posterior
+factorizes as
+ \la b el {
+e
+q:app _post eri
+o
+r _f
+a cto r izati
+on} p(\mathbf {x}_0\mid \mathbf {x}_t) =\frac {1}{Z(\mathbf {x}_t)}\,q(\mathbf {x}_0)\,\exp \Bigl (-\tfrac {\lambda _t}{2}\|\mathbf {x}_0-\boldsymbol {\mu }_t\|^2\Bigr ), 
+(A5)
+where λt := ¯αt/(1 −¯αt) is the precision, µt := xt/√¯αt, and Z(xt) normalizes.
+Proof. By Bayes’ rule p(x0 | xt) ∝q(x0) p(xt | x0), with p(xt | x0) ∝exp
+ −∥xt −
+√¯αtx0∥2/(2(1 −¯αt))
+
+. Completing the square in x0:
+  \ f rac {\|\
+mat h bf {
+x
+}_t
+-\s q rt {\ba r \alpha _ t }\mathbf {x}_0\|^2}{2(1-\bar \alpha _t)} =\frac {\bar \alpha _t}{2(1-\bar \alpha _t)}\|\mathbf {x}_0-\mathbf {x}_t/\sqrt {\bar \alpha _t}\|^2+C(\mathbf {x}_t), 
+where C(xt) is absorbed into Z(xt).
+Why this justifies (A2). The decomposition (A5) holds exactly for any data
+distribution q. The Gaussian kernel arises from the forward process and is not an
+approximation. Assumption (A2) states that this kernel dominates the prior in
+shaping the per-pixel marginal, a claim controlled by λt. For large λt (late reverse
+timesteps), the kernel becomes high concentrated near µt, allowing the smooth
+prior to be locally well-approximated by a constant and the per-pixel marginal
+then inherits the Gaussian shape of the kernel. For small λt (early timesteps), the
+prior dominates and the marginal may be strongly non-Gaussian. However, in
+this regime vi ≫τ for all pixels and gt,i ≈1 universally (Figure 7), making the
+gate insensitive to the distributional shape of Ri. Thus, the gate relies on (A2)
+only in the intermediate regime where it actively discriminates. Even in this case,
+Sec. 4.3 shows that the spatial gating pattern remains consistent across different
+residual distributions.
+F.4
+Proof of Proposition 2(Closed-Form Gating)
+Proof. Under (A1), ˆx0,i = E[X0,i | xt], so the squared error equals R2
+i and
+ 
+\
+label {eq:app _ g a ti
+n
+g _
+s
+tep1 } \ m at
+h
+bb {P}\!\bigl ((X_{0,i}-\hat {x}_{0,i})^2>\tau \mid \mathbf {x}_t\bigr ) =\mathbb {P}\!\bigl (|R_i|>\sqrt {\tau }\mid \mathbf {x}_t\bigr ). 
+(A6)
+Under (A2) and Lemma 1, Ri | xt ∼N(0, vi). The clamp vi ←max(vi, ϵ)
+guarantees √vi > 0, so we may define Z := Ri/√vi ∼N(0, 1). Then |Ri| >
+√τ ⇐⇒|Z| >
+p
+τ/vi, and by symmetry of the standard normal,
+ \lab e l { eq: a pp_tw
+o_t ail } \mathbb {P}(|Z|>a)=2(1-\Phi (a))\quad \text {for any }a\geq 0. 
+(A7)
+Combining (A6) and (A7) with a =
+p
+τ/vi yields Eq. 7.
+
+
+Spatially Adaptive Noise Injection
+5
+G
+Gating Under Alternative Residual Distributions
+Using the same gating function definition gt,i = P
+ R2
+i > τ | xt
+
+= P
+ |Ri| >
+√τ | xt
+
+, we re-derive the gate for an alternative residual model, the Laplace
+distribution parameterized to have zero mean and variance vi, matching Lemma 1.
+The Laplace distribution has sharper peak and heavier tails than the Gaussian.
+G.1
+Laplace Residual
+Proposition A4 (Laplace Gating).
+If Ri | xt ∼Laplace(0, bi) with bi =
+p
+vi/2 (matching Var(Ri) = vi), then
+ \la
+bel
+ {eq
+:
+a
+p
+p_gat
+i
+ng_laplace} g_{t,i}^{\mathrm {Lap}}=\exp \!\bigl (-\sqrt {2\tau /v_i}\bigr ). 
+(A8)
+Proof. The Laplace survival function is P(|Ri| > a) = exp(−a/bi) for a ≥0.
+Setting a = √τ and substituting bi =
+p
+vi/2 yields Eq. A8.
+G.2
+Comparison
+Both gates exhibit the same boundary behavior (g →0 as vi/τ →0, g →1 as
+vi/τ →∞) and differ only in their tail decay, as shown in Table A1. Heavier-tailed
+distributions assign more probability to large denoising errors, so for a given
+τ/vi the ordering at large ρ is gGauss < gLap (for small ν). At moderate ρ, the
+ordering is non-monotone. The Laplace distribution’s sharper peak concentrates
+mass near zero, reducing the probability in the tails. For ρ ≲3, the Gaussian
+gate is higher than the Laplace, with a crossover point where the heavier tails of
+the Laplace dominate.
+Table A1: Gating functions under alternative residual models. ρ := τ/vi, Φ is the
+standard normal CDF, Ix is the regularized incomplete beta function.
+Distribution Gating function gt,i Tail decay (ρ →∞)
+Gaussian
+2(1 −Φ(√ρ))
+∼e−ρ/2/√ρ
+Laplace
+exp(−√2ρ)
+∼e−√2ρ
+Empirical results (Sec. 4.3, Tab. 1) show that SANIG and SANIL achieve
+similar FID scores, confirming that the spatial gating structure is consistent
+across these choices.
+H
+Proof of Proposition 3 (KL-Optimal Per-Pixel
+Variance)
+Setup. The true reverse posterior at pixel i, conditioned on xt and x0,i, is given
+by [8]
+ \label { eq: app_t r u
+e
+_reverse} q(x_{ t-1
+,
+i}\mid \mathbf {x}_t,x_{0,i})=\mathcal {N}\!\bigl (\tilde \mu _{t,i}(\mathbf {x}_t,x_{0,i}),\,\tilde \beta _t\bigr ), 
+(A9)
+
+
+6
+F. Lavda et al.
+with ˜µt,i(xt, x0) =
+√¯αt−1βt
+1−¯αt
+x0,i+
+√αt(1−¯αt−1)
+1−¯αt
+xt,i. The model transition is pθ(xt−1,i |
+xt) = N(ˆµt,i, (σθ
+t,i)2), where ˆµt,i is obtained by substituting ˆx0,i for x0,i in ˜µt,i.
+Step 1: Mean-error decomposition. Writing x0,i = ˆx0,i + ei with ei := x0,i −ˆx0,i:
+ \lab e l {eq : ap p_k
+l_ m
+ean_deco
+mp} \
+tilde \mu _{t,i}=\hat \mu _{t,i}+c_t\,e_i,\qquad c_t=\tfrac {\sqrt {\bar \alpha _{t-1}}\beta _t}{1-\bar \alpha _t}. 
+(A10)
+Under (A1), E[ei | xt] = 0 and E[e2
+i | xt] = vi. Therefore,
+ 
+\
+label { eq:app_ k l_
+m
+e an
+_sq} \mathbb {E}\!\bigl [(\tilde \mu _{t,i}-\hat \mu _{t,i})^2\mid \mathbf {x}_t\bigr ]=c_t^2 v_i. 
+(A11)
+Step 2: Expected KL. For two univariate Gaussian distributions N(µq, σ2
+q) and
+N(µp, σ2
+p), the Kullback-Leibler divergence is given by KL = log(σp/σq) + (σ2
+q +
+(µq −µp)2)/(2σ2
+p) −1/2. by setting µq = ˜µt,i, σ2
+q = ˜βt, µp = ˆµt,i, σ2
+p = (σθ
+t,i)2
+and taking the expectation over x0,i | xt, using Eq. A11:
+ \lab e l { eq
+:ap
+p
+_ex
+p
+ect e d_
+kl}
+ \ma
+thbb { E
+}[\mathrm {KL}] =\log \frac {\sigma _{t,i}^\theta }{\sqrt {\tilde \beta _t}}+\frac {\tilde \beta _t+c_t^2 v_i}{2(\sigma _{t,i}^\theta )^2}-\tfrac {1}{2}. 
+(A12)
+Step 3: Optimization. Differentiating Eq. A12 with respect to (σθ
+t,i)2:
+ 
+ \fr
+ac {\ parti a
+l
+ }{\
+parti a
+l ( \ si
+gma
+ _{t
+,i}^\ theta )^2}\mathbb {E}[\mathrm {KL}] =\frac {1}{2(\sigma _{t,i}^\theta )^2}-\frac {\tilde \beta _t+c_t^2 v_i}{2(\sigma _{t,i}^\theta )^4}. 
+Setting the derivative to zero yields (σθ
+t,i)2
+opt = ˜βt + c2
+tvi = γ∗
+t,i, which is Eq. 8.
+The second derivative at the optimum is 1/(2γ∗4
+t,i) > 0, confirming that this point
+is a minimum.
+Consistency with prior work. Averaging Eq. 8 over pixels and applying the
+score-Hessian relation recovers the scalar optimal variance of Bao et al. [3], up to
+the diagonal approximation. This derivation extends their result to a per-pixel
+quantity, which is the form required for spatially adaptive gating.
+Recovery of standard samplers. This update recovers DDIM in the joint limit
+gt,i = 0, vi = 0 (confident pixels), and the KL-optimal stochastic sampler
+when gt,i = 1 (Σ2
+t,i = γ∗
+t,i). It also recovers DDPM when gt,i = 1 and vi = 0
+(perfect denoiser, Σ2
+t,i = ˜βt). A spatially uniform gate gt,i = η implements the
+η-interpolation of [22], but with a per-pixel, data-aware variance instead of the
+fixed ˜βt.
+Scope of optimality. As discussed in Sec. 3.3, the optimality of γ∗
+t,i concerns the
+fully stochastic per-pixel transition with the mean fixed at the Tweedie estimate.
+The deployed SANI variance Σ2
+t,i = c2
+tvi + gt,i ˜βt equals γ∗
+t,i only when gt,i = 1,
+and the admissibility clip of Appendix J may reduce it further. SANI as a whole
+therefore carries no global KL-optimality guarantee.
+
+
+Spatially Adaptive Noise Injection
+7
+Relation to the DDIM family. For a scalar, state-independent noise scale, the
+non-Markovian family of [22] preserves the marginals of the forward process. The
+SANI variance Σ2
+t,i is per-pixel and depends on xt through vi and gt,i, so this
+marginal-preservation argument does not carry over, and we do not claim that
+the spatially adaptive transition matches the forward marginals. SANI should
+therefore be understood as a per-pixel update rule whose endpoints coincide with
+the DDIM and DDPM updates, supported empirically in Sec. 4
+I
+Mean-Error Identity and the Asymmetric Allocation
+The mean-error identity (Eq. 9) stated in the main text is proved here. This result
+underpins the rationale for applying the calibration term c2
+tvi in Σ2
+t,i uniformly,
+while only ˜βt is gated.
+Proposition A5 (Mean-Error Identity). Let ˆµt,i denote the model’s poste-
+rior mean obtained by substituting the Tweedie estimate ˆx0,i for x0,i in the true
+posterior mean, and let ˜µt,i denote the true posterior mean. Under (A1),
+ 
+\
+label { eq:app_ m ea
+n
+_ er
+r } \mat hbb {E}\!\bigl [(\tilde \mu _{t,i}-\hat \mu _{t,i})^2\mid \mathbf {x}_t\bigr ]=c_t^2\,v_i(\mathbf {x}_t,t). 
+(A13)
+Proof. As in Step 1 of Appendix H: substituting x0,i = ˆx0,i + ei into ˜µt,i yields
+˜µt,i = ˆµt,i + ctei, so (˜µt,i −ˆµt,i)2 = c2
+te2
+i . Under (A1), ˆx0,i = E[X0,i | xt] is a
+deterministic function of xt, so E[e2
+i | xt] = Var(X0,i | xt) = vi.
+Implication for the asymmetric allocation. Proposition A5 demonstrates that
+when the posterior variance vi is large, the model’s mean ˆµt,i becomes an unreli-
+able estimate of ˜µt,i, with error variance precisely c2
+tvi. Two key consequences
+arise from this observation.
+First, the KL-optimal variance γ∗
+t,i = ˜βt + c2
+tvi in Eq. 3 includes this term as
+a necessary additive component. This term ensures that the transition remains
+calibrated to the true posterior when ˆµt,i is used in place of ˜µt,i. Gating this term
+(i.e., scaling it by some g ∈[0, 1)) would suppress the correction that compensates
+for the mean error, particularly at pixels where the mean error is largest.
+Second, the exploratory term ˜βt represents the irreducible stochasticity of
+the true reverse SDE. This term persists even with a perfect denoiser (vi = 0).
+The decision to include or suppress this term distinguishes DDIM (where ˜βt
+is suppressed, resulting in a deterministic process) from DDPM (where ˜βt is
+retained, resulting in a stochastic process). This is the term that is gated on a
+per-pixel basis:
+Σ2
+t,i = c2
+tvi + gt,i ˜βt.
+The coupling in the SANI update (Eq. 11) reinforces this point. Since Σt,i
+appears in both the noise scale and through
+q
+1 −¯αt−1 −Σ2
+t,i, the direction
+coefficient, increasing vi simultaneously inflates the noise and reduces the weight
+of the unreliable direction. The same quantity that increases the variance also
+indicates the unreliability of the direction, so the update addresses both aspects
+simultaneously. In contrast, a decoupled rule that adjusted only the variance
+would continue to follow an inaccurate direction at full weight.
+
+
+8
+F. Lavda et al.
+J
+Admissibility of the SANI Update
+The SANI update (Eq. 11) is well-defined when
+ \ la
+bel { e q:app_admissible_range} 0\leq \Sigma _{t,i}^2\leq 1-\bar \alpha _{t-1} 
+(A14)
+at every pixel, ensuring that both Σt,i and the direction coefficient
+q
+1 −¯αt−1 −Σ2
+t,i
+are real. The lower bound is satisfied due to the clamp vi ←max(vi, ϵ) and the
+condition gt,i ≥0. The following establishes the upper bound.
+J.1
+Per-Pixel Bounds
+Since gt,i ∈[0, 1], Σ2
+t,i ≤c2
+tvi + ˜βt = γ∗
+t,i. It therefore suffices to bound γ∗
+t,i.
+Proposition A6 (Per-pixel bounds on γ∗
+t,i).
+γ∗
+t,i ≥˜βt, with equality iff
+vi = 0. Moreover, γ∗
+t,i ≤βt/αt iff [Ht]ii ≤0, with equality at [Ht]ii = 0
+(equivalently vi = (1 −¯αt)/¯αt).
+Proof. The lower bound is immediate. For the upper bound, recall from Eq. 5
+that vi ≤(1 −¯αt)/¯αt ⇐⇒[Ht]ii ≤0. Evaluating γ∗
+t,i at vi = (1 −¯αt)/¯αt with
+ct = √¯αt−1βt/(1 −¯αt):
+  
+\ga
+mm
+a _{t,i}^*\big |_{ v _i
+=
+( 1 -\b
+ar 
+\
+al
+p h a _
+t
+)/ \ bar \a l pha _t}
+ &=
+\
+t
+il
+d e \b
+e t a _t
++c
+_ t^
+2\
+,\frac {1-\bar \alpha _t}{\bar \alpha _t} =\frac {\beta _t}{1-\bar \alpha _t}\Bigl [(1-\bar \alpha _{t-1})+\frac {\bar \alpha _{t-1}\beta _t}{\bar \alpha _t}\Bigr ]\\ &=\frac {\beta _t}{1-\bar \alpha _t}\cdot \frac {1-\bar \alpha _t}{\alpha _t} =\frac {\beta _t}{\alpha _t},
+where we used ¯αt−1/¯αt = 1/αt and (1 −¯αt−1) + βt/αt = (1 −¯αt)/αt. Since γ∗
+t,i
+is increasing in vi, γ∗
+t,i ≤βt/αt holds exactly when vi ≤(1 −¯αt)/¯αt.
+Proposition A6 demonstrates that βt/αt bounds γ∗
+t,i only at pixels of negative
+local curvature. At pixels of positive curvature, γ∗
+t,i may exceed βt/αt, indicating
+that the bound is not uniform. However, this value serves as the average-case
+bound. Averaging γ∗
+t,i over all pixels and applying the score-Hessian relation yiels
+the scalar Analytic-DPM variance σ∗2
+t , which satisfies ˜βt ≤σ∗2
+t
+≤βt/αt [3].
+J.2
+Schedule Condition
+Lemma 3. βt/αt ≤1 −¯αt−1 ⇐⇒¯αt ≤1 −2βt.
+Proof. βt/αt ≤1 −¯αt−1 ⇐⇒βt ≤αt(1 −¯αt−1) = αt −¯αt. With βt = 1 −αt,
+this is 1 −αt ≤αt −¯αt, i.e., ¯αt ≤2αt −1 = 1 −2βt.
+For standard schedules where βt ≪1, the right-hand side approaches 1, so
+the condition is violated only when ¯αt is close to 1, corresponding to the earliest
+forward steps (or latest reverse steps). At t = 1, ¯α0 = 1 and the condition fails,
+however, the algorithm sets z = 0, so admissibility vacuous. At t = 2, 1−¯α1 = β1
+and the condition requires β2/α2 ≤β1, which does not hold for monotonically
+increasing schedules. Numerically, the condition is satisfied for all t ≥t∗, with
+t∗= 3 for the linear schedule (β1 = 10−4, βT = 0.02, T = 1000) and t∗= 6 for
+the cosine schedule [3].
+
+
+Spatially Adaptive Noise Injection
+9
+J.3
+Admissibility and the Per-Pixel Clip
+Combining Proposition A6 and Lemma 3: for t ≥t∗, every pixel with [Ht]ii ≤0
+satisfies
+ \
+lab e l 
+{eq : ap
+p_
+a d m it_chain} \Sigma _{t,i}^2\leq \gamma _{t,i}^*\leq \frac {\beta _t}{\alpha _t}\leq 1-\bar \alpha _{t-1}, 
+(A15)
+and is admissible by construction. Only pixels with positive local curvature,
+where vi exceeds the forward-noise level, can violate Eq. A14. For these cases,
+the per-pixel clip is applied
+ \
+lab e l {
+e
+q:
+app_ c l ip} \
+S
+igma _{t,i}^2\gets \min \!\bigl (\Sigma _{t,i}^2,\,1-\bar \alpha _{t-1}\bigr ). 
+(A16)
+This procedure guarantees a real direction coefficient and preserves Σ2
+t,i ≥0.
+Empirical negligibility. The clip (Eq. A16) is activated for only a negligible
+fraction of pixels. During sampling, the iterate xt remains within high-probability
+regions, where the log-marginal is locally concave and [Ht]ii ≤0 at the majority
+of coordinates. By Proposition A6, these are automatically admissible. The
+remaining cases are further suppressed at timesteps where Eq. A14 is most
+restrictive. At t = 1 no noise is injected (z = 0), and for t ∈{2, . . . , t∗−1} the
+gate satisfies gt,i ≈0 and vi is small (the signal-to-noise ratio ¯αt/(1 −¯αt) ≫1),
+so Σ2
+t,i ≈c2
+tvi ≈0 regardless of the clip (Fig. 7).
+K
+Experimental Details
+This appendix provides reproducibility details, pretrained-model sources, per-
+dataset hyperparameters, and information about the Hessian-diagonal source
+and its training setup to support Section 4. The experiments include compar-
+isons with DDPM using σ2
+t = ˜βt and σ2
+t = βt [8], DDIM [22], Analytic-DPM
+(A-DDPM/DDIM) [3], NPR DDPM/DDIM [2] (which models the noise predic-
+tion residual), SN-DDPM/DDIM [2] (which models the second moment of the
+noise), and OCM-DDPM/DDIM [18]. Consistent with [2], the approach relies
+on a pretrained score-based neural network in fixed parameters throughout our
+procedures.
+Details of Pretrained Models. Table A2 summarizes the pretrained score
+and Hessian-diagonal network used to estimate vi. Score models parameterize
+the noise prediction, ϵθ(xt, t), from which the score is recovered as sθ(xt) =
+∇xt log pθ(xt) = −ϵθ(xt, t)/√1 −¯αt.
+For the per-pixel posterior variance vi(xt, t) =
+
+Cov[x0 | xt]
+
+ii of Eq. 5,
+the pre-trained Hessian-diagonal networks released by [18] are employed, which
+predict [Ht]ii in a single forward pass. These networks are lightweight, being
+significantly smaller than the score network, and are trained by minimizing
+Et,xt,r∥hϕ(xt, t) −r ⊙(Htr)∥2 with Rademacher probes r ∈{−1, +1}D. The
+same EMA weightsare used at inference as in [18].
+The alternative Hutchinson estimator [Ht]ii ≈ri · [Htr]i does not require an
+auxiliary network but introduces one additional Jacobian-vector product (JVP)
+per step, resulting approximately twice the computational cost of DDIM.
+
+
+10
+F. Lavda et al.
+Table A2: Source of pretrained score prediction networks used in our experiments.
+Provided By
+CIFAR10 (LS)
+[3]
+CIFAR10 (CS)
+[3]
+CelebA 64X64
+[22]
+LSUN Bedroom
+[8]
+Hessian net
+[18]
+K.1
+Per-Dataset Hyperparameters
+The only hyperparameter introduced by SANI is the tolerance τ, which determines
+the operating point of the gating function via the ratio τ/vi. The value of τ
+is calibrated for each dataset, selected from the range [10−4 −10−2] in which
+the gate exhibits the intended stochastic-to-deterministic transition within the
+trajectory. Table A3 lists the values used for the main FID and qualitative results.
+Table A3: Per-dataset hyperparameters. T is the training-time number of timesteps;
+K ∈{10, 25, 50, 100, 200, 1000} at inference is reported in the relevant figures.
+CIFAR-10 (LS) CIFAR-10 (CS) CelebA 64 LSUN Bedroom
+Resolution
+32 × 32
+32 × 32
+64 × 64
+256 × 256
+Schedule
+linear
+cosine
+linear
+linear
+T (training)
+1000
+1000
+1000
+1000
+Tolerance τ
+10−3
+10−4
+10−3
+10−3
+Variance floor ϵ
+10−6
+10−6
+10−6
+10−6
+Evaluation. All evaluations employ exponential-moving-average (EMA) weights
+with decay 0.9999, which is the standard setting in the diffusion literature [2,
+17, 19]. FID is computed from 50,000 generated samples. For CIFAR-10, the
+reference statistics are extracted from the entire training set (50,000 images),
+while for CelebA, the standard test split is used. Likelihoods are reported as
+variational upper bounds in bits per dimension along the same sub-sequence
+used at sampling time, ensuring that FID and NLL are reported under matched
+schedules.
+L
+Extended Theory Validation
+This appendix provides extended visualizations of the theoretical identities across
+the remaining datasets and presents the complete gate-error correlation scatter
+to support Section 4.1.
+
+
+Spatially Adaptive Noise Injection
+11
+L.1
+FIM-Jacobian-Posterior Covariance Correspondence on
+Additional Datasets
+Figure A1 extends Figure 1 from LSUN Bedroom to CelebA and CIFAR-10
+(LS and CS). Despite the lower resolution (32 × 32 to 64 × 64), the spatial
+correspondence between the denoiser Jacobian diagonal (row 2), the posterior
+covariance diagonal (row 3), and the reconstruction accuracy (row 4) remains
+clearly visible along object boundaries and persists across different noise schedules.
+(a) CelebA 64 × 64
+(b) CIFAR-10 (LS)
+(c) CIFAR-10 (CS)
+Fig. A1: FIM-Jacobian-Posterior Covariance correspondence on additional datasets,
+same layout as Fig. 1. The spatial correspondence between the Jacobian diagonal, the
+posterior covariance diagonal, and reconstruction accuracy is preserved at all resolutions
+and across both noise schedules.
+L.2
+Gate-Error Correlation Across Noise Levels
+Figure A2 presents the per-pixel gating value gt,i versus the validation loss
+(x0,i −ˆx0,i)2 on held-out images at six noise levels for LSUN Bedroom, CelebA,
+and CIFAR-10 (LS and CS) datasets. The log-space Pearson correlation rises
+monotonically from high (80%) noise levels to lower noise levels across all datasets.
+The lower correlation at high noise due to the compression of gt,i near 1 across all
+pixels, resulting in limited variance for correlation. The correlation reported here
+uses the gating value gt,i directly, but the same monotonic trend is observed if vi
+is substituted for gt,i, as the two are related by the monotone CDF transform
+of Proposition 2.
+M
+Extended Gating Visualizations
+This appendix provides additional results supporting Sec. 4.2 on the remaining
+datasets. First, the gate is evaluated at controlled levels of forward noise on
+validation images, which isolates the gate’s behavior from trajectory dynamics by
+
+
+12
+F. Lavda et al.
+(a) CIFAR-10 (LS)
+(b) CIFAR-10 (CS)
+(c) CelebA 64
+(d) LSUN Bedroom
+Fig. A2: Per-pixel gating value gt,i versus validation loss (x0,i −ˆx0,i)2 at six noise levels
+(left to right: decreasing noise). The log-space Pearson correlation R rises monotonically,
+confirming that high-gt,i pixels are those the model reconstructs poorly.
+removing dependence on the unfolding of the reverse process (see Appendix M.1).
+Subsequently, the same gate-versus-Sobel analysis is conducted along the reverse
+trajectory (see Appendix M.2).
+M.1
+Gate at Controlled Noise Levels
+To isolate the gate’s response from trajectory dynamics, we evaluate it on held-out
+validation images at controlled levels of forward noise. Given a clean image x0,
+we sample xt ∼q(xt | x0) at noise levels 80%, 50%, and 20%, and compute the
+gate from the Tweedie prediction. This setting tests the gate’s behavior as a
+function of the pair (x0, t) alone.
+Figure A3 presents the resulting gating maps on three datasets. The spa-
+tial selectivity observed in this setting is consistent with the behavior during
+sampling. The gate saturates near 1 across the image at high noise, sharpens
+onto geometrically complex regions at moderate noise, and collapses to near-zero
+on flat regions at low noise. These results confirm that alignment with image
+structure is a property of the score field at (xt, t), rather than an artifact of the
+specific trajectory followed by the sampler.
+M.2
+Gate vs. Sobel Along the Reverse Trajectory: Additional
+Datasets
+The gate is next evaluated along an actual reverse trajectory. Figures A4-A7
+further supports that SANI effectively isolates “difficult” spatial regions bases
+solely on inherent geometry, without requiring explicit edge-detection supervision
+or the architectural modifications proposed in recent work (e.g., [21]).
+N
+Extended Residual Assumption & Gating Dynamics
+This appendix provides additional analysis for Sections 4.3-4.4 extending the
+discussion to all four datasets.
+
+
+Spatially Adaptive Noise Injection
+13
+(a) CelebA
+(b) Cifar10 (LS)
+(c) Cifar10 (CS)
+Fig. A3: Visualization of one-step predictions at varying timesteps (80%, 50%, 20%
+noise) and the corresponding gating map (dark = 0, bright = 1). The gating function
+assigns high stochasticity to geometrically complex regions such as edges and textures,
+and near-zero stochasticity to flat regions such as walls and bed sheets. The spatial
+separation becomes more pronounced as noise decreases.
+(a) t=800
+(b) t=200
+(c) t=100
+(d) t=25
+Fig. A4: Per-pixel gating gt,i vs. Sobel edge map of ˆx0 on LSUN Bedroom. Each subplot:
+predicted image (left), Sobel magnitude (center), gating map (right, blue = 0, red = 1).
+The gating map progressively aligns with image structure without any edge-detection
+supervision.
+N.1
+Gating Dynamics
+Figure A8 presents gating histograms for τ ∈{10−4, 10−3, 10−210−1}. Despite
+substantial variation in image content and resolution (CIFAR10 at 32×32, LSUN
+Bedroom at 256×256), the qualitative behavior of gt,i remains consistent, exhibit-
+ing a three-stage pattern across all datasets. The distribution is unimodal near 1
+st early timesteps, flattens and spreads broadly at intermediate steps(indicating
+spatial discrimination between confident and uncertain regions), and collapses
+near 0 at late timesteps. This invariance across dataset indicates that the spatial
+adaptivity of SANI is governed by the intrinsic information geometry of the
+denoising distribution, rather than by dataset-specific characteristics.
+Sections 4.4 analyzes the effecs of tolerance τ and temporal gating dynamics
+independently. The first examines how τ influences the distribution of gt,i at fixed
+
+
+14
+F. Lavda et al.
+(a) t=800
+(b) t=200
+(c) t=100
+(d) t=25
+Fig. A5: Per-pixel gating gt,i vs. Sobel edge map of ˆx0 on CelebA. Each subplot:
+predicted image (left), Sobel magnitude (center), gating map (right, blue = 0, red = 1).
+The gating map progressively aligns with image structure without any edge-detection
+supervision.
+(a) t=800
+(b) t=200
+(c) t=100
+(d) t=25
+Fig. A6: Per-pixel gating gt,i vs. Sobel edge map of ˆx0 on Cifar10 (LS). Each subplot:
+predicted image (left), Sobel magnitude (center), gating map (right, blue = 0, red = 1).
+The gating map progressively aligns with image structure without any edge-detection
+supervision.
+timesteps, while the second tracks the mean and variance of gt,i over time for
+a single τ. Figure A9 integrates both perspectives by plotting the mean gating
+value ¯g (solid line) with ±1 standard deviation (shaded band) throughout the
+reverse process for four tolerance values τ ∈{10−5, 10−4, 10−3, 10−2}, across all
+four datasets with K = 1000.
+All four τ curves begin near ¯g = 1 at t = T, indicating global uncertainty, and
+decay monotonically toward ¯g ≈0 as t approaches 1, reflecting increasing model
+confidence. Larger τ values result in an earlier and steeper decay. For τ = 10−2
+(yellow), ¯g fails below 0.75 by t ≈600 on CIFAR10, areas for τ = 10−5 (dark
+blue), it remains above 0.95 until t ≈100. These results support the theoretical
+prediction from Eq. 7 that the gating function transitions from stochastic to
+deterministic when the per-pixel variance vi drops below τ, with larger τ inducing
+this transition earlier.
+
+
+Spatially Adaptive Noise Injection
+15
+(a) t=800
+(b) t=200
+(c) t=100
+(d) t=25
+Fig. A7: Per-pixel gating gt,i vs. Sobel edge map of ˆx0 on Cifar10 (CS). Each subplot:
+predicted image (left), Sobel magnitude (center), gating map (right, blue = 0, red = 1).
+The gating map progressively aligns with image structure without any edge-detection
+supervision.
+The width of the ±std band quantifies the spatial heterogeneity of the gating
+map at each timestep. At the beggining and end of the process (t near T or
+near 1), the bands are narrow indicating that all pixels are either uniformly
+uncertain or uniformly confident. The bands reach their maximum width at
+intermediate timesteps, corresponding to the phase where some image regions
+have been resolved while others remain ambiguous. This peak in heterogeneity
+occurs earlier for larger τ values, consistent with the observation that a more
+permissive tolerance initiates pixel discrimination sooner.
+The ordering and monotonicity of the τ curves are maintained across all
+datasets.
+N.2
+Residual-Distribution Assumption
+Protocol. At each timestep t ∈{800, 200, 100, 25} we draw 500 test images
+x0 ∼q(x0), and sample xt ∼q(xt | x0). The Tweedie estimate ˆx0 and per-pixel
+variance vi are computed, and standardized residuals Zi = (x0,i −ˆx0,i)/√vi
+are formed over all pixels and samples. Under Assumption 2 Zi ∼N(0, 1). We
+compare the empirical distribution of Zi to two unit-variance references: Gaussian
+and Laplace (b = 1/
+√
+2), each moment-matched to zero mean and unit variance.
+Figure A10 compares the empirical density of Zi to the parametric refer-
+ences across multiple datasets. No single parametric family provides a consistent
+fit throughout the entire trajectory. At intermediate noise levels, the Laplace
+reference aligns most closely with the central mode. At high noise, the empiri-
+cal peak surpasses the Laplace, indicating super-Laplacian concentration, while
+at low noise, the distribution bulk is closest to the Gaussian. Consequently,
+the Kolmogorov-Smirnov distance between the standardized residuals and the
+standard normal decreases monotonically as t decreases.
+
+
+16
+F. Lavda et al.
+Cifar10 (LS)
+Cifar10 (CS)
+Celeba64
+LSUN
+(a) τ =10−4
+(b) τ =10−3
+(c) τ =10−2
+(d) τ =10−1
+Fig. A8: Spatial distribution of gating values gt,i along the full reverse trajectory across
+datasets (rows), for four tolerances (columns). Each subplot overlays five timesteps
+t ∈{1000, 500, 250, 125, 20}, with density on a logarithmic scale. Despite varying
+resolution and content, the temporal evolution of gt,i is qualitatively consistent.
+(a) CIFAR10 (CS)
+(b) CIFAR10 (LS)
+(c) LSUN Bedroom
+(d) CelebA-64
+Fig. A9: Mean gating value ¯g ± std(g) over the reverse process (K = 1000) for four
+tolerance values. All datasets exhibit the same qualitative pattern: monotonic decay
+from 1 to 0, with larger τ producing earlier transition. The standard deviation bands
+peak at intermediate timesteps where spatial heterogeneity is maximal. LSUN Bedroom
+shows the widest bands, reflecting the greater spatial complexity at 256×256 resolution.
+O
+Likelihood Evaluation
+This appendix provides a detailed description of the likelihood computation
+referenced in Section 4.5. We report variational upper bounds on −log pθ(x0) in
+bits per dimension (BPD) and evaluate along the same timestep sub-sequence
+
+
+Spatially Adaptive Noise Injection
+17
+(a) CIFAR10 (CS)
+(b) CIFAR10 (LS)
+(c) CelebA-64
+(d) LSUN Bedroom
+Fig. A10: Empirical standardized residuals Zi = Ri/√vi against Gaussian and Laplace
+residual distributions (all standardised to unit variance) on various datasets. Each
+subplot visualize density histograms at four reverse-process timesteps.
+used during sampling. This ensures that both likelihood and sample quality
+assessed under consistent schedules.
+Following the discrete-time decomposition of [8, 17]:
+ \ la
+b
+el { e q:a p p_nl l_
+b
+o
+un
+d
+} \ma thca
+l
+ 
+{L} \
+;=
+\
+; &\ u nde rbr a ce {\
+m
+ath r m {
+K
+L }\
+!
+\bi gl (q
+(
+\ma t hbf
+ {x}_T\mid \mathbf {x}_0)\,\|\,\mathcal {N}(\mathbf {0},\mathbf {I})\bigr )}_{\text {prior term}} \;+\;\sum _{(s,t)}\mathrm {KL}\!\bigl (q(\mathbf {x}_s\mid \mathbf {x}_t,\mathbf {x}_0)\,\|\,p_\theta ^{\mathrm {SANI}}(\mathbf {x}_s\mid \mathbf {x}_t)\bigr ) \notag \\ &-\;\mathbb {E}_q\bigl [\log p_\theta ^{\mathrm {SANI}}(\mathbf {x}_0\mid \mathbf {x}_1)\bigr ]
+.
+(A17)
+Here, the summation is taken over adjacent pairs (s, t) in the sampling sub-
+sequence. The true reverse posterior q(xs | xt, x0) depends solely on the forward
+process and remains unchanged from the standard DDPM [8]. It is a Gaussian
+distribution with mean ˜µt,i(xt, x0,i) and variance ˜βt.
+The model transition pSANI
+θ
+(xs | xt) utilizes the SANI mean and per-pixel
+variance as defined in Proposition 4:
+  \mu
+ _{
+p ,i}^{\ mathr m
+ 
+{ S ANI}} = \s
+qrt {\ba
+r \alp
+ha 
+_{ t -1
+}}\ , \h
+a t {x}_{ 0,i}+\sqrt {1-\bar \alpha _{t-1}-\Sigma _{t,i}^2}\,\epsilon _{\theta ,i}, \qquad (\sigma _{p,i}^{\mathrm {SANI}})^2=\Sigma _{t,i}^2=c_t^2\,v_i+g_{t,i}\,\tilde \beta _t. 
+Each KL term in Eq. A17 thus decomposes coordinate-wise between two diagonal
+Gaussians. The terminal term at t = 1 corresponds to the log-likelihood of x0
+under a discretized Gaussian with the standard fixed variance ˜β1, consistent
+with [8].
+Clamping for Near-Deterministic Pixels For pixels routed to deterministic dynam-
+ics by the gate (gt,i ≈0) and exhibiting low per-pixel posterior variance (vi ≈0),
+the model variance Σ2
+t,i collapses, whereas the true posterior maintains strictly
+positive variance ˜βt. This results in an unbounded KL divergence, a degeneracy
+also observed in DDIM at η = 0, where the ELBO is similarly undefined.
+To obtain a finite bound, we clamp the model variance per pixel and per step:
+ \labe
+l {
+eq : app
+_
+nl
+l_cl amp
+}
+ (\sigma _{p,i}^{\mathrm {SANI}})^2\;\gets \;\max \bigl (\Sigma _{t,i}^2,\,\tilde \beta _t\bigr ). 
+(A18)
+
+
+18
+F. Lavda et al.
+This approach leaves stochastic pixels unaffected (Σ2
+t,i ≥˜βt whenever gt,i or
+˜βt alone reaches ˜βt, since c2
+tvi ≥0 is always non-negative) and reduces near-
+deterministic pixels to the standard DDPM small-variance reverse process. In
+this case, the contribution to Eq. A17 matches exactly with the DDPM ELBO
+term at that pixel. The clamping affects only the likelihood computation, while
+sampling continuous to use the unclamped Σ2
+t,i.
+The bound is averaged over the test set and converted to bits per dimension
+by dividing by D log 2.
+Results. Table A4 presents NLL results on CIFAR-10 (LS), CIFAR-10 (CS),
+and CelebA-64 for both Gaussian and laplace residual assumption. Together with
+the FID results (Table 1), the NLL evaluation demonstrates that spatial gating
+does not compromise likelihood in favor of sample quality. Across all steps counts
+and dataset, SANI remains competitive with, or close to, the variance-learning
+baselines, while also providing an interpretable per-pixel uncertainty diagnostic
+as shown in Figure 4.
+Table A4: Negative log-likelihood (↓, bits per dimension) across datasets and sampling
+steps. Bold: best overall. Underline: second-best. SANI is competitive with the variance-
+learning baselines at every step count.
+CIFAR-10 (LS)
+CIFAR-10 (CS)
+CelebA 64 × 64
+Method
+10
+25
+50
+100
+200
+10
+25
+50
+100
+200
+10
+25
+50
+100
+200
+DDPM, ˜
+β
+74.95
+24.98
+12.01
+7.08
+5.03
+75.96
+24.94
+11.96
+7.04
+4.95
+33.42
+13.09
+7.14
+4.60
+3.45
+DDPM, β
+6.99
+6.11
+5.44
+4.86
+4.39
+6.51
+5.55
+4.92
+4.41
+4.03
+6.67
+5.72
+4.98
+4.31
+3.74
+A-DDPM
+5.47
+4.79
+4.38
+4.07
+3.84
+5.08
+4.45
+4.09
+3.83
+3.64
+4.54
+3.89
+3.48
+3.16
+2.92
+NPR-DDPM
+5.40
+4.64
+4.25
+3.98
+3.79
+5.03
+4.33
+3.99
+3.76
+3.59
+4.46
+3.78
+3.40
+3.11
+2.89
+SN-DDPM
+30.79
+11.83
+7.13
+5.24
+4.39
+90.85
+19.81
+9.72
+6.72
+5.58
+18.09
+8.05
+5.29
+4.05
+3.40
+OCM-DDPM
+5.32
+4.63
+4.25
+3.97
+3.78
+4.99
+4.34
+3.99
+3.76
+3.59
+4.69
+3.86
+3.43
+3.13
+2.90
+SANIG
+5.31
+4.67
+4.31
+4.04
+3.85
+4.97
+4.39
+4.07
+3.83
+3.66
+4.67
+3.88
+3.45
+3.15
+2.95
+SANIL
+5.34
+4.68
+4.34
+4.06
+3.87
+5.04
+4.40
+4.08
+3.82
+3.68
+4.71
+3.87
+3.48
+3.15
+2.97
+P
+Generated Samples
+Figures A11-A14 display generated samples produced by SANI with varying
+numbers of sampling steps K.
+
+
+Spatially Adaptive Noise Injection
+19
+(a) K = 10
+(b) K = 25
+(c) K = 50
+(d) K = 100
+(e) K = 200
+(f) K = 1000
+Fig. A11: CelebA (64 × 64). Generated samples using SANI using varying number of
+timesteps.
+(a) K = 25
+(b) K = 50
+(c) K = 100
+(d) K = 200
+(e) K = 1000
+Fig. A12: LSUN Bedroom. Generated samples using SANI using varying number of
+timesteps
+
+
+20
+F. Lavda et al.
+(a) K = 10
+(b) K = 25
+(c) K = 50
+(d) K = 100
+(e) K = 200
+(f) K = 1000
+Fig. A13: Cifar10 (LS). Generated samples using SANI using varying number of
+timesteps.
+(a) K = 10
+(b) K = 25
+(c) K = 50
+(d) K = 100
+(e) K = 200
+(f) K = 1000
+Fig. A14: Cifar10 (CS). Generated samples using SANI using varying number of
+timesteps.

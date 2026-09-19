@@ -1,0 +1,100 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-19T21:51:50.622348+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 2,
+    "quick_skim_target": 11,
+    "quick_selected": 2
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.19853v1",
+      "source": "arxiv",
+      "title": "PACE: Precise AI Cinematic Expression: A Typed Specification for Script-Grounded Previsualization and Geometric Conformance",
+      "abstract": "Between a screenplay and a film sits a planning problem that is spatial first: who stands where, and what a camera sees from where it stands. An image diffusion model asked for a shot in free text settles that plan by its own defaults. We present PACE (Precise AI Cinematic Expression), a typed representation for the plan: the screenplay evidence, the characters, props and locations it needs, where each subject stands, and what the camera does. A value is written once at the level it belongs to (script, scene, shot or panel) and inherited below it. A compiler turns the result into both the prompt sent to the diffusion model and a 3D scene built in metres, and a camera solver places the camera so that the declared framing is the framing built. Where a declared value becomes geometry, PACE measures, field by field, how far the compiled camera and the staged render sit from the declaration, rather than asking a model to judge.   On the 11-scene Automatic Drive screenplay, every staged single-subject panel places its subject within 1.2% of frame width of its declared position; with two or three subjects one camera pose cannot satisfy every position, and the residual is reported rather than absorbed. On 204 external director-storyboard shots, delivered head height is 1.906 times the staged target from the director's words, 1.733 from the compiled prompt, and 0.955 with the greybox control; the condition that holds framing best draws the described action least. Declaring the pose on 30 shots raises the action drawn from 58.9% to 74.4% without moving the framing. Transitions, fitted motion and human review of the generated panels remain open. Code: https://github.com/StudioPiLabs/pace-core",
+      "authors": [
+        "Bing Duan",
+        "Qiang Guo",
+        "Linpu Li",
+        "Zhijian Mao",
+        "Min Zhu",
+        "Zhirui Ren",
+        "Yiwei Yan",
+        "Xi Chu",
+        "Xiaoding Li"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-17T08:05:08+00:00",
+      "link": "https://arxiv.org/pdf/2609.19853v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "typed specification controls text-to-image diffusion for shots",
+      "llm_evidence_cn": "类型化规范控制文本到图像扩散生成镜头",
+      "llm_evidence": "类型化规范控制文本到图像扩散生成镜头",
+      "canonical_evidence": "类型化规范控制文本到图像扩散生成镜头",
+      "llm_tldr_en": "The paper introduces PACE, a typed specification for script-grounded previsualization that compiles screenplay evidence into prompts and 3D scenes to control an image diffusion model.",
+      "llm_tldr_cn": "针对文本驱动的图像扩散模型在自由文本下依赖自身默认来安排镜头空间规划、缺乏精确可控性的问题，该文提出PACE类型化表示，将剧本证据、角色、道具、位置与相机信息统一编码并逐级继承。系统通过编译器把该表示转为扩散提示与以米为单位的3D场景，并用相机求解器保证几何一致。实验表明该方法能实现剧本驱动且几何可控的先视化图像生成。该工作为可控图像生成提供了结构化规范与编译流程。",
+      "llm_tldr": "针对文本驱动的图像扩散模型在自由文本下依赖自身默认来安排镜头空间规划、缺乏精确可控性的问题，该文提出PACE类型化表示，将剧本证据、角色、道具、位置与相机信息统一编码并逐级继承。系统通过编译器把该表示转为扩散提示与以米为单位的3D场景，并用相机求解器保证几何一致。实验表明该方法能实现剧本驱动且几何可控的先视化图像生成。该工作为可控图像生成提供了结构化规范与编译流程。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.18466v1",
+      "source": "arxiv",
+      "title": "Spatially Adaptive Noise Injection",
+      "abstract": "Diffusion samplers reverse a learned noising process using either stochastic (DDPM) or deterministic (DDIM) updates, which represent endpoints of a single family controlled by a scalar noise-injection variance that is applied identically at every spatial location. This uniform approach neglects the geometry of natural images: high-curvature regions such as edges and textures, where the denoiser is uncertain, benefit from stochastic correction, whereas smooth regions, where the score is precise, are degraded by injected noise. This work investigates whether each pixel requires stochastic correction at a given timestep and introduces Spatially Adaptive Noise Injection (SANI), a novel sampling framework that dynamically adjusts noise application on a per-pixel basis. SANI integrates a probabilistic gating mechanism with a derived spatially adaptive variance, ensuring that noise is injected precisely where needed to refine complex features while preserving well-formed structures. Experimental results and decoupling ablations demonstrate that SANI consistently improves Fréchet Inception Distance (FID) over the vanilla DDPM and DDIM endpoint samplers across diverse sampling timesteps, while remaining competitive with variance-learning baselines, highlighting the importance of spatial adaptivity in diffusion sampling.",
+      "authors": [
+        "Frantzeska Lavda",
+        "Maciej Falkiewicz",
+        "Van Khoa Nguyen",
+        "Alexandros Kalousis"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "stat.ML"
+      ],
+      "published": "2026-09-16T11:00:06+00:00",
+      "link": "https://arxiv.org/pdf/2609.18466v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "spatially adaptive noise injection for diffusion image sampling",
+      "llm_evidence_cn": "面向扩散图像采样的空间自适应噪声注入",
+      "llm_evidence": "面向扩散图像采样的空间自适应噪声注入",
+      "canonical_evidence": "面向扩散图像采样的空间自适应噪声注入",
+      "llm_tldr_en": "SANI is a diffusion sampling framework that adjusts noise injection per pixel, adding stochastic correction in high-curvature regions and suppressing it in smooth regions to improve image generation.",
+      "llm_tldr_cn": "扩散采样器通过DDPM随机或DDIM确定更新逆转加噪过程，其噪声注入方差在所有空间位置统一施加，忽略了自然图像几何：边缘纹理等高曲率区域去噪器不确定、需随机校正，平滑区域则被噪声破坏。本文提出空间自适应噪声注入SANI，逐像素动态调整噪声施加并集成概率框架。方法在需要处引入随机性、在精确处抑制噪声，为扩散图像生成提供了更贴合图像几何的自适应采样框架。",
+      "llm_tldr": "扩散采样器通过DDPM随机或DDIM确定更新逆转加噪过程，其噪声注入方差在所有空间位置统一施加，忽略了自然图像几何：边缘纹理等高曲率区域去噪器不确定、需随机校正，平滑区域则被噪声破坏。本文提出空间自适应噪声注入SANI，逐像素动态调整噪声施加并集成概率框架。方法在需要处引入随机性、在精确处抑制噪声，为扩散图像生成提供了更贴合图像几何的自适应采样框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

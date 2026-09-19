@@ -1,0 +1,39 @@
+{
+  "label": "2026-09-19",
+  "date": "2026-09-19",
+  "generated_at": "2026-09-19T21:52:39",
+  "count": 2,
+  "papers": [
+    {
+      "paper_id": "202609/19/2609.19853v1-pace-precise-ai-cinematic-expression-a-typed-specification-for-script-grounded-previsualization-and-geometric-conformance",
+      "section": "quick",
+      "title_en": "PACE: Precise AI Cinematic Expression: A Typed Specification for Script-Grounded Previsualization and Geometric Conformance",
+      "authors": "Bing Duan, Qiang Guo, Linpu Li, Zhijian Mao, Min Zhu, Zhirui Ren, Yiwei Yan, Xi Chu, Xiaoding Li",
+      "date": "2026-09-17",
+      "pdf": "https://arxiv.org/pdf/2609.19853v1",
+      "score": "7.0",
+      "evidence": "类型化规范控制文本到图像扩散生成镜头",
+      "tldr": "剧本到成片之间存在空间优先的规划难题：谁站在哪里、摄影机看到什么，自由文本扩散模型只能靠默认值决定。PACE 用带类型的表示，按层级写入剧本依据、角色、道具、场景、站位与运镜，编译为提示词与 3D 场景，由相机求解器令声明构图即实际构图，并逐字段测量几何偏差。在 Automatic Drive 的 11 场戏中，单主体分镜位置误差小于画幅宽度 1.2%；204 个外部导演分镜上，声明姿态把动作绘制率从 58.9% 提到 74.4%。",
+      "tags": "query:image-gen",
+      "abstract_en": "Between a screenplay and a film sits a planning problem that is spatial first: who stands where, and what a camera sees from where it stands. An image diffusion model asked for a shot in free text settles that plan by its own defaults. We present PACE (Precise AI Cinematic Expression), a typed representation for the plan: the screenplay evidence, the characters, props and locations it needs, where each subject stands, and what the camera does. A value is written once at the level it belongs to (script, scene, shot or panel) and inherited below it. A compiler turns the result into both the prompt sent to the diffusion model and a 3D scene built in metres, and a camera solver places the camera so that the declared framing is the framing built. Where a declared value becomes geometry, PACE measures, field by field, how far the compiled camera and the staged render sit from the declaration, rather than asking a model to judge.   On the 11-scene Automatic Drive screenplay, every staged single-subject panel places its subject within 1.2% of frame width of its declared position; with two or three subjects one camera pose cannot satisfy every position, and the residual is reported rather than absorbed. On 204 external director-storyboard shots, delivered head height is 1.906 times the staged target from the director's words, 1.733 from the compiled prompt, and 0.955 with the greybox control; the condition that holds framing best draws the described action least. Declaring the pose on 30 shots raises the action drawn from 58.9% to 74.4% without moving the framing. Transitions, fitted motion and human review of the generated panels remain open. Code: https://github.com/StudioPiLabs/pace-core",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202609/19/2609.18466v1-spatially-adaptive-noise-injection",
+      "section": "quick",
+      "title_en": "Spatially Adaptive Noise Injection",
+      "authors": "Frantzeska Lavda, Maciej Falkiewicz, Van Khoa Nguyen, Alexandros Kalousis",
+      "date": "2026-09-16",
+      "pdf": "https://arxiv.org/pdf/2609.18466v1",
+      "score": "6.0",
+      "evidence": "面向扩散图像采样的空间自适应噪声注入",
+      "tldr": "扩散采样常由DDPM随机更新与DDIM确定性更新构成，二者仅由全局统一噪声方差控制，忽视了图像不同区域所需的随机校正差异。本文提出空间自适应噪声注入SANI，按像素动态决定是否注入噪声，并结合概率门控与推导的空间自适应方差。实验在不同采样步长下持续改善FID，优于DDPM/DDIM端点，且与方差学习基线相当。该工作凸显空间自适应性对扩散采样质量的重要性。",
+      "tags": "query:image-gen",
+      "abstract_en": "Diffusion samplers reverse a learned noising process using either stochastic (DDPM) or deterministic (DDIM) updates, which represent endpoints of a single family controlled by a scalar noise-injection variance that is applied identically at every spatial location. This uniform approach neglects the geometry of natural images: high-curvature regions such as edges and textures, where the denoiser is uncertain, benefit from stochastic correction, whereas smooth regions, where the score is precise, are degraded by injected noise. This work investigates whether each pixel requires stochastic correction at a given timestep and introduces Spatially Adaptive Noise Injection (SANI), a novel sampling framework that dynamically adjusts noise application on a per-pixel basis. SANI integrates a probabilistic gating mechanism with a derived spatially adaptive variance, ensuring that noise is injected precisely where needed to refine complex features while preserving well-formed structures. Experimental results and decoupling ablations demonstrate that SANI consistently improves Fréchet Inception Distance (FID) over the vanilla DDPM and DDIM endpoint samplers across diverse sampling timesteps, while remaining competitive with variance-learning baselines, highlighting the importance of spatial adaptivity in diffusion sampling.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
