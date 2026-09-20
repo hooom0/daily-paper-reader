@@ -1,0 +1,136 @@
+Title: Zero-shot video highlight detection based on text descriptions and synthetic images
+
+URL Source: https://arxiv.org/pdf/2609.14790v1
+
+Published Time: Tue, 15 Sep 2026 02:02:12 GMT
+
+Number of Pages: 5
+
+Markdown Content:
+## ZERO-SHOT VIDEO HIGHLIGHT DETECTION BASED ON TEXT DESCRIPTIONS AND SYNTHETIC IMAGES 
+
+## Michal Byra 1,2,∗ Alberto Presta 1 Grzegorz Stefanski 1 Krzysztof Arendt 11Samsung AI Center, Warsaw, Poland 
+
+> 2
+
+## Institute of Fundamental Technological Research, Polish Academy of Sciences, Warsaw, Poland 
+
+ABSTRACT 
+
+Detecting video highlights, the most informative or engag-ing moments in a video, is important for applications such as video summarization and content recommendation. We propose a zero-shot framework that combines CLIP, large language models (LLMs), and diffusion models. Given lightweight video metadata, such as a title or category, an LLM generates textual descriptions of likely highlight events. These descriptions are further converted into synthetic visual prototypes using a diffusion model. Textual and visual repre-sentations are matched to video frames using CLIP, enabling frame-level highlight detection without highlight annotations or dataset-specific training. Experiments on TVSum and SumMe demonstrate strong zero-shot performance, with par-ticularly favorable results on TVSum. The proposed approach provides an effective framework for metadata-conditioned zero-shot video highlight detection. 
+
+Index Terms — highlight detection, multimodal deep learning, video understanding, zero-shot method. 
+
+1. INTRODUCTION 
+
+Video highlight detection aims to identify the most engaging or informative segments of a video and supports applications such as summarization, recommendation, editing, and video search. Most existing methods rely on supervised learning with human-annotated summaries [1–3], while unsupervised approaches exploit criteria such as clustering, representative-ness, or diversity [4, 5]. More recently, zero-shot summariza-tion has been formulated using contrastive criteria computed from pretrained visual features [6]. However, such methods usually analyze relationships within the video and lack ex-ternal semantic knowledge about events likely constituting meaningful highlights. Multimodal approaches provide additional semantic con-text. Highlight-CLIP exploits pretrained CLIP representa-tions [7, 8], while cross-modal transformers [9], audio-visual models [10], diffusion-based retrieval [11], and multimodal LLMs [12] have also been explored for video understand-ing tasks. Hu et al. [13] use an M-LLM-based selector to 
+
+> *Corresponding author: m.byra@samsung.com
+
+identify query-relevant frames for video question answering rather than query-free human-perceived highlights. These ap-proaches generally require task-specific training, video-level queries, or analysis of video content during highlight scoring. In this work, we propose a zero-shot framework that pre-dicts video highlights from lightweight metadata, such as a title or category, using pretrained foundation models. An LLM generates text descriptors of likely highlight events, which are matched to video frames using CLIP to estimate importance scores. We further translate the descriptors into synthetic visual prototypes using a diffusion model and com-pare them with video frames in CLIP image-embedding space. The diffusion model can additionally be conditioned on a high-scoring frame to improve visual alignment with the target video. The proposed framework therefore imitates how a person may imagine likely highlights after receiving only a brief description of a video. It requires neither video-specific train-ing nor highlight annotations, while combining semantic text descriptions with synthetic visual examples. Experiments on TVSum and SumMe demonstrate strong zero-shot per-formance: LLM-generated descriptors substantially improve over direct metadata matching, while synthetic images pro-vide a complementary signal for highlight detection. 
+
+2. METHOD 
+
+Given video metadata, such as its title and category, our method uses an LLM to generate D text descriptors d =
+
+{d1, . . . , d D } describing likely highlights. These descriptors are compared with individual video frames using CLIP and are also translated into synthetic visual descriptors using a diffusion model. The resulting text- and image-based simi-larities are combined into a frame-level highlight score. The complete framework is illustrated in Fig. 1. 
+
+2.1. Text and Visual Highlight Scores 
+
+First, the LLM is prompted to output visually grounded de-scriptions that correspond to the best video moments: 
+
+Given the following video metadata, list short and de-tailed visual descriptions of frames corresponding to the best arXiv:2609.14790v1 [cs.CV] 13 Sep 2026 Fig. 1 : Zero-shot highlight detection using LLM-generated text descriptors and diffusion-generated visual descriptors. The highest-scoring frame under the text-based score can condition image generation, aligning the synthetic descriptors with the appearance of the target video. 
+
+moments. The descriptions should contain features recogniz-able by a CLIP-like model... 
+
+Let x ∈ RW ×H×c denote a video frame. Its text-based highlight score is computed as follows: 
+
+sT (x) = 1
+
+D
+
+> D
+
+X
+
+> i=1
+
+fT (di, x ), (1) where fT is the CLIP similarity computed using its text and image encoders. Frames strongly aligned with the generated descriptions receive high importance scores. We additionally translate each descriptor di into a syn-thetic image using a diffusion model H. The generation can be conditioned only on the text descriptor or additionally on a reference frame xs from the target video. The corresponding image-based score is as follows: 
+
+sI (x, x s) = 1
+
+D
+
+> D
+
+X
+
+> i=1
+
+fI (H(di, x s), x ) , (2) where fI is the similarity score between CLIP image embed-dings. Text only image generation is done by omitting xs.To obtain a video-specific reference, we select the frame with the highest text-based score: 
+
+xs = arg max  
+
+> x
+
+sT (x). (3) Conditioning the diffusion model on this frame transfers video-specific appearance, objects, and texture to the gener-ated images, potentially improving their alignment with the target content, see Fig. 2 for examples of synthetic images. Next, text and visual scores are combined descriptor-wise: 
+
+s(x) = 1
+
+D
+
+> D
+
+X
+
+> i=1
+
+fT (di, x ) fI (H(di, x s), x ) . (4) The multiplicative formulation promotes frames that are si-multaneously consistent with the semantic description and its synthetic visual realization. Frames are ranked according to 
+
+s(x) to obtain the predicted highlights. 
+
+Fig. 2 : Video frame conditioning may be used to generate synthetic images that improve video highlight detection. Dif-fusion models may produce images that are not fully aligned with the actual contents of the video. Here, image condition-ing brings extra context for the search for video highlights. 2.2. Evaluation Protocol 
+
+We evaluate the method on TVSum and SumMe [1, 19]. TVSum contains 50 videos from 10 categories, with 20 an-notators assigning importance scores from 1 to 5 to two-second clips. Since annotators were shown each video’s title and category, TVSum directly matches our native metadata-conditioned setting. SumMe contains 25 videos with 15–18 human summaries, each covering approximately 5–15% of the video, but does not provide video categories. We there-fore evaluate SumMe in an auxiliary bootstrapped-metadata setting, in which Qwen2.5-VL assigns each video a short generic category, such as “animals” or “sports” [20]. The inferred category is used only to generate highlight descrip-tors and is not involved in frame-level scoring. Therefore, TVSum represents the native metadata-conditioned setting, whereas SumMe evaluates whether coarse metadata can be automatically bootstrapped when it is unavailable. Following previous work [6, 21], we primarily report Kendall’s τ and Spearman’s ρ between predicted and human importance scores. Correlations are computed separately for each annotator and then averaged across annotators and videos. We additionally report top-5 mAP on TVSum for comparison with earlier studies. No highlight annotations or dataset-specific training are used for either dataset. Similarity scores are computed using CLIP ViT-L/14 [8]. GPT-o4 generates an average of 12.8 descriptors per video, while synthetic images are produced using SDXL with IP-Adapter [22, 23]. The image-conditioning scale is set to 0.7
+
+by default and varied from 0 to 1 in the ablation study. 
+
+3. EXPERIMENTS 3.1. Highlight Score Modeling 
+
+Results in Table 1 show a clear performance progression on TVSum. Direct CLIP matching using only the video title or category provides a relatively weak baseline. Expanding the metadata into LLM-generated text descriptors substantially improves the correlation scores, indicating that the LLM can infer actions and events likely to correspond to high-lights. Synthetic visual descriptors generated from these texts achieve comparable performance, showing that imagined vi-sual prototypes can also provide useful cues. Combining textual and visual descriptors yields further gains, suggesting 
+
+Table 1 : Correlation scores for the proposed methods. TVSum SumMe Kendall Spearman Kendall Spearman Video title 0.141 0.184 0.052 0.064 Video category 0.161 0.211 0.003 0.004 Text descriptors 0.203 0.266 0.088 0.108             
+
+> Image descriptors 0.205 0.267 0.056 0.069 Text & image descriptors 0.213 0.278 0.081 0.099 Text & image descriptors, style transfer 0.217 0.283 0.080 0.098
+
+that the two modalities provide complementary information. The best correlation results are obtained when both descriptor types are used together with style transfer, reaching Kendall and Spearman scores of 0.217 and 0.283, respectively. However, the correlation scores obtained on SumMe were lower than on TVSum. SumMe does not provide native cate-gory metadata, so the descriptors are generated from automat-ically inferred coarse categories rather than dataset-provided metadata. The best performance on SumMe was obtained us-ing the LLM-generated text descriptors. Moreover, SumMe titles are often too short and generic to provide useful visual cues, e.g., “Air Force One” or “Jumps.” Similar to the obser-vations reported in a previous study [6], the lower correlation scores may also be related to the annotation procedure used to develop SumMe, where human raters were asked to select between 5% and 15% of the video as highlights, resulting in relatively sparse annotations. This sparsity makes it more dif-ficult to compute meaningful correlation coefficients, as the majority of frames are labeled as non-important. Table 2 compares the performance of our best approach with that of selected methods from previous studies, follow-ing [6]. On the TVSum dataset, our zero-shot technique out-performed all previous methods, including both supervised and unsupervised approaches. The proposed method also ex-ceeded the leave-one-out human agreement baseline under the correlation metrics, indicating strong alignment with hu-man highlight annotations. On the SumMe dataset, while our method did not surpass the human baseline, it achieved bet-ter results than most previous methods, and performed on par with the zero-shot method proposed by [6]. 
+
+Fig. 3 : Effect of the image-conditioning strength on diffusion-generated synthetic images. Increasing the conditioning strength more strongly transfers visual characteristics of the selected video frame. Table 2 : Comparison between the zero-shot approach proposed in this work and the previous methods. TVSum SumMe Kendall Spearman Kendall Spearman Human baseline 0.176 0.202 0.180 0.186 Supervised VASNet [14] 0.169 0.222 0.022 0.026 dppLSTM [2] 0.030 0.038 -0.026 -0.031 Multi-ranker [15] 0.176 0.230 0.011 0.014 Unsupervised DR-DSN 60 [16] 0.017 0.023 0.043 0.050 DR-DSN 2000 0.152 0.198 -0.016 -0.022 SUM-FCN unsup [17] 0.011 0.014 0.008 0.010 SUM-GAN [18] -0.054 -0.070 -0.009 -0.012 Contrastive learning (alignment) [6] 0.100 0.132 0.094 0.115 Contrastive learning (alignment, uniformity, uniqueness) 0.161 0.212 0.036 0.044 Zero-shot Contrastive learning (alignment) 0.106 0.139 0.096 0.117 Contrastive learning (alignment, uniformity) 0.135 0.178 0.082 0.100 Proposed (best variant) 0.217 0.283 0.088 0.108 
+
+Table 3 : Top-5 mAP scores obtained for the investigated methods on the TVSum dataset. Each column represents a specific video category from the dataset, i.e. VT stands for changing Vehicle Tire .                                                                                                   
+
+> Method VT VU GA MS PK PR FM BK BT DS Mean Human baseline 0.603 0.548 0.597 0.532 0.500 0.524 0.478 0.511 0.602 0.479 0.537 Video title 0.437 0.514 0.166 0.609 0.426 0.441 0.583 0.381 0.431 0.417 0.440 Video category 0.630 0.366 0.676 0.489 0.436 0.398 0.559 0.526 0.570 0.220 0.487 Text descriptors 0.587 0.578 0.739 0.516 0.519 0.622 0.358 0.644 0.502 0.467 0.553 Synthetic images 0.674 0.525 0.644 0.583 0.474 0.526 0.287 0.628 0.739 0.485 0.557 Text descriptors & synthetic images 0.676 0.509 0.671 0.620 0.555 0.588 0.371 0.602 0.678 0.458 0.573 Image descriptors, style transfer 0.651 0.491 0.696 0.606 0.502 0.567 0.344 0.555 0.651 0.481 0.555 Text and image descriptors, style transfer 0.659 0.518 0.642 0.544 0.536 0.526 0.392 0.602 0.660 0.369 0.545
+
+3.2. Highlight Localization 
+
+To complement the correlation scores, we also computed the mean average precision (mAP) metric on TVSum. Results obtained for the investigated methods are presented in Ta-ble 3. Human baseline scores were determined using leave-one-out cross-validation. Here, we can observe that the pro-posed methods achieved performance on par or slightly better compared to the human baseline. While a high mAP value may be influenced by the segment extraction procedure and could be large even for random scores, our results further em-phasize the usefulness of the proposed approach. 
+
+3.3. Ablation Study 
+
+Results of the diffusion model ablation are presented in Ta-ble 4. Increasing the image-conditioning strength improves 
+
+Table 4 : Diffusion strength ablation. TVSum SumMe Conditioning strength Kendall Spearman Kendall Spearman 0 0.205 0.267 0.056 0.069 0.3 0.212 0.276 0.057 0.070 0.5 0.213 0.278 0.052 0.063 0.7 0.214 0.278 0.050 0.062 1 0.214 0.278 0.047 0.057 correlation scores on TVSum, while no improvement is ob-served on SumMe. This suggests that video-specific con-ditioning can improve the usefulness of synthetic visual de-scriptors, depending on the dataset. The effect on generated images is illustrated in Fig. 3. 
+
+4. CONCLUSIONS 
+
+n this work, we introduced a novel zero-shot framework for video highlight detection that leverages video metadata and foundation models to estimate frame-wise importance scores. On TVSum, our approach achieved state-of-the-art correla-tion performance, outperforming previous supervised and un-supervised methods. To the best of our knowledge, this is the first study to use synthetic images as imagined visualizations of potential video highlights. While the method achieved strong results, it relies on metadata such as video titles and categories, which may not always be available. Future work may therefore incorpo-rate video tagging or scene/object recognition to infer coarse video content automatically. The framework can also ac-commodate user-specific preferences through prompting and benefit from more specialized foundation models. 5. REFERENCES 
+
+[1] Yale Song, Jordi Vallmitjana, Amanda Stent, and Alejandro Jaimes, “Tvsum: Summarizing web videos using titles,” in 
+
+Proceedings of the IEEE conference on computer vision and pattern recognition , 2015, pp. 5179–5187. [2] Ke Zhang, Wei-Lun Chao, Fei Sha, and Kristen Grauman, “Video summarization with long short-term memory,” in Com-puter Vision–ECCV 2016: 14th European Conference, Ams-terdam, The Netherlands, October 11–14, 2016, Proceedings, Part VII 14 . Springer, 2016, pp. 766–782. [3] Sijia Cai, Wangmeng Zuo, Larry S Davis, and Lei Zhang, “Weakly-supervised video summarization using variational encoder-decoder and web prior,” in Proceedings of the Euro-pean conference on computer vision (ECCV) , 2018, pp. 184– 200. [4] Hao Tang, Lei Ding, Songsong Wu, Bin Ren, Nicu Sebe, and Paolo Rota, “Deep unsupervised key frame extraction for effi-cient video classification,” ACM Transactions on Multimedia Computing, Communications and Applications , vol. 19, no. 3, pp. 1–17, 2023. [5] Lezi Wang, Dong Liu, Rohit Puri, and Dimitris N Metaxas, “Learning trailer moments in full-length movies with co-contrastive attention,” in Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XVIII 16 . Springer, 2020, pp. 300–316. [6] Zongshang Pang, Yuta Nakashima, Mayu Otani, and Hajime Nagahara, “Contrastive losses are natural criteria for unsu-pervised video summarization,” in Proceedings of the ieee/cvf winter conference on applications of computer vision , 2023, pp. 2010–2019. [7] Donghoon Han, Seunghyeon Seo, Eunhwan Park, Seong-Uk Nam, and Nojun Kwak, “Unleash the potential of clip for video highlight detection,” in Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition (CVPR) Workshops , June 2024, pp. 8275–8279. [8] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al., “Learning trans-ferable visual models from natural language supervision,” in 
+
+International conference on machine learning . PmLR, 2021, pp. 8748–8763. [9] Yifang Xu, Yunzhuo Sun, Benxiang Zhai, Youyao Jia, and Sidan Du, “Mh-detr: Video moment and highlight detection with cross-modal transformer,” in 2024 International Joint Conference on Neural Networks (IJCNN) , 2024, pp. 1–8. [10] Qinghao Ye, Xiyue Shen, Yuan Gao, Zirui Wang, Qi Bi, Ping Li, and Guang Yang, “Temporal cue guided video highlight de-tection with low-rank audio-visual fusion,” in Proceedings of the IEEE/CVF International Conference on Computer Vision ,2021, pp. 7950–7959. [11] Henghao Zhao, Kevin Qinghong Lin, Rui Yan, and Zechao Li, “Diffusionvmr: Diffusion model for joint video moment re-trieval and highlight detection,” IEEE Transactions on Neural Networks and Learning Systems , 2024. [12] Min Jung Lee, Dayoung Gong, and Minsu Cho, “Video sum-marization with large language models,” in Proceedings of the Computer Vision and Pattern Recognition Conference , 2025, pp. 18981–18991. [13] Kai Hu, Feng Gao, Xiaohan Nie, Peng Zhou, Son Tran, Tal Neiman, Lingyun Wang, Mubarak Shah, Raffay Hamid, Bing Yin, and Trishul Chilimbi, “M-llm based video frame selec-tion for efficient video understanding,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recog-nition (CVPR) , June 2025, pp. 13702–13712. [14] Jiri Fajtl, Hajar Sadeghi Sokeh, Vasileios Argyriou, Dorothy Monekosso, and Paolo Remagnino, “Summarizing videos with attention,” in Asian conference on computer vision . Springer, 2018, pp. 39–54. [15] Yassir Saquil, Da Chen, Yuan He, Chuan Li, and Yong-Liang Yang, “Multiple pairwise ranking networks for personalized video summarization,” in Proceedings of the IEEE/CVF In-ternational Conference on Computer Vision , 2021, pp. 1718– 1727. [16] Kaiyang Zhou, Yu Qiao, and Tao Xiang, “Deep reinforcement learning for unsupervised video summarization with diversity-representativeness reward,” in Proceedings of the AAAI con-ference on artificial intelligence , 2018, vol. 32. [17] Mrigank Rochan, Linwei Ye, and Yang Wang, “Video sum-marization using fully convolutional sequence networks,” in 
+
+Proceedings of the European conference on computer vision (ECCV) , 2018, pp. 347–363. [18] Evlampios Apostolidis, Eleni Adamantidou, Alexandros I Metsai, Vasileios Mezaris, and Ioannis Patras, “Ac-sum-gan: Connecting actor-critic and generative adversarial networks for unsupervised video summarization,” IEEE Transactions on Circuits and Systems for Video Technology , vol. 31, no. 8, pp. 3278–3292, 2020. [19] Michael Gygli, Helmut Grabner, Hayko Riemenschneider, and Luc Van Gool, “Creating summaries from user videos,” in 
+
+Computer Vision–ECCV 2014: 13th European Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part VII 13 . Springer, 2014, pp. 505–520. [20] Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, Sibo Song, Kai Dang, Peng Wang, Shijie Wang, Jun Tang, et al., “Qwen2. 5-vl technical report,” arXiv preprint arXiv:2502.13923 , 2025. [21] Mayu Otani, Yuta Nakashima, Esa Rahtu, and Janne Heikkila, “Rethinking the evaluation of video summaries,” in Proceed-ings of the IEEE/CVF conference on computer vision and pat-tern recognition , 2019, pp. 7596–7604. [22] Dustin Podell, Zion English, Kyle Lacey, Andreas Blattmann, Tim Dockhorn, Jonas M¨ uller, Joe Penna, and Robin Rombach, “Sdxl: Improving latent diffusion models for high-resolution image synthesis,” in The Twelfth International Conference on Learning Representations , 2023. [23] Hu Ye, Jun Zhang, Sibo Liu, Xiao Han, and Wei Yang, “Ip-adapter: Text compatible image prompt adapter for text-to-image diffusion models,” arXiv preprint arXiv:2308.06721 ,2023.
