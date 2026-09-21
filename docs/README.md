@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-20</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-21</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 6 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 5 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>6</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-20 21:14:19 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-21 22:33:52 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,8 +69,8 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共生成 6 篇推荐（精读 0 篇，速读 6 篇）</p>
-<p>速读：《Walking the Score Manifold: Continuous-time Generative Dynamics on Learned Data Manifolds》（7.0/10）, 《Zero-shot video highlight detection based on text descriptions and synthetic images》（6.0/10）, 《Backward SDEs-based Diffusion for Physics-Constrained Generation》（6.0/10）</p>
+<p>今日共生成 5 篇推荐（精读 0 篇，速读 5 篇）</p>
+<p>速读：《Physically Based Rendering in the Latent Space》（7.0/10）, 《SafeStyle: Calibrated Style Residual Injection for Controllable Style-Leakage Trade-off in Diffusion Stylization》（7.0/10）, 《The Weight Is Over - Interactive Diffusion on Consumer GPUs》（7.0/10）</p>
 <p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
   </div>
 </section>
@@ -93,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Walking the Score Manifold: Continuous-time Generative Dynamics on Learned Data Manifolds">Walking the Score Manifold: Continuous-time Generative Dynamics on Learned Data Manifolds</span></li><li><span class="dpr-home-dashboard-paper-title" title="Zero-shot video highlight detection based on text descriptions and synthetic images">Zero-shot video highlight detection based on text descriptions and synthetic images</span></li><li><span class="dpr-home-dashboard-paper-title" title="Backward SDEs-based Diffusion for Physics-Constrained Generation">Backward SDEs-based Diffusion for Physics-Constrained Generation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Physically Based Rendering in the Latent Space">Physically Based Rendering in the Latent Space</span></li><li><span class="dpr-home-dashboard-paper-title" title="SafeStyle: Calibrated Style Residual Injection for Controllable Style-Leakage Trade-off in Diffusion Stylization">SafeStyle: Calibrated Style Residual Injection for Controllable Style-Leakage Trade-off in Diffusion Stylization</span></li><li><span class="dpr-home-dashboard-paper-title" title="The Weight Is Over - Interactive Diffusion on Consumer GPUs">The Weight Is Over - Interactive Diffusion on Consumer GPUs</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>6</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>5</strong></span></div>
 </section>
 </div>
 

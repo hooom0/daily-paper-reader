@@ -1,0 +1,212 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-21T22:33:21.450153+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 5,
+    "quick_skim_target": 11,
+    "quick_selected": 5
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.21054v1",
+      "source": "arxiv",
+      "title": "Physically Based Rendering in the Latent Space",
+      "abstract": "Image diffusion models have shown impressive image generation capabilities but are often hard to control, in contrast to classical computer graphics pipelines such as physically based rendering. However, we observe that there is a bridge between light transport phenomena and the distribution of latent space values produced by such models. Thus, we introduce physically based rendering in the feature space learned by the variational autoencoders in generative models, enabling light transport simulation in the latent space. This allows us to leverage physically based rendering techniques to output latent maps for physically guided content generation. We propose modifications to the rendering equation, which, when paired with a differentiable renderer, can yield an optimal set of scene parameters that require only minimal refinement to accurately render into the pretrained latent space. We train our method on a single rendered image, and then demonstrate the generalization of the method to scene geometry changes, lighting changes, and camera view changes.",
+      "authors": [
+        "Vuk Radovanovic",
+        "Vishesh Gupta",
+        "Adrien Gruson",
+        "Binh-Son Hua"
+      ],
+      "primary_category": "cs.GR",
+      "categories": [
+        "cs.GR",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-09-17T20:14:41+00:00",
+      "link": "https://arxiv.org/pdf/2609.21054v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "physically guided controllable generation in the latent space of image diffusion models",
+      "llm_evidence_cn": "在图像扩散模型潜空间实现物理引导的可控生成",
+      "llm_evidence": "在图像扩散模型潜空间实现物理引导的可控生成",
+      "canonical_evidence": "在图像扩散模型潜空间实现物理引导的可控生成",
+      "llm_tldr_en": "Image diffusion models are hard to control; the authors bridge light transport and latent distributions by implementing physically based rendering in the VAE latent space with a modified rendering equation and differentiable renderer, yielding physically guided latent maps for controllable generation.",
+      "llm_tldr_cn": "图像扩散模型虽生成能力出众，却难以像物理渲染那样精确控制光照与几何。作者发现光传输现象与扩散模型潜空间数值分布之间存在联系，于是在变分自编码器学到的特征空间内实现物理渲染，修改渲染方程并配合可微渲染器输出潜图。该方案实现了潜空间中的光传输模拟，可为内容生成提供物理引导的潜映射接口，拓展了扩散模型的可控性与可解释性。",
+      "llm_tldr": "图像扩散模型虽生成能力出众，却难以像物理渲染那样精确控制光照与几何。作者发现光传输现象与扩散模型潜空间数值分布之间存在联系，于是在变分自编码器学到的特征空间内实现物理渲染，修改渲染方程并配合可微渲染器输出潜图。该方案实现了潜空间中的光传输模拟，可为内容生成提供物理引导的潜映射接口，拓展了扩散模型的可控性与可解释性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.16409v1",
+      "source": "arxiv",
+      "title": "Reasoning with Image Generation",
+      "abstract": "Chain-of-thought reasoning has revolutionized natural language processing by enabling large language models (LLMs) to decompose problems into intermediate steps before answering. Yet confining reasoning to the textual domain presents limitations for tasks requiring direct manipulation of visual representations. Recent efforts augment multimodal LLMs with external visual expert tools such as depth estimation or object detection modules, but these remain fundamentally limited by their reliance on narrow, rigid operations that cannot flexibly generate or transform visual content. We propose ReImaGin, which leverages image generation models as a flexible visual reasoning mechanism for multimodal LLMs: unlike fixed-function tools, they accept natural language commands and can perform open-ended visual operations, like removing an occlusion or generating a floorplan from multiple disjoint views of a room. Across six diverse visual reasoning tasks including multi-view spatial reasoning and collision prediction, ReImaGin consistently outperforms both text-only reasoning and specialist vision-tool baselines, with gains of up to 25\\%, demonstrating the advantage of flexible, generative visual reasoning.",
+      "authors": [
+        "Nishad Singhi",
+        "Hector Garcia Rodriguez",
+        "Aditya Arora",
+        "Marcus Rohrbach",
+        "Anna Rohrbach"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-14T22:29:03+00:00",
+      "link": "https://arxiv.org/pdf/2609.16409v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "leverages image generation models as a flexible visual reasoning mechanism",
+      "llm_evidence_cn": "将图像生成模型用作灵活的视觉推理机制",
+      "llm_evidence": "将图像生成模型用作灵活的视觉推理机制",
+      "canonical_evidence": "将图像生成模型用作灵活的视觉推理机制",
+      "llm_tldr_en": "ReImaGin leverages image generation models as a flexible visual reasoning mechanism for multimodal LLMs, replacing narrow fixed-function tools like depth estimation or detection.",
+      "llm_tldr_cn": "将推理局限于文本域限制了需要直接操作视觉表示的任务，而现有为多模态大模型外挂深度估计、目标检测等视觉专家工具的做法，受限于狭窄固定的操作，无法灵活生成或变换视觉内容。本文提出 ReImaGin，将图像生成模型作为多模态大模型的灵活视觉推理机制，因其可接受自然语言指令并进行开放式生成与变换。该工作拓展了多模态推理的视觉操作空间。",
+      "llm_tldr": "将推理局限于文本域限制了需要直接操作视觉表示的任务，而现有为多模态大模型外挂深度估计、目标检测等视觉专家工具的做法，受限于狭窄固定的操作，无法灵活生成或变换视觉内容。本文提出 ReImaGin，将图像生成模型作为多模态大模型的灵活视觉推理机制，因其可接受自然语言指令并进行开放式生成与变换。该工作拓展了多模态推理的视觉操作空间。",
+      "llm_tags": [
+        "query:image-gen:composite"
+      ],
+      "matched_query_tag": "query:image-gen:composite",
+      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
+      "matched_requirement_id": "req-composite-image-gen",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.21242v1",
+      "source": "arxiv",
+      "title": "SafeStyle: Calibrated Style Residual Injection for Controllable Style-Leakage Trade-off in Diffusion Stylization",
+      "abstract": "Reference-guided diffusion stylization aims to transfer visual style from a reference image while preserving the semantics specified by a text prompt. However, image conditioning often entangles transferable style cues with reference-specific content, leading to an inherent trade-off: stronger conditioning improves style fidelity but increases content leakage, whereas aggressive suppression reduces leakage at the cost of style expression. This challenge is further complicated by the distinct spatial organization of texture- and geometry-dominant styles. To address these issues, we propose SafeStyle, a training-free framework for calibrated style residual injection in frozen diffusion models. SafeStyle first estimates style-supported and content-associated subspaces from compact calibration sets, preserving their informative overlap while suppressing useless content variations. It then transports the purified style evidence over adaptive spatial granularity and constrains its effective influence through an explicit residual-norm budget. Experiments across texture- and geometry-dominant styles show that SafeStyle achieves a DINO style similarity of 0.432 while maintaining competitive text alignment. On a semantically disjoint leakage-stress benchmark, it further achieves a DINO style similarity of 0.474 with only 0.8\\% semantic leakage, demonstrating an effective balance between style fidelity and reference-content suppression.",
+      "authors": [
+        "Zhangping Yang",
+        "Min Li",
+        "Song Yan",
+        "Rong Gao",
+        "Xinliang Bi",
+        "Guanye Xiong",
+        "Yujie He"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-18T02:34:18+00:00",
+      "link": "https://arxiv.org/pdf/2609.21242v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "controllable diffusion stylization balancing style fidelity and content leakage",
+      "llm_evidence_cn": "可控扩散风格化，平衡风格保真与内容泄漏",
+      "llm_evidence": "可控扩散风格化，平衡风格保真与内容泄漏",
+      "canonical_evidence": "可控扩散风格化，平衡风格保真与内容泄漏",
+      "llm_tldr_en": "Reference-guided diffusion stylization entangles transferable style with reference-specific content, forcing a trade-off between fidelity and leakage. SafeStyle is a training-free framework for calibrated style residual injection in frozen diffusion models.",
+      "llm_tldr_cn": "参考引导的扩散风格化需在迁移视觉风格的同时保留文本提示指定的语义，但图像条件常将可迁移风格与参考特有内容纠缠，造成风格保真与内容泄漏的权衡。作者提出无训练框架SafeStyle，在冻结扩散模型中进行校准的风格残差注入，并兼顾纹理主导与几何主导风格的不同空间组织。该方案为可控风格化生成提供了新思路。",
+      "llm_tldr": "参考引导的扩散风格化需在迁移视觉风格的同时保留文本提示指定的语义，但图像条件常将可迁移风格与参考特有内容纠缠，造成风格保真与内容泄漏的权衡。作者提出无训练框架SafeStyle，在冻结扩散模型中进行校准的风格残差注入，并兼顾纹理主导与几何主导风格的不同空间组织。该方案为可控风格化生成提供了新思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.16594v1",
+      "source": "arxiv",
+      "title": "FRPSS: Feature Rearrangement in Pre-Shape Space for Single-Image Generation",
+      "abstract": "Generative models trained on a single image often struggle to balance global structural integrity and local diversity. Existing single-image generation methods commonly rely on random noise to drive the generation process and lack explicit global structural constraints, making the generated results prone to spatial structural misalignment when structural variations occur. To address the issue, Feature Rearrangement in Pre-Shape Space for Single-Image Generation (FRPSS) is proposed in this paper. The core of FRPSS is the Manifold Structural Rearrangement with Feature Augmentation on Geodesic Surface (MSR-FAGS) module. MSR-FAGS replaces the randomly initialized features of the low-scale generator with rearranged Pre-Shape features and uses the features to guide image generation at subsequent scales, thereby reducing the risk of structural misalignment. To support downstream tasks such as stylization, a Scale-adaptive Sliding-window Patch Extraction (SSPE) strategy is further designed, and a directional Contrastive Language-Image Pre-training supervision module with SSPE (CLIP-SSPE) is constructed. Qualitative and quantitative experiments demonstrate that FRPSS achieves the best Single Image Fréchet Inception Distance (SIFID) scores on all three datasets while maintaining competitive Learned Perceptual Image Patch Similarity (LPIPS). Further qualitative experiments verify the effectiveness of FRPSS across multiple downstream tasks with the CLIP-SSPE module.",
+      "authors": [
+        "Yuexing Han",
+        "Haoxuan Zhang",
+        "Bing Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-15T03:38:28+00:00",
+      "link": "https://arxiv.org/pdf/2609.16594v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "single-image generation with structural feature rearrangement",
+      "llm_evidence_cn": "基于结构特征重排的单图像生成",
+      "llm_evidence": "基于结构特征重排的单图像生成",
+      "canonical_evidence": "基于结构特征重排的单图像生成",
+      "llm_tldr_en": "Single-image generation models struggle to balance global structure and local diversity, often relying on random noise without global constraints. FRPSS replaces randomly initialized low-scale generator features with rearranged pre-shape features to reduce spatial misalignment.",
+      "llm_tldr_cn": "仅用单张图像训练的生成模型常难以兼顾全局结构完整性与局部多样性，现有方法多依赖随机噪声驱动生成且缺乏显式全局结构约束，在结构变化时易出现空间错位。作者提出FRPSS，其核心MSR-FAGS模块用重排后的预形状特征替换低尺度生成器的随机初始化特征，并借助测地曲面上的特征增强来引导生成。实验表明该方法在保持全局结构完整性的同时提升了局部多样性。该工作为单图像生成提供了结构可控的特征重排方案。",
+      "llm_tldr": "仅用单张图像训练的生成模型常难以兼顾全局结构完整性与局部多样性，现有方法多依赖随机噪声驱动生成且缺乏显式全局结构约束，在结构变化时易出现空间错位。作者提出FRPSS，其核心MSR-FAGS模块用重排后的预形状特征替换低尺度生成器的随机初始化特征，并借助测地曲面上的特征增强来引导生成。实验表明该方法在保持全局结构完整性的同时提升了局部多样性。该工作为单图像生成提供了结构可控的特征重排方案。",
+      "llm_tags": [
+        "query:image-gen:composite"
+      ],
+      "matched_query_tag": "query:image-gen:composite",
+      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
+      "matched_requirement_id": "req-composite-image-gen",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.21849v1",
+      "source": "arxiv",
+      "title": "The Weight Is Over - Interactive Diffusion on Consumer GPUs",
+      "abstract": "On-device inference is booming, but the momentum is almost all in language models. Diffusion pipelines are memory hungry, latency-sensitive, and require orchestrating an embedder, a transformer, a decoder, and often further postprocessing that is not as standardized as LLM inference loops are. We navigate the trade-off between performance, quality, and model footprint to reach as many client devices in the wild as possible. We make three contributions: an embedding translator that maps a small text encoder into a large encoder space to cut weight and latency; a reproducible sweep recipe for navigating the speed/quality/memory triangle in diffusion pipelines; and an interactive on-device image generation editor achieving sub-second TTFI on recent GPUs.",
+      "authors": [
+        "Frieder Ganz",
+        "Maximilian Müller"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CV",
+        "cs.PF"
+      ],
+      "published": "2026-09-18T14:42:55+00:00",
+      "link": "https://arxiv.org/pdf/2609.21849v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Diffusion pipelines for on-device interactive image generation with text encoder",
+      "llm_evidence_cn": "面向端侧交互式图像生成的扩散管线与文本编码器",
+      "llm_evidence": "面向端侧交互式图像生成的扩散管线与文本编码器",
+      "canonical_evidence": "面向端侧交互式图像生成的扩散管线与文本编码器",
+      "llm_tldr_en": "Proposes an embedding translator, a reproducible speed-quality-memory sweep recipe, and an interactive on-device diffusion image editor achieving sub-second TTFI on consumer GPUs.",
+      "llm_tldr_cn": "端侧扩散推理面临内存占用高、延迟敏感且流程组件繁杂的问题，难以在大量消费级设备上落地。本文提出嵌入翻译器，将小型文本编码器映射到大型编码器空间以降低权重与延迟，并给出速度、质量、内存三角权衡的可复现扫描配方。最终构建交互式端侧图像生成编辑器，在近期GPU上实现亚秒级首图生成时间，为扩散管线的设备端部署提供了实用方案。",
+      "llm_tldr": "端侧扩散推理面临内存占用高、延迟敏感且流程组件繁杂的问题，难以在大量消费级设备上落地。本文提出嵌入翻译器，将小型文本编码器映射到大型编码器空间以降低权重与延迟，并给出速度、质量、内存三角权衡的可复现扫描配方。最终构建交互式端侧图像生成编辑器，在近期GPU上实现亚秒级首图生成时间，为扩散管线的设备端部署提供了实用方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}
