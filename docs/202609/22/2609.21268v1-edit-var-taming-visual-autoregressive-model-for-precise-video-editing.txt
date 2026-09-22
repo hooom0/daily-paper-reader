@@ -1,0 +1,1895 @@
+Edit-VAR: Taming Visual Autoregressive Model for Precise Video Editing
+Chongbo Zhao1,∗
+Jiangming Wang1,∗
+Xilai Wang2
+Xinyu Wang3
+Jingyi Tang4
+Chunjie Hao5
+Pengjie Song6
+Yue Ma3,†
+1Sun Yat-sen University
+2South China University of Technology
+3Tsinghua University
+4Shandong University
+5Nankai University
+6Hunan University
+∗Equal contribution.
+†Corresponding author.
+“A lone gladiator in bronze armor and helmet”
+“Taut white canvas”      “Billowing crimson red silk”
+“A dry dusty savanna”      “Flooded green rice paddies”
+“A tricolor beagle”      “A fluffy orange Shiba Inu”
+Input
+Output
+Input
+Output
+Input
+Output
+Figure 1. Showcase of Edit-VAR. Our method supports attribute editing (top left), background replacement (top right), object addition
+(bottom left), and object replacement (bottom right), while preserving unedited content and temporal coherence.
+Abstract
+Text-guided video editing modifies target content while pre-
+serving the appearance and temporal coherence of unedited
+regions. Training-based approaches provide strong control
+but demand substantial data and computation. Training-
+free methods fall into inversion-free and inversion-based
+paradigms.
+Inversion-free approaches avoid trajectory
+recovery, but their source-preserving guidance can limit
+editing strength and leave semantic changes incomplete.
+Inversion-based approaches recover a latent trajectory be-
+fore regeneration, where approximation errors can accu-
+mulate and cause source-content drift and temporal incon-
+sistency.
+We introduce Edit-VAR, the first training-free
+and inversion-free framework for text-guided video editing
+with a pretrained visual autoregressive video model. Edit-
+VAR directly encodes the source video into multi-scale dis-
+crete tokens and performs probability-guided conditional
+token replacement for source preservation.
+Attention-
+guided token-wise and scale-aware modulation selectively
+arXiv:2609.21268v1  [cs.CV]  18 Sep 2026
+
+
+relaxes source constraints over edit-relevant positions and
+generation stages, while Scale-Decoupled Generation, im-
+plemented as late-scale constraint release, regenerates
+motion-consistent details and reduces texture fragmenta-
+tion. Residual-guided token pruning further exploits redun-
+dancy at the final two high-resolution scales to reduce in-
+ference cost. Extensive experiments and a blind user study
+demonstrate that Edit-VAR outperforms existing training-
+free video editing methods overall in editing fidelity, source
+preservation, temporal coherence, and inference efficiency.
+Project page: https://chongbozhao3-coder.github.io/Edit-
+VAR/.
+Code: https://github.com/chongbozhao3-coder/
+Edit-VAR.
+1. Introduction
+Text-guided video editing modifies an existing video ac-
+cording to natural-language instructions, providing a flex-
+ible tool for content creation and post-production. Its key
+challenge is to achieve the intended semantic change while
+preserving unrelated source content and temporal coher-
+ence.
+Training-based approaches learn explicit editing behav-
+iors from large-scale video data and generally provide
+strong instruction following and flexible control [12, 29,
+48]. However, collecting such data and training dedicated
+video models require substantial computational resources.
+Training-free methods instead reuse pretrained genera-
+tive models and can be broadly divided into inversion-
+free and inversion-based paradigms.
+Inversion-free ap-
+proaches directly construct source-to-target transformations
+without recovering a noise trajectory [15, 16], but their
+source-preserving transport or guidance can restrict seman-
+tic deviation from the input, resulting in incomplete edits.
+Inversion-based methods first map the source video onto
+a latent trajectory and then regenerate it under the target
+prompt [3, 6, 14, 30]; Approximation errors introduced dur-
+ing inversion and regeneration can propagate through the
+spatiotemporal representation, causing source-content drift
+and temporal inconsistency. These limitations reveal a per-
+sistent trade-off between editability and source fidelity in
+existing training-free video editing methods.
+Figure 2 motivates formulating video editing with a vi-
+sual autoregressive (VAR) model [8, 20, 41]. Its tokenizer
+directly encodes the source video into a coarse-to-fine hier-
+archy of discrete tokens, providing an explicit source refer-
+ence without iterative trajectory inversion. Editing can then
+be performed by selectively preserving or replacing these
+encoded tokens, avoiding inversion-induced reconstruction
+drift while retaining direct control over source fidelity.
+Image-level AR editing [45] suggests probability-guided
+token replacement as a natural mechanism for training-
+free editing. However, directly extending this strategy to
+Figure 2. Motivation. Comparison between continuous inversion-
+based editing and our discrete VAR formulation.
+Inversion
+and subsequent regeneration can introduce source-content drift,
+whereas direct VAR encoding provides multi-scale discrete source
+tokens for reconstruction and conditional replacement without it-
+erative trajectory inversion.
+video introduces a different preservation problem. Video
+tokens are temporally coupled and jointly encode appear-
+ance, pose, motion, and edit regions that may evolve across
+frames. A uniform preservation rule can therefore over-
+constrain edit-relevant tokens, leaving semantic changes
+incomplete, or under-constrain non-edited tokens, causing
+background drift and temporal inconsistency. This suggests
+that VAR-based video editing requires preservation control
+that is both token-wise and scale-aware.
+To bridge this gap, we introduce Edit-VAR, which refor-
+mulates probability-guided token replacement as attention-
+guided, token- and scale-adaptive preservation control over
+the spatiotemporal generation hierarchy, enabling coherent
+edits across frames while retaining unrelated source con-
+tent. Edit-VAR uses source-to-edit probability changes to
+assess token compatibility and perform conditional token
+replacement. Cross-attention maps and a scale-aware en-
+velope instantiate this control by modulating preservation
+strength across token positions and generation stages.
+A further challenge arises at later high-resolution scales,
+where source tokens encode fine textures tightly coupled
+to the original motion and pose. Forcing these tokens into
+the edited content can cause texture fragmentation across
+frames. We therefore introduce Scale-Decoupled Genera-
+tion, which releases source constraints beyond a designated
+scale and regenerates motion-consistent target details. Fi-
+nally, because the highest-resolution scales dominate in-
+ference cost while many tokens require little refinement,
+residual-guided token pruning concentrates computation on
+active positions to improve inference efficiency.
+Our contributions are as follows:
+• We introduce Edit-VAR, the first training-free, inversion-
+
+
+free framework for text-guided editing with a pretrained
+VAR video model. It reformulates editing as conditional
+replacement of directly encoded source tokens, avoiding
+iterative trajectory inversion.
+• We develop hierarchical adaptive preservation, combin-
+ing probability-guided replacement with attention-guided
+token- and scale-aware control for localized and tem-
+porally coherent editing.
+Scale-Decoupled Generation
+regenerates motion-consistent details, while residual-
+guided token pruning removes redundant late-scale com-
+putation.
+• Experiments across four editing tasks and a blind user
+study show that Edit-VAR achieves the best target align-
+ment and non-edit preservation among the compared
+methods, competitive video quality, and a 2.04× end-to-
+end speedup.
+2. Related Work
+Image and Video Editing. Existing image and video edit-
+ing methods span training-based, source-specific optimiza-
+tion, and training-free paradigms. Training-based methods
+fine-tune pretrained generative models or train dedicated
+editing networks on paired data [12, 13, 22–25, 28, 29, 48],
+but require substantial training data and task-specific opti-
+mization. Other approaches adapt pretrained generators to
+each input through source-specific tuning or inversion [4,
+21, 43]. Training-free methods avoid dataset-level retrain-
+ing and control editing through attention manipulation or
+feature reuse [1, 3, 6, 9, 19, 26, 27, 30, 42, 44, 47, 51]. Most
+existing approaches recover a source trajectory through in-
+version before regeneration, where numerical approxima-
+tion may introduce unintended changes in non-target re-
+gions. Recent inversion-free methods bypass trajectory re-
+covery [15, 16, 32–35, 51], but still face a preservation–
+editability trade-off: strong source constraints may suppress
+the requested edit, whereas weaker constraints can degrade
+source fidelity. These limitations motivate inversion-free
+editing with explicit source-preservation control.
+Visual AutoRegressive Generation and Editing.
+Vi-
+sual autoregressive models represent images as discrete to-
+ken sequences and generate them through next-token or
+next-scale prediction.
+The visual autoregressive (VAR)
+paradigm, pioneered by VAR [41] and extended by In-
+finity [8], redefines generation as a coarse-to-fine multi-
+scale process. InfinityStar [20] further unifies this frame-
+work across the spatiotemporal dimension. The discrete to-
+ken formulation naturally supports direct token replacement
+without reconstructing a continuous generative trajectory.
+With the maturation of AR generation models, leveraging
+them for image editing has become a natural research di-
+rection. Training-based methods such as ControlVAR [18]
+incorporate conditional controls but depend on paired train-
+ing data. AREdit [45] enables training-free image editing
+by caching source-token probabilities and deriving adaptive
+token-replacement decisions, while ISLock [10] preserves
+source structure through anchor-token matching.
+How-
+ever, these image-oriented formulations do not explicitly
+account for the spatially varying edit regions and scale-
+dependent source constraints encountered in video genera-
+tion. Directly applying such preservation strategies to video
+may either insufficiently localize the intended edit or over-
+constrain fine-scale details that are coupled with source
+motion and pose. Our method addresses these limitations
+through attention-guided token-wise modulation and scale-
+decoupled generation. Visual AR acceleration reduces in-
+ference redundancy through token or layer pruning and
+cache compression [2, 5, 7, 31, 38–40, 49]. Our method
+instead uses residual norms to select tokens for pruning at
+the final high-resolution scales.
+3. Method
+Our method edits a source video directly in the discrete to-
+ken space of a visual autoregressive model without any ad-
+ditional training.
+3.1. Preliminary
+Our method builds on InfinityStar [20], a visual autoregres-
+sive video model that generates videos as a sequence of S
+discrete token blocks x = {x(s)}S
+s=1 from coarse to fine:
+p(x | c) =
+S
+Y
+s=1
+p(x(s) | x(<s), c),
+(1)
+where c is a text prompt and all tokens within each scale
+are predicted in parallel. Early scales encode global struc-
+ture while later high-resolution scales refine fine details.
+The model uses a spacetime pyramid with an image tower
+(scales 1 to Simg, single frame) followed by a video tower
+(scales Simg +1 to S, multi-frame), each with increasing
+spatial resolution.
+Two properties make this architecture particularly suited
+for editing. First, the tokenizer’s encoder directly maps any
+video to deterministic source token indices at every scale—
+no iterative trajectory inversion is needed to recover the
+source representation. Second, at each generation step to-
+kens are selected by arg max over a probability distribution;
+our method intervenes at this selection step to steer preser-
+vation or replacement.
+3.2. Probability-Guided Video Editing
+Given a source video v, a source prompt csrc, and an
+edit prompt cedit, our method proceeds in two forward
+passes. Phase 1 encodes v into encoded source tokens and
+caches the model’s source-conditioned probabilities and
+
+
+Preserve                 Editable
+Phase 1: Source 
+Reference Construction
+Source video
+“A zebra is running 
+across the savanna”
+Source Prompt
+Object Word
+“zebra”
+Encoder 
+Latent tokens
+1
+2
+3
+4
+5
+6
+7
+16
+17
+29
+Scale index
+0.3
+0.1
+0.8
+0.1
+0.6
+0.4
+0.6
+0.5
+0.2
+...
+0.6
+...
+Autoregressive Transformer
+Source
+Probability
+Stop Scale
+Reference Caches
+Encoded source tokens
+Source Probability
+Cross-Attention Map
+w
+to word w
+Edit Prompt
+“A mustang is 
+running across 
+the savanna”
+A) Spatial Gamma Map
+to word w
+High attn.              Low attn.
+Token-wise Tolerances
+b) AR Editing
+Replaced tokens
+Current Scale
+Keep Source
+Accept Edit
+Decoder 
+Edited video
+Image Pyramid
+1st Video Pyramid
+...
+...
+Phase 2: Probability 
+Guided Token Replacement
+...
+25
+Autoregressive Transformer
+Residual-guided 
+token pruning
+Residual Heatmap scale s-1
+interpolate
+Top-K Mask 
+scale s
+selected tokens
+skipped tokens
+Transformer
+updated tokens
+full output grid 
+at scale s
+combine
+Figure 3. Overview of our framework. In Phase 1, the source video is encoded and a forward pass under the source prompt caches per-token
+probabilities and cross-attention maps. In Phase 2, a forward pass under the edit prompt performs probability-guided token replacement
+steered by the attention-guided spatial modulation field, which assigns low γ to edited regions and high γ to preserved regions. Source
+caching stops at scale Sstop; beyond that, the editing pass generates freely.
+cross-attention maps. Phase 2 runs under the edit prompt,
+using a probability-guided preservation mechanism to de-
+cide per-token preservation or replacement.
+Source Reference Construction (Phase 1).
+The tok-
+enizer’s encoder maps v to encoded source tokens indices
+ˆx(s) at every scale. We then run a forward pass under csrc,
+force-decoding with ˆx(s) at each scale to obtain the source-
+conditioned probability ˆp(s)
+src = pθ(x(s) | ˆx(<s), csrc). Dur-
+ing this pass, we also extract cross-attention maps A(s) for
+a source-side attention anchor, which localize the editing
+region in the video. We obtain the anchor automatically
+by segmenting the source and edit prompts into words and
+computing their word-level difference.
+For replacement,
+attribute, and background edits, the source-side word or
+phrase in the differing span is used as the anchor. For object
+addition, where the inserted span has no source-side coun-
+terpart, the algorithm uses the nearest unchanged source-
+side content word adjacent to the insertion span. This pro-
+cedure is deterministic and requires neither manual anchor
+selection nor an additional language model.
+For scales
+whose sequence length exceeds the attention window, atten-
+tion maps are interpolated from the nearest available scale.
+The cached triplet {ˆx(s), ˆp(s)
+src, A(s)} serves as the source
+reference for Phase 2.
+Probability-Guided Preservation.
+The preservation de-
+cision is based on the source-to-edit support drop of the
+cached source token. If the edit prompt assigns similar sup-
+port to a cached source token as the source prompt, the
+token is likely still compatible with the intended edit and
+should remain competitive for preservation. Conversely, a
+substantial support drop indicates that the edit prompt no
+longer supports the source token, suggesting that it should
+be more open to replacement.
+We formalize this drop-based compatibility test using a
+local preservation tolerance γ. At each position i in scale s,
+we compute a bias toward the source token and compare it
+against the edit prediction x∗(s)
+i
+= arg maxj p(s)
+edit(j):
+b(s)
+i
+= max
+ γ(s)
+i
+−ˆp(s)
+src(ˆx(s)
+i ), 0
+
+,
+(2)
+x(s)
+i
+=
+(
+ˆx(s)
+i
+if p(s)
+edit(ˆx(s)
+i ) + b(s)
+i
+≥p(s)
+edit(x∗(s)
+i
+),
+x∗(s)
+i
+otherwise.
+(3)
+When the bias is positive, the adjusted score of the source
+
+
+token can be rewritten as
+p(s)
+edit(ˆx(s)
+i ) + b(s)
+i
+= γ(s)
+i
+−
+h
+ˆp(s)
+src(ˆx(s)
+i ) −p(s)
+edit(ˆx(s)
+i )
+i
+. (4)
+Eq. (4) shows that the source token is not selected according
+to its absolute probability alone, but according to how much
+its support decreases from the source prompt to the edit
+prompt. A larger source-to-edit support drop reduces the
+adjusted competitiveness of the cached source token, mak-
+ing replacement more likely. The tolerance γ(s)
+i
+controls
+how much drop is allowed before source preservation is re-
+laxed: larger values favor preservation under larger drops,
+while smaller values make the token more sensitive to edit-
+induced support changes. When γ(s)
+i
+= 0, no preservation
+bias is applied and the edit distribution decides freely. When
+γ(s)
+i
+= 2.0, preservation is enforced because all probabili-
+ties are bounded by one.
+Attention-Guided Spatial Modulation.
+A single γ for
+all tokens cannot distinguish edited regions from preserved
+regions. We observe that cross-attention maps associated
+with the source-side edit target naturally highlight the spa-
+tial positions associated with the editing target—tokens
+with stronger responses are more likely to belong to the
+edit-relevant region, low-attention tokens generally corre-
+spond to source content that should be preserved. This pro-
+vides a training-free spatial editing signal without requiring
+any external segmentation. We leverage this by mapping
+attention scores to per-token gamma values: high atten-
+tion (editing target) →low γ (allow editing), low attention
+(background) →high γ (preserve). This is implemented as
+a two-level sigmoid.
+Level 1: Scale Envelope.
+Each scale s has a gamma range
+[γ(s)
+low, γ(s)
+high] determined by scale position:
+γ(s)
+{low,high} = γstart +
+ γ{fg,bg}
+end
+−γstart
+
+· σ
+t −tc
+wt
+
+, (5)
+where slocal ∈{0, . . . , Ntower −1} is the local scale index
+within the current image or video tower, Ntower is the num-
+ber of scales in that tower, and t = slocal/(Ntower−1) is the
+normalized scale position. We set γstart = 2.0 so that early
+scales are fully preserved. At later high-resolution scales,
+γ(s)
+low drops to allow editing while γ(s)
+high stays high for back-
+ground preservation.
+Level 2: Token-wise Mapping.
+Within each scale’s range,
+individual tokens are mapped by their attention score ai ∈
+[0, 1]:
+γ(s)
+i
+= γ(s)
+high + (γ(s)
+low −γ(s)
+high) · σ
+ai −ca
+wa
+
+.
+(6)
+Scale-Decoupled Generation.
+Source tokens at later
+high-resolution scales encode fine textures tightly coupled
+Figure 4. Spatial modulation visualization. Given a source frame
+and an edit-target word, the cross-attention map localizes the edit-
+ing region, which is then mapped to a per-token gamma field.
+to the source video’s motion.
+Forcing their preservation
+when the edited content has different dynamics causes tex-
+ture fragmentation. We stop Phase 1 at scale Sstop: beyond
+this point, no source probabilities or attention are cached,
+and Phase 2 generates freely (γ = 0). The source con-
+straints applied at early scales largely preserve the global
+layout, while fine details are regenerated to match the edited
+content.
+Algorithms 1 and 2 in the supplementary material sum-
+marize the complete procedure.
+3.3. Inference Acceleration
+Beyond
+Scale-Decoupled
+Generation,
+which
+reduces
+Phase 1 runtime from 65.0 s to 19.8 s (3.29×) by skipping
+transformer computation at scales s ≥Sstop, we analyze
+computational redundancy in the editing pass and introduce
+an acceleration strategy for later high-resolution scales.
+Residual-Guided
+Token
+Pruning.
+At
+later
+high-
+resolution scales, not all spatial positions require equal
+computation—positions
+where
+the
+transformer
+makes
+substantial changes are “active,” while positions with small
+residuals require less refinement. We use the transformer’s
+own residual as a direct signal of computational necessity.
+For each of the final two generation scales s, we use the
+preceding scale’s per-token residual norm ∥fθ(x) −x∥as
+the activity signal. This residual map is trilinearly interpo-
+lated to scale s’s spatial dimensions, and only the top-K%
+tokens by residual magnitude are forwarded through
+the transformer; the remaining tokens retain their input
+embeddings unchanged. Keep indices are fixed across all
+36 transformer blocks. Pruned tokens bypass current-scale
+Q/K/V, attention, and feed-forward computation, and their
+input states are passed directly to the logits head; retained
+tokens still access the cross-scale KV cache from earlier
+scales. We use K = 50% by default, thereby skipping
+half of the tokens at these two highest-resolution scales.
+This preserves the full 2D/3D token lattice structure while
+
+
+Method
+Target Alignment
+Video Quality
+Non-edit Preservation
+Time↓
+CLIP-Sfull ↑
+CLIP-Sedit ↑
+Smooth.↑
+Aesth.↑
+PSNR↑
+SSIM↑
+LPIPS↓
+Training-based reference
+VACE-V2V
+0.957
+0.970
+0.936
+0.605
+13.51
+0.380
+0.618
+9 min
+Training-free, inversion-based
+RAVE
+0.962
+0.975
+0.973
+0.552
+18.81
+0.674
+0.437
+17 min
+FADE
+0.966
+0.972
+0.958
+0.533
+14.75
+0.626
+0.211
+14 min
+Training-free, inversion-free
+Wan-Edit
+0.970
+0.966
+0.988
+0.607
+21.04
+0.801
+0.183
+183 s
+FlowDirector
+0.965
+0.967
+0.983
+0.594
+21.74
+0.814
+0.192
+37 min
+Ours
+0.972
+0.976
+0.988
+0.609
+22.58
+0.821
+0.176
+64 s
+Table 1. Main quantitative comparison with wall-clock inference time.
+Figure 5. Qualitative comparison. Each example shows two frames for the edits “red boat hull” →“dark blue boat hull” and “tree
+frog” →“poison dart frog.” Edit-VAR consistently realizes the target appearance across frames while preserving scene geometry and
+unrelated background content. Competing methods may leave source attributes incompletely edited or introduce unintended changes to the
+background, lighting, and object appearance.
+concentrating computation on active regions and reducing
+both editing-pass and end-to-end inference time.
+4. Experiments
+4.1. Experimental Setup
+Implementation Details.
+Our method builds on Infini-
+tyStar [20], a visual autoregressive video generation model,
+and generates 81-frame videos. The key parameters are:
+γstart = 2.0, γfg
+end = 1.60, γbg
+end = 1.78, with sigmoid-
+based scale-envelope transitions at scale 5 (image tower)
+and scale 4 (video tower). For Scale-Decoupled Genera-
+tion, we set the decoupling boundary to Sstop = 25, such
+that source caching is disabled for s ≥25. Residual-guided
+token pruning is applied only at the final two generation
+scales, retaining the top K = 50% tokens by residual mag-
+nitude at each scale. All parameters are fixed across all edit-
+ing cases. Experiments are conducted on a single NVIDIA
+A800 GPU.
+Evaluation Dataset and Baselines.
+We collect 160
+source videos from publicly accessible online sources. The
+evaluation covers object replacement, object addition, back-
+ground replacement, and attribute editing, with 40 cases
+in each category.
+We compare with five representative
+baselines under the same user-input setting, using only the
+source video and textual conditions.
+The training-based
+baseline is VACE-V2V [12]; the training-free inversion-
+based baselines are RAVE [14] and FADE [52]; and the
+training-free inversion-free baselines are Wan-Edit [17] and
+
+
+Variant
+Target Alignment
+Video Quality
+Non-edit Preservation Time (s)
+CLIP-Sfull ↑CLIP-Sedit ↑Smooth.↑Aesth.↑PSNR↑SSIM↑LPIPS↓
+Full method (no pruning)
+0.979
+0.980
+0.989
+0.611
+22.89
+0.833
+0.172
+85s
+w/o attention guidance
+0.935
+0.931
+0.975
+0.560
+19.56
+0.563
+0.373
+85s
+w/o scale envelope
+0.958
+0.933
+0.979
+0.514
+20.43
+0.667
+0.287
+85s
+w/o Scale-Decoupled Generation
+0.935
+0.951
+0.980
+0.524
+21.43
+0.612
+0.189
+130s
+AREdit-style uniform γ
+0.895
+0.913
+0.975
+0.541
+16.30
+0.498
+0.456
+85s
++ Random pruning (K = 50%)
+0.943
+0.954
+0.976
+0.589
+17.73
+0.781
+0.235
+64s
++ Residual pruning (K = 70%)
+0.975
+0.977
+0.989
+0.608
+22.70
+0.825
+0.175
+71s
++ Residual pruning (K = 50%, ours)
+0.972
+0.976
+0.988
+0.609
+22.58
+0.821
+0.176
+64s
+Table 2. Ablation study. The uniform-γ variant is the AREdit-style baseline. K denotes the percentage of retained tokens; random pruning
+controls for the token budget.
+Figure 6. Qualitative ablation. Attention guidance and the scale envelope enable localized token replacement, while Scale-Decoupled
+Generation reduces fragmented source appearance. Residual pruning with K = 50% remains visually close to the full method.
+FlowDirector [16]. All baselines are evaluated using their
+official implementations and author-recommended configu-
+rations without case-specific tuning.
+Evaluation Metrics.
+We evaluate target-prompt align-
+ment using both full-frame and edit-region CLIP-Score
+(CLIP-S) [36], following the region-aware protocol of
+FiVE-Bench [17]. The former measures global agreement
+with the complete target prompt, while the latter focuses
+on the intended edit.
+We assess temporal and percep-
+tual video quality using Motion Smoothness and Aesthetic
+Quality from VBench [11]. Editing-region masks are gen-
+erated once for each case using SAM2 [37] and shared
+across all methods.
+PSNR, SSIM [46], and LPIPS [50]
+are computed over the complementary non-edited regions
+to measure source-content preservation. All outputs use the
+same temporal sampling, masks, and metric implementa-
+tions. Further details of mask construction and metric ag-
+gregation are provided in the supplementary material.
+4.2. Comparison with Baselines
+Table 1 shows that our final accelerated configuration
+achieves the strongest overall performance among the com-
+pared training-free methods. Edit-VAR obtains the highest
+full-frame and edit-region CLIP-S scores (0.972 and 0.976),
+indicating accurate realization of the target edit.
+It also
+achieves the highest aesthetic quality (0.609) and ties for
+the best motion smoothness (0.988). For non-edit preserva-
+tion, Edit-VAR consistently ranks first across PSNR, SSIM,
+and LPIPS, reaching 22.58, 0.821, and 0.176, respectively.
+Meanwhile, it completes an 81-frame video edit in only 64
+s, compared with 5–37 min for the training-free baselines.
+Figure 5 further shows that Edit-VAR more reliably con-
+fines changes to the intended region: inversion-based meth-
+ods often introduce background drift, whereas inversion-
+free baselines may leave the requested semantic change in-
+complete.
+User Study.
+We conduct a blind user study with 15 par-
+ticipants on 50 randomly selected cases. Participants view
+the source video, target prompt, and an anonymized edited
+result at a fixed size and frame rate, and rate each result
+independently as Fail, Pass, Good, or Excellent in editing
+quality, background preservation, and temporal consistency.
+Our method receives the largest combined proportion of
+Good and Excellent ratings across all three criteria; com-
+plete results and protocols are provided in the supplemen-
+tary material.
+
+
+4.3. Ablation Study
+Table 2 and Figure 6 evaluate both the editing and acceler-
+ation components of Edit-VAR.
+Editing Components.
+Removing attention guidance de-
+grades edit-region CLIP-S from 0.980 to 0.931 and SSIM
+from 0.833 to 0.563, confirming the value of explicit lo-
+calization. Removing the scale envelope likewise reduces
+edit-region CLIP-S by 0.047 and SSIM by 0.166.
+The
+AREdit-style uniform-γ baseline directly extends its spa-
+tially uniform preservation policy to video tokens; it gives
+the lowest edit-region CLIP-S (0.913) and highest LPIPS
+(0.456), showing the need to adapt preservation strength
+across edited and preserved regions. These results establish
+the complementarity of token-wise modulation and scale-
+aware preservation.
+Scale-Decoupled Generation.
+Releasing source con-
+straints at Sstop
+=
+25 improves full-frame/edit-region
+CLIP-S from 0.935/0.951 to 0.979/0.980 and increases
+SSIM from 0.612 to 0.833. It also reduces Phase 1 run-
+time from 65.0 s to 19.8 s (3.29×), lowering the two-phase
+runtime from 130.0 s to 84.8 s (1.53×). Figure 6 shows the
+corresponding reduction in texture fragmentation.
+Residual-Guided Token Pruning.
+Many tokens at the fi-
+nal high-resolution scales have near-zero transformer resid-
+uals. Retaining 70% and 50% of tokens accelerates Phase 2
+by 1.27× and 1.48×, reducing it from 65.0 s to 51.2 s and
+43.9 s, respectively. With Scale-Decoupled Generation ap-
+plied in Phase 1, the corresponding two-phase runtimes are
+70.9 s and 63.7 s, or 1.19× and 1.33× faster than the un-
+pruned method. At the same 50% token budget, random
+pruning substantially degrades edit-region CLIP-S (0.954
+vs. 0.976) and LPIPS (0.235 vs. 0.176), supporting residual-
+based selection. We use K = 50% as the default operating
+point.
+Overall Efficiency.
+Table 1 reports wall-clock time on the
+same hardware. Our final accelerated configuration requires
+64 s, compared with 5–37 min for the baselines; the cor-
+responding unpruned configuration requires 85 s. Relative
+to the fully unoptimized two-phase runtime of 130 s, com-
+bining Scale-Decoupled Generation and 50% token pruning
+gives an overall 2.04× speedup.
+5. Conclusion
+We presented Edit-VAR, a training-free video editing
+framework that operates on directly encoded tokens of a
+visual autoregressive model. Attention-guided and scale-
+aware preservation balances editability with source fi-
+delity, while late-scale constraint release reduces texture
+fragmentation and residual-guided pruning improves effi-
+ciency.
+Edit-VAR achieves the strongest average target
+alignment and non-edit preservation among the compared
+methods. These results demonstrate the potential of multi-
+scale discrete source tokens as an effective representation
+for training-free video editing.
+Limitations.
+Our method formulates editing as condi-
+tional token replacement, which preserves the global struc-
+ture of the source video by design. This makes it unsuitable
+for edits that require large structural changes, such as ob-
+ject removal or significant layout modification, where the
+vacated region must be coherently inpainted rather than re-
+placed token-by-token. Extending the framework to sup-
+port such structural edits is a promising direction for future
+work.
+References
+[1] Mingdeng Cao, Xintao Wang, Zhongang Qi, Ying Shan, Xi-
+aohu Qie, and Yinqiang Zheng. Masactrl: Tuning-free mu-
+tual self-attention control for consistent image synthesis and
+editing. In Proceedings of the IEEE/CVF international con-
+ference on computer vision, pages 22560–22570, 2023. 3
+[2] Jiayu Chen, Ruoyu Lin, Zihao Zheng, Jingxin Li, Maoliang
+Li, Guojie Luo, and Xiang Chen. Toprovar: Efficient visual
+autoregressive modeling via tri-dimensional entropy-aware
+semantic analysis and sparsity optimization. arXiv preprint
+arXiv:2602.22948, 2026. 3
+[3] Yiyang Chen, Xuanhua He, Xiujun Ma, and Jack Ma. Con-
+textflow: Training-free video object editing via adaptive con-
+text enrichment. In Proceedings of the AAAI Conference on
+Artificial Intelligence, pages 3129–3137, 2026. 2, 3
+[4] Kunyu Feng, Yue Ma, Bingyuan Wang, Chenyang Qi,
+Haozhe Chen, Qifeng Chen, and Zeyu Wang. Dit4edit: Dif-
+fusion transformer for image editing.
+In Proceedings of
+the AAAI Conference on Artificial Intelligence, pages 2969–
+2977, 2025. 3
+[5] Heyuan Gao, Bangxun Tang, Yiren Song, Guian Fang, Zijian
+He, Jie Yang, and Mike Zheng Shou. Pai-studio: Cinematic
+video background replacement with camera-aware motion.
+arXiv preprint arXiv:2606.01399, 2026. 3
+[6] Michal Geyer, Omer Bar-Tal, Shai Bagon, and Tali Dekel.
+Tokenflow: Consistent diffusion features for consistent video
+editing. arXiv preprint arxiv:2307.10373, 2023. 2, 3
+[7] Hang Guo, Yawei Li, Taolin Zhang, Jiangshan Wang, Tao
+Dai, Shu-Tao Xia, and Luca Benini. Fastvar: Linear visual
+autoregressive modeling via cached token pruning.
+arXiv
+preprint arXiv:2503.23367, 2025. 3
+[8] Jian Han, Jinlai Liu, Yi Jiang, Bin Yan, Yuqi Zhang, Zehuan
+Yuan, Bingyue Peng, and Xiaobing Liu. Infinity: Scaling bit-
+wise autoregressive modeling for high-resolution image syn-
+thesis. In Proceedings of the Computer Vision and Pattern
+Recognition Conference, pages 15733–15744, 2025. 2, 3
+[9] Amir Hertz, Ron Mokady, Jay Tenenbaum, Kfir Aberman,
+Yael Pritch, and Daniel Cohen-Or. Prompt-to-prompt im-
+
+
+age editing with cross attention control.
+arXiv preprint
+arXiv:2208.01626, 2022. 3
+[10] Taihang Hu, Linxuan Li, Kai Wang, Yaxing Wang, Jian
+Yang, and Ming-Ming Cheng. Anchor token matching: Im-
+plicit structure locking for training-free ar image editing. In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision, pages 18166–18176, 2025. 3
+[11] Ziqi Huang, Yinan He, Jiashuo Yu, Fan Zhang, Chenyang Si,
+Yuming Jiang, Yuanhan Zhang, Tianxing Wu, Qingyang Jin,
+Nattapol Chanpaisit, et al. Vbench: Comprehensive bench-
+mark suite for video generative models. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 21807–21818, 2024. 7
+[12] Zeyinzi Jiang, Zhen Han, Chaojie Mao, Jingfeng Zhang,
+Yulin Pan, and Yu Liu. Vace: All-in-one video creation and
+editing. In Proceedings of the IEEE/CVF International Con-
+ference on Computer Vision, pages 17191–17202, 2025. 2,
+3, 6
+[13] Xuan Ju, Tianyu Wang, Yuqian Zhou, He Zhang, Qing
+Liu, Nanxuan Zhao, Zhifei Zhang, Yijun Li, Yuanhao Cai,
+Shaoteng Liu, et al. Editverse: Unifying image and video
+editing and generation with in-context learning.
+arXiv
+preprint arXiv:2509.20360, 2025. 3
+[14] Ozgur Kara, Bariscan Kurtkaya, Hidir Yesiltepe, James M
+Rehg, and Pinar Yanardag. Rave: Randomized noise shuf-
+fling for fast and consistent video editing with diffusion mod-
+els. In Proceedings of the IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition, pages 6507–6516,
+2024. 2, 6
+[15] Vladimir
+Kulikov,
+Matan
+Kleiner,
+Inbar
+Huberman-
+Spiegelglas, and Tomer Michaeli.
+Flowedit:
+Inversion-
+free text-based editing using pre-trained flow models.
+In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision, pages 19721–19730, 2025. 2, 3
+[16] Guangzhao Li, Yanming Yang, Chenxi Song, and Chi Zhang.
+Flowdirector: Training-free flow steering for precise text-to-
+video editing. arXiv preprint arXiv:2506.05046, 2025. 2, 3,
+7
+[17] Minghan Li, Chenxi Xie, Yichen Wu, Lei Zhang, and
+Mengyu Wang. Five: A fine-grained video editing bench-
+mark for evaluating emerging diffusion and rectified flow
+models. arXiv preprint arXiv:2503.13684, 2025. 6, 7
+[18] Xiang Li, Kai Qiu, Hao Chen, Jason Kuen, Zhe Lin,
+Rita Singh, and Bhiksha Raj. Controlvar: Exploring con-
+trollable visual autoregressive modeling.
+arXiv preprint
+arXiv:2406.09750, 2024. 3
+[19] Hongyu Liu, Chun Wang, Feng Gao, Xuanhua He, Yue
+Ma, Ziyu Wan, Yong Zhang, Xiaoming Wei, and Qifeng
+Chen. Opsd-v: On-policy self-distillation for post-training
+few-step autoregressive video generators.
+arXiv preprint
+arXiv:2607.08766, 2026. 3
+[20] Jinlai Liu, Jian Han, Bin Yan, Hui Wu, Fengda Zhu, Xing
+Wang, Yi Jiang, Bingyue Peng, and Zehuan Yuan. Infini-
+tystar: Unified spacetime autoregressive modeling for visual
+generation. Advances in Neural Information Processing Sys-
+tems, 38:170054–170072, 2026. 2, 3, 6
+[21] Shaoteng Liu, Yuechen Zhang, Wenbo Li, Zhe Lin, and Jiaya
+Jia. Video-p2p: Video editing with cross-attention control.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 8599–8608, 2024. 3
+[22] Yue Ma, Yingqing He, Xiaodong Cun, Xintao Wang, Siran
+Chen, Xiu Li, and Qifeng Chen. Follow your pose: Pose-
+guided text-to-video generation using pose-free videos. In
+Proceedings of the AAAI Conference on Artificial Intelli-
+gence, pages 4117–4125, 2024. 3
+[23] Yue Ma, Kunyu Feng, Zhongyuan Hu, Xinyu Wang,
+Yucheng Wang, Mingzhe Zheng, Xuanhua He, Chenyang
+Zhu, Hongyu Liu, Yingqing He, et al. Controllable video
+generation: A survey.
+arXiv preprint arXiv:2507.16869,
+2025.
+[24] Yue Ma,
+Kunyu Feng,
+Xinhua Zhang,
+Hongyu Liu,
+David Junhao Zhang, Jinbo Xing, Yinhan Zhang, Ayden
+Yang, Zeyu Wang, and Qifeng Chen. Follow-your-creation:
+Empowering 4d creation through video inpainting.
+arXiv
+preprint arXiv:2506.04590, 2025.
+[25] Yue Ma, Yulong Liu, Qiyuan Zhu, Ayden Yang, Kunyu Feng,
+Xinhua Zhang, Zhifeng Li, Sirui Han, Chenyang Qi, and
+Qifeng Chen. Follow-your-motion: Video motion transfer
+via efficient spatial-temporal decoupled finetuning.
+arXiv
+preprint arXiv:2506.05207, 2025. 3
+[26] Yue Ma, Zexuan Yan, Hongyu Liu, Hongfa Wang, Heng
+Pan, Yingqing He, Junkun Yuan, Ailing Zeng, Chengfei Cai,
+Heung-Yeung Shum, et al. Follow-your-emoji-faster: To-
+wards efficient, fine-controllable, and expressive freestyle
+portrait animation. arXiv preprint arXiv:2509.16630, 2025.
+3
+[27] Yue Ma, Jiangming Wang, Yucheng Wang, Xilai Wang,
+Zhiyuan Li, Xinyu Wang, Hongyu Liu, Ruofan Liang,
+Songchun Zhang, Yuxuan Xue, et al. Livelight: Real-time
+streaming video relighting with interactive control.
+arXiv
+preprint arXiv:2608.01771, 2026. 3
+[28] Yue Ma, Zhikai Wang, Tianhao Ren, Mingzhe Zheng,
+Hongyu Liu, Jiayi Guo, Mark Fong, Yuxuan Xue, Zixi-
+ang Zhao, Konrad Schindler, et al.
+Fastvmt: Eliminat-
+ing redundancy in video motion transfer.
+arXiv preprint
+arXiv:2602.05551, 2026. 3
+[29] Jinjie Mai, Chaoyang Wang, Guocheng Gordon Qian,
+Willi Menapace, Sergey Tulyakov, Bernard Ghanem, Pe-
+ter Wonka, and Ashkan Mirzaei. Easyv2v: A high-quality
+instruction-based video editing framework. arXiv preprint
+arXiv:2512.16920, 2025. 2, 3
+[30] Chenyang Qi, Xiaodong Cun, Yong Zhang, Chenyang Lei,
+Xintao Wang, Ying Shan, and Qifeng Chen. Fatezero: Fus-
+ing attentions for zero-shot text-based video editing.
+In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision, pages 15932–15942, 2023. 2, 3
+[31] Ziran Qin, Youru Lv, Mingbao Lin, Hang Guo, Zeren Zhang,
+Danping Zou, and Weiyao Lin. Head-aware kv cache com-
+pression for efficient visual autoregressive modeling. In Pro-
+ceedings of the AAAI Conference on Artificial Intelligence,
+pages 24982–24990, 2026. 3
+[32] Xiangfei Qiu, Jilin Hu, Lekui Zhou, Xingjian Wu, Junyang
+Du, Buang Zhang, Chenjuan Guo, Aoying Zhou, Christian S.
+Jensen, Zhenli Sheng, and Bin Yang. TFB: Towards com-
+prehensive and fair benchmarking of time series forecasting
+methods. In Proc. VLDB Endow., pages 2363–2377, 2024. 3
+
+
+[33] Xiangfei Qiu,
+Xingjian Wu,
+Hanyin Cheng,
+Xvyuan
+Liu, Chenjuan Guo, Jilin Hu, and Bin Yang.
+Dbloss:
+Decomposition-based loss function for time series forecast-
+ing. In NeurIPS, 2025.
+[34] Xiangfei Qiu, Xingjian Wu, Yan Lin, Chenjuan Guo, Jilin
+Hu, and Bin Yang. DUET: Dual clustering enhanced mul-
+tivariate time series forecasting. In SIGKDD, pages 1185–
+1196, 2025.
+[35] Xiangfei Qiu, Yuhan Zhu, Zhengyu Li, Xingjian Wu, Bin
+Yang, and Jilin Hu. Dag: A dual correlation network for
+time series forecasting with exogenous variables. In ICML,
+2026. 3
+[36] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya
+Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry,
+Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning
+transferable visual models from natural language supervi-
+sion. In International conference on machine learning, pages
+8748–8763. PmLR, 2021. 7
+[37] Nikhila Ravi, Valentin Gabeur, Yuan-Ting Hu, Ronghang
+Hu, Chaitanya Ryali, Tengyu Ma, Haitham Khedr, Roman
+Radle, Chloe Rolland, Laura Gustafson, et al.
+Sam 2:
+Segment anything in images and videos.
+arXiv preprint
+arXiv:2408.00714, 2024. 7
+[38] Yiren Song, Shijie Huang, Chen Yao, Hai Ci, Xiaojun Ye,
+Jiaming Liu, Yuxuan Zhang, and Mike Zheng Shou. Pro-
+cesspainter: Learning to draw from sequence data. In SIG-
+GRAPH Asia 2024 Conference Papers, pages 1–10, 2024. 3
+[39] Yiren Song, Cheng Liu, Yuxin Jiang, and Mike Zheng Shou.
+Streamingeffect: Real-time human-centric video effect gen-
+eration. arXiv preprint arXiv:2605.17019, 2026.
+[40] Yiren Song, Wangzi Yao, Haofan Wang, and Mike Zheng
+Shou. Vista: Triplet-supervised video style transfer with dif-
+fusion transformers. arXiv preprint arXiv:2605.17312, 2026.
+3
+[41] Keyu Tian, Yi Jiang, Zehuan Yuan, Bingyue Peng, and Li-
+wei Wang. Visual autoregressive modeling: Scalable image
+generation via next-scale prediction. Advances in neural in-
+formation processing systems, 37:84839–84865, 2024. 2, 3
+[42] Jiangshan Wang, Yue Ma, Jiayi Guo, Yicheng Xiao, Gao
+Huang, and Xiu Li.
+Cove: Unleashing the diffusion fea-
+ture correspondence for consistent video editing. Advances
+in Neural Information Processing Systems, 37:96541–96565,
+2024. 3
+[43] Jiangshan Wang, Junfu Pu, Zhongang Qi, Jiayi Guo, Yue Ma,
+Nisha Huang, Yuxin Chen, Xiu Li, and Ying Shan. Tam-
+ing rectified flow for inversion and editing. arXiv preprint
+arXiv:2411.04746, 2024. 3
+[44] Xinyu Wang, Chongbo Zhao, Fangneng Zhan, and Yue Ma.
+Liveedit: Towards real-time diffusion-based streaming video
+editing. arXiv preprint arXiv:2606.26740, 2026. 3
+[45] Yufei Wang, Lanqing Guo, Zhihao Li, Jiaxing Huang, Pichao
+Wang, Bihan Wen, and Jian Wang. Training-free text-guided
+image editing with visual autoregressive model.
+arXiv
+preprint arXiv:2503.23897, 2025. 2, 3
+[46] Zhou Wang, A.C. Bovik, H.R. Sheikh, and E.P. Simoncelli.
+Image quality assessment: from error visibility to structural
+similarity. IEEE Transactions on Image Processing, 13(4):
+600–612, 2004. 7
+[47] Xiangpeng Yang, Ji Xie, Yiyuan Yang, Yan Huang, Min Xu,
+and Qiang Wu. Unified video editing with temporal reasoner.
+arXiv preprint arXiv:2512.07469, 2025. 3
+[48] Zixuan Ye, Xuanhua He, Quande Liu, Qiulin Wang, Xintao
+Wang, Pengfei Wan, Di Zhang, Kun Gai, Qifeng Chen, and
+Wenhan Luo. Unic: Unified in-context video editing. arXiv
+preprint arXiv:2506.04216, 2025. 2, 3
+[49] Sungwoong Yune, Suheon Jeong, and Joo-Young Kim. Fast-
+star: Spatiotemporal token pruning for efficient autoregres-
+sive video synthesis.
+arXiv preprint arXiv:2603.07192,
+2026. 3
+[50] Richard Zhang, Phillip Isola, Alexei A Efros, Eli Shecht-
+man, and Oliver Wang. The unreasonable effectiveness of
+deep features as a perceptual metric. In Proceedings of the
+IEEE conference on computer vision and pattern recogni-
+tion, pages 586–595, 2018. 7
+[51] Tianrui Zhu, Shiyi Zhang, Jiawei Shao, and Yansong Tang.
+Kv-edit: Training-free image editing for precise background
+preservation. In Proceedings of the IEEE/CVF International
+Conference on Computer Vision, pages 16607–16617, 2025.
+3
+[52] Yixuan Zhu, Haolin Wang, Shilin Ma, Wenliang Zhao, Yan-
+song Tang, Lei Chen, and Jie Zhou. Fade: Frequency-aware
+diffusion model factorization for video editing, 2025. 6
+
+
+Supplementary Material
+A. Algorithm Pseudocode
+Algorithms 1–3 summarize source-reference construction,
+probability-guided token replacement, and residual-guided
+token pruning.
+Algorithm 1 Phase 1: Source Reference Construction
+Require: Source video v; source prompt csrc
+Require: Edit prompt cedit; boundary Sstop
+Ensure: Cached tokens and source probabilities
+Ensure: Cross-attention maps {A(s)}
+1: {ˆx(s)}S
+s=1 ←Encode(v)
+2: w ←AutoAnchor(csrc, cedit)
+3: for s = 1 to Sstop −1 do
+4:
+Force-decode ˆx(s) under csrc
+5:
+Cache ˆp(s)
+src and A(s)(w)
+6: end for
+Algorithm 2 Phase 2: Probability-Guided Token Replace-
+ment
+Require: Edit prompt cedit; cached source reference
+Require: Preservation parameters; pruning ratio K
+Ensure: Edited tokens {x(s)}S
+s=1
+1: for s = 1 to S do
+2:
+h(s)
+out ←PrunedForward(s, K, cedit)
+3:
+Compute p(s)
+edit from its logits
+4:
+if s < Sstop then
+5:
+{γ(s)
+i
+} ←SpatialModulation(A(s), s)
+6:
+for each token i do
+7:
+b(s)
+i
+←max(γ(s)
+i
+−ˆp(s)
+src(ˆx(s)
+i ), 0)
+8:
+x∗(s)
+i
+←arg maxj p(s)
+edit(j)
+9:
+qi ←p(s)
+edit(ˆx(s)
+i ) + b(s)
+i
+10:
+if qi ≥p(s)
+edit(x∗(s)
+i
+) then
+11:
+x(s)
+i
+←ˆx(s)
+i
+{preserve}
+12:
+else
+13:
+x(s)
+i
+←x∗(s)
+i
+{replace}
+14:
+end if
+15:
+end for
+16:
+else
+17:
+x(s)
+i
+←arg maxj p(s)
+edit(j) ∀i
+18:
+end if
+19: end for
+20: Edited video ←Decode({x(s)})
+B. Implementation Details
+We build Edit-VAR on the 8B-parameter InfinityStar model
+and generate 81-frame videos at 480p resolution using
+Algorithm 3 Residual-Guided Token Pruning
+Require: Scale s; input states h(s)
+in
+Require: Previous-scale residual map r(s−1); ratio K
+Require: Cross-scale KV cache; edit condition cedit
+Ensure: Output states h(s)
+out
+1: if s /∈{S −1, S} then
+2:
+h(s)
+out ←Transformer(h(s)
+in )
+3: else
+4:
+˜r(s) ←Interpolate(r(s−1))
+5:
+Is ←TopKIndices(˜r(s), K)
+6:
+h(s)
+out ←h(s)
+in {bypass others}
+7:
+for each Transformer block ℓdo
+8:
+Update only h(s)
+out,Is
+9:
+Use cached cross-scale KV and cedit
+10:
+end for
+11: end if
+12: Forward h(s)
+out to the logits head
+BF16 inference on a single NVIDIA A800 GPU. Experi-
+ments are conducted on Ubuntu 22.04.5 LTS with Python
+3.11.14, PyTorch 2.7.1, and CUDA 12.8. We use the same
+fixed configuration for all 160 editing cases. Table 3 sum-
+marizes the parameters introduced by our method; all re-
+maining backbone settings follow the official InfinityStar
+configuration.
+Parameter
+Value
+γstart
+2.00
+γfg
+end / γbg
+end
+1.60 / 1.78
+Image / video transition scale
+5 / 4
+Scale-envelope width wt
+0.06
+Attention center ca / width wa
+0.50 / 0.10
+Directly extracted attention layers
+First 5 of 36
+Max direct-attn sequence length
+1200
+Scale-decoupling boundary Sstop
+25
+Pruned scales / retained ratio K
+Final two / 50%
+Editing seed
+41
+Table 3. Final implementation configuration. The same settings
+are used for all editing categories.
+Attention Extraction and Aggregation.
+We select the
+attention anchor using a deterministic prompt-differencing
+algorithm.
+The algorithm first segments the source and
+edit prompts into words and aligns the two word sequences
+to obtain their differing spans. For replacement, attribute,
+and background edits, it returns the source-side word or
+phrase in the differing span. For object addition, the differ-
+ing span contains only the newly inserted edit-side phrase
+and therefore has no source-side counterpart; the algorithm
+
+
+Pipeline
+PSNR↑
+SSIM↑
+LPIPS↓
+Wan2.1
+25.62
+0.898
+0.124
+InfinityStar
+29.93
+0.920
+0.061
+Table 4. Source-video reconstruction fidelity of the Wan2.1 and
+InfinityStar pipelines. Wan2.1 uses VAE encoding followed by
+inversion-based reconstruction and decoding, whereas InfinityS-
+tar directly reconstructs the video from its encoded multi-scale to-
+kens.
+instead returns the nearest unchanged source-side content
+word adjacent to the insertion span. For example, when
+a soldier is inserted into a desert scene, the automatically
+selected source-side anchor is desert.
+No anchor is se-
+lected or corrected manually, and no additional language
+model is used. During source-reference construction, we
+cache cross-attention from the first repetition of the first
+five Transformer layers and use only the source-conditioned
+branch. For a multi-word anchor, attention values over all
+corresponding text tokens are summed. We then average the
+resulting maps over attention heads and the selected layers
+and normalize each scale’s map to [0, 1]. Attention is ex-
+tracted directly for sequence lengths up to 1200. At higher-
+resolution scales, we interpolate the map from the nearest
+available scale using bilinear interpolation for image scales
+and trilinear interpolation for video scales.
+C. Source-Video Reconstruction
+We compare the source-video reconstruction fidelity of
+pipelines built on the Wan2.1 and InfinityStar backbones.
+For Wan2.1, each source video is first encoded into the
+VAE latent space, reconstructed through the inversion-and-
+regeneration process, and finally decoded back to video
+space. In contrast, InfinityStar encodes the source video
+into its complete multi-scale discrete token representation
+and directly decodes these tokens, without iterative trajec-
+tory inversion. We use identical input frames and temporal
+alignment for both pipelines and report full-frame PSNR,
+SSIM, and LPIPS. Table 4 presents the quantitative compar-
+ison, while Figure 8 shows representative reconstructions.
+D. Hyperparameter Sensitivity
+We analyze the sensitivity of our method to three key edit-
+ing hyperparameters: γfg
+end, γbg
+end, and Sstop. We vary one
+parameter at a time while fixing all remaining parameters to
+their default values. The pruning ratio K is studied sepa-
+rately in Section I, where both quality and runtime are con-
+sidered.
+Notation and Parameters.
+For each image or video
+tower, Ntower denotes its number of scales and slocal ∈
+Parameter Value CLIP-Sedit ↑PSNR↑LPIPS↓Smooth.↑
+γfg
+end
+1.40
+0.980
+19.75
+0.189
+0.985
+1.50
+0.977
+21.06
+0.183
+0.984
+1.55
+0.981
+22.37
+0.178
+0.983
+1.60†
+0.980
+22.89
+0.172
+0.989
+1.65
+0.971
+22.97
+0.175
+0.981
+1.70
+0.954
+23.01
+0.177
+0.980
+γbg
+end
+1.60
+0.982
+15.41
+0.289
+0.980
+1.70
+0.973
+19.77
+0.201
+0.988
+1.74
+0.980
+22.78
+0.180
+0.984
+1.78†
+0.980
+22.89
+0.172
+0.989
+1.82
+0.975
+23.07
+0.170
+0.979
+1.90
+0.941
+23.91
+0.163
+0.977
+Sstop
+23
+0.982
+17.41
+0.247
+0.990
+24
+0.982
+19.33
+0.225
+0.986
+25†
+0.980
+22.89
+0.172
+0.989
+26
+0.979
+21.73
+0.184
+0.981
+27
+0.975
+20.72
+0.204
+0.973
+29
+0.960
+18.93
+0.231
+0.921
+Table 5. Hyperparameter sensitivity analysis. We vary one param-
+eter at a time while keeping the others fixed. † denotes the default
+configuration.
+{0, . . . , Ntower −1} denotes the corresponding local
+scale index.
+We normalize the scale position as t =
+slocal/(Ntower −1). In the scale envelope, tc is the tran-
+sition center and wt controls its width.
+In the token-
+wise attention mapping, ca is the attention transition cen-
+ter and wa controls its width.
+The endpoint parame-
+ters γfg
+end and γbg
+end determine the late-scale preservation
+strengths for edit-relevant and preserved regions, respec-
+tively. For Scale-Decoupled Generation, Sstop denotes the
+decoupling boundary: source probabilities and attention
+maps are cached only for s < Sstop, and generation is un-
+constrained for s ≥Sstop. For residual-guided pruning, K
+is the percentage of tokens retained for Transformer compu-
+tation. Pruning is applied only to the final two scales, with
+K = 50% used by default.
+Foreground Preservation Strength.
+The results exhibit
+a smooth trade-off as γfg
+end changes. A lower value weakens
+the source constraint in edit-relevant regions and generally
+improves target alignment, but may sacrifice local source
+fidelity and temporal stability. Conversely, a higher value
+favors source-token preservation and can make the intended
+modification less complete. The default value of 1.60 lies
+near the balance between these objectives, and performance
+remains stable within its neighborhood.
+
+
+Figure 7. Effect of the number of attention layers. We compare localization maps obtained by aggregating the first 1, 3, 5, and 10 layers
+and all layers. Aggregating the first five layers provides a stable and concentrated localization signal, while using additional layers brings
+limited qualitative change and incurs greater storage cost. We therefore use the first five layers throughout our experiments.
+Figure 8. Qualitative source-video reconstruction comparison. We show representative source frames together with reconstructions from
+the inversion-based Wan2.1 pipeline and the direct token-based InfinityStar pipeline, highlighting differences in structural preservation,
+appearance fidelity, and fine visual details.
+Background Preservation Strength.
+Increasing γbg
+end
+strengthens source preservation outside the edit-relevant
+region, improving non-edit fidelity.
+Excessively strong
+preservation, however, can constrain tokens near the edit
+boundary and slightly reduce edit alignment. The results
+support using distinct foreground and background preserva-
+tion strengths rather than a spatially uniform control value,
+with the default 1.78 providing a favorable balance.
+Scale-Decoupling Boundary.
+The decoupling bound-
+ary presents an intermediate optimum.
+Applying Scale-
+Decoupled Generation too early weakens the preserva-
+tion of source structure, whereas delaying it to too many
+high-resolution scales over-constrains motion- and pose-
+dependent details and can introduce texture fragmentation.
+Setting Sstop = 25 decouples the source reference after the
+main layout has been established while leaving sufficient
+later scales to regenerate coherent edited details.
+Overall, the method is stable over a reasonably broad
+neighborhood of the default configuration. Each parameter
+produces a predictable quality–preservation trade-off, and
+the selected configuration lies near the trade-off knee rather
+than being optimized for a single metric. We use this fixed
+configuration for all editing cases.
+E. Evaluation Protocol
+Evaluation Set Construction.
+We collect 160 source
+videos from publicly accessible online sources, with 40
+cases for each of object replacement, object addition, back-
+ground replacement, and attribute editing. We select videos
+
+
+with a clearly visible subject, observable motion, sufficient
+visual quality for assessing source preservation, and content
+that supports an unambiguous text-guided edit. This collec-
+tion is used only as an evaluation set and is not introduced
+as a new benchmark or dataset contribution.
+Let It, ˆIt, and Mt denote the source frame, edited frame,
+and edit-region mask at time t, respectively. For each edit-
+ing case, we construct Mt once using SAM2 and use the
+same mask to evaluate every method; the mask therefore
+remains independent of the quality or spatial extent of an in-
+dividual method’s output. For object addition, Mt denotes
+the intended insertion region. The masks are propagated
+across frames by SAM2.
+We compute full-frame CLIP-S between ˆIt and the com-
+plete target prompt. Edit-region CLIP-S is computed from
+the region specified by Mt and the edit-relevant target
+phrase, thereby focusing the score on the intended semantic
+modification rather than unrelated prompt content. To eval-
+uate source-content preservation, PSNR, SSIM, and LPIPS
+are computed between corresponding source and edited
+frames over the complementary non-edit region 1 −Mt.
+The same region-aware implementation is used for every
+method.
+Motion Smoothness and Aesthetic Quality are
+computed using the official VBench implementation; the
+former uses frame interpolation to measure motion continu-
+ity, whereas the latter averages LAION aesthetic predictions
+over frames.
+For every frame-level metric, we first average over the
+Tn frames of video n and then report the macro-average
+over the N editing cases:
+S = 1
+N
+N
+X
+n=1
+ 
+1
+Tn
+Tn
+X
+t=1
+sn,t
+!
+.
+(7)
+Before evaluation, all outputs are temporally sampled to
+a common frame count.
+All methods then use identical
+frames, masks, and metric implementations. Each method
+is run twice for every editing case under the same fixed con-
+figuration, and the reported metric values are averaged over
+the two runs before aggregation across cases.
+F. Baseline Implementation Details
+We evaluate all baselines using their official implemen-
+tations and author-recommended default configurations,
+without case-specific parameter tuning. All methods, in-
+cluding ours, are evaluated at a unified 480p output resolu-
+tion. We only adapt temporal sampling and input formatting
+when required by each method. Source and target prompts
+are kept semantically identical across methods, with only
+method-required formatting changes.
+VACE-V2V uses
+the official Wan-based VACE implementation; RAVE and
+FADE use their official inversion-based pipelines; Wan-
+Edit uses the official implementation released with FiVE-
+Bench; and FlowDirector uses its official Wan2.1-based im-
+plementation. The corresponding official repositories are
+https://github.com/ali-vilab/VACE, https://github.com/
+RehgLab/RAVE, https://github.com/EternalEvan/FADE,
+https://github.com/MinghanLi/FiVE-Bench, and https://
+github.com/Westlake-AGI-Lab/FlowDirector, respectively.
+G. Additional Comparisons with Baselines
+We provide additional qualitative comparisons with the
+baselines evaluated in the main paper.
+These examples
+complement the main-paper comparison by covering more
+source videos and editing prompts under the same evalu-
+ation protocol. For every case, all methods use the same
+source video and semantically identical target prompt, and
+the results are shown with matched temporal sampling and
+output resolution. Figure 9 provides the additional compar-
+isons.
+H. User Study Protocol
+We conduct a blind user study with 15 participants on 50
+cases randomly selected from the evaluation set. Partici-
+pants are shown the source video, the target editing prompt,
+and an anonymized edited result. Method identities are hid-
+den, and the presentation order is randomized. All videos
+are displayed at the same size and frame rate and can be re-
+played before a rating is submitted. The same protocol is
+used for our method and all five baselines.
+Participants rate each result independently according to
+three criteria: (1) editing quality, measuring whether the re-
+quested modification is correctly and naturally realized; (2)
+background preservation, measuring the fidelity of content
+outside the intended edit region to the source video; and (3)
+temporal consistency, measuring appearance stability and
+the absence of flickering or motion artifacts across frames.
+For each criterion, participants assign one of four ordinal
+ratings: Fail, Pass, Good, or Excellent. Figure 10 reports
+the rating distribution for each method and criterion.
+
+
+Figure 9. Additional qualitative comparisons with the baselines evaluated in the main paper. All methods use the same source video and
+target editing prompt for each case, with matched temporal sampling and output resolution.
+Figure 10. User study results. Distributions of the four ordinal ratings (Fail, Pass, Good, and Excellent) assigned independently to each
+method. From left to right, the three panels report editing quality, background preservation, and temporal consistency.
+I. Detailed Efficiency Analysis
+We provide a detailed quality–efficiency analysis of
+residual-guided token pruning at the final two generation
+scales. The unoptimized pipeline requires 65.0 s for each
+phase.
+Scale-Decoupled Generation reduces Phase 1 to
+19.8 s (3.29×), giving an unpruned two-phase runtime of
+84.8 s. Here, K denotes the percentage of tokens retained
+in Phase 2, and K = 50% is our default setting. Random
+selection at matched token budgets isolates the contribution
+of residual-based selection from that of reducing the token
+count alone.
+J. Per-Edit-Type Results
+Table 7 reports per-edit-type quantitative results to comple-
+ment the aggregated comparison in the main paper.
+
+
+Selection
+Kept K
+Phase 2
+Two-Phase Total
+Quality
+Time (s)↓
+Speedup↑
+Time (s)↓
+Speedup↑
+CLIP-Sfull ↑
+CLIP-Sedit ↑
+Smooth.↑
+Aesth.↑
+LPIPS↓
+No pruning
+100%
+65.0
+1.00×
+84.8
+1.00×
+.979
+.980
+.989
+.611
+.172
+Residual-guided
+90%
+61.2
+1.06×
+81.0
+1.05×
+.979
+.978
+.989
+.610
+.175
+Residual-guided
+70%
+51.2
+1.27×
+70.9
+1.19×
+.975
+.977
+.989
+.608
+.175
+Residual-guided
+50%
+43.9
+1.48×
+63.7
+1.33×
+.972
+.976
+.988
+.609
+.176
+Residual-guided
+30%
+39.4
+1.65×
+59.2
+1.43×
+.965
+.970
+.975
+.593
+.204
+Random
+70%
+51.2
+1.27×
+70.9
+1.19×
+.956
+.961
+.963
+.592
+.211
+Random
+50%
+43.9
+1.48×
+63.7
+1.33×
+.943
+.954
+.976
+.589
+.235
+Table 6. Quality–efficiency trade-off of residual-guided token pruning. Pruning is applied to the final two generation scales. Runtime is
+measured on a single NVIDIA A800 GPU with 81 frames. Phase 2 speedup is relative to its 65.0 s unpruned runtime; two-phase speedup
+is relative to the 84.8 s pipeline with Scale-Decoupled Generation and no pruning.
+Edit Type
+Method
+Target Alignment
+Video Quality
+Non-edit Preservation
+CLIP-Sfull ↑
+CLIP-Sedit ↑
+Smooth.↑
+Aesth.↑
+PSNR↑
+SSIM↑
+LPIPS↓
+Object Replacement
+Best Baseline
+0.941
+0.957
+0.988
+0.611
+20.76
+0.801
+0.190
+Ours
+0.957
+0.970
+0.991
+0.613
+21.87
+0.815
+0.176
+Object Addition
+Best Baseline
+0.976
+0.984
+0.970
+0.581
+20.07
+0.788
+0.199
+Ours
+0.979
+0.985
+0.988
+0.603
+22.59
+0.823
+0.174
+Background Replacement
+Best Baseline
+0.956
+0.963
+0.977
+0.580
+19.73
+0.781
+0.209
+Ours
+0.982
+0.982
+0.988
+0.611
+23.87
+0.828
+0.169
+Attribute Editing
+Best Baseline
+0.965
+0.959
+0.977
+0.582
+18.92
+0.791
+0.217
+Ours
+0.970
+0.967
+0.985
+0.609
+21.99
+0.818
+0.185
+Table 7. Per-edit-type quantitative comparison. Results broken down by editing category.
+K. Additional Qualitative Results
+Figures 11, 12, 13, and 14 present additional results for ob-
+ject replacement, object addition, background replacement,
+and attribute editing, respectively.
+
+
+Figure 11. Additional results: Object replacement.
+
+
+Figure 12. Additional results: Object addition.
+
+
+Figure 13. Additional results: Background replacement.
+
+
+Figure 14. Additional results: Attribute editing.
+
+
+L. Failure Cases
+We show representative failure cases to discuss the limita-
+tions of our method. Our method may struggle when the
+requested edit requires a substantial structural change from
+the source video, since the source-preservation constraints
+favor retaining the original layout, pose, and motion. Fail-
+ure may also occur when the editing prompt is ambiguous or
+insufficiently descriptive, in which case the model may mis-
+interpret the intended target or generate incomplete seman-
+tic changes. These limitations can lead to residual source
+structures, implausible local deformations, or edited con-
+tent that does not fully match the intended concept.
+Figure 15. Failure cases involving large structural changes.

@@ -1,0 +1,2239 @@
+SparkDiffusion: Mitigating the High-Sparsity Trap — A
+Unified Framework for up to 265× Single-GPU Acceleration of
+Visual Generation
+Yuxi Liu∗13, Haoyu Li∗23, Zekun Zhang∗1, Tengxu Sun†3, Yixiang Cai1, Jiayong Li35, Yifei Xia6, Tianle
+Liu4, Baole Ai3, Ang Wang3, Jiamang Wang3, Lin Qu3, Kai Zhang2, Kun Yuan†1, Bin Cui†6
+1Peking University, Melon Group, 2Tsinghua University, 3Alibaba Group, 4University of Electronic Science
+and Technology of China, 5Harbin Institute of Technology, 6Peking University
+Project Page: https://sparkdiffusion.github.io/
+GitHub: https://github.com/AlibabaResearch/SparkDiffusion
+Abstract
+Video diffusion transformers are expensive because attention dominates long spatiotemporal token
+sequences. We identify the high-sparsity trap: at extreme attention sparsity, step-local training
+losses keep decreasing while terminal generation quality stagnates or degrades. The trap is one of
+supervision: the dominant terminal errors originate in the high-noise structure-generation stage,
+and terminal-aligned training corrects terminal errors that substantially extended step-local training
+cannot. This yields a simple staging principle: first adapt the sparse architecture into a coarse
+prior, then correct the terminal distribution. We instantiate the principle as SparkDiffusion,
+a unified acceleration framework for visual generation that combines a short sparse warm-up,
+few-step trajectory-mixed distillation, and FP8 quantization with fused kernels. SparkDiffusion
+sustains 97% attention sparsity with strong visual quality on long-sequence 720P generation across
+Wan2.1/Wan2.2 backbones and T2V/I2V tasks, and 90% sparsity on Wan2.1-T2V-1.3B-480P.
+With 3-step CFG-free inference, SparkDiffusion achieves a 265× end-to-end speedup over the
+50-step CFG dense baseline for Wan2.1-T2V-14B-720P on a single RTX 5090 (220× on H100),
+and denoises a Wan2.1-T2V-1.3B-480P video in 1.3s.
+E-mail: yuxiliu666@stu.pku.edu.cn
+hy-l24@mails.tsinghua.edu.cn
+zhangzekun@std.uestc.edu.cn
+lingyan.sk@alibaba-inc.com
+Correspondence: Tengxu Sun, Kun Yuan, Bin Cui
+Figure 1 SparkDiffusion teaser. From one pretrained dense video DiT, SparkDiffusion delivers high quality
+frames across Wan2.1/Wan2.2, T2V/I2V, and 480P/720P with 3-step inference, sustaining 97% attention sparsity on
+long-sequence 720P models and 90% on the compact Wan2.1-T2V-1.3B-480P.
+∗Equal contribution. †Corresponding author.
+arXiv:2609.23153v1  [cs.CV]  19 Sep 2026
+
+
+Figure 2 End-to-end latency and speedup of SparkDiffusion over Full Attention across Wan video generation
+models on NVIDIA H100 and RTX 5090 GPUs. Suffixes “90” and “97” denote attention sparsity levels. Speedup is the
+latency ratio of the full SparkDiffusion stack (few-step distillation, attention sparsity, and FP8) against the dense
+baseline; NFE conventions follow footnotes 1.
+1
+Introduction
+Figure 3 Headline speedup. On Wan2.1-T2V-14B-720P,
+SparkDiffusion composes three multiplicative factors—
+3-step CFG-free distillation, 97% compensated sparse at-
+tention, and fused FP8 kernels—into a measured 265×
+end-to-end speedup over the dense baseline (footnotes 1).
+Video diffusion transformers [15] are a central archi-
+tecture for high-quality text-to-video and image-to-
+video synthesis [7, 19, 26], but their inference cost
+is dominated by attention over long spatiotemporal
+sequences at every sampling step. Sparse attention
+reduces this cost by skipping redundant query–key
+interactions, yet conventional designs lose global
+context and degrade structure when pushed to very
+high sparsity [23, 25, 30]. Compensated sparse at-
+tention mitigates this problem by coupling a high-
+energy sparse branch with a lightweight low-rank
+or linear branch [4, 12, 32, 33], enabling around
+90% attention sparsity.
+Since block-sparse attention computes only a frac-
+tion 1 −s of query–key blocks, the sparse-branch
+computation scales roughly linearly with 1 −s. In-
+creasing sparsity from 90% to 97% reduces the retained sparse blocks from 10% to 3%, cutting the block-wise
+sparse-attention computation to about 30% of that at 90% sparsity. This reduction translates directly into
+end-to-end latency gains: on Wan2.1-T2V-14B-720P with 3-step inference, the 90% →97% stretch alone
+reduces latency from 10.5 s to 8.0 s on H100 and from 23.7 s to 18.0 s on RTX 5090 (Fig. 2)—an additional
+1.31–1.32× speedup that is available only if quality survives extreme sparsity.1 However, extreme sparsity
+also exposes a second barrier: a sparse model may have fast inference and converged step-local training loss,
+while its terminal videos still exhibit broken structure, semantic drift, mosaic textures, and temporal flicker.
+We refer to this regime as the high-sparsity trap: a sparse generator can converge under step-local supervision
+while still failing terminally.
+This raises the central question:
+1Unless otherwise stated, all Full Attention results in this paper use 50 sampling steps with classifier-free guidance, i.e.,
+two model evaluations per sampling step (NFE = 50 × 2 = 100); all accelerated results are CFG-free with 3-step inference
+(NFE = 3). The Full Attention baseline runs in BF16 with the standard high-performance dense attention kernel on each
+GPU—FlashAttention-2 on RTX 5090 and FlashAttention-3 on H100
+2
+
+
+Figure 4 The high-sparsity trap is rooted in high-noise structure errors. Oracle probe: from the same initial
+noise, the sparse model’s velocity is replaced by the dense teacher’s velocity inside a short window of sampling steps
+(“fix”; σ in the legend is the flow-matching noise level; Wan2.1-T2V-14B-480P, 50-step sampler, 32 prompts × 4 seeds;
+error bars: 95% CI). (a) Terminal error to the dense reference output (latent MSE, ↓; the teacher is the zero reference
+and is off the log scale). (b,c) Gains over the uncorrected sparse model (↑; dashed: dense teacher). At 97% sparsity,
+fixing the five highest-noise steps removes most of the terminal error, while fixing the five lowest-noise steps leaves
+it essentially unchanged (beige band: equal-budget gap between the two 5-step fixes); a wider 28-step high-noise
+window recovers nearly all of it. Both the student and the teacher are sampled with classifier-free guidance, and the
+intervention replaces the student’s guided velocity with the teacher’s guided velocity, isolating sparsity-induced error
+from any CFG-removal effect.
+Can visual generators maintain quality at 90%+ attention sparsity, and can such sparsity be
+converted into measured wall-clock speedup?
+Figure 4 provides a mechanistic diagnosis: at extreme sparsity, replacing the sparse student’s velocity with
+the dense teacher’s velocity only in a high-noise window substantially reduces the terminal error, whereas the
+same correction in a low-noise window yields limited gain (setup and details in Sec. 3).
+Representation is not the limiting factor at this operating point: video attention exhibits a strong sparse-plus-
+low-rank structure in which a high-energy sparse branch captures salient semantic interactions and a low-rank
+branch models the residual background context, so compensated sparse attention can in principle sustain
+sparsity well beyond 90% on long spatiotemporal sequences [12]. Once architectural compensation makes such
+extreme sparsity reachable in representation, the remaining bottleneck is supervision. Sparse video diffusion
+models typically inherit flow matching [9], which is step-local: it supervises velocities at individual noise levels
+but does not directly constrain the terminal sample. For dense models, residual velocity errors are often small
+enough that indirect supervision is benign. For highly sparse models, however, errors can be larger and more
+systematic, especially in the high-noise regime, so a model can minimize step-local loss while still producing
+terminal samples misaligned with the data distribution.
+This observation motivates SparkDiffusion, a staged post-training framework. A short sparse warm-up
+adapts the dense backbone to the sparse architecture and provides a trainable coarse prior. Trajectory-mixed
+distillation then corrects the terminal distribution by applying high-noise structural alignment and low-noise
+distribution matching. Finally, fused FP8 deployment converts the reduced computation into measured
+wall-clock speedup. The same staged recipe applies to T2V/I2V tasks and to both dense Wan2.1 and
+MoE-based Wan2.2 backbones (Sec. 5).
+Contributions.
+• Diagnosis: the high-sparsity trap. We identify and diagnose the high-sparsity trap: at extreme
+attention sparsity, step-local training keeps reducing the validation loss while terminal generation quality
+stagnates or degrades. Terminal-aligned post-training mitigates the trap where substantially extended
+step-local training cannot.
+3
+
+
+• Framework: SparkDiffusion. We build SparkDiffusion, a unified acceleration framework for
+visual generation that chains three complementary stages into a single pipeline: a short sparse warm-up
+that adapts a pretrained dense backbone into a coarse sparse prior, few-step trajectory-mixed distillation
+that corrects the terminal distribution, and FP8 quantization with fused kernels that converts the saved
+computation into measured wall-clock speedup.
+• Results. SparkDiffusion sustains 97% attention sparsity on long-sequence 720P generation with
+strong visual quality: on Wan2.1-T2V-14B-720P it delivers a 265× end-to-end speedup on a single
+RTX 5090 and 220× on H100, and it generates Wan2.1-T2V-1.3B-480P video end-to-end in 1.3 seconds at
+90% sparsity. The framework covers Wan2.1/Wan2.2 backbones, T2V/I2V tasks, 480P/720P resolutions,
+and both RTX 5090 and H100 GPUs.
+Extension to auto-regressive video diffusion. The framework is also compatible with auto-regressive (AR)
+video diffusion [29]. Compensated sparse attention can be restricted to a causal window. Trajectory-mixed
+distillation acts on the noise axis rather than the temporal axis, so it can be combined with self-forced AR
+training [5]. Since high-noise structural errors can propagate across chunks, terminal alignment is arguably
+even more important in AR generation.
+2
+Preliminaries
+The following ingredients are central to our discussion: flow-matching training, block-sparse attention, and
+compensated sparse attention.
+Flow matching. Following flow matching [9], we consider a video diffusion transformer that predicts a
+velocity field Fθ(x, t) on latent tokens x ∈RL×d, where L is the spatiotemporal token length. Let Fθ0 denote a
+pretrained dense checkpoint. Given a clean sample x0 ∼pdata and Gaussian noise ϵ ∼N(0, I), flow matching
+forms the interpolated noisy sample
+xt = (1 −t)x0 + tϵ,
+t ∈[0, 1],
+and trains the model to predict the path velocity ϵ −x0:
+LFM(θ) = Ex0,ϵ,t
+h
+w(t) ∥Fθ(xt, t) −(ϵ −x0)∥2
+2
+i
+,
+(1)
+where w(t) is an optional timestep weighting function. This objective supervises velocities at sampled noise
+levels; the terminal sample ˆx0 is obtained only after composing many sampling steps.
+Block sparsity. Throughout this paper, attention sparsity refers to block sparsity: the attention matrix
+is partitioned into contiguous blocks along query and key dimensions, and a fraction s of these blocks are
+skipped during computation. We report sparsity as the fraction of blocks not evaluated by the sparse branch.
+Compensated sparse attention. A major cost in a video DiT is dense self-attention,
+A(Q, K, V ) = softmax
+QK⊤
+√
+d
+
+V,
+which costs O(L2). Compensated sparse attention replaces it by
+eA(Q, K, V ) = AM(Q, K, V ) + gγ ⊙Cψ(Q, K, V ).
+Here AM is a sparse branch that computes attention on a fraction 1 −s of query-key blocks selected by Mϕ,
+e.g., via top-k selection, blockwise scores, or fixed spatiotemporal patterns. Cψ is a lightweight compensation
+branch, such as linear/low-rank attention or pooled summaries, designed to recover global context discarded
+by the sparse branch. Gate gγ fuses the two branches and is typically initialized near zero.
+Training sparse attention. Starting from the dense checkpoint Fθ0, we insert the compensated sparse
+attention modules into the backbone and train the resulting model with the same task loss as in (1). Some
+variants replace the target ϵ −x0 with the dense teacher prediction Fθ0(xt, t), but the objective remains a
+step-local velocity-regression loss.
+4
+
+
+3
+The high-sparsity trap
+We use the term high-sparsity trap to describe a specific failure regime at extreme sparsity. Mitigating the
+trap unlocks the largest remaining latency gain in sparse attention (Sec. 1).
+The high-sparsity trap. We say that a sparse video DiT falls into the high-sparsity trap when, under
+a compensated sparse architecture, increasing attention sparsity beyond a threshold causes terminal
+generation quality to stagnate or degrade while the step-local validation loss remains low or continues to
+decrease, and the terminal error persists even under substantially extended step-local training budgets.
+Generality across sparse designs. RoLA [36] shares its sparse branch with representative trainable
+sparse-attention methods such as VSA [35] and SLA [32]: all three compute exact softmax attention on a
+retained subset of query–key blocks and differ only in the compensation mechanism. The high-sparsity trap
+observed on RoLA therefore reflects this whole family: Appendix D reproduces the same failure pattern on
+VSA- and SLA-style designs, and the staged recipe of Sec. 4 restores terminal quality on both.
+Operationally, we identify this regime by three signatures: (i) the sparse model’s step-local validation loss has
+plateaued or continues to decrease; (ii) terminal generation quality, measured by automatic metrics or paired
+terminal error, is significantly worse than the dense or lower-sparsity baseline; and (iii) extending step-local
+training does not substantially recover the terminal quality.
+Terminal error. Throughout this section, the terminal error denotes the paired MSE between the sparse
+and dense models’ terminal outputs under matched initial noise; unless otherwise stated, it is measured in
+latent space. Both models use identical settings—50 steps with classifier-free guidance (CFG scale 5.0)—so
+the terminal error reflects sparsity-induced error alone, not CFG removal or step reduction.
+3.1
+Empirical signature: terminal drift at extreme sparsity
+Table 1
+Terminal error (paired latent MSE) at 97%
+sparsity with rank-64 vs. full-rank (r=128) compensation
+(Wan2.1-T2V-14B-480P, 10,000 steps).
+Compensation
+Term. error ↓
+VBench ↑
+Rank-64 (default)
+0.124
+80.92
+Full rank (r=128)
+0.121
+81.05
+High sparsity is not ruled out by architecture alone:
+video attention exhibits a strong sparse-plus-low-rank
+structure that supports 90%+ sparsity [12], and indeed
+the 80% and 90% models remain close to the dense
+baseline under the same training (Figure 6); the failure
+appears only when the same architecture family is
+pushed to 95% and 97%. Two observations identify
+the training signal, rather than the representation, as
+the bottleneck. First, widening the compensation branch from rank-64 to full rank leaves the terminal error
+essentially unchanged (Table 1): the model can already express far richer corrections than the ones it converges
+to. Second, the objective it is given is still being optimized: the step-local validation loss continues to decrease
+while terminal quality stalls (Figure 7).
+Evidence in a controlled setting. On toy 2D sequence manifolds, a 95% sparse model trained until
+validation loss plateaus still exhibits structural deviations introduced in the high-noise stage; these deviations
+become more visible as denoising proceeds (Figure 5). Figure 17 shows the qualitative counterpart.
+Real-video evidence under controlled training budgets. On a real video backbone, all sparse models
+are trained with the same step-local task loss (1) from the same dense checkpoint on an enlarged training
+set of ≈30,000 videos (15× the production warm-up set), and training is deliberately extended to 10,000
+steps—40× the step-local budget of the production warm-up (≈250 steps), and more than the total step
+count of the full two-stage pipeline of Sec.4 (8,250 steps; Tables 8 and 9).
+Where the error is injected. Figure 4 localizes the terminal error with an oracle intervention: for a
+fixed initial noise, the sparse student’s velocity is replaced by the dense teacher’s velocity on a contiguous
+noise interval, while the sparse student is kept elsewhere. At 97% sparsity, correcting the five highest-noise
+steps removes most of the terminal error, whereas the equal-budget low-noise correction leaves it essentially
+unchanged; a wider high-noise window recovers nearly all of it. Structural errors are therefore injected during
+high-noise structure generation and then amplified by later steps.
+5
+
+
+Dense
+80%
+90%
+95%
+97%
+A woman walking through a busy neon-lit city street at night, cinematic camera motion, realistic lighting.
+A fluffy dog running across a grassy field under bright sunlight, dynamic motion, highly detailed.
+Figure 6 Video frame comparison on Wan2.1-T2V-14B-480P under attention sparsity levels 80%, 90%, 95%, and 97%.
+Figure 5 Sliced-W2 distance to the data distribution along the
+denoising trajectory on six toy 2D sequence manifolds. The
+sparse model is trained until validation loss plateaus, while the
+distilled student is obtained by trajectory-mixed distillation.
+Together, these diagnostics show that step-local
+validation loss is a poor proxy for terminal quality
+at extreme sparsity.
+3.2
+Why step-local supervision may be
+insufficient
+Intuitively, the step-local loss measures per-step
+error magnitudes, whereas the terminal sample
+depends on how those errors are transported
+and summed along the sampling trajectory. Ap-
+pendix C formalizes this mechanism in a delib-
+erately simplified surrogate. After a step-local
+optimum, a terminal-aligned signal can reduce
+the surviving terminal error at first order through
+the same trainable parameters, but it cancels the
+terminal-visible projection of the error rather
+than removing the underlying velocity error.
+3.3
+From diagnosis to a staged remedy
+We call a training signal terminal-aligned if its supervision target at noise level t is constructed from the
+sampling trajectory beyond t—the model’s prediction at a later trajectory state, a teacher-composed trajectory
+segment, or the terminal output itself—so that the loss constrains how the prediction at t composes with the
+remainder of the trajectory toward the terminal state. In contrast, step-local losses such as flow matching
+supervise the velocity at (xt, t) against a closed-form, pointwise target that is independent of the sampling
+trajectory, and are therefore agnostic to how per-step errors compose and accumulate (Appendix C). Under
+this definition, consistency objectives are terminal-aligned toward the terminal state of their noise interval, and
+distribution-matching objectives are terminal-aligned toward the global terminal output ˆx0. Sparse training
+with step-local loss provides a coarse prior but does not anchor the terminal distribution at extreme sparsity.
+Applying few-step distillation post-training to the sparse model with this prior is therefore a natural way
+to mitigate the high-sparsity trap. The remedy is staged: a short sparse warm-up adapts the high-sparsity
+architecture into a usable prior, and trajectory-mixed distillation (Sec. 4) then aligns the teacher’s velocity
+field in the high-noise segment and matches the data distribution in the low-noise segment.
+Figure 8 provides qualitative evidence: at 97% attention sparsity on Wan2.1-T2V-14B-720P, the few-step
+model after trajectory-mixed distillation is visually much closer to the dense teacher than the multi-step
+sparse model.
+6
+
+
+0
+250
+500
+1k
+2k
+6k
+10k
+0.09
+0.10
+0.11
+0.12
+0.13
+val loss
+Validation loss keeps falling
+80%
+90%
+95%
+97%
+0.16775
+0.18975
+0.21176
+0.23376
+0.25576
+CLIP score
+raw metric values
+CLIP alignment
+0.3689
+0.4587
+0.5485
+0.6382
+0.7280
+VBench imaging
+raw metric values
+VBench imaging
+0
+250
+500
+1k
+2k
+6k
+10k
+Training step
+0.0595
+0.0914
+0.1233
+0.1552
+0.1871
+Dense pixel MSE
+raw metric values
+Dense pixel MSE
+0
+250
+500
+1k
+2k
+6k
+10k
+Training step
+0.89428
+0.91897
+0.94365
+0.96833
+0.99301
+Temporal consistency
+raw metric values
+Temporal consistency
+Figure 7 Validation loss and raw quality metrics for Wan2.1-14B across sparsity levels. The “Dense pixel MSE” panel
+reports the terminal error of Sec.3 after VAE decoding, sharing the pixel-space footing of the other quality panels.
+4
+Method
+SparkDiffusion consists of two post-training stages and one deployment-time step. Figure 9 gives an
+overview of the framework. Together, they convert a pretrained dense video DiT into a fast, high-sparsity
+generator without retraining it from scratch. Stage 1 performs a sparse-attention warm-up to obtain a coarse
+prior (Sec 4.1); Stage 2 applies trajectory-mixed distillation to reduce sampling steps and correct the terminal
+distribution (Sec 4.2); Stage 3 uses FP8 quantization to convert reduced computation into wall-clock speedup
+(Sec 4.3). Each stage consumes the checkpoint of the previous one; the full schedule is in Sec 4.4.
+The framework is agnostic to the specific sparse selector, compensation branch, and distillation objective. Our
+default instantiation uses RoLA [36] as the sparse module and the CrossDistill schedule [11] for distillation.
+4.1
+Compensated sparse attention
+Our sparse attention module follows RoLA [36]. A block-sparse branch retains high-energy query–key blocks,
+while a low-rank branch recovers the global context discarded by sparsification. The sparse branch computes
+Os = AM(Q, K, V ),
+where AM keeps only a small set of selected query–key blocks.
+The compensation branch uses the backbone’s pre-attention normalized queries and keys. It applies low-rank
+projections, a pointwise nonlinearity, and then a rank-truncated 3D RoPE rotation:
+˜qi = Rr(pi) ϕ(Pqqnorm
+i
+),
+˜kj = Rr(pj) ϕ(Pkknorm
+j
+),
+C =
+X
+j
+˜kjv⊤
+j ,
+Olr,i = RMSNorm(˜q⊤
+i C),
+where ϕ is SiLU, and Rr(·) reuses the first r rotary coordinates of the pretrained 3D RoPE schedule. This
+branch is linear in sequence length and preserves relative spatiotemporal position.
+7
+
+
+Dense Teacher
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+Sparse Multi-step
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+Post-distillation
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+t=0.20
+t=0.50
+t=0.80
+Figure 8 Qualitative comparison at 97% attention sparsity on Wan2.1-T2V-14B-720P. We compare the dense teacher,
+the multi-step sparse model, and the few-step sparse model obtained after trajectory-mixed distillation.
+A token-wise gate gi initialized near zero fuses the two branches:
+Oi = Os,i + gi ri Olr,i,
+where ri is the RMS of the sparse output Os,i. Thus the module starts close to the sparse branch and opens
+the compensation path only where needed.
+4.2
+Trajectory-mixed distillation
+Stage-2 distillation must meet two distinct requirements. First, escaping the high-sparsity trap requires a
+terminal-aligned signal (Sec. 3); consistency-style and distribution-matching objectives are both terminal-
+aligned, so either suffices in principle (Sec. 5.3).
+Second, the choice among them is governed by the
+fidelity–diversity trade-off: pure distribution matching is mode-seeking and loses seed-level diversity [3], while
+pure consistency matching preserves the teacher’s trajectory but never aligns the terminal distribution.
+We therefore adopt the trajectory-mixed schedule of CrossDistill [11], which splits the sampling trajectory at
+a noise crosspoint: the high-noise segment is trained with PCM-style[20] consistency to preserve structure,
+motion, and diversity, while the low-noise segment is trained with DMD-style[28] distribution matching to
+sharpen detail and correct terminal-visible errors. We use a 3-step student—one high-noise PCM step and
+two low-noise DMD steps—and follow the default crosspoint, loss weighting, and optimization schedule of
+CrossDistill. This assignment mirrors the diagnosis of Sec. 3: terminal-visible errors originate in high-noise
+structure generation (Fig. 4), so the high-noise step stays anchored to the teacher’s coarse trajectory while
+the low-noise steps supply the terminal-aligned correction.
+4.3
+FP8 quantization
+The deployment step converts the sparse model’s reduced FLOPs into wall-clock speedup. We quantize
+the linear projections in attention and the feed-forward layers to W8A8 FP8 (E4M3) [17]: weights carry
+static per-channel scales calibrated once offline, and activations are scaled dynamically per token at runtime.
+Normalization layers, gating operations, and sparse mask selection remain in BF16. The per-token activation
+quantization path is fused into a single custom kernel so that scaling and casting happen in one pass over
+memory. This transform is applied purely at deployment time, after all training is complete, and with few-step
+sampling the quantization error has little room to accumulate. All SparkDiffusion quality numbers reported
+in this paper (Tables 2 and 3) are measured on the deployed model with FP8 quantization and fused kernels
+enabled; the BF16-to-FP8 quality delta is ablated in Appendix B.2 and stays within 0.1 VBench points.
+4.4
+Training and deployment
+8
+
+
+0
+1
+2
+3
+Teacher & Data 
+Preparation
+Sparse Warm-up
+Trajectory-Mixed Distillation
+FP8+Fused Kernel
+Sparse branch
+Compensation
+branch
+Gate
+coarse manifold prior
+Multi-step sparse
+Teacher
+(dense, frozen)
+Student
+(sparse)
+t = 1
+t = 0
+𝒕𝐜𝐫𝐨𝐬𝐬𝐨𝐯𝐞𝐫
+High noise
+Low noise
+1
+0
+student
+teacher
+Structure
+Teacher
+samples
+Student
+samples
+Critic
+Fidelity
+Few-step sparse
+FP8 Quantization
+Offline
+Runtime
+BF16 W
+FP8 W + scale
+BF16 A
+FP8 A + scale
+FP8 E4M3 GEMM
+BF16
+Fused Kernel Execution
+Sparsity
+FLOPs ↓
+Distillation
+steps ↓
+FP8
+bandwidth ↓
+Kernel
+overhead ↓
+Real latency
+speedup
+Distillation
+𝒕𝐜𝐫𝐨𝐬𝐬𝐨𝐯𝐞𝐫
+𝒕𝐜𝐫𝐨𝐬𝐬𝐨𝐯𝐞𝐫
+↓
+Diversity
+Detail
+Video data
+Pretrained checkpoint
+initialization
+copy
+finetune
+Consistency/Flow Matching
+Distribution Matching
+Attention Computation
+Tensor Transformation
+Fusion
+Projection
+Figure 9 Overview of the SparkDiffusion framework (stages detailed in Sec. 4.1–4.3).
+Figure 10 Sparse warm-up provides the coarse prior
+for terminal-aligned distillation. On Wan2.1-T2V-14B-
+480P, all models are followed by the same trajectory-mixed
+distillation stage; a short sparse warm-up establishes the
+usable coarse prior on which distillation builds.
+Stage 1 (sparse warm-up). We insert the com-
+pensated sparse attention of Sec 4.1 into the dense
+backbone and fine-tune briefly with the step-local
+objective of Sec. 2 (Eq. (1), including its teacher-
+velocity variant) alone. This stage adapts the back-
+bone to the sparse architecture and establishes
+a coarse generative prior for the terminal-aligned
+stage that follows. Figure 10 shows that a brief
+warm-up is sufficient to establish a usable prior for
+distillation, so we keep this stage short.
+Stage 2 (trajectory-mixed distillation). Start-
+ing from the warm-up checkpoint, we apply the
+trajectory-mixed distillation of Sec. 4.2, with the
+dense multi-step model frozen as the teacher.
+Deployment. The few-step model is quantized
+with the FP8 scheme of Sec 4.3 and used directly for inference. For mixture-of-experts backbones such as
+Wan2.2, where separate expert groups are specialized for different noise ranges, each expert group is warmed
+up and distilled on its own noise range before quantization.
+5
+Experiments
+5.1
+Main quantitative comparison
+Table 2 compares Full Attention, TurboDiffusion, FastWan (VSA), and SparkDiffusion under the same
+hardware and generation settings.2 All baselines are evaluated at their official released operating point
+2TurboDiffusion and FastWan provide official weights only for Wan2.1 backbones; no official release supports Wan2.2-T2V-
+A14B, so these baselines are omitted for that model. FastWan is the few-step sparse-attention video model implemented and
+released in the official VSA repository [35]: VSA denotes the training method and FastWan the released few-step sparse model.
+We therefore treat them as the same baseline and denote it as FastWan (VSA) throughout this paper.
+9
+
+
+Table 2 Comparison of generation quality and efficiency on VBench [6] and VBench-2.0 [37]. We evaluate Wan2.1-T2V-
+1.3B at 480 × 832, and Wan2.1-T2V-14B and Wan2.2-T2V-A14B at 720 × 1280, all with 81 frames. VBench-2.0 reports
+the overall score and five capability categories: Creativity, Commonsense, Controllability, Human Fidelity, and Physics.
+“Sp.” denotes attention sparsity; NFE conventions follow footnotes 1. All SparkDiffusion rows are measured with
+the full deployment stack active—W8A8 FP8 quantization with fused kernels—for both quality metrics and latency;
+baselines are evaluated with their official inference pipelines, including their own quantization settings. Full Attention
+rows use our strongest dense implementation: BF16 with FlashAttention-2 on RTX 5090 and FlashAttention-3 on
+H100, and no other acceleration technique. For Wan2.2-T2V-A14B-720P, the RTX 5090 latency includes the overhead
+of swapping the high-noise and low-noise expert groups in GPU memory; on H100 both expert groups reside in memory
+simultaneously. Bold marks the best result among accelerated methods within each model block.
+VBench
+VBench-2.0
+Latency (s)
+Model
+Method
+Total ↑
+Total ↑
+Creat. ↑Common.
+↑
+Control.
+↑
+Human
+Fid. ↑
+Physics
+↑
+Sp. 5090
+↓
+H100
+↓
+Wan2.1-T2V
+1.3B
+Full
+83.21
+56.02
+54.73
+57.38
+34.96
+78.71
+54.30
+0%
+182
+92
+FastWan (VSA)
+82.37
+54.63
+52.66
+56.52
+32.27
+79.69
+52.01
+90%
+2.8
+1.2
+TurboDiffusion
+82.52
+54.61
+51.72
+56.94
+31.65
+79.55
+53.21
+90%
+2.0
+1.0
+SparkDiffusion (Ours)
+82.64
+55.85
+53.99
+57.13
+33.75
+80.34
+54.02
+90%
+1.3
+0.6
+Wan2.1-T2V
+14B
+Full
+83.69
+60.20
+55.25
+63.98
+37.32
+81.60
+62.84
+0%
+4769
+1757
+FastWan (VSA)
+82.72
+58.04
+54.97
+59.54
+35.75
+81.72
+58.20
+90%
+54.1
+20.5
+TurboDiffusion
+82.88
+57.98
+54.88
+59.77
+34.98
+81.51
+58.74
+90%
+25.3
+16.0
+SparkDiffusion (Ours)
+83.42
+59.36
+55.22
+60.88
+37.41
+83.51
+59.77
+90%
+23.7
+10.5
+SparkDiffusion (Ours)
+83.15
+58.05
+54.81
+59.02
+36.01
+81.77
+58.63
+97%
+18.0
+8.0
+Wan2.2-T2V
+A14B
+Full
+84.21
+60.36
+55.60
+64.50
+37.40
+81.30
+63.00
+0%
+4545
+1508
+SparkDiffusion (Ours)
+83.75
+59.77
+55.51
+61.36
+37.55
+83.88
+60.53
+90%
+32.4
+10.5
+SparkDiffusion (Ours)
+83.36
+58.46
+55.09
+59.32
+35.67
+81.92
+60.30
+97%
+25.1
+8
+(90% sparsity); we report SparkDiffusion both at matched 90% and at 97%. At matched 90% sparsity,
+SparkDiffusion improves over all baselines on every reported metric on Wan2.1-T2V-14B-720P. On the
+compact short-sequence Wan2.1-T2V-1.3B-480P, SparkDiffusion at the same 90% sparsity improves
+generation quality and inference speed simultaneously over both baselines: it attains the best VBench-2.0 at
+the lowest latency (1.3 s on RTX 5090 and 0.6 s on H100, 1.5–2.2× faster than the baselines).
+On the large long-sequence models, we push sparsity to 97%. All baselines are evaluated at their strongest
+official configuration (90% sparsity); since quality degrades monotonically with sparsity (Fig. 6), training
+the baselines at 97% could only widen the quality gap in our favor. At 97%, SparkDiffusion attains
+slightly better aggregate quality than the strongest 90% baselines (on Wan2.1-T2V-14B-720P, VBench and
+VBench-2.0 relative to TurboDiffusion) at clearly lower latency, while remaining closest to the dense model
+in diversity (Table 3). Measured end-to-end diffusion generation latency, excluding the text encoding and
+VAE decoding stages and speedup are shown in Figures 2 and 3. These speedups are combined system results
+in which few-step distillation, attention sparsity, and FP8 contribute multiplicatively (Fig. 3). At matched
+3-step inference, the isolated 90%→97% sparsity stretch contributes 1.31–1.32×; this is the regime where
+step-local-only recipes degrade (Sec. 3).
+5.2
+Diversity preservation under few-step distillation
+Table 3 quantifies seed-level diversity, complementing the qualitative check in Figure 11. Following Shaul et al.
+[16], we encode each video with two frozen video encoders, V-JEPA 2 [1] and VideoMAE V2 [21], and report
+average pairwise cosine and ℓ2 distances among videos sampled from the same prompt with different noise
+seeds; higher values indicate more diverse samples, and the dense model serves as a reference. Despite operating
+at 97% sparsity, SparkDiffusion stays closest to the dense reference, whereas the few-step baselines lose a
+visible fraction of seed-level variation, consistent with the mode-seeking tendency of distribution matching [3].
+This supports the trajectory-mixed design of Sec. 4.2: high-noise consistency matching preserves coarse
+structure and diversity, while low-noise distribution matching improves terminal fidelity.
+10
+
+
+Table 3 Quantitative diversity comparison on Wan2.1-T2V-14B-720P. Each video is encoded by two frozen video
+encoders, V-JEPA 2 [1] and VideoMAE V2 [21]; we report the average pairwise cosine and ℓ2 distances among N=5
+videos sampled from the same prompt with 5 noise seeds (1,000 prompts; protocol follows Shaul et al. [16]).
+V-JEPA 2
+VideoMAE V2
+Method
+Sp.
+Cos ↑
+ℓ2 ↑
+Cos ↑
+ℓ2 ↑
+Full Attention
+0%
+0.125
+27.15
+0.0252
+2.83
+FastWan (VSA)
+90%
+0.075
+21.31
+0.0117
+2.05
+TurboDiffusion
+90%
+0.078
+21.67
+0.0125
+2.21
+SparkDiffusion (Ours)
+97%
+0.087
+23.04
+0.0142
+2.47
+5.3
+Distillation objective at extreme sparsity
+Table 4 Distillation-objective ablation at 97% attention sparsity
+(Wan2.1-T2V-14B-720P; 3-step CFG-free student; All 3-step
+student rows initialize from the same Stage-1 warm-up check-
+point.)
+Stage-2 objective
+VBench ↑
+VBench-2.0 ↑
+Full Attention (dense, 50-step)
+83.69
+60.20
+PCM only (3-step)
+81.94
+56.41
+DMD only (3-step)
+82.56
+57.38
+CrossDistill (Ours, 3-step)
+83.15
+58.05
+Table 4 ablates the Stage-2 objective at 97%
+sparsity, with all students initialized from the
+same Stage-1 warm-up checkpoint and sam-
+pled with three CFG-free steps. Both single-
+objective variants already recover most of the
+quality lost at 97% sparsity, corroborating that
+the trap is one of supervision: any terminal-
+aligned objective mitigates it. The two pure
+objectives, however, fail in opposite directions
+along the fidelity–diversity axis:
+PCM-only
+training tracks the teacher’s trajectory but
+never aligns the terminal distribution, yield-
+ing the weakest scores, while DMD-only training aligns the terminal distribution but is mode-seeking, losing
+coarse structure and seed-level diversity (cf. Table 3). The trajectory-mixed objective attains the best of both
+segments; together with the warm-up ablation (Fig. 10), this supports the staging principle of Sec. 3.
+Figure 11 Few-step distillation preserves sample diversity. On Wan2.1-T2V-14B-480P, for each of two prompts, we
+show one frame per video under three models (dense teacher; sparse model with 90% block sparsity and rank-64
+compensation; 3-step student distilled from it) using the same four noise seeds.
+5.4
+Cross-model qualitative validation
+To examine whether SparkDiffusion generalizes beyond the primary benchmark setting, we conduct
+qualitative comparisons across multiple model scales, tasks, resolutions, and sparsity levels: Wan2.1-T2V-1.3B
+at 480 × 832 with 90% sparsity (Figure 12), Wan2.1-T2V-14B at 480 × 832 with 90% sparsity (Figure 13),
+Wan2.1-T2V-14B at 720 × 1280 with 97% sparsity (Figure 14), Wan2.1-I2V-14B at 720 × 1280 with 97%
+sparsity (Figure 15), and Wan2.2-T2V-A14B at 720 × 1280 with 97% sparsity (Figure 16). All accelerated
+models use 3-step inference; TurboDiffusion and FastWan use their officially released weights and inference
+11
+
+
+scripts. Full settings are given in Appendix B.1. These results suggest that SparkDiffusion maintains
+coherent structure, semantic alignment, and temporal detail even when attention sparsity is pushed to 97%.
+6
+Conclusion
+We identified the high-sparsity trap: at extreme attention sparsity, step-local training converges while terminal
+generation quality degrades, and its root cause lies in the supervision paradigm. The following staging principle—
+first adapt the sparse architecture into a coarse prior, then correct the terminal distribution—naturally leads
+to SparkDiffusion, a unified acceleration framework for visual generation chaining a short sparse warm-up,
+few-step trajectory-mixed distillation, and FP8 quantization with fused kernels. SparkDiffusion sustains
+97% attention sparsity on long-sequence 720P generation with strong visual quality, delivering a measured
+265× end-to-end speedup on Wan2.1-T2V-14B-720P on a single RTX 5090 (220× on H100) and generating a
+Wan2.1-T2V-1.3B-480P video end-to-end in 1.3 seconds, across Wan2.1/Wan2.2 backbones, T2V/I2V tasks,
+and 480P/720P resolutions. Going forward, we will extend this framework to bring high-sparsity acceleration
+to omni-modal generative models and autoregressive world models.
+7
+Acknowledgments
+This work was supported by Alibaba Group through Alibaba Research Intern Program.
+12
+
+
+References
+[1] Mido Assran, Adrien Bardes, David Fan, Quentin Garrido, Russell Howes, Matthew Muckley, Ammar Rizvi,
+Claire Roberts, Koustuv Sinha, Artem Zholus, et al. V-jepa 2: Self-supervised video models enable understanding,
+prediction and planning. arXiv preprint arXiv:2506.09985, 2025.
+[2] Pengtao Chen, Xianfang Zeng, Maosen Zhao, Mingzhu Shen, Wei Cheng, Gang Yu, and Tao Chen. Sparse-vdit:
+Unleashing the power of sparse attention to accelerate video diffusion transformers. In Proceedings of the AAAI
+Conference on Artificial Intelligence, pages 2957–2965, 2026.
+[3] Siyi Chen, Shaowei Liu, Yixuan Jia, Zian Wang, Huan Ling, Qing Qu, and Jun Gao. Data-forcing distillation:
+Restoring diversity and fidelity in few-step video generation. arXiv preprint arXiv:2606.18478, 2026.
+[4] Tongcheng Fang, Hanling Zhang, Ruiqi Xie, Zhuo Han, Xin Tao, Tianchen Zhao, Pengfei Wan, Wenbo Ding,
+Wanli Ouyang, Xuefei Ning, et al. Salad: Achieve high-sparsity attention via efficient linear attention tuning for
+video diffusion transformer. arXiv preprint arXiv:2601.16515, 2026.
+[5] Xun Huang, Zhengqi Li, Guande He, Mingyuan Zhou, and Eli Shechtman. Self forcing: Bridging the train-test
+gap in autoregressive video diffusion. Advances in Neural Information Processing Systems, 38:167283–167308,
+2026.
+[6] Ziqi Huang, Yinan He, Jiashuo Yu, Fan Zhang, Chenyang Si, Yuming Jiang, Yuanhan Zhang, Tianxing Wu,
+Qingyang Jin, Nattapol Chanpaisit, et al. Vbench: Comprehensive benchmark suite for video generative models.
+In 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 21807–21818. IEEE,
+2024.
+[7] Weijie Kong, Qi Tian, Zijian Zhang, Rox Min, Zuozhuo Dai, Jin Zhou, Jiangfeng Xiong, Xin Li, Bo Wu,
+Jianwei Zhang, et al. Hunyuanvideo: A systematic framework for large video generative models. arXiv preprint
+arXiv:2412.03603, 2024.
+[8] Xingyang Li, Muyang Li, Tianle Cai, Haocheng Xi, Shuo Yang, Yujun Lin, Lvmin Zhang, Songlin Yang, Jinbo
+Hu, Kelly Peng, et al. Radial attention: O(n log n) sparse attention with energy decay for long video generation.
+Advances in Neural Information Processing Systems, 38:16822–16852, 2026.
+[9] Yaron Lipman, Ricky TQ Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. Flow matching for generative
+modeling. arXiv preprint arXiv:2210.02747, 2022.
+[10] Yuxi Liu, Yipeng Hu, Zekun Zhang, Kunze Jiang, and Kun Yuan. Mixture of distributions matters: Dynamic
+sparse attention for efficient video diffusion transformers. arXiv preprint arXiv:2601.11641, 2026.
+[11] Yuxi Liu, Haoyu Li, Yixiang Cai, Tengxu Sun, Zekun Zhang, Baole Ai, Ang Wang, Jiamang Wang, Lin Qu, Kun
+Yuan, and Kai Zhang. Crossdistill: Balancing quality and diversity via trajectory-level hybrid few-step distillation.
+arXiv preprint arXiv:2609.14725, 2026.
+[12] Yuxi Liu, Zekun Zhang, Yixiang Cai, Renjia Deng, Yutong He, and Kun Yuan.
+Ropeslr: 3d rope-driven
+sparse-lowrank attention for efficient diffusion transformers. arXiv preprint arXiv:2605.20659, 2026.
+[13] Yihong Luo, Tianyang Hu, Jiacheng Sun, Yujun Cai, and Jing Tang. Learning few-step diffusion models by
+trajectory distribution matching. In 2025 IEEE/CVF International Conference on Computer Vision (ICCV),
+pages 17719–17728. IEEE, 2025.
+[14] Kepan Nan, Rui Xie, Penghao Zhou, Tiehan Fan, Zhenheng Yang, Zhijie Chen, Xiang Li, Jian Yang, and Ying
+Tai. Openvid-1m: A large-scale high-quality dataset for text-to-video generation. In International conference on
+learning representations, volume 2025, pages 1045–1064, 2025.
+[15] William Peebles and Saining Xie. Scalable diffusion models with transformers. In 2023 IEEE/CVF International
+Conference on Computer Vision (ICCV), pages 4172–4182. IEEE, 2023.
+[16] Neta Shaul, Chao Liu, Arash Vahdat, and Julius Berner. Parallel decoding distillation for fast image and video
+generation. arXiv preprint arXiv:2607.26004, 2026.
+[17] Haihao Shen, Naveen Mellempudi, Xin He, Qun Gao, Chang Wang, and Mengni Wang. Efficient post-training
+quantization with fp8 formats. Proceedings of Machine Learning and Systems, 6:483–498, 2024.
+[18] Yang Song, Prafulla Dhariwal, Mark Chen, and Ilya Sutskever.
+Consistency models.
+arXiv preprint
+arXiv:2303.01469, 2023.
+13
+
+
+[19] Team Wan, Ang Wang, Baole Ai, Bin Wen, Chaojie Mao, Chen-Wei Xie, Di Chen, Feiwu Yu, Haiming Zhao, Jianx-
+iao Yang, et al. Wan: Open and advanced large-scale video generative models. arXiv preprint arXiv:2503.20314,
+2025.
+[20] Fu-Yun Wang, Zhaoyang Huang, Alexander W Bergman, Dazhong Shen, Peng Gao, Michael Lingelbach, Keqiang
+Sun, Weikang Bian, Guanglu Song, Yu Liu, et al. Phased consistency models. Advances in neural information
+processing systems, 37:83951–84009, 2024.
+[21] Limin Wang, Bingkun Huang, Zhiyu Zhao, Zhan Tong, Yinan He, Yi Wang, Yali Wang, and Yu Qiao. Videomae
+v2: Scaling video masked autoencoders with dual masking, 2023. URL https://arxiv.org/abs/2303.16727.
+[22] Jianzong Wu, Liang Hou, Haotian Yang, Ye Tian, Pengfei Wan, Di ZHANG, and Yunhai Tong. Vmoba: Mixture-
+of-block attention for video diffusion models. In International Conference on Learning Representations, volume
+2026, pages 132534–132548, 2026.
+[23] Haocheng Xi, Shuo Yang, Yilong Zhao, Chenfeng Xu, Muyang Li, Xiuyu Li, Yujun Lin, Han Cai, Jintao Zhang,
+Dacheng Li, et al. Sparse videogen: Accelerating video diffusion transformers with spatial-temporal sparsity.
+arXiv preprint arXiv:2502.01776, 2025.
+[24] Yifei Xia, Suhan Ling, Fangcheng Fu, Yujie Wang, Huixia Li, Xuefeng Xiao, and Bin Cui. Training-free and
+adaptive sparse attention for efficient long video generation. In 2025 IEEE/CVF International Conference on
+Computer Vision (ICCV), pages 15982–15993. IEEE, 2025.
+[25] Shuo Yang, Haocheng Xi, Yilong Zhao, Muyang Li, Jintao Zhang, Han Cai, Yujun Lin, Xiuyu Li, Chenfeng
+Xu, Kelly Peng, et al. Sparse videogen2: Accelerate video generation with sparse attention via semantic-aware
+permutation. Advances in Neural Information Processing Systems, 38:96965–96991, 2026.
+[26] Zhuoyi Yang, Jiayan Teng, Wendi Zheng, Ming Ding, Shiyu Huang, Jiazheng Xu, Yuanming Yang, Wenyi Hong,
+Xiaohan Zhang, Guanyu Feng, et al. Cogvideox: Text-to-video diffusion models with an expert transformer. In
+International Conference on Learning Representations, volume 2025, pages 83048–83077, 2025.
+[27] Tianwei Yin, Michaël Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and William T
+Freeman. Improved distribution matching distillation for fast image synthesis. Advances in neural information
+processing systems, 37:47455–47487, 2024.
+[28] Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shechtman, Fredo Durand, William T Freeman, and Taesung
+Park. One-step diffusion with distribution matching distillation. In 2024 IEEE/CVF Conference on Computer
+Vision and Pattern Recognition (CVPR), pages 6613–6623. IEEE, 2024.
+[29] Tianwei Yin, Qiang Zhang, Richard Zhang, William T Freeman, Fredo Durand, Eli Shechtman, and Xun Huang.
+From slow bidirectional to fast autoregressive video diffusion models. In 2025 IEEE/CVF Conference on Computer
+Vision and Pattern Recognition (CVPR), pages 22963–22974. IEEE, 2025.
+[30] Jintao Zhang, Chendong Xiang, Haofeng Huang, Jia Wei, Haocheng Xi, Jun Zhu, and Jianfei Chen. Spargeattention:
+Accurate and training-free sparse attention accelerating any model inference. arXiv preprint arXiv:2502.18137,
+2025.
+[31] Jintao Zhang, Kaiwen Zheng, Kai Jiang, Haoxu Wang, Ion Stoica, Joseph E Gonzalez, Jianfei Chen, and Jun Zhu.
+Turbodiffusion: Accelerating video diffusion models by 100-200 times. arXiv preprint arXiv:2512.16093, 2025.
+[32] Jintao Zhang, Haoxu Wang, Kai Jiang, Shuo Yang, Kaiwen Zheng, Haocheng Xi, Ziteng Wang, Hongzhou Zhu,
+Min Zhao, Ion Stoica, et al. Sla: Beyond sparsity in diffusion transformers via fine-tunable sparse–linear attention.
+In International Conference on Learning Representations, volume 2026, pages 138288–138305, 2026.
+[33] Jintao Zhang, Haoxu Wang, Kai Jiang, Kaiwen Zheng, Youhe Jiang, Ion Stoica, Jianfei Chen, Jun Zhu, and
+Joseph E Gonzalez. Sla2: Sparse-linear attention with learnable routing and qat. arXiv preprint arXiv:2602.12675,
+2026.
+[34] Peiyuan Zhang, Yongqi Chen, Runlong Su, Hangliang Ding, Ion Stoica, Zhengzhong Liu, and Hao Zhang. Fast
+video generation with sliding tile attention. arXiv preprint arXiv:2502.04507, 2025.
+[35] Peiyuan Zhang, Yongqi Chen, Haofeng Huang, Will Lin, Zhengzhong Liu, Ion Stoica, Eric Xing, and Hao Zhang.
+Faster video diffusion with trainable sparse attention. Advances in Neural Information Processing Systems, 38:
+152509–152534, 2026.
+14
+
+
+[36] Zekun Zhang, Yixiang Cai, Yuxi Liu, Tengxu Sun, Tianle Liu, Zhoutong Wu, Haoyu Li, Baole Ai, Ang Wang,
+Jiamang Wang, Lin Qu, and Kun Yuan. Rola: Rotary-positioned low-rank linear attention for efficient diffusion
+transformers, 2026. URL https://arxiv.org/abs/2609.06712.
+[37] Dian Zheng, Ziqi Huang, Hongbo Liu, Kai Zou, Yinan He, Fan Zhang, Lulu Gu, Yuanhan Zhang, Jingwen He,
+Wei-Shi Zheng, et al. Vbench-2.0: Advancing video generation benchmark suite for intrinsic faithfulness. arXiv
+preprint arXiv:2503.21755, 2025.
+[38] Kaiwen Zheng, Yuji Wang, Qianli Ma, Huayu Chen, Jintao Zhang, Yogesh Balaji, Jianfei Chen, Ming-Yu Liu,
+Jun Zhu, and Qinsheng Zhang. Large scale diffusion distillation via score-regularized continuous-time consistency.
+In International Conference on Learning Representations, volume 2026, pages 2582–2603, 2026.
+15
+
+
+Appendix
+A
+Related Work
+High-sparsity attention for video diffusion.
+Sparse attention is a widely used route for reducing the quadratic
+attention cost of video DiTs.
+Training-free methods exploit recurring spatiotemporal structure, search
+structured sparse patterns, or construct sparse masks dynamically during inference [2, 8, 10, 23–25, 30, 34],
+while trainable approaches learn adaptive sparse computation from data [22, 35]. To retain global context
+under aggressive sparsification, compensation-based methods such as SLA [32], SLA2 [33], and SALAD [4]
+combine sparse attention with lightweight linear branches. RoPeSLR [12] further identifies a 3D-RoPE-aware
+sparse-plus-low-rank structure in video attention, where high-energy semantic interactions are captured by a
+sparse branch and the remaining background context is modeled by a low-rank MLP. These methods motivate
+the architectural feasibility of high sparsity, but they primarily focus on sparse-plus-compensation designs and
+do not directly address the terminal-quality failure that can appear when sparsity is pushed to the extreme
+regime studied in this paper.
+Sparse attention and few-step distillation.
+Few-step diffusion generation has been widely explored through
+distribution-matching and consistency-based approaches [13, 18, 20, 27, 28, 38]. Recent works combine sparse
+attention with few-step distillation to reduce both per-step computation and sampling steps. VSA [35] jointly
+trains sparse attention with DMD-style distillation, but DMD-style objectives are known to reduce sample
+diversity due to mode-seeking behavior [3]. TurboDiffusion [31] trains its sparse-attention (SLA)[32] and
+consistency (rCM)[38] components separately and then merges the parameter updates. SparkDiffusion
+instead takes a staged route motivated by the diagnosis in Sec.3: sparse architecture adaptation and terminal
+alignment address two distinct failure modes—the former produces a usable generative prior under extreme
+sparsity, the latter corrects the terminal distribution, so we decouple them into two sequential phases, each
+with a single standard objective.
+B
+Additional Results
+B.1
+Additional Qualitative Results
+This appendix reports additional qualitative results across model scales, tasks, resolutions, and attention-
+sparsity levels. Full Attention is evaluated with 50 sampling steps and classifier-free guidance (NFE =
+100); all accelerated models are evaluated with three CFG-free inference steps (NFE=3). Where included,
+TurboDiffusion and FastWan are reproduced from their officially released weights and inference scripts. The
+same prompts, random seeds, and displayed temporal positions are used across all comparisons.
+Figure 12 Wan2.1-T2V-1.3B-480P. Qualitative results at 480 × 832 resolution with 81 frames; TurboDiffusion and
+FastWan and SparkDiffusion operate at 90% attention sparsity.
+16
+
+
+Figure 13 Wan2.1-T2V-14B-480P. Qualitative results at 480 × 832 resolution with 81 frames; all methods operate
+at 90% attention sparsity.
+Figure 14 Wan2.1-T2V-14B-720P. Qualitative results at 720 × 1280 resolution with 81 frames; TurboDiffusion and
+FastWan operate at 90% attention sparsity, SparkDiffusion at 97%.
+17
+
+
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+Full Attention
+Ours
+Figure 15 Wan2.1-I2V-14B-720P. Qualitative results at 720 × 1280 resolution with 81 frames; SparkDiffusion
+operates at 97% attention sparsity.
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+t=0.18
+t=0.42
+t=0.66
+t=0.86
+Full Attention
+Ours
+Figure 16 Wan2.2-T2V-A14B-720P. Qualitative results at 720 × 1280 resolution with 81 frames; SparkDiffusion
+operates at 97% attention sparsity.
+18
+
+
+Figure 17 Qualitative sample overlays for the same six toy sequence manifolds. In this toy setting, the multi-step
+sparse model can drift away from the data distribution, producing distorted or misaligned contours, while the 3-step
+distilled student produces more globally consistent shapes.
+B.2
+FP8 versus BF16 quality ablation
+Table 5 reports the quality impact of the W8A8 FP8 deployment step of Sec. 4.3, comparing each deployed
+model against its BF16 counterpart under identical 3-step CFG-free inference. Across backbones and sparsity
+levels, FP8 quantization changes VBench and VBench-2.0 by at most 0.07 points, confirming that with
+few-step sampling the quantization error has little room to accumulate and that the speedups in Fig. 2 come
+at negligible quality cost. All SparkDiffusion quality numbers in the main text are therefore reported
+directly on the deployed FP8 model.
+Table 5 FP8 (W8A8) versus BF16 generation quality on deployed SparkDiffusion models (3-step CFG-free inference).
+Model
+Sp.
+VBench (BF16)
+VBench (FP8)
+VBench-2.0 (BF16)
+VBench-2.0 (FP8)
+Wan2.1-T2V-1.3B-480P
+90%
+82.68
+82.64
+55.91
+55.85
+Wan2.1-T2V-14B-720P
+90%
+83.47
+83.42
+59.41
+59.36
+Wan2.1-T2V-14B-720P
+97%
+83.22
+83.15
+58.12
+58.05
+Wan2.2-T2V-A14B-720P
+97%
+83.41
+83.36
+58.53
+58.46
+19
+
+
+Surrogate setup
+Euler sampler, affine reference field,
+affine terminal readout, affine trainable
+residual
+Step 1 (Lemma C.1)
+Terminal error equals the sensitivity-
+weighted sum of per-step errors: Ψ =
+⟨e, s⟩h
+Step 2 (Proposition C.3)
+Coherent errors accumulate over the
+sampling horizon; oscillatory errors can
+cancel at the same step-local loss
+Step 3 (Proposition C.6)
+Step-local training removes the reach-
+able part of the error and stops; the
+leftover is invisible to the step-local
+gradient but visible terminally
+Step 4 (Corollary C.7, Proposi-
+tion C.8)
+A terminal-aligned signal reduces the
+surviving terminal error through the
+same trainable subspace, at an explic-
+itly computed surrogate price
+Figure 18 Roadmap of the mechanism. Each box states one step of the argument and where it is proved. The
+proof is Hilbert-space geometry: a quadratic step-local loss and a linear terminal functional see the same residual
+differently. Sparsity enters only through empirical inputs—the residual left by sparse training and the trainable
+correction subspace—not as a mathematical object in the proof.
+C
+Idealized Mechanism: Why Step-Local Training Can Leave a Terminal Error
+In three sentences. The flow-matching loss sums the squared magnitudes of per-step velocity errors,
+whereas the terminal sample depends on a signed, transported sum of the same errors along the sampling
+trajectory. Therefore two models can have identical step-local training loss but very different terminal
+outputs: one whose per-step errors point consistently and accumulate, and one whose errors oscillate and
+cancel. In a deliberately small surrogate, we show that the terminal-visible error left by a step-locally
+optimal model can still be reduced through the same trainable parameters by a terminal-aligned signal,
+and we compute the surrogate price of doing so.
+C.1
+Roadmap
+Figure 18 summarizes the logical flow of the appendix.
+The argument has four steps:
+Step 1. The terminal error is exactly the sensitivity-weighted sum of per-step velocity errors.
+Step 2. If the per-step errors are coherently aligned with the terminal sensitivity, they accumulate; if they
+oscillate, they can cancel, while the step-local loss remains unchanged.
+Step 3. Step-local training removes exactly the part of the error that lies in the trainable subspace and leaves
+the orthogonal leftover. At the step-local optimum, the loss gradient vanishes, but the terminal
+error need not vanish.
+Step 4. A terminal-aligned objective can reduce this surviving terminal error using the same trainable
+subspace. The first-order terminal gain costs only second-order step-local sub-optimality.
+20
+
+
+Table 6 Notation used in the appendix. The key objects are the per-step velocity error e, the terminal sensitivity s,
+the trainable correction subspace U, and the two objectives: the step-local loss L and the terminal error Ψ.
+Symbol
+Meaning
+N, h, T
+number of sampler steps, step size, horizon T = Nh
+x⋆
+k
+reference trajectory generated by v⋆
+ek
+per-step velocity error at step k
+e = (e0, . . . , eN−1)
+full velocity-error sequence
+R(x) = c⊤x
+linear terminal observable
+Ψ
+terminal error R(xN) −R(x⋆
+N)
+sk
+terminal sensitivity transported back to step k
+⟨·, ·⟩h
+step-weighted inner product h P
+k a⊤
+k bk
+U
+subspace of residual corrections reachable by training
+PU, PU⊥
+orthogonal projections onto U and its orthogonal complement
+sU, sU⊥
+reachable and unreachable parts of the terminal sensitivity
+ℓ
+leftover residual PU⊥e0 after step-local training
+β
+norm of the leftover residual, β = ∥ℓ∥h
+µ, ϵ
+coherence constant and per-step error floor
+L
+step-local quadratic loss 1
+2∥e∥2
+h
+∆
+step-local sub-optimality relative to the step-local optimum
+C
+surrogate price of cancelling the terminal error
+What sparsity does and does not do here. Sparsity is not a mathematical object in this appendix.
+The analysis takes as input that high-sparsity training leaves a residual that is (i) nonzero, (ii) coherently
+aligned with the terminal sensitivity rather than zero-mean jitter, and (iii) partly outside the span of the
+trainable correction directions. We do not prove that aggressive sparsification produces these properties.
+The conclusion is conditional: if high-sparsity training leaves such a residual, then step-local training
+cannot remove its terminal-visible part, whereas a terminal-aligned signal can reduce it at first order
+through the same trainable parameters.
+C.2
+Setup and notation
+We use a deliberately small surrogate in which every object has a simple geometric meaning. Table 6
+summarizes the notation.
+Sampler, reference field, and terminal observable.
+Fix N ∈N, step size h > 0, horizon T = Nh, and times
+tk = kh. The index k runs along the sampling recursion; if the deployed sampler traverses noise levels in the
+opposite direction, relabel tk accordingly—nothing below depends on the direction. An Euler sampler with
+velocity field v generates
+xv
+0 = z,
+xv
+k+1 = xv
+k + h v(xv
+k, tk).
+The reference field v⋆generates the reference trajectory x⋆in the same way. We assume v⋆(·, t) is affine, so its
+one-step Jacobian
+Ak := Id + h ∂xv⋆(·, tk)
+does not depend on the state. Let
+Πj := AN−1 · · · Aj,
+ΠN := Id.
+The terminal observable is affine:
+R(x) = c⊤x,
+c̸ = 0.
+For a model field v, the terminal error is
+Ψ(v) := R(xv
+N) −R(x⋆
+N).
+(2)
+For a parametrized model we write Ψ(a) := Ψ(v(a)).
+21
+
+
+Velocity error.
+Let ek denote the model’s velocity error at step k. In the main surrogate, ek is a per-step
+bias: it depends on the step index but not on the state. The full residual is
+e = (e0, . . . , eN−1),
+ek ∈Rd.
+We equip residual sequences with the step-weighted inner product
+⟨a, b⟩h := h
+N−1
+X
+k=0
+a⊤
+k bk,
+∥a∥2
+h = h
+N−1
+X
+k=0
+∥ak∥2
+2.
+(3)
+Up to the factor T/2, 1
+2∥e∥2
+h is the usual mean-squared velocity error.
+Trainable residual corrections.
+We model the effect of training as adding trainable directions to a baseline
+residual. Let e0 be a baseline residual and let U be a linear map whose columns are trainable correction
+directions. Write
+e(a) = e0 + Ua,
+U := range(U),
+(4)
+where a denotes the coordinates of the trainable correction. As a ranges over all coordinates, Ua ranges over
+all of U, so the set of reachable residuals is exactly e0 + U. Both the step-local stage and the terminal-aligned
+stage move the same parameters, so they act through the same subspace U. Let PU and PU⊥denote orthogonal
+projections onto U and U⊥with respect to ⟨·, ·⟩h.
+Terminal sensitivity.
+Define the terminal sensitivity vectors
+sk := Π⊤
+k+1c,
+s = (s0, . . . , sN−1),
+(5)
+and split them into a reachable and an unreachable part,
+sU := PUs,
+sU⊥:= PU⊥s,
+s = sU + sU⊥.
+(6)
+The vector sk measures how strongly the terminal readout R(xN) reacts to a small velocity perturbation
+injected at step k. It is determined by the sampler and the reference field; it does not depend on the model
+parameters.
+Two objectives.
+The step-local loss is the quadratic
+L(a) := 1
+2∥e(a)∥2
+h.
+(7)
+The terminal error, viewed as a functional of the residual, is the signed, sensitivity-weighted sum
+Ψ(a) := ⟨e(a), s⟩h,
+(8)
+which Lemma C.1 shows to coincide with (2). The key contrast is:
+L sees only ∥ek∥2
+2,
+Ψ sees the signed sum h
+X
+k
+s⊤
+k ek.
+Useful expansion.
+For any perturbation δa,
+L(a + δa) = L(a) + ⟨e(a), Uδa⟩h + 1
+2∥Uδa∥2
+h,
+(9)
+and
+Ψ(a + δa) −Ψ(a) = ⟨Uδa, s⟩h.
+(10)
+22
+
+
+C.3
+Step 1: Terminal error is the sensitivity-weighted sum of per-step errors
+Lemma C.1 (Pairing identity). Under the affine surrogate, for every parameter a,
+Ψ(a) = h
+N−1
+X
+k=0
+s⊤
+k ek(a) = ⟨e(a), s⟩h.
+(11)
+Proof. Let
+zk := xv(a)
+k
+−x⋆
+k
+be the state deviation at step k, with z0 = 0. Subtracting the reference Euler update from the model Euler
+update gives
+zk+1 = zk + h
+
+v(a)(xv(a)
+k
+, tk) −v⋆(x⋆
+k, tk)
+
+.
+Because v⋆is affine,
+v⋆(xv(a)
+k
+, tk) −v⋆(x⋆
+k, tk) = ∂xv⋆(·, tk)zk.
+By definition of the residual ek(a),
+v(a)(xv(a)
+k
+, tk) −v⋆(x⋆
+k, tk) = ∂xv⋆(·, tk)zk + ek(a).
+Therefore
+zk+1 = Akzk + hek(a).
+Unrolling this recursion with z0 = 0 yields
+zN = h
+N−1
+X
+k=0
+Πk+1ek(a).
+Since R(x) = c⊤x,
+Ψ(a) = c⊤zN = h
+N−1
+X
+k=0
+c⊤Πk+1ek(a) = h
+N−1
+X
+k=0
+(Π⊤
+k+1c)⊤ek(a) = h
+N−1
+X
+k=0
+s⊤
+k ek(a).
+This is exactly ⟨e(a), s⟩h.
+Intuition. The terminal error is not the sum of error magnitudes. It is a signed sum: each per-step error ek
+is weighted by how sensitive the final output is to a perturbation at that step. The step-local loss discards
+this sign and transport information; it only sees ∥ek∥2
+2.
+C.4
+Step 2: Coherent errors accumulate; oscillatory errors cancel
+By Lemma C.1, the terminal effect of a residual is the single number
+Ψ = ⟨e, s⟩h.
+Whether the N per-step contributions add or cancel depends on their alignment with s.
+Definition C.2 (Coherent alignment). Let ϵ > 0 and µ ∈(0, 1]. We say that a residual e is (µ, ϵ)-coherent
+with respect to the terminal sensitivity s if
+⟨e, s⟩h ≥µ
+N−1
+X
+k=0
+h ∥sk∥2 ∥ek∥2,
+∥ek∥2 ≥ϵ
+for every k.
+(12)
+The first inequality says that the per-step errors are not random jitter: they have a systematic component
+aligned with the direction that the terminal readout is sensitive to. The second inequality says that the error
+is not concentrated on only a few steps.
+23
+
+
+Proposition C.3 (Accumulation versus cancellation). Let
+smin := min
+k ∥sk∥2,
+smax := max
+k
+∥sk∥2,
+emax := max
+k
+∥ek∥2.
+Then the terminal error Ψ = ⟨e, s⟩h satisfies the following.
+(a) Upper bound. For every residual e,
+|Ψ| ≤
+N−1
+X
+k=0
+h ∥sk∥2 ∥ek∥2 ≤smax emax T.
+(13)
+(b) Coherent errors accumulate. If e is (µ, ϵ)-coherent, then
+Ψ ≥µ smin ϵ T.
+(14)
+(c) Magnitude-only losses cannot distinguish accumulation from cancellation. There exist residuals
+with the same per-step magnitudes, hence the same step-local loss, but different terminal errors. In the
+simplest constant-sensitivity case sk ≡s0, alternating signs can make the terminal error vanish while
+keeping all ∥ek∥2 fixed.
+Proof. (a) By the triangle inequality and Cauchy–Schwarz at each step,
+|Ψ| =
+h
+N−1
+X
+k=0
+s⊤
+k ek
+ ≤h
+N−1
+X
+k=0
+∥sk∥2 ∥ek∥2.
+Using ∥sk∥2 ≤smax, ∥ek∥2 ≤emax, and hN = T gives
+|Ψ| ≤h
+N−1
+X
+k=0
+smaxemax = smaxemaxT.
+(b) By coherence,
+Ψ = ⟨e, s⟩h ≥µ
+N−1
+X
+k=0
+h ∥sk∥2 ∥ek∥2.
+Since ∥sk∥2 ≥smin and ∥ek∥2 ≥ϵ,
+Ψ ≥µ
+N−1
+X
+k=0
+h sminϵ = µ sminϵ T.
+(c) Take the simplest case d = 1, sk ≡1, and N even. Let ek = ϵ for even k and ek = −ϵ for odd k. Then
+every step has the same magnitude ∥ek∥2 = ϵ, so the step-local loss is the same as for the constant residual
+ek ≡ϵ. But
+h
+N−1
+X
+k=0
+ek = 0,
+whereas the constant residual gives terminal error Tϵ. Thus a loss that depends only on ∥ek∥2
+2 cannot
+distinguish the two cases.
+Intuition. The step-local loss sees only the size of each per-step error. It does not see whether those errors
+point in the same direction and accumulate, or alternate and cancel. For a highly sparse model, the concern
+is not merely that the residual error is nonzero, but that it may be coherent: systematically aligned with the
+terminal sensitivity. Such an error grows with the sampling horizon, while an oscillatory error of the same
+magnitude may cancel.
+24
+
+
+C.5
+Step 3: Step-local training removes the reachable part and stops
+We now analyze what step-local training can and cannot remove.
+Decompose the baseline residual into a trainable part and an orthogonal leftover:
+e0 = PUe0 + PU⊥e0.
+Define the leftover residual
+ℓ:= PU⊥e0,
+β := ∥ℓ∥h.
+(15)
+If β > 0, write ˆℓ:= ℓ/β.
+Lemma C.4 (Step-local optimum leaves the orthogonal leftover). There exists a parameter asp such that
+Uasp = −PUe0.
+For every such asp,
+e(asp) = ℓ.
+Moreover, for any a, writing g := U(a −asp) ∈U, one has
+L(a) = 1
+2∥ℓ∥2
+h + 1
+2∥g∥2
+h.
+(16)
+Hence every step-local minimizer has the same residual e(a) = ℓ, and the minimum step-local loss is
+min
+a L(a) = 1
+2∥ℓ∥2
+h.
+Proof. Since PUe0 ∈U = range(U), there exists asp with Uasp = −PUe0. Then
+e(asp) = e0 + Uasp = e0 −PUe0 = PU⊥e0 = ℓ.
+For any a, let g = U(a −asp). Then
+e(a) = e(asp) + g = ℓ+ g,
+with ℓ∈U⊥and g ∈U. By orthogonality,
+∥e(a)∥2
+h = ∥ℓ∥2
+h + ∥g∥2
+h,
+which proves (16). Thus L(a) is minimized exactly when g = 0, i.e. when e(a) = ℓ.
+Intuition. Step-local training removes exactly the part of the residual that lies in the trainable subspace
+U. It cannot remove the orthogonal leftover ℓ. At the step-local optimum, the loss gradient vanishes: every
+feasible parameter direction only increases the loss. But this does not imply that the terminal error vanishes.
+We now state the two conditions needed for the leftover to matter.
+Assumption C.5 (Visibility and controllability). We assume:
+(A) Visibility. The leftover is terminally visible:
+β > 0,
+⟨ˆℓ, s⟩h ≥c0 > 0.
+If ⟨ˆℓ, s⟩h < 0, replace R by −R once; the case ⟨ˆℓ, s⟩h = 0 is excluded.
+(B) Controllability. The terminal sensitivity has a reachable component: sU = PUs̸ = 0.
+Visibility says that the leftover contributes to the terminal readout rather than canceling inside it. Controlla-
+bility says that the trainable directions can influence the terminal readout at all. If sU = 0, then no parameter
+update in U can change the terminal functional.
+25
+
+
+Proposition C.6 (The terminal error survives the step-local optimum). Under Assumption C.5, at any
+step-local minimizer asp,
+Ψsp := Ψ(asp) = ⟨ℓ, s⟩h = ⟨ℓ, sU⊥⟩h = β ⟨ˆℓ, s⟩h ≥c0β > 0.
+(17)
+Moreover:
+• the step-local loss has zero first-order variation at asp;
+• the terminal functional has nonzero first-order variation at asp through the same trainable subspace U.
+Equivalently, the step-local gradient vanishes, but the gradient of 1
+2Ψ2 need not vanish.
+Proof. Since e(asp) = ℓ, Lemma C.1 gives Ψsp = ⟨ℓ, s⟩h. Because ℓ∈U⊥and sU ∈U, the split (6) gives
+⟨ℓ, sU⟩h = 0, hence Ψsp = ⟨ℓ, sU⊥⟩h. Using ℓ= βˆℓgives Ψsp = β⟨ˆℓ, s⟩h ≥c0β > 0.
+For the loss, take any coordinate perturbation δa and let g = Uδa ∈U. By (9), the first-order change of L at
+asp is ⟨ℓ, g⟩h = 0, because ℓ⊥U. Thus the step-local loss is stationary.
+For the terminal functional, by (10),
+Ψ(asp + δa) −Ψ(asp) = ⟨Uδa, s⟩h.
+Since sU̸ = 0 and sU ∈U, there exists a perturbation δa with Uδa = sU. For this perturbation,
+⟨Uδa, s⟩h = ⟨sU, s⟩h = ∥sU∥2
+h > 0.
+Hence the terminal functional has a nonzero first-order direction, while the step-local loss does not.
+Intuition. At the step-local optimum, the model has already removed every error component that the
+trainable subspace can express. The remaining component ℓis invisible to further step-local training: the loss
+gradient is zero. But if ℓis aligned with the terminal sensitivity, it still produces a nonzero terminal error. At
+the same time, the terminal functional can still be changed by moving in the same trainable subspace. This
+mismatch—zero step-local gradient but nonzero terminal gradient—is the core of the high-sparsity trap in the
+surrogate.
+C.6
+Step 4: Terminal-aligned correction and its surrogate price
+We now ask: if the step-local optimum leaves a terminal-visible residual, how much step-local sub-optimality
+must be paid to cancel it?
+Let asp be a step-local minimizer and define the step-local sub-optimality
+∆(a) := L(a) −L(asp).
+(18)
+By Lemma C.4, if g := U(a −asp), then
+∆(a) = 1
+2∥g∥2
+h,
+(19)
+and as a ranges over all parameters, g ranges over all of U. Also, since g ∈U,
+Ψ(a) = Ψsp + ⟨g, s⟩h = Ψsp + ⟨g, sU⟩h.
+(20)
+Corollary C.7 (Surrogate price of terminal cancellation). Under Assumption C.5, the minimum step-local
+sub-optimality required to make the terminal functional vanish is
+C := min{∆(a) : Ψ(a) = 0} =
+Ψ2
+sp
+2 ∥sU∥2
+h
+> 0.
+(21)
+26
+
+
+The minimum is attained exactly at those a with U(a −asp) = g⋆, where
+g⋆= −Ψsp
+∥sU∥2
+h
+sU.
+(22)
+Moreover, for every a,
+|Ψ(a) −Ψsp| ≤∥sU∥h
+p
+2∆(a).
+(23)
+Proof. By (20), the constraint Ψ(a) = 0 is
+⟨g, sU⟩h = −Ψsp.
+By Cauchy–Schwarz,
+|Ψsp| = |⟨g, sU⟩h| ≤∥g∥h ∥sU∥h,
+so any feasible g satisfies ∥g∥2
+h ≥Ψ2
+sp/∥sU∥2
+h. Using ∆= 1
+2∥g∥2
+h gives
+∆≥
+Ψ2
+sp
+2 ∥sU∥2
+h
+.
+Equality holds if and only if g is parallel to sU and satisfies the constraint, i.e. g = g⋆; such g is feasible
+because sU ∈U. The corresponding step-local sub-optimality is
+C = 1
+2∥g⋆∥2
+h =
+Ψ2
+sp
+2 ∥sU∥2
+h
+.
+Finally, for any a, using (20) and Cauchy–Schwarz,
+|Ψ(a) −Ψsp| = |⟨g, sU⟩h| ≤∥g∥h ∥sU∥h = ∥sU∥h
+p
+2∆(a),
+which proves (23).
+Intuition. The terminal constraint Ψ(a) = 0 is a single linear constraint on the reachable residual correction
+g ∈U. Among all corrections satisfying this constraint, the cheapest one in step-local loss is the one aligned
+with the reachable terminal sensitivity sU. Its cost is exactly the squared ratio of the surviving terminal error
+to the amount of terminal sensitivity that training can reach.
+Proposition C.8 (Terminal descent and the trade-off frontier). Under Assumption C.5, fix a step-local
+minimizer asp and let C and g⋆be as in Corollary C.7.
+(1) Terminal descent exists where the step-local loss is flat. At asp, the step-local loss has zero
+first-order variation. However, the terminal squared error J(a) := 1
+2Ψ(a)2 has a nonzero first-order
+descent direction through the same trainable subspace U.
+(2) Trade-off frontier. For every step-local budget B ≥0,
+min
+
+|Ψ(a)| : ∆(a) ≤B
+	
+=
+
+Ψsp −∥sU∥h
+√
+2B
+
++.
+(24)
+In particular, the terminal error decreases at first order in the parameter displacement, while the step-local
+loss increases only at second order.
+(3) Optimal path. For t ∈[0, 1], let a(t) be any parameter satisfying U(a(t) −asp) = t g⋆. Then
+Ψ(a(t)) = (1 −t)Ψsp,
+∆(a(t)) = t2C,
+∥e(a(t))∥2
+h = β2 + 2t2C.
+(25)
+Thus the terminal error decreases linearly along this path, while the step-local cost increases quadratically.
+27
+
+
+cheap regime
+1
+2
+1
+displacement fraction t
+|Ψ(a(t))|/Ψsp = 1 −t
+(linear: first-order gain)
+∆(a(t))/C = t2
+(quadratic: second-order cost)
+Figure 19 The exchange rate inside the surrogate (Corollary C.7, Proposition C.8). Along the optimal path the
+terminal error falls linearly in the displacement fraction t while the step-local loss rises only quadratically; the residual
+norm ∥e(a(t))∥2
+h = β2 + 2t2C follows the same quadratic. This is the formal reason for a staged recipe rather than a
+single joint objective. Both axes are surrogate quantities: neither is FID, sliced-W2, or wall-clock training cost.
+Proof. (1) By Lemma C.4, the first-order variation of L at asp vanishes because the residual ℓis orthogonal to
+every reachable correction g ∈U. For the terminal functional, choose a perturbation δa such that Uδa = −sU;
+such a perturbation exists because sU ∈U. Then, using (20),
+d
+dt
+
+t=0Ψ(asp + t δa) = ⟨−sU, s⟩h = −∥sU∥2
+h < 0.
+Since Ψsp > 0, the derivative of J = 1
+2Ψ2 along δa is Ψsp · (−∥sU∥2
+h) < 0. Hence J has a first-order descent
+direction, while L does not.
+(2) For any a with ∆(a) ≤B, write g = U(a −asp). Then 1
+2∥g∥2
+h ≤B, so ∥g∥h ≤
+√
+2B. By (20) and
+Cauchy–Schwarz,
+|Ψ(a) −Ψsp| = |⟨g, sU⟩h| ≤∥g∥h ∥sU∥h ≤∥sU∥h
+√
+2B,
+so |Ψ(a)| ≥Ψsp −∥sU∥h
+√
+2B, and since |Ψ(a)| ≥0,
+|Ψ(a)| ≥
+
+Ψsp −∥sU∥h
+√
+2B
+
++.
+For achievability, set
+gB = −min
+√
+2B,
+Ψsp
+∥sU∥h
+
+sU
+∥sU∥h
+∈U,
+and let aB be any parameter with U(aB −asp) = gB. Then ∆(aB) = 1
+2∥gB∥2
+h ≤B and, by (20),
+Ψ(aB) = Ψsp −min
+
+∥sU∥h
+√
+2B, Ψsp
+	
+,
+which attains (24).
+(3) Let g = tg⋆. From (20) and (22),
+Ψ(a(t)) = Ψsp + t⟨g⋆, sU⟩h = Ψsp −tΨsp = (1 −t)Ψsp.
+Also ∆(a(t)) = 1
+2∥tg⋆∥2
+h = t2C. Finally, since e(a(t)) = ℓ+ tg⋆with ℓ∈U⊥and g⋆∈U,
+∥e(a(t))∥2
+h = ∥ℓ∥2
+h + t2∥g⋆∥2
+h = β2 + 2t2C.
+Intuition. At the step-local optimum, the step-local loss is locally flat: moving a small amount costs only
+quadratically in L. But the terminal error changes linearly with the same move. Therefore a terminal-aligned
+signal can obtain a first-order reduction in terminal error while paying only a second-order step-local price.
+This is the formal reason for the staged recipe: first fit the step-local objective, then spend a small amount of
+step-local sub-optimality on terminal alignment.
+28
+
+
+C.7
+Step 5: Cancellation is not removal
+The previous step shows that terminal alignment can reduce the terminal error. However, it does not repair
+the underlying velocity error.
+Corollary C.9 (Residual inflation). Under Assumption C.5, let a satisfy Ψ(a) = 0. Writing g = U(a −asp),
+one has
+∥e(a)∥2
+h = β2 + ∥g∥2
+h ≥β2 + 2C,
+(26)
+with equality if and only if g = g⋆. Along the optimal path g = tg⋆, the terminal error decreases monotonically,
+|Ψ(a(t))| = (1 −t)Ψsp, while the residual norm increases monotonically, ∥e(a(t))∥2
+h = β2 + 2t2C.
+Proof. Since e(a) = ℓ+ g with ℓ∈U⊥and g ∈U,
+∥e(a)∥2
+h = ∥ℓ∥2
+h + ∥g∥2
+h = β2 + ∥g∥2
+h.
+Among all g ∈U with Ψ(a) = 0, Corollary C.7 shows that the minimum possible 1
+2∥g∥2
+h is C, attained uniquely
+by g = g⋆. Thus ∥e(a)∥2
+h ≥β2 + 2C. The statements along the optimal path follow directly from (25).
+Intuition. Terminal alignment does not remove the velocity error. It adds a compensating component whose
+terminal effect cancels the terminal-visible projection of the leftover error. As a result, the per-step residual
+becomes larger, even though the terminal readout becomes smaller. The correct wording is therefore: terminal
+alignment cancels the terminal-visible projection of the error, not terminal alignment removes the error.
+C.8
+Scope and limitations
+Remark C.10 (What is and is not established). The preceding argument is a theorem about the surrogate
+model. It establishes three mechanism-level statements.
+(a) Coherent per-step velocity errors can accumulate into a terminal error, while oscillatory errors of the same
+magnitude can cancel. A magnitude-based step-local loss cannot distinguish these cases.
+(b) At a step-local optimum, the remaining terminal error can be strictly positive even though the step-local
+gradient vanishes. If the leftover is terminally visible and the terminal sensitivity has a reachable component,
+then a terminal-aligned signal can reduce this error through the same trainable subspace.
+(c) Cancelling the terminal-visible projection of the error costs a computable surrogate step-local price and
+enlarges the residual norm. It is cancellation, not repair.
+The surrogate is deliberately idealized. It is not a theorem about nonlinear sparse video diffusion transformers,
+optimizer trajectories, or concrete distillation losses. The terminal quantity Ψ is a single scalar functional of the
+terminal state; it is not FID, sliced-W2, VBench, or any perceptual metric. No specific distribution-matching
+or consistency loss is verified to descend Ψ. Therefore the main text should read this appendix as motivation
+for a terminal-aligned stage, not as a guarantee about any particular generation metric.
+C.9
+A closed-form illustration
+We give a small exact example to make the geometry concrete. Let
+d = 1,
+N = 3,
+h = 1
+3,
+T = 1,
+and take
+v⋆(x, t) = 3x,
+R(x) = x.
+Then each one-step Jacobian is Ak = 1 + 3h = 2, the terminal sensitivities are
+s = (4, 2, 1),
+and with the weighted inner product ⟨a, b⟩h = 1
+3
+P
+k akbk,
+∥s∥2
+h = 1
+3(16 + 4 + 1) = 7.
+29
+
+
+One trainable direction.
+Let the trainable subspace be spanned by ϕ = (1, 1, −2), so that
+∥ϕ∥2
+h = 1
+3(1 + 1 + 4) = 2.
+Let the baseline residual be
+e0 = βˆℓ+ γϕ,
+ˆℓ= (1, 1, 1),
+β > 0.
+Since ∥ˆℓ∥h = 1 and ⟨ˆℓ, ϕ⟩h = 0, the step-local leftover is ℓ= βˆℓ. The surviving terminal error is
+Ψsp = ⟨ℓ, s⟩h = β
+3 (4 + 2 + 1) = 7
+3β,
+so the visibility constant is c0 = ⟨ˆℓ, s⟩h = 7
+3. The reachable part of the terminal sensitivity is
+sU = ⟨s, ϕ⟩h
+∥ϕ∥2
+h
+ϕ = 4/3
+2 ϕ = 2
+3ϕ,
+∥sU∥2
+h = 4
+9 · 2 = 8
+9.
+The surrogate price is therefore
+C =
+Ψ2
+sp
+2∥sU∥2
+h
+= (7/3)2β2
+2 · 8/9
+= 49
+16β2,
+and the optimal correction is
+g⋆= −Ψsp
+∥sU∥2
+h
+sU = −(7/3)β
+8/9
+· 2
+3ϕ = −7
+4β ϕ.
+Thus the corrected residual is
+e⋆= β(1, 1, 1) −7
+4β(1, 1, −2) = β
+
+−3
+4, −3
+4, 9
+2
+
+,
+and one checks directly that
+⟨e⋆, s⟩h = β
+3
+
+4 ·
+
+−3
+4
+
++ 2 ·
+
+−3
+4
+
++ 1 · 9
+2
+
+= 0,
+∥e⋆∥2
+h = β2 + 2C = 57
+8 β2.
+The terminal error has been cancelled, but the residual norm has increased. Along the path of Proposi-
+tion C.8(3), at t = 1
+2 the terminal error is halved for one quarter of the price, ∆= 49
+64β2.
+Two trainable directions.
+Now add a second trainable direction ψ = (1, −1, 0), so that
+U = span{ϕ, ψ},
+U⊥= span{(1, 1, 1)},
+and the leftover is still ℓ= β(1, 1, 1), hence Ψsp = 7
+3β as before. The reachable part of s is now
+sU = s −⟨s, ˆℓ⟩h ˆℓ=
+5
+3, −1
+3, −4
+3
+
+,
+∥sU∥2
+h = 14
+9 ,
+so the price becomes
+C = (7/3)2β2
+2 · 14/9 = 7
+4β2,
+and the optimal correction is
+g⋆= −Ψsp
+∥sU∥2
+h
+sU = −(7/3)β
+14/9 sU = −3
+2β sU = β
+
+−5
+2, 1
+2, 2
+
+.
+The corrected residual is therefore
+e⋆= β(1, 1, 1) + g⋆= β
+
+−3
+2, 3
+2, 3
+
+,
+∥e⋆∥2
+h = β2 + 2C = 9
+2β2.
+30
+
+
+In this two-dimensional case, the constraint Ψ(a) = 0 is still one linear equation, but the trainable subspace
+has dimension two. Therefore there are infinitely many corrections g ∈U that cancel the terminal error.
+Among them, g⋆is the unique correction with minimum step-local cost. Any additional component in U
+orthogonal to sU leaves the terminal error unchanged but increases the residual norm and the step-local
+sub-optimality.
+Summary of the illustration. This example shows the three core mechanisms in exact arithmetic:
+• the step-local optimum leaves a nonzero terminal error Ψsp;
+• a terminal-aligned correction through the same trainable subspace can cancel Ψsp;
+• the cancellation costs a finite surrogate step-local price C and enlarges the residual norm.
+Thus the appendix gives a closed-form picture of why a terminal-aligned stage can help after step-local
+sparse training, while also making clear that it cancels the terminal-visible projection of the error rather than
+removing the underlying velocity error.
+D
+Generality across Trainable Sparse Designs
+We verify that the high-sparsity trap is not specific to the RoLA selector, and that strong baseline recipes do
+not survive 97% sparsity. All experiments use the Wan2.1-T2V-14B-480P testbed of Sec. 3: the same dense
+checkpoint, the same enlarged training set, and the same evaluation protocol (terminal error and VBench at
+480 × 832).
+Step-local training across selectors. We instantiate two representative trainable sparse branches—VSA-
+style block selection [35] and SLA-style sparse–linear attention [32]—and train them with the step-local
+flow-matching loss (1) at 90%/95%/97% sparsity under the extended budget of Sec. 3 (10,000 steps).
+Baseline recipe at 97%. We retrain the full FastWan (VSA) recipe [35]—joint sparse-attention training
+with DMD-style distillation—at 97% sparsity from the same dense checkpoint, changing only the sparsity
+level in its official training configuration.
+Staged recipe across selectors. We apply the Stage-2 trajectory-mixed distillation of Sec. 4.2 to the
+step-local VSA- and SLA-style 97% checkpoints without modifying their sparse branches.
+Table 7 shows the same trap signatures as Sec. 3 on both selectors: the step-local validation loss plateaus
+at a low value at every sparsity level, while the terminal error and VBench degrade sharply at 95%–97%.
+SLA attains a consistently lower validation loss than VSA at matched sparsity, yet its terminal error is only
+marginally smaller—a lower step-local loss does not translate into better terminal quality. Retraining the full
+FastWan recipe at 97% degrades sharply relative to its official 90% operating point, while SparkDiffusion at
+the same 97% sparsity remains close to the dense model. The terminal-aligned Stage-2 stage restores terminal
+quality on both selectors, confirming that the trap is induced by step-local supervision rather than by any
+specific sparse design, and that the staged recipe is selector-agnostic.
+E
+Training Details
+This section reports the training configurations of SparkDiffusion for the primary backbone Wan2.1-
+T2V-14B (stages defined in Sec.4; Stage 2 initializes from the Stage 1 checkpoint), together with hardware,
+wall-clock time, and GPU hours.
+E.1
+Stage 1: Sparse Warm-up
+Stage 1 starts from the pretrained dense Wan2.1-T2V-14B checkpoint and replaces dense self-attention with
+the compensated sparse attention of Sec. 4.1, optimized with the native flow-matching objective alone (no
+auxiliary or layerwise losses).
+Table 8 summarizes the data configuration, sparse-attention architecture, optimization hyperparameters, and
+training cost used in this stage.
+31
+
+
+Table 7 The high-sparsity trap across trainable sparse designs (Wan2.1-T2V-14B-480P). Step-local-only rows are
+trained from the same dense checkpoint with the flow-matching loss (1) under the extended 10,000-step budget of Sec. 3;
+terminal error is the paired latent MSE of Sec. 3. “FastWan recipe” retrains the official VSA training pipeline [35] with
+only the sparsity level changed to 97%, and is evaluated under its official inference settings; “+ Stage 2” applies our
+trajectory-mixed distillation to the corresponding 97% checkpoint.
+Sparse branch / recipe
+Sp.
+Val loss ↓
+Term. error ↓
+VBench ↑
+VSA-style, step-local
+90%
+0.0892
+0.1205
+81.75
+VSA-style, step-local
+95%
+0.0947
+0.1232
+80.89
+VSA-style, step-local
+97%
+0.0998
+0.1255
+79.72
+SLA-style, step-local
+90%
+0.0871
+0.1203
+81.87
+SLA-style, step-local
+95%
+0.0932
+0.1227
+80.94
+SLA-style, step-local
+97%
+0.0979
+0.1251
+79.84
+FastWan (VSA) recipe, retrained
+97%
+0.0996
+0.1198
+80.23
+VSA-style + Stage 2
+97%
+0.0995
+0.1001
+82.45
+SLA-style + Stage 2
+97%
+0.0977
+0.0987
+82.51
+RoLA + Stage 2 (SparkDiffusion)
+97%
+0.0953
+0.0921
+82.99
+Table 8 Training configuration of Stage 1 sparse warm-up on Wan2.1-T2V-14B.
+Hyperparameter
+Setting
+Model & Data
+Backbone
+Wan2.1-T2V-14B
+Training dataset
+OpenVid subset [14]
+Number of training videos
+2,000
+Video setting
+480 × 832 (480P), 720 × 1280 (720P), 81 frames
+Sparse Architecture
+Attention sparsity
+97%
+Sparse block size
+64 × 64
+Compensation rank
+64
+Trainable modules
+Full DiT backbone (including our low-rank compensation modules
+and gating parameters)
+Frozen modules
+VAE and text encoder
+Optimization
+Training objective
+Flow matching
+Optimizer
+AdamW
+Learning rate
+2 × 10−6 (backbone); 5 × 10−5 (low-rank projections / gate bias);
+3 × 10−5 (gate projection)
+Weight decay
+1 × 10−5 (backbone); 0 (others)
+LR schedule
+Cosine decay
+Training epochs
+4 (≈250 steps)
+Global batch size
+32
+Gradient clipping
+1.0
+Training precision
+BF16
+Gradient checkpointing
+Block-wise activation checkpointing
+Random seed
+0
+Compute
+Hardware
+8× NVIDIA H100 80GB SXM
+Parallelism
+FSDP full-shard
+Wall-clock training time
+≈2.9 hours
+GPU Hours
+≈23 GPU hours
+32
+
+
+E.2
+Stage 2: Trajectory-Mixed Distillation
+Stage 2 initializes the student from the Stage 1 checkpoint and freezes the dense Wan2.1-T2V-14B model
+as the teacher, following the CrossDistill schedule of Sec. 4.2: high-noise PCM-style consistency, low-noise
+DMD-style distribution matching, and alternating student/critic updates.
+Table 9 reports the complete distillation schedule, distribution-matching configuration, optimization hyperpa-
+rameters, and computational cost.
+Table 9 Training configuration of Stage 2 trajectory-mixed distillation on Wan2.1-T2V-14B.
+Hyperparameter
+Setting
+Model setting
+Student backbone
+Wan2.1-T2V-14B
+Student initialization
+Stage 1 sparse warm-up checkpoint
+Teacher model
+Frozen dense Wan2.1-T2V-14B
+Teacher CFG scale
+5.0
+Training dataset
+Teacher-synthesized T2V dataset [38]
+Video setting
+480 × 832 (480P), 720 × 1280 (720P), 81 frames
+Attention sparsity
+97%
+Trajectory-Mixed Distillation
+Noise split
+CrossDistill crosspoint (0.934)
+High-noise objective
+PCM-style consistency on the high-noise segment
+Low-noise objective
+DMD-style distribution matching on the low-noise segment
+Student sampling steps
+3 (one high-noise PCM step and two low-noise DMD steps; Sec. 4.2)
+Fake model
+Dense Wan2.1-T2V-14B
+Fake update ratio
+10 : 1
+Student trainable modules
+Full DiT backbone (including our low-rank compensation modules
+and gating parameters)
+Optimization
+Optimizer
+AdamW
+Learning rate
+2 × 10−6 (student); 4 × 10−7 (fake)
+Weight decay
+0.01
+Training steps
+8,000
+Global batch size
+16
+Training precision
+BF16
+EMA
+Disabled
+Compute
+Hardware
+8× NVIDIA H100 80GB
+Wall-clock training time
+≈130 hours
+GPU Hours
+≈1 K GPU hours
+33

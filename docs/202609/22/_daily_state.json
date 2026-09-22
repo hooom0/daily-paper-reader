@@ -1,0 +1,233 @@
+{
+  "date": "20260922",
+  "date_label": "",
+  "generated_at": "2026-09-22 22:13:18 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.24215v1",
+      "route": "202609/22/2609.24215v1-beyond-emotion-prompts-fine-grained-text-to-image-generation-driven-by-valence-arousal-dominance",
+      "title": "Beyond Emotion Prompts: Fine-Grained Text-to-Image Generation Driven by Valence-Arousal-Dominance",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "带细粒度情绪控制的文本到图像生成",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.22916v1",
+      "route": "202609/22/2609.22916v1-planning-and-rendering-in-concert-deepfusion-of-autoregressive-layouts-and-diffusion-for-visual-text-generation",
+      "title": "Planning and Rendering in Concert: DeepFusion of Autoregressive Layouts and Diffusion for Visual Text Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "自回归布局规划与扩散渲染联合的文本图像生成",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.24919v1",
+      "route": "202609/22/2609.24919v1-pixeldit2-representation-grounded-pixel-diffusion-transformers",
+      "title": "PixelDiT2: Representation-Grounded Pixel Diffusion Transformers",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "像素空间扩散图像生成模型",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.24330v1",
+      "route": "202609/22/2609.24330v1-alignmorph-tuning-free-diffusion-image-morphing-via-explicit-semantic-transport",
+      "title": "AlignMorph: Tuning-Free Diffusion Image Morphing via Explicit Semantic Transport",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "免调优扩散图像变形框架",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.15120v1",
+      "route": "202609/22/2609.15120v1-dnf-sr-dual-input-and-negative-aware-feature-fine-tuning-for-real-world-image-super-resolution",
+      "title": "DNF-SR: Dual-Input and Negative-Aware Feature Fine-Tuning for Real-World Image Super-Resolution",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于扩散的真实世界图像超分辨率",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.16409v1",
+      "route": "202609/22/2609.16409v1-reasoning-with-image-generation",
+      "title": "Reasoning with Image Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "图像生成模型作为灵活视觉推理机制",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.16594v1",
+      "route": "202609/22/2609.16594v1-frpss-feature-rearrangement-in-pre-shape-space-for-single-image-generation",
+      "title": "FRPSS: Feature Rearrangement in Pre-Shape Space for Single-Image Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于预形状空间特征重排的单图像生成",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.21268v1",
+      "route": "202609/22/2609.21268v1-edit-var-taming-visual-autoregressive-model-for-precise-video-editing",
+      "title": "Edit-VAR: Taming Visual Autoregressive Model for Precise Video Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向精确视频编辑的视觉自回归模型",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.22789v1",
+      "route": "202609/22/2609.22789v1-pixelart-image-to-layer-decomposition-without-latents-or-text-to-image-pretraining",
+      "title": "PixelART: Image-to-Layer Decomposition without Latents or Text-to-Image Pretraining",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向图像分层分解的扩散Transformer支持可编辑生成",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.22867v1",
+      "route": "202609/22/2609.22867v1-leveraging-inference-time-compute-for-diffusion-models-via-global-scheduling-of-denoising-trajectories",
+      "title": "Leveraging Inference-Time Compute for Diffusion Models via Global Scheduling of Denoising Trajectories",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散去噪轨迹的全局调度以提升样本质量",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.23153v1",
+      "route": "202609/22/2609.23153v1-sparkdiffusion-mitigating-the-high-sparsity-trap-----a-unified-framework-for-up-to-265times-single-gpu-acceleration-of-visual-generation",
+      "title": "SparkDiffusion: Mitigating the High-Sparsity Trap --- A Unified Framework for up to $265\\times$ Single-GPU Acceleration of Visual Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过稀疏注意力加速扩散Transformer视觉生成",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.23442v1",
+      "route": "202609/22/2609.23442v1-physreflect-geometry-and-perception-guided-diffusion-for-physically-plausible-mirror-reflections",
+      "title": "PhysReflect: Geometry and Perception Guided Diffusion for Physically-Plausible Mirror Reflections",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "几何与感知引导扩散提升图像生成质量",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.23548v1",
+      "route": "202609/22/2609.23548v1-sewfusion-tailored-generation-of-topology-and-panel-level-geometry-for-sewing-patterns",
+      "title": "SewFusion: Tailored Generation of Topology and Panel-Level Geometry for Sewing Patterns",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "统一自回归框架生成拓扑与面板级几何",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    },
+    {
+      "paper_id": "2609.23658v1",
+      "route": "202609/22/2609.23658v1-why-do-video-diffusion-models-violate-physics-unveiling-the-flaws-in-attention-mechanisms",
+      "title": "Why Do Video Diffusion Models Violate Physics? Unveiling the Flaws in Attention Mechanisms",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文生视频扩散运动规划的可解释性",
+      "first_seen_at": "2026-09-22 22:13:18 UTC",
+      "updated_at": "2026-09-22 22:13:18 UTC"
+    }
+  ]
+}

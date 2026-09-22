@@ -1,0 +1,576 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-22T22:10:04.910820+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 3,
+    "deep_cap": 6,
+    "deep_selected": 3,
+    "quick_candidates": 13,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2609.24215v1",
+      "source": "arxiv",
+      "title": "Beyond Emotion Prompts: Fine-Grained Text-to-Image Generation Driven by Valence-Arousal-Dominance",
+      "abstract": "Although text-to-image models can accurately depict subjects and scenes, creators still struggle to specify the fine-grained emotions an image should convey without rewriting its content description. Natural language can suggest emotions, but it offers no control scale with stable meanings and ordered intensities. We propose EMOTRANS, which transforms psychologically grounded valence-arousal-dominance (VAD) coordinates into generation conditions that are independent of the content text and modulated across denoising stages, making emotional style a finely adjustable creative variable. To support this goal, we construct EMOVAD, an art-painting dataset that pairs objective content descriptions with separately collected emotional ratings from multiple annotators. We also coordinate emotional expression and content preservation through dual-branch training with a shared model. Objective and human evaluations show that the framework improves the accuracy of three-dimensional emotion control and produces perceptible, orderable continuous changes while maintaining competitive text alignment and image quality. This work provides a practical emotion-driven approach to image generation that extends objective content depiction to fine-grained emotional adjustment.",
+      "authors": [
+        "Minglang Li",
+        "Yueyue Fang",
+        "Xieping Gao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-21T07:33:28+00:00",
+      "link": "https://arxiv.org/pdf/2609.24215v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "text-to-image generation with fine-grained emotion control",
+      "llm_evidence_cn": "带细粒度情绪控制的文本到图像生成",
+      "llm_evidence": "带细粒度情绪控制的文本到图像生成",
+      "canonical_evidence": "带细粒度情绪控制的文本到图像生成",
+      "llm_tldr_en": "Text-to-image models struggle to express fine-grained emotion without rewriting content; EMOTRANS turns valence-arousal-dominance coordinates into generation conditions modulated across denoising stages.",
+      "llm_tldr_cn": "现有文本到图像模型虽能描绘主体与场景，却难以在不改写内容描述的前提下精确指定图像应传达的细腻情绪，自然语言也缺乏稳定且有序的强度控制尺度。本文提出EMOTRANS，把心理学中的效价-唤醒-支配度坐标转化为与内容文本解耦的生成条件，并在不同去噪阶段加以调制，使情绪风格成为可精细调节的创作变量。作者还构建了配对客观内容描述与情绪标注的EMOVAD艺术绘画数据集。该方法实现了独立于文本内容的细粒度情绪控制，拓展了可控图像生成的能力边界。",
+      "llm_tldr": "现有文本到图像模型虽能描绘主体与场景，却难以在不改写内容描述的前提下精确指定图像应传达的细腻情绪，自然语言也缺乏稳定且有序的强度控制尺度。本文提出EMOTRANS，把心理学中的效价-唤醒-支配度坐标转化为与内容文本解耦的生成条件，并在不同去噪阶段加以调制，使情绪风格成为可精细调节的创作变量。作者还构建了配对客观内容描述与情绪标注的EMOVAD艺术绘画数据集。该方法实现了独立于文本内容的细粒度情绪控制，拓展了可控图像生成的能力边界。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.22916v1",
+      "source": "arxiv",
+      "title": "Planning and Rendering in Concert: DeepFusion of Autoregressive Layouts and Diffusion for Visual Text Generation",
+      "abstract": "Generating text-rich images from prompts requires both textual fidelity and the coherent integration of text into the surrounding image. An explicit layout can provide structured guidance about what text should appear and where, but a well-formed plan alone does not guarantee that the renderer will realize it faithfully. Existing layout-based AR-diffusion systems typically optimize planning and rendering separately, preventing the planner's representations from being adapted jointly with image synthesis. We introduce DuetGen, an autonomous visual text generator built on DeepFusion, which jointly learns autoregressive planning and continuous diffusion rendering. DeepFusion conditions a diffusion transformer on the planner's prompt and bbox-content hidden states, allowing rendering supervision to shape the representations connecting textual plans with visual outputs. Its joint objective combines autoregressive plan supervision, text-region-weighted diffusion learning, and auxiliary coordinate supervision to maintain structured planning, emphasize text-bearing regions, and improve the spatial precision of planner representations. During inference, Phase-Aware Attention Modulation strengthens the correspondence between image regions and their matched coordinate and content states, facilitating region-specific execution of the generated plan. With a 2B planner and a 4B single-stream DiT, DuetGen achieves 0.8293 word accuracy on CVTG-2K and 0.938 accuracy on LongText-Bench, closely matching the substantially larger Qwen-Image on both benchmarks. These results demonstrate the value of jointly learned planning representations and region-specific rendering for autonomous visual text generation.",
+      "authors": [
+        "Guanqiao Chen",
+        "Jingru Tan",
+        "Dongxing Mao",
+        "Catherine Chen",
+        "Zijian Du",
+        "Libo Qin",
+        "Hu Jian Guo",
+        "Alex Jinpeng Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-19T09:49:02+00:00",
+      "link": "https://arxiv.org/pdf/2609.22916v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "joint autoregressive layout planning and diffusion rendering for text-rich image generation",
+      "llm_evidence_cn": "自回归布局规划与扩散渲染联合的文本图像生成",
+      "llm_evidence": "自回归布局规划与扩散渲染联合的文本图像生成",
+      "canonical_evidence": "自回归布局规划与扩散渲染联合的文本图像生成",
+      "llm_tldr_en": "DuetGen jointly learns autoregressive layout planning and continuous diffusion rendering via DeepFusion, conditioning a diffusion transformer on planner representations to improve textual fidelity and coherent text-image integration.",
+      "llm_tldr_cn": "现有基于布局的自回归-扩散系统将规划与渲染分开优化，导致规划器表示无法与图像合成联合适配，文本保真度受限。作者提出DuetGen，基于DeepFusion联合学习自回归布局规划与连续扩散渲染，用扩散Transformer条件化于规划表示。实验表明联合训练提升了文字保真度与文字在图像中的一致性融合，为文本丰富图像生成提供了规划与渲染协同的统一框架。",
+      "llm_tldr": "现有基于布局的自回归-扩散系统将规划与渲染分开优化，导致规划器表示无法与图像合成联合适配，文本保真度受限。作者提出DuetGen，基于DeepFusion联合学习自回归布局规划与连续扩散渲染，用扩散Transformer条件化于规划表示。实验表明联合训练提升了文字保真度与文字在图像中的一致性融合，为文本丰富图像生成提供了规划与渲染协同的统一框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.24919v1",
+      "source": "arxiv",
+      "title": "PixelDiT2: Representation-Grounded Pixel Diffusion Transformers",
+      "abstract": "Recent advances in pixel-space diffusion models have narrowed the image quality gap with latent-space diffusion, but still converge more slowly and lag behind in final image quality. We argue that a key reason is the lack of an explicit representation prior: unlike latent diffusion, which usually denoises in a compact and structured latent space, pixel diffusion needs to learn denoising-friendly representations and pixel generation simultaneously from raw RGB space. To address this problem, we propose PixelDiT2, an end-to-end pixel-space diffusion model designed to decouple representation learning from pixel generation without introducing an autoencoder or latent reconstruction bottleneck. We propose representation grounding that uses a frozen pretrained vision foundation model to provide explicit per-patch representation guidance throughout denoising, allowing the pixel diffusion transformer to focus more on pixel generation. On ImageNet-256x256, PixelDiT2 achieves an FID of 1.46 after 600 epochs; at 512x512 resolution, PixelDiT2 achieves an FID of 1.48 after 680 epochs.",
+      "authors": [
+        "Yongsheng Yu",
+        "Wei Xiong",
+        "Yichen Sheng",
+        "Shiqiu Liu",
+        "Jiebo Luo"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-21T17:17:39+00:00",
+      "link": "https://arxiv.org/pdf/2609.24919v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "pixel-space diffusion model for image generation",
+      "llm_evidence_cn": "像素空间扩散图像生成模型",
+      "llm_evidence": "像素空间扩散图像生成模型",
+      "canonical_evidence": "像素空间扩散图像生成模型",
+      "llm_tldr_en": "PixelDiT2 is an end-to-end pixel-space diffusion transformer that uses representation grounding to decouple representation learning from pixel generation, speeding convergence and closing the quality gap with latent diffusion.",
+      "llm_tldr_cn": "像素空间扩散模型虽缩小了与潜空间扩散的图像质量差距，但收敛更慢、最终质量仍落后，论文认为关键在于缺少显式表征先验。为此提出PixelDiT2，一种端到端像素空间扩散模型，用表征锚定解耦表征学习与像素生成，且不引入自编码器或潜重建瓶颈。实验显示该方法加快收敛并改善生成质量，说明表征先验对像素扩散至关重要。",
+      "llm_tldr": "像素空间扩散模型虽缩小了与潜空间扩散的图像质量差距，但收敛更慢、最终质量仍落后，论文认为关键在于缺少显式表征先验。为此提出PixelDiT2，一种端到端像素空间扩散模型，用表征锚定解耦表征学习与像素生成，且不引入自编码器或潜重建瓶颈。实验显示该方法加快收敛并改善生成质量，说明表征先验对像素扩散至关重要。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.24330v1",
+      "source": "arxiv",
+      "title": "AlignMorph: Tuning-Free Diffusion Image Morphing via Explicit Semantic Transport",
+      "abstract": "Image morphing aims to produce a smooth and semantically consistent transition between two input images. Existing diffusion-based morphing methods either require expensive per-pair optimization or rely on implicit spatial alignment, which easily fails under large layout discrepancies. To address these limitations, we propose AlignMorph, a novel tuning-free diffusion framework guided by the principle of transport-then-denoise. We explicitly decouple geometric alignment from generative denoising to avoid structural entanglement. Our framework consists of two core components. (1) Global Semantic Transport, which achieves diffusion-compatible semantic alignment via entropic optimal transport and reliability-aware latent warping; and (2) Coordinate-Aligned Generation, which uses a symmetric bi-phase attention handoff to maintain consistent spatial coordinates throughout denoising. Without any tuning, AlignMorph effectively eliminates ghosting and achieves superior structural coherence and temporal smoothness on morphing benchmarks. Code is available at https://github.com/51xOne/Alignmorph.",
+      "authors": [
+        "Wuyi Liu",
+        "Xu Han",
+        "Yuren Chen",
+        "Yige Mao",
+        "Zishuo Peng",
+        "Xianzhi Li"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-21T09:31:28+00:00",
+      "link": "https://arxiv.org/pdf/2609.24330v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "tuning-free diffusion framework for image morphing",
+      "llm_evidence_cn": "免调优扩散图像变形框架",
+      "llm_evidence": "免调优扩散图像变形框架",
+      "canonical_evidence": "免调优扩散图像变形框架",
+      "llm_tldr_en": "AlignMorph proposes a tuning-free diffusion framework for image morphing that follows transport-then-denoise, decoupling geometric alignment from denoising via entropic optimal transport and reliability-aware latent warping for smooth, semantically consistent transitions.",
+      "llm_tldr_cn": "针对现有扩散图像变形方法需昂贵的逐对优化或依赖隐式空间对齐、在大布局差异下易失败的问题，AlignMorph提出免调优扩散框架，遵循先传输后去噪原则，通过熵最优传输与可靠性感知潜变量变形显式解耦几何对齐与生成去噪。实验表明其在大布局差异下仍能产生平滑且语义一致的过渡，为图像变形提供了高效鲁棒的方案。",
+      "llm_tldr": "针对现有扩散图像变形方法需昂贵的逐对优化或依赖隐式空间对齐、在大布局差异下易失败的问题，AlignMorph提出免调优扩散框架，遵循先传输后去噪原则，通过熵最优传输与可靠性感知潜变量变形显式解耦几何对齐与生成去噪。实验表明其在大布局差异下仍能产生平滑且语义一致的过渡，为图像变形提供了高效鲁棒的方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.15120v1",
+      "source": "arxiv",
+      "title": "DNF-SR: Dual-Input and Negative-Aware Feature Fine-Tuning for Real-World Image Super-Resolution",
+      "abstract": "Benefiting from the powerful generative priors of diffusion models, diffusion-based real-world image super-resolution (Real-ISR) methods have demonstrated impressive performance.To achieve efficient Real-ISR, several recent works have designed one-step diffusion-based models.Howerver, unmediatedly feeding LR into a diffusion model creates a distributional gap with the model's original input.A straightforward approach to reduce the distribution gap is to introduce noise to the LR latents. However, directly adding noise inevitably corrupts the content of the LR images.In this study, we propose DNF-SR, a Dual-input and Negative-aware Feature fine-tuning method for Real-ISR.Specifically, we use a dual-input strategy that concatenates the original LR image with the noisy LR input and feeds them into a diffusion-based image editing model, ensuring both high-fidelity one-step super-resolution and improved perceptual and content consistency.Additionally, the noise present in the noisy LR input introduces randomness and diversity into the outputs. We exploit this property and propose a post-training optimization method, Negative-aware Feature Fine-Tuning (NF2T), which guides the model toward producing higher-quality results.NF^2T classifies multiple outputs into positive and negative subsets and then defines implicit policy improvement directions in both the image and feature spaces, thereby further enhancing the stability of the optimization.Extensive experiments show that DNF-SR outperforms other methods.Code will be released.",
+      "authors": [
+        "Shuhao Han",
+        "Wenjie Liao",
+        "Hayden Vance",
+        "Hang Dong",
+        "Rui Zhang",
+        "Chun-Le Guo",
+        "Chongyi Li"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-14T06:53:22+00:00",
+      "link": "https://arxiv.org/pdf/2609.15120v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Diffusion-based real-world image super-resolution",
+      "llm_evidence_cn": "基于扩散的真实世界图像超分辨率",
+      "llm_evidence": "基于扩散的真实世界图像超分辨率",
+      "canonical_evidence": "基于扩散的真实世界图像超分辨率",
+      "llm_tldr_en": "DNF-SR addresses the distribution gap when feeding low-resolution images into one-step diffusion super-resolution models by using a dual-input strategy and negative-aware feature fine-tuning, improving real-world image restoration fidelity and efficiency.",
+      "llm_tldr_cn": "扩散模型为真实世界图像超分辨率提供了强大生成先验，但将低分辨率图直接输入会带来分布偏移，而简单加噪又会破坏内容。本文提出DNF-SR，采用双输入策略并引入负感知特征微调，以缩小分布差距并保留原始内容。在真实超分辨率基准上，该方法在单步扩散设定下取得有竞争力的复原效果，兼顾效率与保真度。",
+      "llm_tldr": "扩散模型为真实世界图像超分辨率提供了强大生成先验，但将低分辨率图直接输入会带来分布偏移，而简单加噪又会破坏内容。本文提出DNF-SR，采用双输入策略并引入负感知特征微调，以缩小分布差距并保留原始内容。在真实超分辨率基准上，该方法在单步扩散设定下取得有竞争力的复原效果，兼顾效率与保真度。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.16409v1",
+      "source": "arxiv",
+      "title": "Reasoning with Image Generation",
+      "abstract": "Chain-of-thought reasoning has revolutionized natural language processing by enabling large language models (LLMs) to decompose problems into intermediate steps before answering. Yet confining reasoning to the textual domain presents limitations for tasks requiring direct manipulation of visual representations. Recent efforts augment multimodal LLMs with external visual expert tools such as depth estimation or object detection modules, but these remain fundamentally limited by their reliance on narrow, rigid operations that cannot flexibly generate or transform visual content. We propose ReImaGin, which leverages image generation models as a flexible visual reasoning mechanism for multimodal LLMs: unlike fixed-function tools, they accept natural language commands and can perform open-ended visual operations, like removing an occlusion or generating a floorplan from multiple disjoint views of a room. Across six diverse visual reasoning tasks including multi-view spatial reasoning and collision prediction, ReImaGin consistently outperforms both text-only reasoning and specialist vision-tool baselines, with gains of up to 25\\%, demonstrating the advantage of flexible, generative visual reasoning.",
+      "authors": [
+        "Nishad Singhi",
+        "Hector Garcia Rodriguez",
+        "Aditya Arora",
+        "Marcus Rohrbach",
+        "Anna Rohrbach"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-14T22:29:03+00:00",
+      "link": "https://arxiv.org/pdf/2609.16409v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "image generation models as flexible visual reasoning mechanism",
+      "llm_evidence_cn": "图像生成模型作为灵活视觉推理机制",
+      "llm_evidence": "图像生成模型作为灵活视觉推理机制",
+      "canonical_evidence": "图像生成模型作为灵活视觉推理机制",
+      "llm_tldr_en": "ReImaGin leverages image generation models as a flexible visual reasoning mechanism for multimodal LLMs, accepting natural language commands to perform open-ended visual generation and transformation instead of rigid fixed-function tools.",
+      "llm_tldr_cn": "将推理局限于文本域会限制需要直接操作视觉表示的任务，而现有视觉专家工具操作僵硬、无法灵活生成或变换内容。作者提出ReImaGin，把图像生成模型作为多模态大模型的灵活视觉推理机制，可接受自然语言指令执行开放式视觉生成与变换。研究展示了图像生成模型能够胜任灵活视觉推理，突破固定功能工具的限制，为多模态推理提供了可生成视觉内容的通用机制。",
+      "llm_tldr": "将推理局限于文本域会限制需要直接操作视觉表示的任务，而现有视觉专家工具操作僵硬、无法灵活生成或变换内容。作者提出ReImaGin，把图像生成模型作为多模态大模型的灵活视觉推理机制，可接受自然语言指令执行开放式视觉生成与变换。研究展示了图像生成模型能够胜任灵活视觉推理，突破固定功能工具的限制，为多模态推理提供了可生成视觉内容的通用机制。",
+      "llm_tags": [
+        "query:image-gen:composite"
+      ],
+      "matched_query_tag": "query:image-gen:composite",
+      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
+      "matched_requirement_id": "req-composite-image-gen",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.16594v1",
+      "source": "arxiv",
+      "title": "FRPSS: Feature Rearrangement in Pre-Shape Space for Single-Image Generation",
+      "abstract": "Generative models trained on a single image often struggle to balance global structural integrity and local diversity. Existing single-image generation methods commonly rely on random noise to drive the generation process and lack explicit global structural constraints, making the generated results prone to spatial structural misalignment when structural variations occur. To address the issue, Feature Rearrangement in Pre-Shape Space for Single-Image Generation (FRPSS) is proposed in this paper. The core of FRPSS is the Manifold Structural Rearrangement with Feature Augmentation on Geodesic Surface (MSR-FAGS) module. MSR-FAGS replaces the randomly initialized features of the low-scale generator with rearranged Pre-Shape features and uses the features to guide image generation at subsequent scales, thereby reducing the risk of structural misalignment. To support downstream tasks such as stylization, a Scale-adaptive Sliding-window Patch Extraction (SSPE) strategy is further designed, and a directional Contrastive Language-Image Pre-training supervision module with SSPE (CLIP-SSPE) is constructed. Qualitative and quantitative experiments demonstrate that FRPSS achieves the best Single Image Fréchet Inception Distance (SIFID) scores on all three datasets while maintaining competitive Learned Perceptual Image Patch Similarity (LPIPS). Further qualitative experiments verify the effectiveness of FRPSS across multiple downstream tasks with the CLIP-SSPE module.",
+      "authors": [
+        "Yuexing Han",
+        "Haoxuan Zhang",
+        "Bing Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-15T03:38:28+00:00",
+      "link": "https://arxiv.org/pdf/2609.16594v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "single-image generation with pre-shape space feature rearrangement",
+      "llm_evidence_cn": "基于预形状空间特征重排的单图像生成",
+      "llm_evidence": "基于预形状空间特征重排的单图像生成",
+      "canonical_evidence": "基于预形状空间特征重排的单图像生成",
+      "llm_tldr_en": "Single-image generative models struggle to balance global structure and local diversity; FRPSS replaces random low-scale features with rearranged pre-shape features to enforce global structural constraints.",
+      "llm_tldr_cn": "仅用单张图像训练的生成模型常难以兼顾全局结构完整性与局部多样性，现有方法多依赖随机噪声驱动生成且缺乏显式全局结构约束，结构变化时易出现空间错位。本文提出FRPSS，其核心为流形结构重排与测地曲面特征增强模块，用重排后的预形状特征替换低尺度生成器的随机初始化特征，从而施加全局结构约束。该方法在单图像生成中改善了结构一致性与多样性的平衡。该工作为单样本图像生成提供了显式几何约束的新思路。",
+      "llm_tldr": "仅用单张图像训练的生成模型常难以兼顾全局结构完整性与局部多样性，现有方法多依赖随机噪声驱动生成且缺乏显式全局结构约束，结构变化时易出现空间错位。本文提出FRPSS，其核心为流形结构重排与测地曲面特征增强模块，用重排后的预形状特征替换低尺度生成器的随机初始化特征，从而施加全局结构约束。该方法在单图像生成中改善了结构一致性与多样性的平衡。该工作为单样本图像生成提供了显式几何约束的新思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.21268v1",
+      "source": "arxiv",
+      "title": "Edit-VAR: Taming Visual Autoregressive Model for Precise Video Editing",
+      "abstract": "Text-guided video editing modifies target content while preserving the appearance and temporal coherence of unedited regions. Training-based approaches provide strong control but demand substantial data and computation. Training-free methods fall into inversion-free and inversion-based paradigms. Inversion-free approaches avoid trajectory recovery, but their source-preserving guidance can limit editing strength and leave semantic changes incomplete. Inversion-based approaches recover a latent trajectory before regeneration, where approximation errors can accumulate and cause source-content drift and temporal inconsistency. We introduce Edit-VAR, the first training-free and inversion-free framework for text-guided video editing with a pretrained visual autoregressive video model. Edit-VAR directly encodes the source video into multi-scale discrete tokens and performs probability-guided conditional token replacement for source preservation. Attention-guided token-wise and scale-aware modulation selectively relaxes source constraints over edit-relevant positions and generation stages. Scale-Decoupled Generation, implemented as late-scale constraint release, regenerates motion-consistent details and reduces texture fragmentation. Residual-guided token pruning further exploits redundancy at the final two high-resolution scales to reduce inference cost. Extensive experiments and a blind user study demonstrate that Edit-VAR outperforms existing training-free video editing methods overall in editing fidelity, source preservation, temporal coherence, and inference efficiency.",
+      "authors": [
+        "Chongbo Zhao",
+        "Jiangming Wang",
+        "Xilai Wang",
+        "Xinyu Wang",
+        "Jingyi Tang",
+        "Chunjie Hao",
+        "Pengjie Song",
+        "Yue Ma"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-18T03:26:19+00:00",
+      "link": "https://arxiv.org/pdf/2609.21268v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "visual autoregressive model for precise video editing",
+      "llm_evidence_cn": "面向精确视频编辑的视觉自回归模型",
+      "llm_evidence": "面向精确视频编辑的视觉自回归模型",
+      "canonical_evidence": "面向精确视频编辑的视觉自回归模型",
+      "llm_tldr_en": "Edit-VAR introduces the first training-free and inversion-free framework for text-guided video editing using a pretrained visual autoregressive model, avoiding approximation errors that cause source drift and temporal inconsistency in inversion-based approaches.",
+      "llm_tldr_cn": "针对文本引导视频编辑中无反转方法编辑强度受限、基于反转方法误差累积导致内容漂移与时序不一致的问题，Edit-VAR提出首个免训练且免反转的框架，基于预训练视觉自回归模型实现视频编辑。该方法在保持未编辑区域外观与时序一致的同时完成目标内容修改，为基于自回归模型的视频编辑提供了高效可控的新范式。",
+      "llm_tldr": "针对文本引导视频编辑中无反转方法编辑强度受限、基于反转方法误差累积导致内容漂移与时序不一致的问题，Edit-VAR提出首个免训练且免反转的框架，基于预训练视觉自回归模型实现视频编辑。该方法在保持未编辑区域外观与时序一致的同时完成目标内容修改，为基于自回归模型的视频编辑提供了高效可控的新范式。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.22789v1",
+      "source": "arxiv",
+      "title": "PixelART: Image-to-Layer Decomposition without Latents or Text-to-Image Pretraining",
+      "abstract": "Image-to-layer decomposition converts a flattened image into editable RGBA layers, enabling element-level editing in design workflows. Existing diffusion-based systems typically adapt large pretrained text-to-image (T2I) models and introduce RGBA autoencoders or variable-layer architectural modules. We revisit this design choice and ask whether layer decomposition truly requires these heavyweight components. We introduce PixelART, a pixel-space rectified-flow Transformer trained from scratch for image-to-layer (I2L) decomposition. PixelART directly denoises regional RGBA pixel patches using a single-stream multi-modal diffusion Transformer, avoiding RGBA-VAEs, pretrained T2I backbones, and layer-specific decoders. We identify a key property of the task: high-noise timesteps determine layer assignment and coarse layer organization, while low-noise timesteps mainly refine color, alpha, texture, and boundaries. Based on this observation, we propose a terminal-boosted timestep sampling strategy to increase training coverage in the high-noise layer assignment regime. Trained on 4M multi-layer design templates, PixelART achieves state-of-the-art layer decomposition and composite reconstruction on Design-Multi-Layer-Bench and LICA with over 80% fewer parameters, 98% lower latency, and 85% lower memory than the recent Qwen-Image-Layered model. Ablation experiments show that pixel-space $\\mathbf{x}$-prediction, terminal-boosted timestep sampling, and data/model scaling are critical, while T2I pretraining brings marginal benefits to the I2L task.",
+      "authors": [
+        "Zelin Jia",
+        "Zhao Zhang",
+        "Zhicong Tang",
+        "Yuhui Yuan",
+        "Shixia Liu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-19T05:40:09+00:00",
+      "link": "https://arxiv.org/pdf/2609.22789v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "diffusion transformer for image-to-layer decomposition enabling editable image editing",
+      "llm_evidence_cn": "面向图像分层分解的扩散Transformer支持可编辑生成",
+      "llm_evidence": "面向图像分层分解的扩散Transformer支持可编辑生成",
+      "canonical_evidence": "面向图像分层分解的扩散Transformer支持可编辑生成",
+      "llm_tldr_en": "PixelART is a pixel-space rectified-flow Transformer trained from scratch for image-to-layer decomposition, denoising regional RGBA patches without RGBA-VAEs or pretrained text-to-image backbones.",
+      "llm_tldr_cn": "现有基于扩散的图像分层方法普遍依赖大型预训练文生图模型与RGBA自编码器，组件沉重且流程复杂。作者提出PixelART，一个从零训练的像素空间整流流Transformer，用单流多模态扩散Transformer直接对区域RGBA像素块去噪，无需RGBA-VAE与预训练骨干。研究证明分层分解不必依赖这些重型组件即可实现可编辑的RGBA图层分解，为设计工作流提供了更轻量的可控图像编辑方案。",
+      "llm_tldr": "现有基于扩散的图像分层方法普遍依赖大型预训练文生图模型与RGBA自编码器，组件沉重且流程复杂。作者提出PixelART，一个从零训练的像素空间整流流Transformer，用单流多模态扩散Transformer直接对区域RGBA像素块去噪，无需RGBA-VAE与预训练骨干。研究证明分层分解不必依赖这些重型组件即可实现可编辑的RGBA图层分解，为设计工作流提供了更轻量的可控图像编辑方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.22867v1",
+      "source": "arxiv",
+      "title": "Leveraging Inference-Time Compute for Diffusion Models via Global Scheduling of Denoising Trajectories",
+      "abstract": "Diffusion models generate a sample by traversing a denoising trajectory, a sequence of stochastic noise-reduction steps that transforms pure noise into a draw from a target distribution. At deployment time, additional computation can improve sample quality without retraining: at each step, the sampler draws several candidate noise samples, scores the resulting predictions with a quality criterion called the verifier, and retains the best candidate at the cost of one network evaluation per candidate. This raises a resource allocation question: given a fixed budget of function evaluations, how should search effort be distributed across the steps of the denoising trajectory? We formulate this as a computational budget allocation problem. First, we show that, to leading order in the step size, the expected gain from evaluating $K$ candidates at a step factorizes into an endogenous, step-specific sensitivity parameter times a universal sample-size factor equal to the expected best of $K$ standard-normal draws. Second, for a fixed sensitivity profile, the optimal allocation solves a separable concave integer program with water-filling structure; at fixed total sensitivity, its advantage over uniform allocation increases with sensitivity dispersion in the majorization order. Third, we prove that when sensitivities vary across instances, no adaptive policy can avoid worst-case regret that grows linearly in the trajectory length, which motivates a design that anchors the allocation offline and adapts online only to recover instance-specific slack. We extend the analysis from independent random search to a broader family of local search operators, and instantiate it as an implementable algorithm. Experiments on three families of diffusion samplers show that the proposed allocation attains the quality of the uniform benchmark with 20 to 50 percent fewer function evaluations.",
+      "authors": [
+        "Yuan Cao",
+        "Yifu Tang",
+        "Hangqi Li",
+        "Zeyu Zheng"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-09-19T08:10:33+00:00",
+      "link": "https://arxiv.org/pdf/2609.22867v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "diffusion denoising trajectory scheduling to improve sample quality",
+      "llm_evidence_cn": "扩散去噪轨迹的全局调度以提升样本质量",
+      "llm_evidence": "扩散去噪轨迹的全局调度以提升样本质量",
+      "canonical_evidence": "扩散去噪轨迹的全局调度以提升样本质量",
+      "llm_tldr_en": "Diffusion sampling can improve with extra inference compute, but how to allocate a fixed evaluation budget across denoising steps is unclear; this paper formulates global scheduling of search effort over the trajectory.",
+      "llm_tldr_cn": "扩散模型通过逐步去噪生成样本，推理时增加计算可提升质量，但如何在固定的网络评估预算下把搜索努力分配到各个去噪步仍缺乏原则性方法。本文把这一问题形式化为去噪轨迹上的全局计算预算分配问题，在每个去噪步采样多个候选噪声并用验证器打分，再依据预算全局调度搜索强度。实验表明该调度策略在相同评估预算下优于均匀分配，获得更优的样本质量。该工作为扩散模型推理期计算分配提供了可复用框架，无需重新训练即可改善生成效果。",
+      "llm_tldr": "扩散模型通过逐步去噪生成样本，推理时增加计算可提升质量，但如何在固定的网络评估预算下把搜索努力分配到各个去噪步仍缺乏原则性方法。本文把这一问题形式化为去噪轨迹上的全局计算预算分配问题，在每个去噪步采样多个候选噪声并用验证器打分，再依据预算全局调度搜索强度。实验表明该调度策略在相同评估预算下优于均匀分配，获得更优的样本质量。该工作为扩散模型推理期计算分配提供了可复用框架，无需重新训练即可改善生成效果。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.23153v1",
+      "source": "arxiv",
+      "title": "SparkDiffusion: Mitigating the High-Sparsity Trap --- A Unified Framework for up to $265\\times$ Single-GPU Acceleration of Visual Generation",
+      "abstract": "Video diffusion transformers are expensive because attention dominates long spatiotemporal token sequences. We identify the \\emph{high-sparsity trap}: at extreme attention sparsity, step-local training losses keep decreasing while terminal generation quality stagnates or degrades. The trap is one of supervision: the dominant terminal errors originate in the high-noise structure-generation stage, and terminal-aligned training corrects terminal errors that substantially extended step-local training cannot. This yields a simple staging principle: \\emph{first adapt the sparse architecture into a coarse prior, then correct the terminal distribution}. We instantiate the principle as \\method, a unified acceleration framework for visual generation that combines a short sparse warm-up, few-step trajectory-mixed distillation, and FP8 quantization with fused kernels. \\method sustains $97\\%$ attention sparsity with strong visual quality on long-sequence 720P generation across Wan2.1/Wan2.2 backbones and T2V/I2V tasks, and $90\\%$ sparsity on Wan2.1-T2V-1.3B-480P. With 3-step CFG-free inference, \\method achieves a $265\\times$ end-to-end speedup over the 50-step CFG dense baseline for Wan2.1-T2V-14B-720P on a single RTX~5090 ($220\\times$ on H100), and denoises a Wan2.1-T2V-1.3B-480P video in $1.3$s.",
+      "authors": [
+        "Yuxi Liu",
+        "Haoyu Li",
+        "Zekun Zhang",
+        "Tengxu Sun",
+        "Yixiang Cai",
+        "Jiayong Li",
+        "Yifei Xia",
+        "Tianle Liu",
+        "Baole Ai",
+        "Ang Wang",
+        "Jiamang Wang",
+        "Lin Qu",
+        "Kai Zhang",
+        "Kun Yuan",
+        "Bin Cui"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-19T17:45:04+00:00",
+      "link": "https://arxiv.org/pdf/2609.23153v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "accelerates diffusion transformer visual generation via sparse attention",
+      "llm_evidence_cn": "通过稀疏注意力加速扩散Transformer视觉生成",
+      "llm_evidence": "通过稀疏注意力加速扩散Transformer视觉生成",
+      "canonical_evidence": "通过稀疏注意力加速扩散Transformer视觉生成",
+      "llm_tldr_en": "Identifies a high-sparsity trap in video diffusion transformers where training loss falls but generation quality stalls, and proposes a staged principle to first adapt a sparse prior then correct the terminal distribution, achieving up to 265x single-GPU acceleration.",
+      "llm_tldr_cn": "视频扩散Transformer因注意力计算而开销巨大，作者发现极端稀疏下的高稀疏陷阱：训练损失持续下降而生成质量停滞。他们提出分阶段训练原则，先将稀疏结构适配为粗略先验，再校正终端分布，并以此构建统一加速框架。实验实现单GPU最高265倍加速，为扩散视觉生成的高效部署提供可行路径。",
+      "llm_tldr": "视频扩散Transformer因注意力计算而开销巨大，作者发现极端稀疏下的高稀疏陷阱：训练损失持续下降而生成质量停滞。他们提出分阶段训练原则，先将稀疏结构适配为粗略先验，再校正终端分布，并以此构建统一加速框架。实验实现单GPU最高265倍加速，为扩散视觉生成的高效部署提供可行路径。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.23442v1",
+      "source": "arxiv",
+      "title": "PhysReflect: Geometry and Perception Guided Diffusion for Physically-Plausible Mirror Reflections",
+      "abstract": "Diffusion models generate high-quality images, yet often violate the physical laws governing mirror reflections. Reflections often suffer from geometric aberrations, including positional offsets, directional misalignment, proportional imbalance, and structural distortion. These failures remain evident even in contemporary state-of-the-art generative systems. Existing methods itigate this problem through synthetic data scaling or auxiliary depth conditioning, yet their merely reliance on latent-space noise reconstruction losses as implicit supervision prevents direct enforcement of reflection-specific geometric and perceptual constraints. To bridge this gap, we present PhysReflect, a geometry and perception guided diffusion framework that decodes the predicted clean latent into pixel space at each training step and applies annealed supervision through two complementary differentiable objectives. The Geometric Loss enforces mirror-induced spatial consistency through sparse epipolar correspondence and dense boundary projection alignment, where a SAM2-based TwinTrack mechanism provides stable in-mirror localization for boundary-aware supervision. The Perceptual Loss preserves reflected appearance by combining Semantic Consistency Loss, which maintains reflected identity and appearance via DINOv2 features, and Lighting Consistency Loss, which regularizes depth, surface-normal, and illumination coherence under monocular geometry priors. Experiments on synthetic and real-world benchmarks show that PhysReflect outperforms prior mirror-reflection methods in geometric, perceptual, and physical-plausibility metrics, as well as qualitative visual results.",
+      "authors": [
+        "Shuheng Ge",
+        "Hongwei Ren",
+        "Li Zhang",
+        "Xiangqian Wu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-20T08:17:52+00:00",
+      "link": "https://arxiv.org/pdf/2609.23442v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "geometry and perception guided diffusion for image generation",
+      "llm_evidence_cn": "几何与感知引导扩散提升图像生成质量",
+      "llm_evidence": "几何与感知引导扩散提升图像生成质量",
+      "canonical_evidence": "几何与感知引导扩散提升图像生成质量",
+      "llm_tldr_en": "PhysReflect guides diffusion with geometry and perception constraints to fix physically implausible mirror reflections, avoiding reliance on synthetic data or depth conditioning alone.",
+      "llm_tldr_cn": "扩散模型虽能生成高质量图像，却常违背镜面反射的物理规律，出现位置偏移、方向错位和结构畸变。现有方法依赖合成数据扩充或深度条件，但仅以潜空间噪声重建损失作隐式监督，难以直接约束反射几何。论文提出PhysReflect，以几何与感知引导扩散，显式施加反射相关约束。结果在反射的几何一致性与真实感上优于既有方法，提升了生成图像的物理合理性。",
+      "llm_tldr": "扩散模型虽能生成高质量图像，却常违背镜面反射的物理规律，出现位置偏移、方向错位和结构畸变。现有方法依赖合成数据扩充或深度条件，但仅以潜空间噪声重建损失作隐式监督，难以直接约束反射几何。论文提出PhysReflect，以几何与感知引导扩散，显式施加反射相关约束。结果在反射的几何一致性与真实感上优于既有方法，提升了生成图像的物理合理性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.23548v1",
+      "source": "arxiv",
+      "title": "SewFusion: Tailored Generation of Topology and Panel-Level Geometry for Sewing Patterns",
+      "abstract": "Generating sewing patterns from images and text requires modeling a heterogeneous representation composed of discrete topology and continuous geometry. Existing methods mainly follow two paradigms: diffusion-based methods enable holistic geometry generation by converting the entire pattern into a continuous representation, but weaken discrete topology modeling; in contrast, autoregressive methods preserve discrete topology through next-token prediction, but tie continuous geometry regression to token-level hidden states with limited panel-level context. To bridge this gap, we propose SewFusion, a unified autoregressive framework that adopts tailored generation mechanisms for discrete topology and panel-level continuous geometry, using next-token prediction for the former and flow matching for the latter. To support panel-level continuous geometry generation, we introduce a Panel Geometry VAE that learns a fixed-size latent space for variable-length panel geometry, together with Panel Geometry Flow for latent generation. We further propose Panel-Forcing to reduce the training--inference mismatch in topology context and improve robustness to topology prediction errors. Extensive experiments on SewFactory and GCD-MM demonstrate that SewFusion consistently outperforms previous state-of-the-art methods across various settings, achieving +6.36% Panel Accuracy, +11.30% Stitch Accuracy, and -1.90 Vertex L2 error in the image-text-based generation setting.",
+      "authors": [
+        "Jiaxin Lin",
+        "Xiao Pan",
+        "Hangjie Yuan",
+        "Luyan Liang",
+        "Wan Li",
+        "Daquan Feng"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-20T10:55:46+00:00",
+      "link": "https://arxiv.org/pdf/2609.23548v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "unified autoregressive framework generating topology and panel geometry",
+      "llm_evidence_cn": "统一自回归框架生成拓扑与面板级几何",
+      "llm_evidence": "统一自回归框架生成拓扑与面板级几何",
+      "canonical_evidence": "统一自回归框架生成拓扑与面板级几何",
+      "llm_tldr_en": "Generating sewing patterns from images and text involves discrete topology and continuous geometry; SewFusion unifies autoregressive generation with tailored mechanisms for topology and panel-level geometry.",
+      "llm_tldr_cn": "从图像和文本生成缝纫纸样需要同时建模离散拓扑与连续几何的异构表示。现有扩散方法将整体转为连续表示实现整体几何生成，却弱化离散拓扑；自回归方法通过下一词元预测保留拓扑，却把连续几何回归绑定在词元级隐状态上，缺乏面板级上下文。本文提出SewFusion统一自回归框架，针对离散拓扑与面板级连续几何分别设计定制生成机制。该方法在保留拓扑结构的同时提升了面板级几何生成的连贯性，弥合了两类范式的鸿沟。",
+      "llm_tldr": "从图像和文本生成缝纫纸样需要同时建模离散拓扑与连续几何的异构表示。现有扩散方法将整体转为连续表示实现整体几何生成，却弱化离散拓扑；自回归方法通过下一词元预测保留拓扑，却把连续几何回归绑定在词元级隐状态上，缺乏面板级上下文。本文提出SewFusion统一自回归框架，针对离散拓扑与面板级连续几何分别设计定制生成机制。该方法在保留拓扑结构的同时提升了面板级几何生成的连贯性，弥合了两类范式的鸿沟。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.23658v1",
+      "source": "arxiv",
+      "title": "Why Do Video Diffusion Models Violate Physics? Unveiling the Flaws in Attention Mechanisms",
+      "abstract": "Despite impressive visual quality, state-of-the-art video diffusion models often generate content that violates real-world physical laws. While existing solutions rely on external priors or specialized data, we investigate the root cause by exploring the internal mechanisms of these models. Specifically, we present the first interpretability study on the ''motion planning'' process of text-to-video diffusion models, revealing how motion trajectories form during early denoising stages. Building upon the ''first shape, then details'' finding, we combine cross-attention trajectory patterns with causal head contributions to identify a specific subset of attention heads driving motion planning. Further, our self-attention analysis shows that Rotary Position Embedding (RoPE) induces excessive spatial attention decay. This causes early candidate regions to prematurely lock into physically implausible positions, suppressing reasonable trajectories in adjacent frames and triggering generation failure modes. To address this fundamental flaw, we propose a lightweight architectural modification that scales the frequency of RoPE across different denoising steps. This strategy reduces excessive attention decay, helping the model explore better candidate regions to establish coherent physical motion. Finally, training-free and training-based experiments confirm the effectiveness of our approach in enhancing the physical commonsense of generated videos.",
+      "authors": [
+        "Yueyan Li",
+        "Haibo Wang",
+        "Caixia Yuan",
+        "Xiaojie Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-09-20T14:09:58+00:00",
+      "link": "https://arxiv.org/pdf/2609.23658v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "interpretability of text-to-video diffusion motion planning",
+      "llm_evidence_cn": "文生视频扩散运动规划的可解释性",
+      "llm_evidence": "文生视频扩散运动规划的可解释性",
+      "canonical_evidence": "文生视频扩散运动规划的可解释性",
+      "llm_tldr_en": "This work investigates why video diffusion models violate physics by interpreting their motion planning, showing motion trajectories form in early denoising and identifying specific attention heads driving motion planning through cross-attention and causal head analysis.",
+      "llm_tldr_cn": "针对视频扩散模型视觉质量高却常生成违背物理规律内容、现有方法依赖外部先验的问题，本文首次对文生视频扩散模型的运动规划过程做可解释性研究，结合交叉注意力轨迹与因果头贡献定位驱动运动规划的注意力头。研究发现运动轨迹在早期去噪阶段形成，并从机制层面解释了物理违背的成因，为改进视频生成提供了依据。",
+      "llm_tldr": "针对视频扩散模型视觉质量高却常生成违背物理规律内容、现有方法依赖外部先验的问题，本文首次对文生视频扩散模型的运动规划过程做可解释性研究，结合交叉注意力轨迹与因果头贡献定位驱动运动规划的注意力头。研究发现运动轨迹在早期去噪阶段形成，并从机制层面解释了物理违背的成因，为改进视频生成提供了依据。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

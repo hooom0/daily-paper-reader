@@ -1,0 +1,478 @@
+Title: SewFusion: Tailored Generation of Topology and Panel-Level Geometry for Sewing Patterns
+
+URL Source: https://arxiv.org/pdf/2609.23548v1
+
+Published Time: Tue, 22 Sep 2026 01:29:26 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# SewFusion: Tailored Generation of Topology and Panel-Level Geometry for Sewing Patterns 
+
+Jiaxin Lin 1, Xiao Pan 1, Hangjie Yuan 2, Luyan Liang 1, Wan Li 1, Daquan Feng 1
+
+> 1
+
+Digital Creative Technology Laboratory, Shenzhen University 
+
+> 2
+
+Zhejiang University {linjiaxin2022,liwan2022,liangluyan}@email.szu.edu.cn, {xiaopan97,fdquan}@szu.edu.cn, hj.yuan@zju.edu.cn 
+
+Abstract 
+
+Generating sewing patterns from images and text requires modeling a heterogeneous representation composed of dis-crete topology and continuous geometry. Existing methods mainly follow two paradigms: diffusion-based methods enable holistic geometry generation by converting the entire pattern into a continuous representation, but weaken discrete topology modeling; in contrast, autoregressive methods preserve dis-crete topology through next-token prediction, but tie continu-ous geometry regression to token-level hidden states with lim-ited panel-level context. To bridge this gap, we propose Sew-Fusion, a unified autoregressive framework that adopts tai-lored generation mechanisms for discrete topology and panel-level continuous geometry, using next-token prediction for the former and flow matching for the latter. To support panel-level continuous geometry generation, we introduce a Panel Geom-etry VAE that learns a fixed-size latent space for variable-length panel geometry, together with Panel Geometry Flow for latent generation. We further propose Panel-Forcing to re-duce the training–inference mismatch in topology context and improve robustness to topology prediction errors. Extensive experiments on SewFactory and GCD-MM demonstrate that SewFusion consistently outperforms previous state-of-the-art methods across various settings, achieving +6 .36% Panel Ac-curacy, +11 .30% Stitch Accuracy, and −1.90 Vertex L2 error in the image-text-based generation setting. The project page is available at https://jason96a.github.io/SewFusion/ .
+
+Introduction 
+
+Digital garment design plays a central role in virtual try-on, fashion design, digital humans, and physically based simula-tion (Zeng et al. 2026; Li et al. 2024b; Wang et al. 2026). At its core lies the sewing pattern, a heterogeneous garment rep-resentation that combines discrete topology , including panel identities, edge types, and stitch relations, with continuous geometry , including edge vertices, curve control parameters, and panel rigid transformations. Designing sewing patterns manually in specialized CAD systems is labor-intensive and requires substantial expertise (Li et al. 2025a; Li, Guillard, and Fua 2023; Li et al. 2026; Ríos-Navarro, Garces, and Lopez-Moreno 2026; Li et al. 2024a). To automate this pro-cess, recent methods have explored learning-based sewing pattern prediction and generation from diverse visual, geo-metric, and textual inputs (Yang et al. 2018; Wang et al. 2018; Korosteleva and Lee 2022; Liu et al. 2023b; Tatsukawa et al. Coupled Token-level Regression                      
+
+> Autoregressive Transformer
+> GENERATE or
+> EDIT the sewing
+> pattern .
+> Encoder
+> Noisy Continuous Representation
+> GENERATE or
+> EDIT the sewing
+> pattern .
+> GENERATE or
+> EDIT the sewing
+> pattern .
+> Diffusion Model Autoregressive Transformer
+> Discrete
+> Topology
+> Denoised Continuous Representation Panel-level
+> Continuous Geometry
+> Encoder Encoder
+> Previous Diffusion-based Previous Autoregressive-based SewFusion (Ours)
+> Missing Topology Distorted Geometry Complete Topology
+> Accurate Geometry
+> Front Back Front Back Front Back
+
+Figure 1: Comparison between existing paradigms and SewFusion. SewFusion enables tailored generation of dis-crete topology and panel-level continuous geometry within a unified autoregressive framework. 2025; Li et al. 2025c; Nakayama et al. 2026). As illustrated in Fig. 1, recent generative approaches mainly follow two paradigms: Diffusion-based methods en-code the entire sewing pattern into a unified continuous rep-resentation (Li, Yao, and Wang 2025; Liu et al. 2025b; Li et al. 2025b). While effective at modeling continuous geom-etry, this formulation converts discrete topology, including panel existence, edge types, and stitch relations, into contin-uous prediction, often causing missing topology. In contrast, autoregressive-based methods (Nakayama et al. 2025) pre-serve discrete topology through next-token prediction, but regress continuous geometry from the corresponding token-level hidden states (He et al. 2024; Nakayama et al. 2025). Such token-level regression couples discrete topology and continuous geometry within shared hidden states and lacks the panel-level context needed to ensure boundary closure, ultimately leading to distorted geometry. Consequently, ex-isting methods have yet to provide a framework that models topology discretely while enabling decoupled, panel-level continuous geometry generation. 
+
+To this end, we propose SewFusion, a unified autoregres-sive model that adopts tailored generation mechanisms for discrete topology and panel-level continuous geometry, us-ing next-token prediction for the former and flow matching for the latter. To enable panel-level continuous geometry gen-eration, we introduce a Panel Geometry VAE that encodes arXiv:2609.23548v1 [cs.CV] 20 Sep 2026 “An asymmetrical 
+
+> jumpsuit featuring a
+> deep neckline, one
+> short sleeve and one
+> sleeveless side.”
+> “Make the skirt shorter. ”
+
+ewFusion  Image -Text -based Generation Image -base d Generation  Text -based Generation  
+
+> Sewing Pattern Editing Multimodal Inputs
+> Image
+> Text
+> Source Sewing Pattern
+
+Figure 2: SewFusion is a versatile framework that generates simulation-ready sewing patterns from images, text, or their combination, and edits existing patterns according to user instructions. The resulting sewing patterns can be used in garment simulation software to assemble and simulate the corresponding 3D garments. the variable-length geometry parameters of each panel into a fixed-size structured latent representation. These panel-level latent representations are generated by Panel Geome-try Flow conditioned on the multimodal input and the pre-ceding discrete topology, and are subsequently decoded into continuous geometry parameters. However, training Panel Geometry Flow with ground-truth topology creates a train-ing–inference mismatch in topology context. To address this mismatch, we further introduce Panel-Forcing , which ex-poses Panel Geometry Flow to model-generated topology during training, thereby improving its robustness to topol-ogy prediction errors. Our main contributions are summarized as follows: 
+
+• We propose SewFusion, a unified autoregressive frame-work that adopts tailored generation mechanisms for dis-crete topology and panel-level continuous geometry, us-ing next-token prediction for the former and flow match-ing for the latter. 
+
+• We introduce a Panel Geometry VAE and Panel Geome-try Flow, enabling coherent generation of variable-length panel geometry in a fixed-size panel-level latent space. We further propose Panel-Forcing to reduce the training– inference mismatch in topology context and improve ro-bustness to topology prediction errors. 
+
+• Extensive experiments on SewFactory and GCD-MM demonstrate consistent improvements across sewing pat-tern generation and editing settings. In image-text-based generation, SewFusion improves Panel Accuracy and Stitch Accuracy by 6.36% and 11.30% , respectively, while reducing Vertex L2 error by 1.90 .
+
+Related Work 
+
+Sewing Pattern Generation 
+
+Early methods fit predefined templates or parameterized pro-grams to observed garment appearance or geometry (Yang et al. 2018; Wang et al. 2018; Bang, Korosteleva, and Lee 2021). GarmentCode (Korosteleva and Sorkine-Hornung 2023) improves controllability and structural validity through hierarchical components and interpretable parameters, but fixed garment categories and topologies limit generalization to unseen panel and stitch structures (Chi and Song 2021; Zhao et al. 2021; Zhu et al. 2022; De Luigi et al. 2023; Qiu et al. 2023; Li et al. 2024c). Recent diffusion-based methods model multimodal sewing pattern distributions. SewingLDM (Liu et al. 2025b) performs conditional diffusion in a latent pattern space, Gar-mentDiffusion (Li, Yao, and Wang 2025) jointly denoises tokenized pattern edges, and GarmageNet (Li et al. 2025b) couples 2D patterns with 3D garment geometry. Although these approaches effectively model continuous geometry and diverse outputs, unifying panel existence, geometry, place-ment, and stitching in continuous representations can obscure discrete semantics and structural constraints. Autoregressive methods instead serialize patterns into structured sequences. DressCode (He et al. 2024) quan-tizes pattern attributes into scalar tokens, while AIp-parel (Nakayama et al. 2025) supports image-, text-, and editing-conditioned generation through multimodal token prediction. Related methods generate structured descriptions or pattern-making programs (Bian et al. 2025; Zhou et al. 2025). While autoregressive modeling naturally supports variable-length topology, representing continuous geometry through quantized tokens or token-level regression fragments coherent panel shapes and may cause topology–geometry ambiguity and error accumulation over long rollouts. Existing generative methods either force all sewing-pattern attributes into a unified continuous space or discretize the entire pattern into a sequential token representation. Both paradigms overlook the inherent heterogeneity of sewing pat-terns, where topology is discrete but geometry is continuous. In contrast, our method assigns specialized generation mech-anisms to the two modalities, using autoregressive prediction for discrete topology and topology-conditioned flow match-ing for continuous panel-level geometry. 
+
+Self-forcing for Robust Generation 
+
+Autoregressive models are commonly trained with teacher forcing, creating exposure bias because inference relies on model-generated rather than ground-truth prefixes. Recent methods reduce this gap by incorporating self-generated to-kens or rollouts during training (Cen et al. 2025; Huang et al. 2025; Liu et al. 2025a; Guo et al. 2025). In visual generation, self-forcing and related approaches improve long-horizon ro-bustness through inference-like rollouts, self-resampling, ex-tended denoising, and causal distillation (Yang et al. 2025; Zhang et al. 2025; Zhu et al. 2026), while inference-time strategies reinforce prefix consistency (Liao et al. 2026). These ideas are particularly important for structured gen-eration, where early symbolic errors propagate to later pre-dictions, motivating our approach to improve continuous ge-ometry robustness. 
+
+Preliminary 
+
+Problem Formulation 
+
+Given a multimodal input x, consisting of a garment im-age, a textual description, or a source sewing pattern, our objective is to generate a simulation-ready sewing pattern 
+
+S. We formulate sewing pattern generation as a heteroge-neous discrete–continuous problem and decompose S into discrete topology T and panel-level continuous geometry G.The generation process is factorized as 
+
+p(S | x) = pθ (T | x) pθ,ψ (G | T, x ), (1) where the same causal multimodal Transformer with param-eters θ generates discrete topology through next-token pre-diction and panel-level continuous geometry through flow matching. The Panel Geometry VAE with parameters ψ de-fines the latent space in which continuous geometry is gen-erated and decoded. This factorization models topology dis-cretely while enabling decoupled continuous geometry gen-eration at the panel level, thereby tailoring the generation mechanism to each representation. 
+
+Sewing Pattern Representation 
+
+Discrete Topology Representation. A sewing pattern contains N panels. For the i-th panel, its discrete topology Ti
+
+specifies the panel identity, the ordered edge types, and the stitch tags associated with its edges. Edge types include line, quadratic Bézier curve, cubic Bézier curve, and circular arc. The complete topology is denoted by T = {Ti}Ni=1 , which determines how many panels the sewing pattern contains, how they are organized, what type each edge takes, and how edges are stitched. The associated continuous geometry is represented separately by G, as described next. 
+
+Continuous Geometry Representation. For the i-th panel, Ei represents the geometry of edges arranged sequen-tially along the panel boundary. Each edge geometry is com-posed of vertices and type-specific curve control parameters. 
+
+Hi represents the panel rigid transformation, consisting of a translation ti ∈ R3 and a unit quaternion qi ∈ R4 represent-ing its rotation. Together, Ei and Hi constitute the continuous geometry Gi of the i-th panel. The complete continuous ge-ometry is denoted by G = {Gi}Ni=1 , which determines the shape and spatial placement of panels. 
+
+Method 
+
+Overview. As illustrated in Fig. 3, we propose SewFu-sion, a unified autoregressive framework that adopts tailored generation mechanisms for discrete topology and panel-level continuous geometry. SewFusion first generates dis-crete topology at the token level through next-token predic-tion, providing the structural condition for subsequent geom-etry generation. To support panel-level continuous geome-try modeling, a Panel Geometry VAE encodes the variable-length geometry parameters of each panel into a fixed-size latent representation, which is then generated by Panel Ge-ometry Flow conditioned on the multimodal input and gen-erated topology. Panel-Forcing further exposes the geometry generator to model-generated topology during training, re-ducing the training–inference mismatch in topology context and improving robustness to topology prediction errors. We next introduce these components in order. 
+
+Token-Level Discrete Topology Generation 
+
+SewFusion employs a causal multimodal Transformer (Liu et al. 2023a) to generate discrete topology from the multi-modal input x, which may include a garment image, a text instruction, and, for pattern editing, an existing sewing pat-tern. Following (Nakayama et al. 2025), we serialize the topology of the i-th panel as Ti = ( ti, 1, . . . , t i,L i ), where Li
+
+denotes the number of topology tokens in the panel and ti,j 
+
+denotes the j-th token, such as a panel identity, edge type, or stitch tag. The complete topology T = {Ti}Ni=1 is generated autoregressively and trained through next-token prediction: 
+
+Ltopo = −
+
+> N
+
+X
+
+> i=1
+> Li
+
+X
+
+> j=1
+
+log pθ (ti,j | T<i , t i,<j , x ) , (2) where T<i denotes the topology of previously generated pan-els and ti,<j denotes the preceding topology tokens within the current panel. The generated topology further configures subsequent continuous geometry generation by determining the number of panel-level latent groups and edge queries. 
+
+Panel-Level Continuous Geometry Generation 
+
+Panel Geometry VAE. Given the discrete topology gen-erated above, directly modeling the continuous geometry of each panel remains difficult, since edge geometry varies in both the number of edges and the dimensionality of type-specific curve control parameters. Thus, we introduce a Panel Geometry VAE that maps each panel into a fixed-size la-tent representation. Since edge geometry is variable-length whereas the panel transformation is fixed-dimensional, the VAE employs separate edge and transformation branches, producing K edge latent slots and one transformation latent slot for each panel. "pant_f_right": {               
+
+> "edge": {"type": ["quadratic", ...]
+> "vertices": [[-0.41, 0], … ]
+> "curve control params": [[0.69, 0.14], ...] }
+> "panel": {"rotation": [0.0, 0.0, 0.0, 0.0]
+> "translation": [ -28.91, 54.55, 25.01] }
+> ...
+> }
+> …
+> Panel-level Representation
+> Please GENERATE the sewing pattern of the garment in this image .
+> Please GENERATE the sewing pattern based on {garment description}.
+> Please EDIT the sewing pattern , {edit caption}.
+
+Autoregressive Transformer          
+
+> Multimodal Input
+> SOG SOT SOP pant_f_right EOT EOP ···EOG SOP pant_f_left EOP
+> Q-Former
+> Learnable Queries Edge Queries Panel Geometry VAE
+> Simulation-ready Sewing Pattern
+> 2D Sewing Pattern
+> ···
+> Edge Params.
+> Panel Transformation Params.
+> Q-Former
+> ...
+> ...
+> ...
+> ...
+> ...
+> ...
+> ...
+> ...
+> …
+> Edge
+> Rigid
+> Transform
+> SOG Start of Geometry
+> Topology/Geometry Tokens
+> End of Geometry EOG
+> Stitch Tag
+> Start of Panel SOP
+> Start of Topology SOT
+> End of Panel EOP
+> End of Topology EOT
+> Circular Arc
+> Quadratic Bezier
+> Curve
+> Cubic Bezier
+> Curve
+> Line
+
+Figure 3: Overview of SewFusion. Our model comprises a Panel Geometry VAE and a Panel Geometry Flow. The Panel Geometry VAE compresses variable-length panel geometry and transformations into fixed-length latents and reconstructs continuous geometry. Conditioned on images, text, or editing instructions, a causal Transformer autoregressively generates sewing pattern topology and geometry tokens, whose hidden states guide flow-based latent sampling. The sampled geometry is then decoded together with the predicted topology to produce editable and simulation-ready sewing patterns. For the edge branch, we standardize each edge represen-tation and use a Q-Former (Zhang et al. 2024) to encode the resulting variable-length sequence into K latent slots. Specif-ically, we consider the i-th panel and omit the panel index for clarity. Let n denote its number of edges and j ∈ { 1, . . . , n }
+
+index the edges in boundary order. The parameters of the 
+
+j-th edge are arranged into a unified vector ej ∈ R7 ac-cording to a predefined layout, together with a validity mask 
+
+mj ∈ { 0, 1}7 indicating the active dimensions. The input embedding of each edge is constructed as: 
+
+uj = W (ej ⊙ mj ) + epos (j), (3) where W ∈ Rd×7 is a learnable linear projection, epos (j) ∈
+
+Rd is a learned positional embedding, and uj ∈ Rd is the resulting edge embedding. These edge embeddings are used as the keys and values of a Q-Former, whose K learned queries aggregate them into a fixed-size representation. Lin-ear projections then predict the mean and log-variance of the edge latent distribution. During decoding, edge queries at-tend to the sampled latent slots to reconstruct the continuous parameters of the corresponding edges. For the transformation branch, the fixed-dimensional transformation Hi ∈ R7, consisting of a translation ti ∈ R3
+
+and a unit quaternion qi ∈ R4, is projected to predict the mean and log-variance of a single latent slot. The sampled latent is decoded to reconstruct ˆti and ˆqi, with ˆqi normalized to unit length before computing the reconstruction loss. We separately pretrain the edge and transformation branches of the Panel Geometry VAE. The edge branch is optimized with masked reconstruction of valid edge parame-ters, auxiliary geometric supervision on curve control param-eters and the resulting panel contour, and KL regularization of the edge latent distribution. The transformation branch is independently optimized with translation and quaternion-rotation reconstruction, together with KL regularization of the transformation latent distribution. Detailed formulations are provided in the appendix. 
+
+Panel Geometry Flow. With the structure provided by the preceding token-level discrete topology generation, Panel Geometry Flow then generates the continuous geometry of each panel in the compact, fixed-size latent space learned by the Panel Geometry VAE. Specifically, the number of pan-els parsed from the generated topology sequence determines how many panel-level latent groups are instantiated for flow matching, while the number of edge-type tokens predicted within each panel determines how many edge queries are initialized by the VAE decoder. These panel-level latents are generated within the same causal multimodal Transformer used for topology generation, conditioned on the multimodal input and the complete generated topology. Formally, during training, let N denote the number of panels in the topology sequence. Each panel corresponds to one latent group containing K edge latent slots and 1
+
+transformation latent slot. For the i-th panel, the pretrained Panel Geometry VAE encodes its ground-truth geometry into the latent group Z1,i . We sample a Gaussian noise group 
+
+Z0,i ∼ N (0 , I ) and a flow time t ∼ U (0 , 1) , and define the linear probability path: 
+
+Zt,i = (1 − t)Z0,i + tZ 1,i , V ∗ 
+
+> i
+
+= Z1,i − Z0,i . (4) The interpolated latent group Zt,i is projected into the Transformer hidden space and augmented with flow-time and panel-category embeddings to form the geometry tokens 
+
+Gt,i :
+
+Gt,i = W Z t,i + ft(t) + epanel (ci), (5) where W is a learnable projection, ft(t) denotes the flow-time embedding, and epanel (ci) is a learnable embedding indexed by the panel category ci predicted in the topol-ogy sequence. The geometry tokens of all panel-level latent groups are appended after the topology sequence and jointly processed in a single forward pass of the same causal multi-modal Transformer to predict their velocities { ˆVi}Ni=1 . Panel Geometry Flow is optimized by: 
+
+Lflow =
+
+> N
+
+X
+
+> i=1
+
+ˆVi − V ∗
+
+> i
+> 22
+
+. (6) During inference, each predicted panel is assigned an in-dependent Gaussian noise latent group, and all panel-level latent groups are jointly evolved through the predicted veloc-ity field until the final VAE latents are obtained. The resulting latents are decoded by the pretrained Panel Geometry VAE decoder. For each panel, the predicted number of edges de-termines the number of edge queries used to reconstruct its edge geometry, while the transformation latent is decoded into the corresponding transformation. 
+
+Panel-Forcing. Panel Geometry Flow is conventionally trained with ground-truth topology context, i.e. , teacher-forcing, whereas inference conditions on model-generated topology. This discrepancy leaves the geometry generator unprepared for topology prediction errors at inference and may consequently degrade the generated panel geometry. Inspired by self-forcing (Huang et al. 2025), we introduce Panel-Forcing to reduce this mismatch. Specifically, the model first autoregressively generates a topology ˜T from the multimodal input x. The predicted topol-ogy ˜T is then used in place of the ground-truth topology T as the conditioning context for Panel Geometry Flow, while the flow-matching targets remain derived from the ground-truth panel geometry. The resulting objective is 
+
+LPF =
+
+> N
+
+X
+
+> i=1
+
+ˆVi( ˜T , x ) − V ∗ 
+
+> i
+> 22
+
+, (7) where ˆVi( ˜T , x ) denotes the velocity predicted for the i-th panel under the model-generated topology context. By expos-ing Panel Geometry Flow to self-generated topology during training, Panel-Forcing improves its robustness to topology prediction errors encountered at inference. 
+
+Training Strategy 
+
+The edge and transformation branches of the Panel Geom-etry VAE are pretrained using their respective objectives and then kept fixed. Subsequently, the topology generator and Panel Geometry Flow are trained in two stages. During warm-up, both components use teacher-forced topology. Af-ter warm-up, the topology generator remains teacher-forced, while Panel Geometry Flow switches to Panel-Forcing and conditions on autoregressively generated topology. 
+
+Experiment 
+
+Experimental Setting 
+
+Datasets. We train our models on the SewFactory (Liu et al. 2023b) and GCD-MM (Nakayama et al. 2025) datasets. GCD-MM is a multimodal extension of GarmentCode-Data (Korosteleva and Sorkine-Hornung 2023) and contains approximately 115K garment samples; we follow its official training, validation, and test splits. After preprocessing and filtering invalid samples, we retain 8,269 SewFactory gar-ments and randomly split them into training, validation, and test sets at a ratio of 9:0.5:0.5. 
+
+Implementation Details. Following AIpparel (Nakayama et al. 2025), we employ LLaVA-1.5-7B (Liu et al. 2023a) as the backbone. In line with the GCD-MM protocol, we nomi-nally sample image, text, image+text, and editing examples at a ratio of 3:2:4:1 during training. We train on 8 H100 GPUs for 20,000 optimizer steps with a total batch size of 320. The learning rate increases to 10 −4 over the first 100 steps and then follows cosine decay to zero. For the SewFactory dataset, which contains only the image modality, we train the model exclusively on the image-conditioned task. 
+
+Metrics. For discrete structure, we report panel-count, edge-count, stitch, and curve-type accuracies. For contin-uous geometry, edge geometry is evaluated using Vertex L2, Quadratic Control L2, Cubic Control L2, and Arc Control L2, while panel rigid transformations are evaluated using Translation L2 and sign-invariant Rotation L2. 
+
+Baselines. We compare with state-of-the-art open-source sewing pattern generation models, including Sew-Former (Liu et al. 2023b), diffusion-based SewingLDM (Liu et al. 2025b) and autoregressive-based AIpparel (Nakayama et al. 2025). 
+
+Image-based Generation 
+
+Task Setup. Given a single rendered garment image, the model generates a garment sewing pattern. Since SewFactory represents all edges as single-control-point Bézier curves without explicit cubic or arc annotations, we omit the cor-responding metrics. We evaluate only SewFormer and AIp-parel, as SewingLDM requires sample-specific body param-eters unavailable in SewFactory. 
+
+Quantitative and Qualitative Results. Tab. 1 shows quan-titative comparisons on the two datasets. Compared with the diffusion-based baseline, SewFusion achieves improve-ments of 15.58% and 10.16% in Panel Accuracy and Stitch Accuracy, respectively, together with a 0.1615 reduction in Arc control-point error. Compared with the token-level autoregression-based AIpparel, SewFusion improves Panel Accuracy and Stitch Accuracy by 6.05% and 8.7%, re-spectively, while reducing the curve control-point error by 0.1405. Fig. 4 shows qualitative results. SewingLDM pre-dicted panel geometry violates the original topology, causing self-intersections that prevent simulation. AIpparel predicts sleeve geometry and stitching topology that deviate substan-tially from the ground truth, resulting in visible gaps around the arms. This suggests that baselines cannot adapt to com-plex garments with small panels and diverse edge types. In contrast, SewFusion predicts sewing pattern that match the input images, including small panels such as the waistband and the sleeve cuffs. 
+
+Text-based Generation 
+
+Task Setup. We evaluate three language-related condition-ing modes on GCD-MM dataset. In text generation, the input Table 1: Quantitative comparison with previous state-of-the-art methods on SewFactory and GCD-MM. Dataset Methods Setting Panel Acc. ↑
+
+Edge Acc. ↑
+
+Stitch Acc. ↑
+
+Curve Type Acc. ↑
+
+Vertex 
+
+L2 ↓
+
+Transl. 
+
+L2 ↓
+
+Rot. 
+
+L2 ↓
+
+Quad. Ctrl. 
+
+L2 ↓
+
+Cubic Ctrl. 
+
+L2 ↓
+
+Arc Ctrl. 
+
+L2 ↓
+
+SewFactory SewFormer 
+
+image 
+
+89.60 99.06 81.06 90.53 4.5921 2.1657 0.0857 0.1935 – –AIpparel 98.43 98.43 88.62 99.88 3.1488 1.5769 0.0275 0.0951 – –
+
+SewFusion (Ours) 98.66 99.14 90.88 99.88 2.6654 1.0465 0.0231 0.0842 – –GCD-MM SewFormer 
+
+image 
+
+68.96 47.60 36.29 45.30 12.5066 5.2676 0.0126 0.5365 0.5782 0.3209 SewingLDM 76.75 72.26 71.58 68.48 6.0844 3.4855 0.4855 0.2497 0.2429 0.2012 AIpparel 86.28 80.83 73.04 79.54 5.5278 2.9291 0.0084 0.2146 0.2451 0.1802 
+
+SewFusion (Ours) 92.33 85.64 81.74 82.23 4.1251 2.6933 0.0043 0.0896 0.1534 0.0397 
+
+SewingLDM 
+
+text 
+
+59.72 56.66 58.26 53.86 10.8272 8.0690 0.0316 0.4483 0.4635 0.3999 AIpparel 61.03 56.66 54.58 55.82 7.8853 3.3294 0.0109 0.3763 0.3608 0.2767 
+
+SewFusion (Ours) 68.57 65.40 59.40 59.39 6.8230 3.1491 0.0062 0.1008 0.0931 0.0868 
+
+SewingLDM 
+
+image-text 
+
+77.43 75.22 76.58 58.08 6.4484 4.9755 0.0114 0.3370 0.3552 0.2959 AIpparel 87.69 81.77 73.88 80.46 5.4643 2.8954 0.0083 0.2121 0.2423 0.1782 
+
+SewFusion (Ours) 94.05 89.74 85.18 84.85 3.5687 2.5326 0.0043 0.0897 0.0506 0.0399 
+
+AIpparel editing 82.91 92.07 93.64 95.84 7.7974 3.0720 0.0088 0.2250 0.2571 0.1890 
+
+SewFusion (Ours) 89.73 97.32 97.60 97.39 6.8309 2.1655 0.0023 0.1135 0.1301 0.0939 GT  AIpparel  SewFusion (Ours) SewingLDM 
+
+> Simulation Failed
+> Missing Topology
+> Distorted Geometry Input
+
+Figure 4: Qualitative cases of image-based generation. 
+
+is a natural-language description of garment shape and style. 
+
+Quantitative and Qualitative Results. Tab. 1 shows quan-titative comparisons on the GCD-MM dataset. Compared with the diffusion-based baseline, SewFusion achieves im-provements of 8.85% and 1.14% in Panel Accuracy and Stitch Accuracy, respectively, together with a 0.3705 reduction in Cubic control-point error. Compared with the token-level autoregression-based AIpparel, SewFusion improves Panel Accuracy and Stitch Accuracy by 7.54% and 4.82%, respec-tively, while reducing the curve control-point error by 0.2677. Fig. 5 shows qualitative results. SewingLDM and AIpparel often violate the requested global structure, producing in-correct necklines, skirt lengths, or garment categories. In contrast, SewFusion better follows the textual descriptions and generates sewing patterns with panel topology and ge-ometry closer to the ground truth, demonstrating stronger text alignment and structural fidelity. 
+
+Image-Text-based Generation 
+
+Task Setup. In image-text generation, a rendered garment image and its descriptive caption jointly condition the output. 
+
+Quantitative and Qualitative Results. Tab. 1 shows quan-titative comparisons on the GCD-MM dataset. Compared Input AIpparel SewFusion (Ours) SewingLDM GT 
+
+> “...higher, shallower neckline that provides greater chest coverage…” “ ...mini skirt with fitted waistband and puffed circular hem…” “...knee-length dress with long sleeves and a plunging oval neckline …”
+
+Figure 5: Qualitative cases of text-based generation. 
+
+with the diffusion-based baseline, SewFusion achieves im-provements of 16.62% and 8.60% in Panel Accuracy and Stitch Accuracy, respectively, together with a 0.3046 reduc-tion in Cubic control-point error. Compared with the token-level autoregression-based AIpparel, SewFusion improves Panel Accuracy and Stitch Accuracy by 6.36% and 11.3%, respectively, while reducing the curve control-point error by 0.1917. Fig. 6 shows qualitative results. SewingLDM and AIpparel often miss visual and textual details, such as waist-bands, hemlines, necklines, and sleeves. In contrast, Sew-Fusion better matches both modalities and produces panel topology and geometry that are more consistent with the ground truth. 
+
+Sewing Pattern Editing 
+
+Task Setup. Garment editing takes a source sewing pattern and a natural-language instruction as input and predicts a target pattern. 
+
+Quantitative and Qualitative Results. Tab. 1 shows quan-titative comparisons on the two datasets. SewFusion achieves superior performance on both metrics, demonstrating more precise edits while better preserving the unmodified regions “This skirt is maxi length with narrow high-rise waistband and front slit ...   
+
+> ”
+> Input AIpparel SewFusion (Ours) SewingLDM
+> “This dress is a mini sleeveless piece featuring a oval front neckline...wide waistband connects...”
+> “This upper features a wide scoop neckline and short loose sleeves gathered at the cuffs …”
+> GT
+
+Figure 6: Qualitative cases of image-text-based genera-tion. Before Editing  AIpparel  SewFusion (Ours) 
+
+> “Make the skirt shorter”
+> “Make the skirt longer”
+> “Switch the collar from twisted to high crew neck”
+
+Figure 7: Qualitative cases of sewing pattern editing. 
+
+of the sewing pattern. Fig. 7 shows qualitative results. AIp-parel’s outputs exhibit noticeable deviations from the input garments. For example, it changes the short-sleeved maxi dress in the top row into a sleeveless dress with a different style, converts the square neckline in the middle row into a round neckline, and changes the round neckline in the bottom row into a V-neck. In contrast, by decoupling discrete topol-ogy from continuous geometry while explicitly modeling the topology, SewFusion provides more precise and controllable editing in response to the given instructions. 
+
+Ablation Studies 
+
+Panel Geometry VAE. We evaluate the continuous rep-resentation by reconstructing test patterns using the VAE posterior mean. Table 2 varies the number of latent slots 
+
+K ∈ { 2, 4, 6}. Vertex L2 decreases from 0.0601 to 0.0353, while Curve L2 decreases from 0.0322 to 0.0272. Although K=6 achieves the lowest Vertex, Transl. and Rot. errors, K=4 gives a slightly lower Curve L2 and requires fewer geometry tokens. To balance accuracy and efficiency, we set K=4 in the Panel Geometry VAE. 
+
+Panel-Forcing. Because garments contain different num-bers of panels, we normalize panel positions into four quar-tiles rather than using absolute indices. On GCD-MM, cubic curves are concentrated in early quartiles, so we report curve-specific exposure gaps to separate long-rollout degradation from curve-type imbalance. For a geometric metric d, the Table 2: Ablation of Panel Geometry VAE token number. 
+
+Variant Vertex L2 ↓ Curve L2 ↓ Transl. L2 ↓ Rot. L2 ↓
+
+K = 2 0.0601 0.0322 0.0858 4.7e-06 
+
+K = 4 0.0358 0.0271 0.0725 4.0e-06 
+
+K = 6 0.0353 0.0272 0.0718 3.9e-06 
+
+Table 3: Ablation of Panel-Forcing. 
+
+Vertex ↓ Transl. ↓ Rot. ↓ Quad. ↓ Cubic ↓ Arc ↓
+
+TF 6.9240 3.9493 0.0083 0.1393 0.2199 0.1499 
+
+PF 5.2075 3.6242 0.0047 0.0932 0.1439 0.0488 0–25%  
+
+> n=2,952 26–50%
+> n=2,705 51–75%
+> n=2,705 76–100%
+> n=2,952
+> 024Exposure gap  ↓
+> Vertex L2
+> 0–25%
+> n=1,578 26–50%
+> n=988 51–75%
+> n=673 76–100%
+> n=876
+> 0.0 0.1
+> Quadratic Control L2
+> 0–25%
+> n=1,415 26–50%
+> n=1,256 51–75%
+> n=968 76–100%
+> n=460
+> 0.0 0.2
+> Cubic Control L2
+> 0–25%
+> n=2,952 26–50%
+> n=2,705 51–75%
+> n=2,705 76–100%
+> n=2,952
+> Normalized Panel Position 05Exposure gap  ↓
+> Translation L2
+> 0–25%
+> n=2,952 26–50%
+> n=2,705 51–75%
+> n=2,705 76–100%
+> n=2,952
+> Normalized Panel Position 0.000 0.005
+> Rotation L2
+> 0–25%
+> n=1,606 26–50%
+> n=898 51–75%
+> n=415 76–100%
+> n=391
+> Normalized Panel Position 0.0 0.1 0.2
+> Arc Control L2
+> Teacher-Forcing (TF) Panel-Forcing (PF)
+
+Figure 8: Ablation of the Panel-Forcing exposure gap. 
+
+exposure gap is defined as ∆exp (d) = d( ˜S) − d(S), where S
+
+and ˜S denote the ground-truth and generated topologies, re-spectively; positive values indicate degradation caused by au-toregressive skeleton errors. Fig. 8 shows that Panel-Forcing consistently reduces these gaps, with larger improvements at later positions. From the first to the final quartile, the relative reduction increases from 8.4% to 25.7% for Vertex L2 and from 10.6% to 57.8% for Rotation L2, while final-quartile reductions reach 73.1% and 85.1% for Quadratic and Arc Control L2. Table 3 further shows that Panel-Forcing reduces Vertex L2 from 6.9240 to 5.2075 and the curve control-point error from 0.1499 to 0.0488, demonstrating improved robust-ness to accumulated autoregressive errors. 
+
+Conclusion 
+
+We introduced SewFusion, a hybrid autoregressive frame-work that preserves an explicit sewing pattern topology while generating continuous panel geometry in a structured la-tent space. Panel Geometry VAE represents boundary ge-ometry and rigid transforms, which are generated through Panel Geometry Flow and decoded into editable vector pat-terns. Panel-Forcing further exposes the geometry predictor to model-generated topology contexts. Experiments on Sew-Factory and GCD-MM indicate improved continuous geom-etry without sacrificing explicit topology, while the ablation study shows that Panel-Forcing consistently reduces expo-sure gaps, particularly at later autoregressive positions. Limitations and Future Work. Despite the improve-ments, several challenges remain to be addressed, including further improving simulation success rates, ensuring reli-able sewability and physical plausibility, and generalizing robustly to more complex in-the-wild garment images. 
+
+References 
+
+Bang, S.; Korosteleva, M.; and Lee, S.-H. 2021. Estimating garment patterns from static scan data. In Computer Graph-ics Forum , volume 40, 273–287. Wiley Online Library. Bian, S.; Xu, C.; Xiu, Y.; Grigorev, A.; Liu, Z.; Lu, C.; Black, M. J.; and Feng, Y. 2025. Chatgarment: Garment estimation, generation and editing via large language models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2924–2934. Cen, Z.; Liu, Y.; Zeng, S.; Chaudhari, P.; Rangwala, H.; Karypis, G.; and Fakoor, R. 2025. Bridging the Training-Inference Gap in LLMs by Leveraging Self-Generated To-kens. Transactions on Machine Learning Research .Chi, C.; and Song, S. 2021. GarmentNets: Category-Level Pose Estimation for Garments via Canonical Space Shape Completion. In Proceedings of the IEEE/CVF International Conference on Computer Vision , 3324–3333. De Luigi, L.; Li, R.; Guillard, B.; Salzmann, M.; and Fua, P. 2023. DrapeNet: Garment Generation and Self-Supervised Draping. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 1451–1460. Guo, Y.; Yang, C.; He, H.; Zhao, Y.; Wei, M.; Yang, Z.; Huang, W.; and Lin, D. 2025. End-to-End Training for Au-toregressive Video Diffusion via Self-Resampling. arXiv preprint arXiv:2512.15702 .He, K.; Yao, K.; Zhang, Q.; Yu, J.; Liu, L.; and Xu, L. 2024. Dresscode: Autoregressively sewing and generating garments from text guidance. ACM Transactions on Graphics (TOG) , 43(4): 1–13. Huang, X.; Li, Z.; He, G.; Zhou, M.; and Shechtman, E. 2025. Self Forcing: Bridging the Train-Test Gap in Autoregressive Video Diffusion. In The Thirty-ninth Annual Conference on Neural Information Processing Systems .Korosteleva, M.; and Lee, S.-H. 2022. Neuraltailor: Recon-structing sewing pattern structures from 3d point clouds of garments. ACM Transactions on Graphics (TOG) , 41(4): 1–16. Korosteleva, M.; and Sorkine-Hornung, O. 2023. Garment-code: Programming parametric sewing patterns. ACM Trans-actions on Graphics (TOG) , 42(6): 1–15. Li, R.; Cao, C.; Dumery, C.; You, Y.; Li, H.; and Fua, P. 2025a. Single View Garment Reconstruction Using Diffu-sion Mapping Via Pattern Coordinates. In ACM SIGGRAPH 2025 Conference Papers .Li, R.; Dumery, C.; Deng, Z.; and Fua, P. 2024a. Recon-struction of Manipulated Garment with Guided Deformation Prior. In Advances in Neural Information Processing Sys-tems , volume 37. Li, R.; Dumery, C.; Guillard, B.; and Fua, P. 2024b. Garment Recovery with Shape and Deformation Priors. In Proceed-ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 1586–1595. Li, R.; Guillard, B.; and Fua, P. 2023. ISP: Multi-Layered Garment Draping with Implicit Sewing Patterns. Advances in Neural Information Processing Systems , 36. Li, S.; Liu, R.; Liu, C.; Wang, Z.; He, G.; Li, Y.-L.; Jin, X.; and Wang, H. 2025b. Garmagenet: A multimodal generative framework for sewing pattern design and generic garment modeling. ACM Transactions on Graphics (TOG) , 44(6): 1–23. Li, X.; Yao, Q.; and Wang, Y. 2025. GarmentDiffusion: 3D garment sewing pattern generation with multimodal diffusion transformers. arXiv preprint arXiv:2504.21476 .Li, X.; Yu, C.; Du, W.; Jiang, Y.; Xie, T.; Chen, Y.; Yang, Y.; and Jiang, C. 2025c. Dress-1-to-3: Single image to simulation-ready 3d outfit with diffusion prior and differ-entiable physics. ACM Transactions on Graphics (TOG) ,44(4): 1–16. Li, Y.; Chen, H.-y.; Larionov, E.; Sarafianos, N.; Matusik, W.; and Stuyck, T. 2024c. DiffAvatar: Simulation-Ready Garment Optimization with Differentiable Simulation. In 
+
+Proceedings of the IEEE/CVF Conference on Computer Vi-sion and Pattern Recognition , 4368–4378. Li, Z.; Jiang, L.; Zhao, Y.; Chen, Y.-C.; Wang, X.; Chen, W.; and Peng, Y. 2026. PatternGSL: A Structured Specifica-tion Language for Template-Free and Simulation-Ready 3D Garments. ACM Transactions on Graphics . Proceedings of ACM SIGGRAPH 2026. Liao, X.; He, Q.; Li, Y.; Zhu, J.; Qu, X.; Wei, W.; and Yao, A. 2026. VPG: Visual Prefix Guidance for Autoregressive Im-age and Video Generation. arXiv preprint arXiv:2605.30317 .Liu, H.; Li, C.; Wu, Q.; and Lee, Y. J. 2023a. Visual in-struction tuning. Advances in neural information processing systems , 36: 34892–34916. Liu, K.; Hu, W.; Xu, J.; Shan, Y.; and Lu, S. 2025a. Rolling Forcing: Autoregressive Long Video Diffusion in Real Time. 
+
+arXiv preprint arXiv:2509.25161 .Liu, L.; Xu, X.; Lin, Z.; Liang, J.; and Yan, S. 2023b. Towards garment sewing pattern reconstruction from a single image. 
+
+ACM Transactions on Graphics (TOG) , 42(6): 1–15. Liu, S.; Cheng, Y.; Chen, Z.; Ren, X.; Zhu, W.; Li, L.; Bi, M.; Yang, X.; and Yan, Y. 2025b. Multimodal latent diffusion model for complex sewing pattern generation. In Proceed-ings of the IEEE/CVF International Conference on Computer Vision , 17640–17650. Nakayama, K.; Ackermann, J.; Kesdogan, T. L.; Zheng, Y.; Korosteleva, M.; Sorkine-Hornung, O.; Guibas, L. J.; Yang, G.; and Wetzstein, G. 2025. Aipparel: A multimodal foundation model for digital garments. In Proceedings of the Computer Vision and Pattern Recognition Conference ,8138–8149. Nakayama, K.; Shen, I.; Liu, R.; Wang, Y.; Wetzstein, G.; Igarashi, T.; et al. 2026. Garment Particles: A 2D–3D Sym-metric Garment Representation for Generation and Editing. 
+
+arXiv preprint arXiv:2605.26391 .Qiu, L.; Chen, G.; Zhou, J.; Xu, M.; Wang, J.; and Han, X. 2023. REC-MV: Reconstructing 3D Dynamic Cloth from Monocular Videos. In Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition , 4637– 4646. Ríos-Navarro, P.; Garces, E.; and Lopez-Moreno, J. 2026. AutoSew: A Geometric Approach to Stitching Prediction with Graph Neural Networks. arXiv preprint arXiv:2602.22052 .Tatsukawa, Y.; Qi, A.; Shen, I.-C.; and Igarashi, T. 2025. Garmentimage: Raster encoding of garment sewing patterns with diverse topologies. In Proceedings of the Special Inter-est Group on Computer Graphics and Interactive Techniques Conference Conference Papers , 1–11. Wang, T. Y.; Ceylan, D.; Popović, J.; and Mitra, N. J. 2018. Learning a Shared Shape Space for Multimodal Garment De-sign. ACM Transactions on Graphics , 37(6): 203:1–203:14. Wang, Z.; Wang, J.; Liu, C.; Jin, Y.; Liu, L.; and Wang, H. 2026. Learning-Based Seam Correspondence Reconstruc-tion in Sewing Patterns. arXiv preprint arXiv:2607.21213 .Yang, S.; Huang, W.; Chu, R.; Xiao, Y.; Zhao, Y.; Wang, X.; Li, M.; Xie, E.; Chen, Y.; Lu, Y.; Han, S.; and Chen, Y. 2025. LongLive: Real-Time Interactive Long Video Generation. 
+
+arXiv preprint arXiv:2509.22622 .Yang, S.; Pan, Z.; Amert, T.; Wang, K.; Yu, L.; Berg, T. L.; and Lin, M. C. 2018. Physics-Inspired Garment Recovery from a Single-View Image. ACM Transactions on Graphics ,37(5). Zeng, T.; Jiang, Y.; Chen, Y.; Xie, T.; Wang, H.; Wu, Y.; Yang, Y.; Kumar, A. S.; Tashiro, K.; and Jiang, C. 2026. DressWild: Feed-Forward Pose-Agnostic Garment Sewing Pattern Generation from In-the-Wild Images. arXiv preprint arXiv:2602.16502 .Zhang, J.; Liu, D.; Park, E.; Zhang, S.; and Xu, C. 2025. Anti-Exposure Bias in Diffusion Models. In International Conference on Learning Representations .Zhang, Q.; Zhang, J.; Xu, Y.; and Tao, D. 2024. Vision transformer with quadrangle attention. IEEE Transactions on Pattern Analysis and Machine Intelligence , 46(5): 3608– 3624. Zhao, F.; Wang, W.; Liao, S.; and Shao, L. 2021. Learning Anchored Unsigned Distance Functions with Gradient Di-rection Alignment for Single-View Garment Reconstruction. In Proceedings of the IEEE/CVF International Conference on Computer Vision , 12674–12683. Zhou, F.; Liu, R.; Liu, C.; He, G.; Li, Y.-L.; Jin, X.; and Wang, H. 2025. Design2GarmentCode: Turning design con-cepts to tangible garments through program synthesis. In 
+
+Proceedings of the Computer Vision and Pattern Recogni-tion Conference , 23712–23722. Zhu, H.; Qiu, L.; Qiu, Y.; and Han, X. 2022. Register-ing Explicit to Implicit: Towards High-Fidelity Garment Mesh Reconstruction from Single Images. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 3845–3854. Zhu, H.; Zhao, M.; He, G.; Su, H.; Li, C.; and Zhu, J. 2026. Causal Forcing: Autoregressive Diffusion Distillation Done Right for High-Quality Real-Time Interactive Video Gener-ation. arXiv preprint arXiv:2602.02214 .
