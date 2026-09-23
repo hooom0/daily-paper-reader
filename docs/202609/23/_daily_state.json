@@ -1,0 +1,137 @@
+{
+  "date": "20260923",
+  "date_label": "",
+  "generated_at": "2026-09-23 22:00:30 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.23436v1",
+      "route": "202609/23/2609.23436v1-gaps-generative-active-pseudo-view-selection-for-sparse-view-3d-gaussian-splatting",
+      "title": "GAPS: Generative Active Pseudo-view Selection for Sparse-View 3D Gaussian Splatting",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "用ControlNet、IP-Adapter与LoRA约束扩散模型实现可控生成",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.24691v1",
+      "route": "202609/23/2609.24691v1-what-makes-a-good-medical-image-tokenizer-rethinking-reconstruction-and-generation-in-medical-image-tokenization",
+      "title": "What Makes a Good Medical Image Tokenizer? Rethinking Reconstruction and Generation in Medical Image Tokenization",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向潜在扩散医学图像生成的编码器评估",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.25444v1",
+      "route": "202609/23/2609.25444v1-mean-velocity-matching-rethinking-generative-dynamics-in-diffusion-models",
+      "title": "Mean Velocity Matching: Rethinking Generative Dynamics in Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "扩散模型随机生成动力学的预测参数化",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.24088v1",
+      "route": "202609/23/2609.24088v1-bridging-reconstruction-and-generation-a-latent-distribution-perspective-on-evaluation-and-improvement",
+      "title": "Bridging Reconstruction and Generation: A Latent Distribution Perspective on Evaluation and Improvement",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "潜生成模型中重建与生成评估的关联",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.24116v1",
+      "route": "202609/23/2609.24116v1-patch-to-global-random-patch-diffusion-for-globally-consistent-megapixel-artifact-inpainting-in-whole-slide-images",
+      "title": "Patch-to-Global: Random Patch Diffusion for Globally Consistent Megapixel Artifact Inpainting in Whole Slide Images",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用潜扩散模型结合基础模型嵌入实现百万像素级图像修复",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.25884v1",
+      "route": "202609/23/2609.25884v1-lorango-it-takes-two-loras-to-unlock-hidden-behaviors-in-diffusion-models",
+      "title": "LoRango: It Takes Two LoRAs to Unlock Hidden Behaviors in Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过LoRA组合对文本到图像扩散的成对攻击",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.26375v1",
+      "route": "202609/23/2609.26375v1-kwaimind-technical-report",
+      "title": "KwaiMind Technical Report",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "多模态扩散Transformer实现可控图像编辑",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    },
+    {
+      "paper_id": "2609.26774v1",
+      "route": "202609/23/2609.26774v1-stablevq-practical-guidelines-for-stable-vector-quantized-tokenizer-training",
+      "title": "StableVQ: Practical Guidelines for Stable Vector-Quantized Tokenizer Training",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "支撑自回归与掩码图像生成的VQ分词器",
+      "first_seen_at": "2026-09-23 22:00:30 UTC",
+      "updated_at": "2026-09-23 22:00:30 UTC"
+    }
+  ]
+}

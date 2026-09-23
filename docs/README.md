@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-22</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-23</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 14 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>3</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>8</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-22 22:13:18 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-23 22:00:30 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日日报共筛出14篇，含3篇精读、11篇速读，重点聚焦文本到图像生成与视觉文本渲染。</p>
-<p>最值得看的是《Beyond Emotion Prompts》用Valence-Arousal-Dominance实现细粒度文生图（9.0分），以及《Planning and Rendering in Concert》融合自回归布局与扩散做视觉文本生成（8.0分）。</p>
-<p>普通读者可先读这两篇精读，再按需浏览速读里的图像形变、超分与“用生成辅助推理”方向。</p>
+<p>今天速读了 8 篇论文、无精读，其中 3 篇并列最高分 7.0，聚焦稀疏视图三维重建、医学图像分词与扩散生成动力学三个方向。</p>
+<p>最值得看的是《GAPS》用生成式主动伪视图选择缓解稀疏视图 3D Gaussian Splatting 的视角不足，以及《Mean Velocity Matching》对扩散模型生成动态的重新思考；医学图像分词那篇则适合关注重建与生成如何权衡的读者。</p>
+<p>建议普通读者先从这三篇 7.0 的摘要与方法图入手，确认自己更关心三维重建还是生成模型，再决定是否深挖全文。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -80,12 +80,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Beyond Emotion Prompts: Fine-Grained Text-to-Image Generation Driven by Valence-Arousal-Dominance">Beyond Emotion Prompts: Fine-Grained Text-to-Image Generation Driven by Valence-Arousal-Dominance</span></li><li><span class="dpr-home-dashboard-paper-title" title="Planning and Rendering in Concert: DeepFusion of Autoregressive Layouts and Diffusion for Visual Text Generation">Planning and Rendering in Concert: DeepFusion of Autoregressive Layouts and Diffusion for Visual Text Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="PixelDiT2: Representation-Grounded Pixel Diffusion Transformers">PixelDiT2: Representation-Grounded Pixel Diffusion Transformers</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>3</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -93,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">8 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="AlignMorph: Tuning-Free Diffusion Image Morphing via Explicit Semantic Transport">AlignMorph: Tuning-Free Diffusion Image Morphing via Explicit Semantic Transport</span></li><li><span class="dpr-home-dashboard-paper-title" title="DNF-SR: Dual-Input and Negative-Aware Feature Fine-Tuning for Real-World Image Super-Resolution">DNF-SR: Dual-Input and Negative-Aware Feature Fine-Tuning for Real-World Image Super-Resolution</span></li><li><span class="dpr-home-dashboard-paper-title" title="Reasoning with Image Generation">Reasoning with Image Generation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="GAPS: Generative Active Pseudo-view Selection for Sparse-View 3D Gaussian Splatting">GAPS: Generative Active Pseudo-view Selection for Sparse-View 3D Gaussian Splatting</span></li><li><span class="dpr-home-dashboard-paper-title" title="What Makes a Good Medical Image Tokenizer? Rethinking Reconstruction and Generation in Medical Image Tokenization">What Makes a Good Medical Image Tokenizer? Rethinking Reconstruction and Generation in Medical Image Tokenization</span></li><li><span class="dpr-home-dashboard-paper-title" title="Mean Velocity Matching: Rethinking Generative Dynamics in Diffusion Models">Mean Velocity Matching: Rethinking Generative Dynamics in Diffusion Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>8</strong></span></div>
 </section>
 </div>
 

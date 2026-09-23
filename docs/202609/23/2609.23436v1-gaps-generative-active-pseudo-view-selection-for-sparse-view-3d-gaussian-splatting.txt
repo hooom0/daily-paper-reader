@@ -1,0 +1,2026 @@
+GAPS: Generative Active Pseudo-view Selection for Sparse-View 3D Gaussian
+Splatting
+Hongfei Zhua,b,∗, Haochen Dengc,b, Sitao Zhangb, Ling Zhoub
+aShanghai Jiao Tong University, 800 Dongchuan Road, Shanghai, 200240, Shanghai, China
+bGoertek Inc., No. 268 Dongfang Road, Hi-tech Industrial Development Zone, Weifang, 261031, Shandong, China
+cFudan University, 220 Handan Road, Shanghai, 200433, Shanghai, China
+PSNR:20.29
+SSIM:0.7780
+PSNR:10.06
+SSIM:0.4483
+PSNR:21.98
+SSIM:0.8505
+PSNR:14.14
+SSIM:0.6576
+diffuse
+3DGS
+Ours
+Groundtruth
+Figure 1: Overview of our diffusion-assisted sparse-view 3DGS framework. Left: given only a few input views (red), we score and select ex-
+trapolated pseudo-view cameras (blue) through Generative Active Pseudo-view Selection, and synthesize geometrically consistent images with
+a constrained image diffusion prior. Right: on representative held-out test views, our reconstructions retain sharp object boundaries and clean
+backgrounds where vanilla 3DGS [1] collapses into floaters and washed-out patches, with consistent PSNR and SSIM gains under the same sparse
+input set.
+Abstract
+Novel view synthesis from sparse observations remains a significant challenge due to the severely under-constrained
+nature of the problem. 3D Gaussian Splatting (3DGS), despite its efficiency in real-time rendering, produces severe
+artifacts—floaters, broken geometry, and washed-out backgrounds—when only a few input views are available. We
+propose an alternating optimization framework that leverages pre-trained image diffusion models to generate geomet-
+rically consistent pseudo-views as additional supervision for 3DGS training. The generative process is constrained
+through depth-conditioned ControlNet, IP-Adapter style transfer, LoRA scene adaptation, and img2img structural
+anchoring. To determine where to generate pseudo-views, we introduce Generative Active Pseudo-view Selection
+(GAPS), a scoring function that jointly balances reconstruction informativeness and generative reliability. GAPS em-
+ploys an annealing schedule that transitions from conservative interpolation in early training—where generation qual-
+ity is prioritized—to exploratory extrapolation in later stages, progressively expanding the coverage of unobserved
+regions. A dual-criterion admission gate with uncertainty-weighted losses further prevents unreliable generations
+from destabilizing training, while density-adaptive DropGaussian regularization mitigates overfitting in geometrically
+complex scenes. Experiments on LLFF (3/6/9 views) and Mip-NeRF 360 (12/24 views) demonstrate consistent im-
+provements over vanilla 3DGS, with average PSNR gains of +0.40/+0.89/+0.70 dB on LLFF and +1.18/+0.80 dB on
+Mip-NeRF 360, accompanied by uniform SSIM increases and LPIPS reductions across all evaluated settings. Compo-
+nent ablation confirms that the scored active selection and the density-adaptive regularizer are individually necessary,
+and that only the full method improves LPIPS below the no-pseudo-view baseline on unbounded 360◦scenes.
+Keywords: 3D Gaussian Splatting, Sparse-view reconstruction, Novel view synthesis, Diffusion models
+∗Corresponding author
+Email addresses: vit_oo@sjtu.edu.cn (Hongfei Zhu),
+24210720101@m.fudan.edu.cn (Haochen Deng),
+alex.zhangsit@goertek.com (Sitao Zhang),
+ling.zhou@goertek.com (Ling Zhou)
+1. Introduction
+Figure 1 provides a visual overview of the proposed
+GAPS framework and its qualitative effect under sparse-
+view supervision. Novel view synthesis (NVS) is a fun-
+damental problem in computer vision with broad appli-
+arXiv:2609.23436v1  [cs.CV]  20 Sep 2026
+
+
+cations in virtual reality, autonomous driving, and digi-
+tal content creation. 3D Gaussian Splatting (3DGS) [1]
+has emerged as a leading approach, representing scenes
+with explicit Gaussian primitives rendered via differen-
+tiable rasterization at real-time frame rates. However,
+3DGS relies on dense multi-view observations; when
+only a sparse set of input views is available, the recon-
+struction becomes severely under-constrained, produc-
+ing artifacts such as erroneous depth, floating structures,
+and inconsistent appearance. The adaptive densification
+of 3DGS further exacerbates this issue, as unobserved
+regions receive no gradient signal and remain unrecov-
+ered.
+Existing sparse-view methods either regularize the
+optimization
+process
+[2,
+3,
+4]
+or
+leverage
+pre-
+trained diffusion models as generative priors [5, 6].
+Regularization-based approaches mitigate overfitting
+but cannot synthesize content for unobserved regions.
+Diffusion-assisted methods, notably GS-GS [5], gen-
+erate pseudo-views as additional training supervision
+through alternating optimization with a scene-adapted
+diffusion model. However, key questions remain: where
+to generate pseudo-views for maximum benefit, how
+to prevent low-quality generations from destabilizing
+training, and how to adapt regularization to scene-
+specific complexity.
+We propose an alternating optimization framework
+that addresses these gaps.
+Our method constrains
+the diffusion generation through four complementary
+mechanisms: ControlNet [7] for depth-conditioned geo-
+metric structure, IP-Adapter [8] for stylistic coherence,
+LoRA [9] fine-tuning for scene-specific appearance, and
+img2img denoising to anchor the coarse structure of
+Gaussian renderings. To determine the most beneficial
+viewpoints, we introduce Generative Active Pseudo-
+view Selection (GAPS), a scoring function that jointly
+balances reconstruction informativeness and generative
+reliability with an annealing schedule that progresses
+from conservative interpolation to exploratory extrapo-
+lation. We further propose density-adaptive DropGaus-
+sian regularization that scales dropout strength accord-
+ing to scene complexity, and a dual-criterion admission
+mechanism with uncertainty-weighted losses that gates
+and down-weights unreliable pseudo-views.
+The main contributions are:
+• Generative Active Pseudo-view Selection (GAPS)
+that jointly optimizes for reconstruction informa-
+tiveness and generative reliability with progressive
+extrapolation tiers.
+• An alternating GS-diffusion optimization frame-
+work with four-fold constrained pseudo-view gen-
+eration (ControlNet, IP-Adapter, LoRA, img2img)
+that restricts diffusion outputs to geometrically and
+stylistically consistent images.
+• Density-adaptive
+DropGaussian
+regularization
+and dual-criterion pseudo-view admission with
+uncertainty-weighted losses for robust training.
+2. Related Work
+2.1. Sparse-View 3D Reconstruction
+Neural Radiance Fields (NeRF) [10] and its exten-
+sions [11] achieve photorealistic novel view synthesis
+through continuous volumetric representations but re-
+quire dense input views and slow per-ray sampling. 3D
+Gaussian Splatting (3DGS) [1] replaces volumetric ren-
+dering with explicit Gaussian primitives and differen-
+tiable rasterization, enabling real-time rendering. How-
+ever, its adaptive densification relies on view-space gra-
+dients from observed cameras, leaving unobserved re-
+gions without reconstruction signal.
+Under sparse-view conditions, both paradigms de-
+grade significantly. NeRF-based methods introduce reg-
+ularization through semantic consistency [12], patch-
+based appearance priors [13], frequency masking [14],
+and depth ranking distillation [15].
+In the 3DGS
+domain, DNGaussian [2] regularizes Gaussian depth
+with monocular estimates, FSGS [16] densifies under-
+represented regions via proximity-guided unpooling,
+CoR-GS [3] enforces multi-view consistency through
+co-regularization, and DropGaussian [4] applies ran-
+dom primitive dropout to reduce overfitting. While ef-
+fective, these methods operate solely within the infor-
+mation available from observed viewpoints and cannot
+synthesize content for unobserved regions.
+2.2. Diffusion-Assisted 3D Reconstruction
+Pre-trained image diffusion models [17, 18] encode
+rich priors about natural image statistics, making them
+promising for compensating sparse-view information
+deficits. DreamFusion [19] pioneered Score Distillation
+Sampling (SDS) to lift 2D diffusion priors into 3D, but
+SDS targets content generation rather than faithful re-
+construction and produces over-smoothed results. More
+recent approaches directly generate pseudo-views as
+training supervision: OracleGS [6] adopts a “propose-
+and-validate” paradigm where a generative model syn-
+thesizes novel views and an MVS model validates them
+via attention-derived uncertainty maps; Bose et al. [20]
+2
+
+
+refine single-image 3D reconstructions using entropy-
+based uncertainty from video diffusion models; Gaus-
+sian Scenes [21] integrates depth-enhanced diffusion
+priors for pose-free reconstruction.
+GS-GS [5] is most closely related to our work. It
+introduces alternating optimization between 3DGS and
+a diffusion model: the Gaussian representation is op-
+timized with both ground-truth and generated pseudo-
+views, while the diffusion model is adapted to the scene
+via LoRA fine-tuning [9]. Pseudo-views are generated
+at interpolated poses using a depth T2I-adapter for ge-
+ometric conditioning.
+A geometry-aware fine-tuning
+strategy warps pseudo-view renders to training views
+and enforces L1 consistency on diffusion features, and
+a depth regularization term aligns Gaussian-rasterized
+depth with monocular depth estimates via MS-SSIM.
+GS-GS achieves state-of-the-art results on the Blender,
+LLFF, and Mip-NeRF 360 datasets.
+More broadly,
+diffusion-assisted sparse-view re-
+construction methods—including GS-GS—share three
+open challenges. (1) View selection: pseudo-view cam-
+eras are typically placed at fixed interpolations be-
+tween training pairs without considering which view-
+points would most benefit the reconstruction. As dis-
+cussed in Section 2.3, existing active view selection
+methods [22, 23] optimize purely for reconstruction
+gain, yet when the image source is a generative model
+rather than a real camera, the reliability of the gener-
+ation must be jointly considered. (2) Quality control:
+generated pseudo-views often receive equal supervision
+weight with no mechanism to reject or down-weight ge-
+ometrically inconsistent outputs. (3) Scene adaptivity:
+regularization strategies are typically uniform, despite
+scene complexity varying significantly (e.g., Gaussian
+counts ranging from 95k for an indoor room to 310k
+for dense foliage). Building on the alternating optimiza-
+tion paradigm of GS-GS, our work addresses these chal-
+lenges: we introduce Generative Active Pseudo-view
+Selection (GAPS) that jointly balances informativeness
+and generative reliability—filling a gap in both sparse-
+view reconstruction and active view planning—dual-
+criterion admission with uncertainty-weighted losses
+for robust quality control, and density-adaptive Drop-
+Gaussian regularization for scene-aware training.
+2.3. Active View Selection and Uncertainty Estimation
+Active view selection seeks to determine the most
+informative camera placement for 3D reconstruction.
+FisherRF [22] uses the Fisher information of radiance
+field parameters to quantify viewpoint informativeness,
+and Li et al. [23] propose frequency-based criteria for
+Gaussian Splatting. However, these methods optimize
+purely for reconstruction gain without considering the
+reliability of the image source—a critical factor when
+views are generated by a diffusion model rather than
+captured by a real camera.
+Uncertainty estimation in 3DGS has been explored
+through learned per-Gaussian uncertainty [24], predic-
+tive photometric confidence [25], and MVS attention-
+based validation [6]. Our approach uses a lightweight
+residual-based uncertainty u(p) = |Ihall(p) −IGS(p)| that
+directly measures generation-reconstruction agreement
+without additional models, serving both as an admission
+gate and as per-pixel confidence weights during train-
+ing.
+3. Methodology
+Figure 2 illustrates the complete alternating optimiza-
+tion pipeline used by the proposed method.
+3.1. Preliminary
+3.1.1. 3D Gaussian Splatting
+3D Gaussian Splatting (3DGS) [1] represents a scene
+as a set of anisotropic 3D Gaussian primitives, typically
+initialized from a sparse Structure-from-Motion (SfM)
+point cloud. Each Gaussian primitive i is parameter-
+ized by a center position µi ∈R3, a full 3D covariance
+matrix Σi ∈R3×3, an opacity value αi ∈[0, 1], and a
+set of spherical harmonic (SH) coefficients for view-
+dependent color. The spatial extent of each primitive
+is defined by
+Gi(x) = exp
+ 
+−1
+2(x −µi)⊤Σ−1
+i (x −µi)
+!
+.
+(1)
+To ensure positive semi-definiteness and enable uncon-
+strained optimization, the covariance matrix is decom-
+posed as Σi = RiSiS⊤
+i R⊤
+i , where Ri is a rotation matrix
+derived from a unit quaternion qi ∈R4 and Si = diag(si)
+is a diagonal scaling matrix with si ∈R3.
+Novel views are rendered by projecting the 3D Gaus-
+sians onto the image plane via a differentiable tile-based
+rasterizer. The Gaussians overlapping each pixel p are
+sorted by depth and composited front-to-back:
+C(p) =
+X
+i∈N
+ci ˜αi
+i−1
+Y
+j=1
+(1 −˜α j),
+(2)
+where N denotes the ordered set of Gaussians overlap-
+ping pixel p, ci is the view-dependent color decoded
+from SH coefficients, and ˜αi = αi G2D
+i (p) is the effective
+opacity obtained by evaluating the projected 2D Gaus-
+sian at p. Similarly, a depth map can be rendered by
+3
+
+
+replacing the color ci with the distance from each Gaus-
+sian center to the camera:
+D(p) =
+X
+i∈N
+∥µi −o∥2 ˜αi
+i−1
+Y
+j=1
+(1 −˜α j),
+(3)
+where o is the camera center. This rendered depth map
+plays a central role in our framework as the geometric
+conditioning signal for the diffusion model.
+The Gaussian parameters are optimized via gradient
+descent with a photometric loss combining ℓ1 and struc-
+tural dissimilarity:
+L3DGS = (1 −λ) L1 + λ LD-SSIM,
+λ = 0.2.
+(4)
+During training, an adaptive density control mechanism
+clones under-reconstructed Gaussians with large view-
+space positional gradients but small spatial extent, splits
+over-reconstructed ones with large extent, and periodi-
+cally prunes near-transparent primitives. Under sparse
+input views, however, this densification receives insuf-
+ficient gradient signal in unobserved regions, leaving
+large portions of the scene unrecovered.
+3.1.2. Latent Diffusion Models
+Latent Diffusion Models (LDMs) [17] perform the
+diffusion process in a compressed latent space to reduce
+computational cost. A pre-trained Variational Autoen-
+coder (VAE) with encoder E and decoder D maps an
+image x ∈RH×W×3 to a latent representation z = E(x) ∈
+Rh×w×4, where h = H/8 and w = W/8, and reconstructs
+it as ˆx = D(z).
+The forward diffusion process progressively adds
+Gaussian noise to the latent:
+q(zt | z0) = N
+
+zt; √¯αt z0, (1 −¯αt) I
+
+,
+(5)
+where ¯αt = Qt
+s=1(1−βs) is the cumulative product of the
+noise schedule. A UNet denoiser ϵθ is trained to predict
+the added noise ϵ given the noisy latent zt, timestep t,
+and conditioning signal c (e.g., text prompt), by mini-
+mizing:
+LLDM = Ez0, ϵ∼N(0,I), t
+h
+∥ϵ −ϵθ(zt, t, c)∥2
+2
+i
+.
+(6)
+Stable Diffusion XL (SDXL) [18] extends this
+framework with a 2.6B-parameter UNet backbone and
+dual text encoders (CLIP ViT-L and OpenCLIP ViT-
+bigG), enabling richer text conditioning through cross-
+attention. SDXL further introduces micro-conditioning
+on the original image resolution and cropping param-
+eters, improving high-resolution generation quality. In
+the img2img setting, the reverse process starts from a
+partially noised version of a real image zt0 with t0 < T,
+rather than pure Gaussian noise, thereby preserving the
+coarse structure of the input while allowing the model
+to refine local details—a property that we exploit for
+pseudo-view generation.
+3.1.3. ControlNet
+ControlNet [7] augments a pre-trained diffusion
+model with spatially localized conditioning by creating
+a trainable copy of the UNet encoder while keeping the
+original weights frozen. Given a pre-trained network
+block y = F (x; Θ), ControlNet locks Θ and introduces
+a trainable copy with parameters Θc, connected through
+zero convolution layers—1×1 convolutions initialized
+with zero weights and biases. The output becomes:
+yc = F (x; Θ) + Z
+
+F
+
+x + Z(c f ; Θz1); Θc
+
+; Θz2
+
+, (7)
+where c f is the external conditioning signal (e.g., a
+depth map), and Θz1, Θz2 are the parameters of the
+two zero convolution layers. Because zero convolutions
+produce zero outputs at initialization, the ControlNet
+branch contributes nothing before training begins, en-
+suring stable integration with the pre-trained model. In
+practice, a trainable copy of the UNet encoder blocks is
+created, and the ControlNet residuals are added to the
+corresponding decoder skip connections. In our frame-
+work, the conditioning signal c f is a depth map rendered
+from the current Gaussian field (Eq. 3), which guides
+the diffusion model to generate images that respect the
+reconstructed scene geometry.
+3.1.4. DropGaussian
+Dropout [26] is a widely used regularization tech-
+nique in neural networks that randomly deactivates
+a fraction of neurons during training, preventing co-
+adaptation and improving generalization.
+We ex-
+tend this idea to the 3DGS representation by applying
+stochastic opacity dropout to the Gaussian primitives.
+At each training iteration, a subset of Gaussians are ran-
+domly selected and have their opacity set to zero, effec-
+tively removing them from the rendered image. The re-
+maining primitives must independently produce a con-
+sistent rendering without relying on specific neighbors.
+Concretely, given a drop ratio rdrop
+∈
+[0, 1), a
+Bernoulli mask m ∈{0, 1}Npts is sampled with P(mi =
+0) = rdrop. The effective opacity for rendering becomes:
+α′
+i = αi ·
+mi
+1 −rdrop
+,
+(8)
+where the (1−rdrop)−1 compensation ensures that the ex-
+pected rendered pixel value remains unbiased: E[α′
+i] =
+4
+
+
+αi.
+Only the opacity channel is masked; the gradi-
+ents for position, covariance, and color flow through all
+primitives regardless of the dropout state, so that geo-
+metric parameters continue to receive optimization sig-
+nal even when a primitive is dropped.
+3.2. Framework Overview
+Problem definition. Given N sparse input images I =
+{I1, . . . , IN} of a scene, we run COLMAP [27] Structure-
+from-Motion and Multi-View Stereo (MVS) on these N
+images alone to obtain camera poses P = {P1, . . . , PN}
+and a dense initial point cloud.
+The Gaussian field
+θ is initialized from this MVS point cloud and opti-
+mized to render high-quality novel views.
+Because
+the sparse observations are severely under-constrained,
+we supplement the training set with ˜N pseudo-views
+˜I = {˜I1, . . . , ˜I ˜N} generated by a scene-adapted diffusion
+model at novel poses ˜P = { ˜P1, . . . , ˜P ˜N}, which are inter-
+polated or extrapolated from the SfM poses.
+Alternating optimization. The reconstruction is cast as
+a bi-level optimization problem. At the outer level, a
+diffusion model parameterized by Θ is adapted to the
+scene and used to hallucinate pseudo-views; at the inner
+level, the Gaussian field θ is optimized under supervi-
+sion from both ground-truth and pseudo-views:
+θ∗= arg min
+θ
+N
+X
+i=1
+L3DGS(R(Pi; θ), Ii)
++
+˜N
+X
+j=1
+Lpseudo
+
+R( ˜Pj; θ), ˜I j
+
+,
+(9)
+s.t.
+Θ∗= arg min
+Θ
+N
+X
+i=1
+LLDM(Ii, Di; Θ),
+(10)
+where R(·; θ) denotes the differentiable Gaussian ras-
+terizer, Di is the depth map for view i, and ˜Ij
+=
+sample[ϵΘ∗( ˜Pj)] is a pseudo-view sampled from the
+adapted diffusion model. In practice, the two levels are
+solved by alternation: the Gaussian field is optimized
+for a fixed number of iterations, after which the diffu-
+sion model generates a new batch of pseudo-views that
+are fed back as additional supervision.
+Training pipeline. The complete training process con-
+sists of three stages:
+Stage I: Warmup (iterations 1 to Tw, default Tw =
+1000). The Gaussian field is trained exclusively on the
+N ground-truth views using L3DGS (Eq. 4), with stan-
+dard adaptive densification. This establishes a coarse
+scene geometry before introducing diffusion-generated
+supervision.
+Stage II: Diffusion phase (triggered every ∆T = 500
+GS iterations). Each diffusion phase performs the fol-
+lowing sequence of operations:
+1. View selection: GAPS (Section 3.4) selects nactive
+candidate poses that jointly maximize reconstruc-
+tion informativeness and generative reliability.
+2. Depth estimation: For each ground-truth view,
+a monocular depth estimator (Depth-Anything
+V2 [28]) produces depth maps as ControlNet con-
+ditioning.
+These are cached and reused across
+phases.
+3. Scene adaptation: In the first diffusion phase, the
+SDXL UNet is fine-tuned via LoRA (Section 3.3)
+on the ground-truth images for 50 gradient steps.
+The adapted weights are frozen and reused in all
+subsequent phases.
+4. Pseudo-view rendering: The current Gaussian
+field is rendered at each selected pose to obtain ini-
+tial images, depth maps, and alpha coverage maps.
+5. Constrained generation:
+The four-fold con-
+strained SDXL pipeline (Section 3.3) generates
+hallucinated images from the Gaussian renderings.
+Views with substantial uncovered regions undergo
+a second inpainting stage (Section 3.3).
+6. Admission and uncertainty:
+Each generated
+pseudo-view is evaluated against dual admission
+criteria (Section 3.6). Admitted views are paired
+with per-pixel uncertainty maps for subsequent
+confidence-weighted training.
+Stage III: GS optimization with pseudo-views (con-
+tinuous between diffusion phases). At each iteration, a
+training view is sampled: with probability ppseudo =0.25
+an admitted pseudo-view is chosen and trained with the
+uncertainty-weighted loss Lpseudo (Eq. 26); otherwise a
+ground-truth view is used with L3DGS. Adaptive densi-
+fication operates only on ground-truth iterations to pre-
+vent pseudo-view noise from corrupting the point cloud
+topology.
+Density-adaptive DropGaussian regulariza-
+tion (Section 3.5) is applied throughout to mitigate over-
+fitting.
+Stages II and III alternate until the total iteration
+budget is exhausted (T = 10,000 by default), yield-
+ing approximately 18 diffusion phases.
+As training
+progresses, the improving Gaussian field produces bet-
+ter depth maps and renderings, which in turn improve
+pseudo-view quality—creating a virtuous cycle of mu-
+tual refinement between the 3D representation and the
+generative model.
+5
+
+
+Annealing
+GT Views
+Candidate Pool
+interpolate
+Selected
+Viewpoints
+GS render
+SDXL Diffusion Model
+Initial Pseudo Image
+Hole Mask
+holes
+2%
+Final Pseudo Image
+holes    2%
+LORA
+Fine-tuning
+GT Images
+IP-Adapter
+Nearest GT/
+High-confidence
+Pseudo Image
+ControlNet
+Constraint 1:
+Scene-Specific
+Memory
+Constraint 2:
+Appearance
+Coherence
+Constraint 3:
+Geometric
+Strucutre
+Coverage&
+Uncertainty Check
+Diffusion Phase(Every 500 iterations)
+Warmup For
+1000 Iterations
+Prob 0.25:
+Pseudo-View Training
+Prob 0.75:
+GT-View Training
+Loss:
+Uncertainty-Weighted
+Loss:Standard(L1+SSIM)
+Density-adaptive
+DropGaussian
+GS Update
+Alternating GS Optimization
+img2img
+Training Set
+Scoring&Selection:
+(novelty) (confidence)
+Big
+Small
+DepthAnything
+V2
+SD2
+Inpainting
+Figure 2: Overview of the proposed alternating optimization framework. Every ∆T = 500 Gaussian iterations, a diffusion phase (top) selects
+extrapolated viewpoints from a candidate pool through Generative Active Pseudo-view Selection, scoring each candidate by reconstruction infor-
+mativeness and confidence with an annealed trade-off (β shrinks as training proceeds). The current Gaussian field is rendered at the selected poses,
+refined by SDXL under four constraints—scene-specific LoRA fine-tuning, IP-Adapter appearance coherence, ControlNet depth structure (from
+Depth-Anything V2), and img2img anchoring on the GS render—and then gated by a coverage and uncertainty check. Renderings with > 2%
+uncovered area enter a SD2 inpainting branch before admission. The resulting pseudo-views feed the alternating GS optimization (bottom): after
+a 1,000-iteration warmup, training mixes pseudo-views (probability 0.25, uncertainty-weighted loss) with ground-truth views (probability 0.75,
+standard L1+SSIM loss), under density-adaptive DropGaussian regularization.
+3.3. Four-fold Constrained Pseudo-view Generation
+A central challenge in diffusion-assisted sparse-view
+reconstruction is constraining the generative model so
+that its outputs are geometrically and stylistically con-
+sistent with the target scene, rather than plausible but
+arbitrary images.
+We address this by channeling the
+generation through four complementary conditioning
+mechanisms—ControlNet for geometric structure, IP-
+Adapter for appearance coherence, LoRA for scene-
+specific memory, and img2img denoising for structural
+anchoring—each restricting a different axis of the diffu-
+sion model’s output space. For regions where the Gaus-
+sian field provides no coverage, we further employ a
+dedicated inpainting stage.
+Depth-conditioned generation via ControlNet. As de-
+scribed in Section 3.1.3, ControlNet injects spatial con-
+ditioning into the diffusion process. In our pipeline, the
+conditioning signal cf is a depth map rendered from the
+current Gaussian field at the target pseudo-view pose via
+Eq. (3). To prevent unreliable depth from misleading
+the generation, we apply a reliability mask: pixels with
+alpha coverage below a threshold τα or with high lo-
+cal depth variance are zeroed out before being passed
+to ControlNet. Additionally, the conditioning scale is
+adapted to the view’s coverage:
+scn(v) = ¯scn · min
+ 
+1, coverage(v)
+τclip
+!
+,
+(11)
+where ¯scn = 1.0 is the base conditioning scale and
+τclip = 0.3 is the coverage threshold for full-strength
+conditioning. This allows the model to hallucinate more
+freely in low-coverage regions where depth estimates
+are unreliable.
+6
+
+
+Appearance guidance via IP-Adapter. While Control-
+Net constrains geometry, it provides no guidance on
+appearance. IP-Adapter [8] addresses this by injecting
+a visual style reference into the UNet’s cross-attention
+layers. Given a reference image Iref (the nearest ground-
+truth view by pose distance), a pre-trained CLIP ViT-
+H/14 image encoder extracts a style embedding eimg ∈
+R1024. This embedding is projected into key–value pairs
+and attended to alongside the text conditioning in each
+cross-attention layer:
+Z = Attn(Q, Kt, Vt) + λip · Attn(Q, Kimg, Vimg), (12)
+where Kt, Vt are the text-conditioned keys and values,
+Kimg, Vimg are projected from eimg, and λip = 0.5 con-
+trols the strength of the appearance guidance.
+This
+mechanism transfers color palette, lighting, and mate-
+rial characteristics from the observed views without im-
+posing pixel-level constraints that would conflict with
+the novel viewpoint.
+Scene-specific adaptation via LoRA. Pre-trained dif-
+fusion models encode generic image priors but lack
+knowledge of the specific scene being reconstructed.
+We bridge this gap through Low-Rank Adaptation
+(LoRA) [9], which fine-tunes the UNet on the available
+ground-truth images. LoRA injects trainable low-rank
+matrices into the cross-attention layers:
+W′ = W0 + BA,
+B ∈Rd×r, A ∈Rr×k,
+(13)
+where W0 is the frozen pre-trained weight, r = 4 ≪
+min(d, k) is the rank, and B, A are trained on the
+ground-truth views by minimizing the denoising objec-
+tive (Eq. 6) with ControlNet depth conditioning active.
+The adaptation targets the query, key, value, and out-
+put projection matrices (to_q, to_k, to_v, to_out) in
+all cross-attention blocks, adding approximately 0.06%
+trainable parameters relative to the full UNet. LoRA is
+trained once during the first diffusion phase for 50 gradi-
+ent steps and reused in all subsequent phases, encoding
+a compact scene-specific memory that steers the gener-
+ation toward the target scene’s textures and materials.
+Structural anchoring via img2img. The three mecha-
+nisms above operate on the conditioning side of the dif-
+fusion process. We further constrain the initialization
+by using the img2img setting: instead of starting from
+pure noise, the reverse process begins from a partially
+noised version of the current Gaussian rendering at the
+target pose. The denoising strength—which controls the
+fraction of diffusion steps actually executed—is adapted
+to the view’s Gaussian coverage:
+σ(v) = σmax −coverage(v) · (σmax −σmin),
+(14)
+where σmin = 0.3 and σmax = 0.85. For well-covered
+views, low denoising strength preserves the Gaussian
+rendering’s structure while refining details; for poorly
+covered views, higher strength allows the model to hal-
+lucinate content more freely. This adaptive scheme pre-
+vents the diffusion model from either over-modifying
+reliable regions or under-correcting deficient ones.
+Two-stage generation for incomplete views. When a
+pseudo-view contains substantial regions with no Gaus-
+sian coverage (detected as pixels where the rendered
+depth D(p) < τd), a two-stage pipeline is employed:
+1. Stage 1 (SDXL img2img):
+The full four-
+constraint SDXL pipeline generates an initial im-
+age Is1 from the Gaussian rendering, as described
+above. This stage produces high-quality content in
+well-covered regions but may leave artifacts in ar-
+eas with no Gaussian support.
+2. Stage 2 (SD2 inpainting): A pre-trained Stable
+Diffusion 2 inpainting model receives Is1 together
+with a binary mask M identifying uncovered re-
+gions (pixels where D(p) < τd, dilated by a 15×15
+morphological kernel to ensure seamless blend-
+ing). The inpainting model regenerates only the
+masked pixels while preserving the Stage 1 con-
+tent elsewhere.
+The final pseudo-view is composited as:
+Ipseudo(p) = M(p) Is2(p) + (1 −M(p)) Is1(p),
+(15)
+where Is2 is the inpainting output. This design delegates
+geometrically grounded regions to the fully constrained
+SDXL pipeline and uncovered regions to a dedicated in-
+painting model, avoiding the need for a single model to
+handle both tasks simultaneously.
+3.4. Generative Active Pseudo-view Selection
+Existing diffusion-assisted methods place pseudo-
+view cameras at fixed interpolations between training
+pairs [5], without considering which viewpoints would
+most benefit the reconstruction or where the diffusion
+model can generate reliably. We propose Generative
+Active Pseudo-view Selection (GAPS), a scoring frame-
+work that jointly balances reconstruction informative-
+ness and generative reliability.
+Candidate pool construction. For each pair of training
+cameras (Pi, Pj), we generate candidate poses by inter-
+polating and extrapolating along the geodesic connect-
+ing them. Rotations are interpolated via SLERP on the
+rotation manifold:
+R(α) = Ri ·
+
+R−1
+i Rj
+α ,
+t(α) = (1 −α) ti + α tj, (16)
+7
+
+
+where α ∈[amin, amax] controls the position along (and
+beyond) the baseline.
+We sample candidates at uni-
+form α intervals, and define the extrapolation distance
+as dextrap = max(0, −α)+max(0, α−1), which is zero for
+interpolated views and increases for extrapolated ones.
+To avoid overly aggressive extrapolation early in
+training when the Gaussian field is still coarse, we em-
+ploy a progressive tier strategy that gradually widens
+the α range over the course of training. The range be-
+gins conservatively near the interpolation interval and
+expands outward in discrete stages as the reconstruction
+matures. Tier upgrades are triggered when the mean un-
+certainty variance of currently admitted pseudo-views
+falls below a threshold, providing a data-driven signal
+that the model can reliably handle more distant view-
+points.
+Scoring function. Each candidate view v receives a
+composite score that trades off reconstruction gain
+against generative reliability:
+score(v) = Irecon(v) · Cgen(v)β,
+(17)
+where Irecon quantifies how much new information the
+view would contribute and Cgen estimates how reliably
+the diffusion model can generate it.
+Reconstruction informativeness. We combine three
+complementary signals:
+Irecon(v) = ws (1 −¯αv) + we Hv + wn ηv,
+(18)
+where ¯αv is the mean alpha coverage rendered from the
+current Gaussian field (its complement measures spar-
+sity), Hv is the mean local entropy of the rendered image
+computed over a 3×3 sliding window (measuring ren-
+dering instability), and ηv = min(1, 4dmin/(1 + dmin)) is
+a novelty term based on the minimum pose distance dmin
+to all supervised views. The weights ws = we = 0.2 and
+wn = 0.6 emphasize viewpoint novelty as the primary
+driver of reconstruction gain.
+Generative confidence. The confidence score blends a
+model-based estimate with historical reliability:
+Cgen(v) = (1 −γ)Cmodel(v) + γ Chist(v),
+(19)
+where γ = 0.7 weights history heavily after the first
+few diffusion phases.
+The model-based component
+Cmodel = winit Cinit + wref Cref combines an initial qual-
+ity estimate (based on Gaussian coverage and render
+contrast) with a reference accessibility term Cref
+=
+exp(−dmin/0.5) that decays with distance from the near-
+est ground-truth view. The historical component Chist =
+1 −min(1, ¯σ2
+v/0.3) converts the mean uncertainty vari-
+ance from prior phases into a confidence value.
+novelty++
+confidence+  
+novelty+
+confidence++ 
+GT View
+GT View
+Early Stage
+Late Stage
+Candidate Pool
+novelty++
+confidence+  
+novelty+
+confidence++ 
+GT View
+Figure 3: Illustration of GAPS β-annealing. Left: candidate pool gen-
+erated by interpolation and extrapolation between GT views. Middle:
+early-stage selection favors high-confidence views near GT cameras
+(β large). Right: late-stage selection shifts toward novel viewpoints
+with higher reconstruction gain (β small).
+Annealing schedule. The exponent β controls the influ-
+ence of generative confidence on the final score. We
+anneal it linearly over training:
+β(t) = βstart + (βend −βstart) · t
+T ,
+(20)
+where βstart > βend. In early stages, the high exponent
+strongly penalizes low-confidence views, favoring con-
+servative near-GT viewpoints where diffusion is most
+reliable. As the Gaussian field improves and histori-
+cal confidence accumulates, the reduced exponent shifts
+priority toward novel, informative viewpoints even if
+their generative confidence is moderate (see Fig. 3).
+Greedy selection with diversity. From the scored candi-
+date pool, we greedily select nactive views (default 16) by
+iteratively choosing the highest-scoring candidate and
+removing all candidates within a minimum pose diver-
+sity distance ddiv = 0.15. We further enforce a per-pair
+cap to prevent clustering: no camera pair may contribute
+more than ⌈nactive/npairs⌉selected views. The pose dis-
+tance between two views is defined as
+d(v1, v2) = ∥t1 −t2∥+ 0.5 · arccos tr(R⊤
+1 R2) −1
+2
+, (21)
+combining translational and rotational components.
+3.5. Density-adaptive DropGaussian for Pseudo-view
+Training
+With only three ground-truth views, clusters of over-
+lapping Gaussians tend to co-adapt:
+each primitive
+8
+
+
+memorizes a narrow angular slice that, composited with
+its neighbors, reproduces the training views but fails
+to generalize.
+This directly undermines pseudo-view
+supervision, as gradient signal from novel viewpoints
+is absorbed by fragile clusters rather than individually
+robust primitives.
+We integrate DropGaussian (Sec-
+tion 3.1.4) into the alternating framework with two key
+adaptations.
+First, dropout is applied during GS optimization
+(Stage III) on both ground-truth and pseudo-view it-
+erations, forcing each surviving Gaussian to indepen-
+dently account for novel viewpoints. It is deliberately
+disabled during the diffusion phase rendering (Stage II),
+where full-fidelity renders are needed for ControlNet
+depth conditioning, img2img anchoring, and the alpha
+coverage maps that drive pseudo-view admission (Sec-
+tion 3.6) and GAPS scoring (Section 3.4).
+Second, we make the drop ratio density-adaptive:
+rdrop(t) = rmax · t
+T · min
+ Npts
+Nthr
+, 1
+!
+,
+(22)
+where rmax = 0.2, Npts is the current Gaussian count,
+and Nthr = 200,000. This creates a self-regulating feed-
+back loop: as pseudo-view supervision expands the re-
+constructed volume and densification grows the point
+cloud, the increasing Npts automatically strengthens reg-
+ularization, counteracting the elevated overfitting risk
+that accompanies field expansion. The temporal ramp
+further coordinates with the alternating schedule—weak
+dropout during early phases where pseudo-views pro-
+vide the largest information gain, stronger in later
+phases where memorizing redundant content becomes
+the dominant risk. Together with the pixel-level uncer-
+tainty weighting (Section 3.6), this forms a two-scale
+quality control: uncertainty weighting modulates where
+pseudo-view gradients are trusted on the image plane,
+while DropGaussian modulates how they are distributed
+across 3D primitives.
+3.6. Pseudo-view Admission and Uncertainty-weighted
+Loss
+Not all generated pseudo-views contribute positively
+to training; low-quality generations can introduce ar-
+tifacts and destabilize optimization.
+We address this
+through a dual-criterion admission gate followed by an
+uncertainty-weighted loss that modulates the contribu-
+tion of each admitted pseudo-view at the pixel level.
+Dual-criterion admission. A generated pseudo-view is
+admitted to the training set only if it satisfies both of the
+following conditions:
+1. Geometric coverage: the mean alpha map ¯αv, ren-
+dered from the Gaussian field at the pseudo-view
+pose, must exceed a minimum threshold: ¯αv ≥τcov
+(default 0.25). This rejects views where the Gaus-
+sian field has insufficient content to anchor the gen-
+eration.
+2. Generation consistency:
+the mean per-pixel
+residual between the hallucinated image Ihall and
+the Gaussian rendering IGS must be below a thresh-
+old:
+1
+|P|
+P
+p |Ihall(p) −IGS(p)| < τres (default 0.7).
+This filters out generations that deviate excessively
+from the current reconstruction.
+Views that fail either criterion are excluded from the
+training set but remain in the candidate pool for re-
+evaluation in future diffusion phases.
+Uncertainty-weighted loss. For each admitted pseudo-
+view, we compute a per-pixel uncertainty map as the
+absolute residual between the hallucinated and rendered
+images:
+u(p) = |Ihall(p) −IGS(p)| .
+(23)
+This residual is high in regions where the diffusion
+model deviates from the Gaussian rendering—either be-
+cause the generation is unreliable or because the ren-
+dering is incomplete. We convert this into a per-pixel
+confidence weight:
+w(p) = α(p) ·
+ 
+1 −λu ·
+u(p)
+maxp′ u(p′) + ϵ
+!
+,
+(24)
+where α(p) is the rendered alpha coverage at pixel
+p, λu = 0.7 controls the uncertainty downweighting
+strength, and ϵ is a small constant for numerical sta-
+bility.
+This weight is low for pixels with either low
+Gaussian coverage (unreliable rendering) or high resid-
+ual (unreliable generation), concentrating the learning
+signal on regions where both the rendering and the gen-
+eration agree.
+For views obtained by extrapolation beyond the train-
+ing cameras, we apply an additional distance-based de-
+cay:
+wextrap(v) = exp
+
+−κ · dextrap(v)
+
+,
+(25)
+with κ = 2.0, which attenuates the contribution of dis-
+tant extrapolated views where generative accuracy nat-
+urally degrades.
+The full pseudo-view training loss for a single view v
+is:
+Lpseudo(v) = wPLW · wextrap(v)
+·
+X
+p
+w(p)
+h
+(1−λ) |Iv(p) −ˆIv(p)|
++ λ (1 −SSIMp)
+i
+,
+(26)
+9
+
+
+where wPLW = 0.35 is the global pseudo-loss weight that
+balances pseudo-view supervision against the ground-
+truth loss (Eq. 4), Iv is the Gaussian rendering, and ˆIv is
+the hallucinated pseudo-view. During training, each it-
+eration samples either a ground-truth view (with proba-
+bility 1−ppseudo) or an admitted pseudo-view (with prob-
+ability ppseudo = 0.25), applying the corresponding loss
+function.
+Mitigating admission saturation. As training pro-
+gresses and the Gaussian field converges, the admis-
+sion criterion may become saturated:
+newly gener-
+ated pseudo-views closely match the existing rendering,
+yielding near-zero residuals but contributing little new
+information.
+To counteract this, every knew diffusion
+phases (default 3), we replace a fraction ρnew = 0.25
+of the currently selected views with previously unad-
+mitted candidates. This forced exploration injects fresh
+viewpoints into the training set, breaking potential echo-
+chamber effects where the diffusion model merely re-
+produces what the Gaussian field already knows.
+4. Experiments
+4.1. Datasets and Metrics
+We evaluate on two widely used benchmarks for
+novel view synthesis.
+LLFF [29] contains eight
+forward-facing real-world scenes (fern, flower, fortress,
+horns, leaves, orchids, room, trex). Mip-NeRF 360 [11]
+comprises seven unbounded scenes with complex ge-
+ometry, including outdoor (bicycle, garden, stump) and
+indoor (bonsai, counter, kitchen, room) cases. Images
+on both datasets are downsampled to eighth resolution
+(-r 8) and we hold out every 8th image for testing
+(llffhold=8), uniformly sampling N training views
+from the remainder with N ∈{3, 6, 9} on LLFF and N ∈
+{12, 24} on Mip-NeRF 360. Reconstruction quality is
+reported in PSNR, SSIM [30] and LPIPS [31]. We com-
+pute LPIPS with the VGG-backbone lpipsPyTorch
+implementation shared by recent sparse-view 3DGS
+work [16, 3, 4] so that our LPIPS values are directly
+comparable to theirs on the same resolution protocol.
+4.2. Baseline
+We compare against vanilla 3DGS [1] as the foun-
+dational baseline. The baseline and our method share
+the same sparse MVS initialization (Section 4.3), so any
+performance difference reflects the reconstruction algo-
+rithm rather than the input point cloud.
+4.3. Implementation Details
+All experiments are conducted on a single NVIDIA
+RTX 4090D GPU (24 GB). Our implementation fol-
+lows the alternating training schedule and four-fold con-
+strained generation pipeline described in Section 3, and
+the 3DGS optimizer (learning rates, opacity reset inter-
+val, D-SSIM weight) follows the original 3DGS imple-
+mentation [1]. Each scene is trained for 10,000 itera-
+tions. The GAPS pool is sized to the dataset: 16 ac-
+tive pseudo-views per diffusion phase on LLFF and 24
+on Mip-NeRF 360 to match the wider 360◦viewpoint
+range.
+Point cloud initialization. We adopt the sparse-view
+COLMAP+MVS initialization that is now the de
+facto standard in recent sparse-view 3DGS work [16,
+3, 4]:
+given the N sampled training images, we
+run COLMAP [27] feature_extractor and exhaus-
+tive matcher on those N images alone, then invoke
+point_triangulator with the ground-truth poses (no
+pose re-estimation), followed by image_undistorter,
+patch_match_stereo, and stereo_fusion to obtain
+a dense fused point cloud. This differs from the orig-
+inal single-scene 3DGS [1] evaluation protocol, which
+ingests a COLMAP reconstruction built over all scene
+images: here the reconstruction only sees the N train-
+ing views, so no information from the held-out test
+split leaks into the point cloud. The same point cloud
+is supplied to vanilla 3DGS and our method via the
+–init_ply interface.
+5. Results and Discussion
+5.1. Qualitative Comparison
+We first visualize held-out test renders on represen-
+tative scenes from both datasets, comparing our re-
+constructions against vanilla 3DGS [1] under the same
+sparse MVS initialization (Section 4.3) and the same
+training budget. Per-image PSNR and SSIM values are
+inset in each tile for reference; aggregate quantitative
+results are reported in Section 5.2.
+LLFF. Figure 4a reports test renders on three forward-
+facing LLFF scenes that stress different failure modes
+of sparse-view reconstruction:
+thin rigid structures
+(horns), repeated articulated geometry under strong oc-
+clusion (trex), and dense high-frequency texture (fern).
+With only a handful of input views, vanilla 3DGS lacks
+the gradient signal to populate the unobserved volume
+between training cameras, and the resulting renders
+show characteristic artifacts—ghosted edges around the
+10
+
+
+Table
+1:
+Per-scene
+PSNR
+and
+average
+metrics
+on
+LLFF
+(llffhold=8, -r 8). Avg rows summarize PSNR, SSIM and LPIPS
+over the eight scenes. Best per column in bold.
+3-view
+6-view
+9-view
+Scene
+3DGS
+Ours
+3DGS
+Ours
+3DGS
+Ours
+fern
+21.21
+22.64
+24.03
+25.15
+26.32
+27.25
+flower
+19.22
+20.65
+24.31
+25.13
+25.99
+26.63
+fortress
+21.24
+19.35
+26.10
+27.33
+28.37
+29.49
+horns
+18.51
+18.61
+22.72
+23.73
+25.43
+26.25
+leaves
+16.53
+17.25
+18.84
+19.57
+20.88
+21.54
+orchids
+15.14
+16.01
+16.59
+17.54
+18.09
+19.05
+room
+21.05
+21.58
+27.67
+28.19
+28.50
+28.95
+trex
+20.29
+20.30
+23.80
+24.58
+25.97
+25.98
+PSNR avg
+19.15
+19.55
+23.01
+23.90
+24.94
+25.64
+SSIM avg
+0.6460
+0.6848
+0.7961
+0.8248
+0.8531
+0.8719
+LPIPS avg
+0.2362
+0.2079
+0.1406
+0.1184
+0.1031
+0.0899
+triceratops skull, broken bone structure on the trex
+ribcage, and grainy speckle across the fern fronds. Our
+diffusion-supervised pseudo-views inject geometrically
+consistent content into exactly these gaps, and the cor-
+responding renders preserve both the global silhouette
+of the foreground objects and the fine repeating texture
+of the background.
+Mip-NeRF 360. Figure 4b extends the comparison to
+unbounded 360◦scenes, where the wider viewpoint dis-
+tribution and the presence of a complex background
+make the sparse-view problem substantially harder. We
+include both indoor (room, bonsai, counter) and out-
+door (garden) cases. Vanilla 3DGS shows two char-
+acteristic failures here: large washed-out patches in in-
+door scenes with strong lighting variation, where Gaus-
+sians collapse into low-opacity floaters that cannot be
+disambiguated from the few training views; and loss
+of thin foreground structures—the slats and arm rests
+of the garden bench, the stems and petals of the bon-
+sai, the utensils on the kitchen counter, the picture
+frames in room—against textured backgrounds. Our re-
+constructions retain sharper object boundaries on these
+thin structures and preserve the appearance of the back-
+ground, indicating that the additional pseudo-view su-
+pervision compensates for the under-coverage of the
+training camera distribution rather than merely smooth-
+ing the rendered output.
+5.2. Quantitative Results
+We report PSNR, SSIM [30] and LPIPS [31] on the
+held-out test split (every 8th image, llffhold=8) fol-
+lowing the standard 3DGS evaluation protocol.
+Per-
+scene PSNR and average metrics on LLFF are listed in
+Table 1; the corresponding numbers on Mip-NeRF 360
+are listed in Table 2.
+(a) LLFF (rows: horns, trex, fern).
+(b) Mip-NeRF 360 (rows: room, garden, bonsai, counter).
+Figure 4: Qualitative comparison on held-out test views. Each panel
+shows the ground truth (left), our reconstruction (middle), and vanilla
+3DGS [1] (right) trained from the same sparse input set and MVS
+initialization.
+Aggregate improvements. On LLFF, average PSNR
+improves over vanilla 3DGS by +0.40, +0.89 and
++0.70 dB at 3, 6 and 9 views, with consistent SSIM
+gains (+0.0388, +0.0287, +0.0188) and LPIPS reduc-
+tions (−0.0283, −0.0222, −0.0132). On Mip-NeRF 360,
+average PSNR rises by +1.18 dB at 12 views and
++0.80 dB at 24 views, with corresponding SSIM gains
+of +0.0469 and +0.0260, and—unlike the quarter-
+resolution configuration we previously reported—with
+LPIPS reductions on both view counts (−0.0048 and
+−0.0012).
+11
+
+
+Table 2: Per-scene PSNR and average metrics on Mip-NeRF 360
+(llffhold=8, -r 8). Best per column in bold.
+12-view
+24-view
+Scene
+3DGS
+Ours
+3DGS
+Ours
+bicycle
+16.37
+18.05
+19.63
+21.04
+bonsai
+18.85
+19.44
+23.55
+24.53
+counter
+17.71
+18.73
+22.42
+22.86
+garden
+19.43
+20.79
+24.01
+24.82
+kitchen
+18.94
+19.29
+22.64
+23.50
+room
+19.61
+20.52
+24.11
+23.94
+stump
+15.96
+18.27
+19.25
+20.51
+PSNR avg
+18.12
+19.30
+22.23
+23.03
+SSIM avg
+0.5124
+0.5593
+0.6851
+0.7111
+LPIPS avg
+0.3719
+0.3671
+0.2424
+0.2412
+Per-scene LLFF. Our method outperforms vanilla
+3DGS on 23 of the 24 per-scene LLFF cells in Table 1;
+the only regression is fortress 3-view, where the diffu-
+sion pseudo-views yield a −1.89 dB drop (from 21.24
+to 19.35). Notably, this single per-scene regression also
+dominates the 3-view average: excluding fortress, the
+per-scene 3-view improvements average +0.73 dB—
+comparable to the 9-view average (+0.70 dB)—rather
+than the overall +0.40 dB figure reported in Table 1.
+The largest gains appear on scenes with substantial un-
+observed volume or thin repeated structure: flower 3-
+view (+1.44 dB), fern 3-view (+1.43 dB), fortress 6-
+view (+1.23 dB), fern 6-view (+1.12 dB), fortress 9-
+view (+1.12 dB) and horns 6-view (+1.01 dB).
+Per-scene Mip-NeRF 360. On Mip-NeRF 360 we im-
+prove PSNR on 13 of the 14 per-scene cells in Table 2,
+with the largest absolute gains on the unbounded out-
+door scenes stump (+2.30 dB) and bicycle (+1.68 dB)
+at 12 views. The only per-scene regression is room 24-
+view, where the bounded indoor geometry is already
+well-constrained by 24 training cameras and our method
+trails the baseline by a negligible 0.17 dB; bounded in-
+door scenes as a class show more moderate improve-
+ments than the unbounded outdoor class, consistent
+with the observation that diffusion supervision matters
+most where the training cameras leave a large unob-
+served volume.
+LPIPS on Mip-NeRF 360. At -r 8, our method now
+improves LPIPS on Mip-NeRF 360 as well, reducing
+the average by −0.0048 at 12 views and −0.0012 at 24
+views. The perceptual gap in the quarter-resolution con-
+figuration we previously reported was driven by sub-
+tle texture drift on unbounded backgrounds—especially
+the sky and distant foliage of stump and bicycle—that
+is no longer measurable at eighth resolution, where the
+VGG perceptual loss averages over larger effective re-
+ceptive fields and the background-texture differences
+become perceptually negligible.
+5.3. Comparison with Prior Methods
+Table 3 compares our method with a selection of
+sparse-view NVS methods on LLFF (3-view) and Mip-
+NeRF 360 (24-view).
+We include three NeRF-based
+methods—RegNeRF [13], FreeNeRF [14], SparseN-
+eRF [15]—and DNGaussian [2], a Gaussian-based
+method from CVPR 2024.
+LLFF results for NeRF-
+based methods are taken from [3] (VGG LPIPS, 1
+8 reso-
+lution); DNGaussian LLFF results are from its original
+paper [2] (same 1
+8 resolution, but without dense MVS
+initialization). Mip-NeRF 360 results for NeRF-based
+methods are from [16] (†, may differ in LPIPS back-
+bone); DNGaussian is not evaluated on Mip-NeRF 360
+in its original paper. We note that this comparison is
+not exhaustive; several concurrent methods address the
+same problem and are not included here due to protocol
+or data differences.
+LLFF 3-view. Among the compared methods, our
+method obtains higher SSIM (0.685) and lower LPIPS
+(0.208) than all four baselines. In PSNR, SparseNeRF
+(19.86) and FreeNeRF (19.63) outperform our method
+(19.55); we attribute this to their depth-ranking supervi-
+sion providing stronger per-pixel accuracy on forward-
+facing scenes, whereas our gains are more pronounced
+on perceptual metrics.
+Mip-NeRF 360 24-view. On the unbounded bench-
+mark, our method obtains higher PSNR (23.03), SSIM
+(0.711),
+and lower LPIPS (0.241) than all com-
+pared methods.
+The gap to the next best PSNR
+entry (SparseNeRF: 22.85) is +0.18 dB, consistent
+with the observation in Section 5.5 that diffusion-
+supervised pseudo-views contribute most in unbounded
+360◦scenes where the unobserved volume is large.
+5.4. Ablation Study
+To isolate the contribution of the two main com-
+ponents introduced by our method—generative active
+pseudo-view selection (GAPS, Section 3.4) and density-
+adaptive DropGaussian regularization (Section 3.5)—
+we perform a component-wise ablation on the Mip-
+NeRF 360 dataset in the 24-view configuration.
+We
+choose this setting because it is sparse enough for the
+diffusion supervision to make a measurable difference,
+while the per-scene statistics are stable enough across
+12
+
+
+Table 3: Comparison with sparse-view NVS methods on LLFF (3-view) and Mip-NeRF 360 (24-view). NeRF-based LLFF results are from [3]
+(VGG LPIPS, 1
+8 resolution); DNGaussian LLFF results are from [2] (same 1
+8 resolution). † Mip-NeRF 360 results for NeRF-based methods are
+from [16]. Bold: best; underline: second best (per column, excluding baseline).
+Method
+LLFF (3-view)
+Mip-NeRF 360 (24-view)
+PSNR↑
+SSIM↑
+LPIPS↓
+PSNR↑
+SSIM↑
+LPIPS↓
+RegNeRF [13]
+19.08
+0.587
+0.336
+22.19†
+0.643†
+0.335†
+FreeNeRF [14]
+19.63
+0.612
+0.308
+22.78†
+0.689†
+0.323†
+SparseNeRF [15]
+19.86
+0.624
+0.328
+22.85†
+0.693†
+0.315†
+DNGaussian [2]
+19.12
+0.591
+0.294
+—
+—
+—
+Vanilla 3DGS [1]
+19.15
+0.646
+0.236
+22.23
+0.685
+0.242
+GS-GS (ours)
+19.55
+0.685
+0.208
+23.03
+0.711
+0.241
+Table
+4:
+Component
+ablation
+on
+Mip-NeRF
+360
+(24-view,
+llffhold=8, -r 8). w/o GAPS replaces the scored active selection
+and per-phase refresh with a static set of pair-midpoint pseudo-views
+(see text); w/o DropGaussian removes the density-adaptive dropout
+regularizer. Best per column in bold.
+Variant
+PSNR
+SSIM
+LPIPS
+Vanilla 3DGS
+22.23
+0.6851
+0.2424
+Ours w/o DropGaussian
+22.62
+0.6923
+0.2453
+Ours w/o GAPS
+22.88
+0.7002
+0.2497
+Ours (full)
+23.03
+0.7111
+0.2412
+the seven scenes for the gap between configurations to
+be interpretable.
+All variants share the same sparse
+MVS initialization, the same SDXL/ControlNet/IP-
+Adapter/LoRA stack, the same training budget of
+10,000 iterations, and the same 3DGS optimizer; only
+the ablated component is changed.
+Ablation
+conditions. We
+compare
+four
+variants.
+Vanilla 3DGS omits the diffusion supervision entirely
+and corresponds to the baseline reported in Table 2.
+Ours w/o GAPS replaces the GAPS scoring function,
+the dual-criterion admission gate, and the per-phase
+refresh with a minimal static baseline: a deterministic
+set of eight pair-midpoint pseudo-views (α=0.5, in-
+terpolation only) generated once in the first diffusion
+phase and never refreshed; the rest of the constrained
+generation stack (SDXL, ControlNet,
+IP-Adapter,
+LoRA) and DropGaussian remain identical to the
+full method.
+Ours w/o DropGaussian removes the
+density-adaptive Gaussian dropout regularizer and
+keeps everything else identical to the full method. Ours
+(full) is the configuration reported in Section 5.2.
+Component contributions. Table 4 reports the aver-
+age PSNR, SSIM and LPIPS over the seven Mip-
+NeRF 360 scenes.
+Removing DropGaussian drops
+PSNR from 23.03 to 22.62 dB (−0.41 dB), SSIM
+from 0.7111 to 0.6923 (−0.0188), and inflates LPIPS
+by +0.0041, confirming that the density-adaptive reg-
+ularizer supplies the largest single-component slice of
+the +0.80 dB gap between vanilla 3DGS and our full
+method.
+Removing GAPS produces a more modest
+PSNR penalty (−0.15 dB, 23.03 →22.88) and a com-
+parable SSIM drop (−0.0109, 0.7111 →0.7002), but—
+more notably—inflates LPIPS to 0.2497, which is worse
+than the vanilla baseline (0.2424) that uses no pseudo-
+views at all. In other words, indiscriminate pseudo-view
+supervision injects perceptual artifacts that the vanilla
+optimization never sees; the scored active selection and
+the per-phase refresh are precisely what keep the hal-
+lucinated supervision perceptually clean.
+SSIM still
+improves over vanilla in this ablated variant (0.7002
+vs 0.6851), so the static pseudo-views do help resolve
+structural ambiguity in unobserved regions even with-
+out scoring—they just do so at a perceptual cost. Both
+ablated variants still outperform vanilla 3DGS in PSNR
+and SSIM, indicating that each component is individu-
+ally beneficial; LPIPS is the axis on which GAPS mat-
+ters most under this setting.
+DropGaussian
+and
+the
+sparse-view
+regime. The
+−0.41 dB PSNR penalty from removing DropGaussian
+is the largest single-component penalty in Table 4
+and is comparable in magnitude to the per-view-count
+improvements our method delivers on LLFF (Sec-
+tion 5.2), suggesting that the density-adaptive dropout
+is acting as a global anti-overfitting mechanism for
+the Gaussian distribution whose contribution is largely
+independent of dataset geometry (forward-facing LLFF
+vs. unbounded 360◦). The trigger only enables dropout
+when the local Gaussian density exceeds the threshold
+ρ > 2 × 105, so scenes that never densify past this
+threshold are unaffected, which is why the per-scene
+penalty is concentrated on the bounded indoor scenes
+13
+
+
+(bonsai, kitchen) where the Gaussian count grows most
+aggressively.
+Removing DropGaussian also inflates
+LPIPS (+0.0041), which we attribute to the same
+over-fitting mode: an un-regularized Gaussian distri-
+bution places density in regions where the reprojection
+residual of the few training views is lowest, producing
+images that look plausible on the training frames but
+drift on the held-out views.
+5.5. Discussion
+Where the gains come from. The quantitative results in
+Section 5.2 share a single trend across both datasets: the
+absolute improvement over vanilla 3DGS scales with
+the size of the unobserved volume that the training
+cameras leave behind. The largest gains appear in the
+most under-constrained settings—Mip-NeRF 360 12-
+view (+1.18 dB on average, +2.30 dB on stump and
++1.68 dB on bicycle) and LLFF 6-view (+0.89 dB on
+average)—and then moderate in either direction as more
+or fewer views are added. LLFF 3-view is a partial ex-
+ception (+0.40 dB on average), but as discussed under
+Per-scene LLFF above this is driven almost entirely by
+the fortress 3-view regression: on the other seven scenes
+the per-scene mean is +0.73 dB, comparable to the 9-
+view setting, so the 3-view regime is not systematically
+harder for our method but rather exposes the sensitiv-
+ity of diffusion supervision to the specific geometry of a
+single outlier scene. This is exactly the regime in which
+the two design choices of Section 3 are most useful:
+the GAPS scoring function (Section 3.4) places pseudo-
+views in the unobserved regions where the optimizer has
+no gradient signal, and the four-fold constrained genera-
+tion pipeline (ControlNet, IP-Adapter, LoRA, img2img)
+keeps those samples geometrically consistent enough to
+be used as supervision rather than as noise. The qualita-
+tive renders in Figures 4a and 4b corroborate the same
+picture from the appearance side: the scenes with the
+largest PSNR gains are precisely those dominated by
+thin or repeated structure—bone, fronds, slats, stems—
+where vanilla 3DGS collapses into floaters and our re-
+constructions retain sharp boundaries.
+Component complementarity. The ablation in Table 4
+shows that DropGaussian and GAPS act on different
+failure modes and are complementary rather than redun-
+dant: removing DropGaussian costs −0.41 dB of PSNR
+with a small LPIPS penalty (+0.0041), whereas remov-
+ing GAPS costs a more modest −0.15 dB of PSNR but
+inflates LPIPS by +0.0085 to a value (0.2497) that is
+worse than the vanilla baseline with no pseudo-views
+at all. This split is consistent with the role we ascribe
+to each component in Section 3.
+DropGaussian acts
+on the geometric failure mode of sparse-view 3DGS—
+unregularized Gaussian proliferation that over-fits the
+few training frames—and its contribution is largely in-
+dependent of how pseudo-views are chosen, which is
+why its penalty shows up primarily in PSNR and SSIM.
+GAPS and its dual-criterion admission gate act on the
+appearance failure mode of pseudo-view supervision:
+once the pool is replaced by static pair-midpoint sam-
+ples, the optimizer is forced to absorb whatever the dif-
+fusion model hallucinates at those fixed camera poses,
+and the resulting renders drift perceptually even as
+structural fidelity (SSIM) still improves over vanilla.
+The LPIPS regression below vanilla shows that indis-
+criminate pseudo-view supervision is not merely sub-
+optimal but actively harmful on the perceptual axis, and
+that the scored selection together with the per-phase re-
+fresh is what keeps the hallucinated supervision per-
+ceptually safe.
+With 24 training cameras around an
+unbounded 360◦scene, most of the surface is already
+well-represented and the PSNR headroom is small; in
+the more under-constrained LLFF 3- and 6-view set-
+tings of Table 1, where average gains are +0.40 dB and
++0.89 dB, we expect the PSNR contribution of GAPS to
+grow proportionally, though isolating this across view
+counts would require a matched ablation on LLFF that
+we leave to future work.
+The Mip-NeRF 360 LPIPS gap. Our method improves
+the average LPIPS on both benchmarks and every evalu-
+ated view count at the -r 8 protocol reported in this pa-
+per: LLFF records reductions of −0.0283, −0.0222 and
+−0.0132 at 3/6/9 views, and Mip-NeRF 360 records
+−0.0048 at 12 views and −0.0012 at 24 views (Tables 1,
+2). The Mip-NeRF 360 reductions are an order of mag-
+nitude smaller than the LLFF reductions, which we at-
+tribute to the dominant role the unbounded background
+plays in the 360◦LPIPS: sky and distant foliage account
+for most of the pixel mass in the held-out views, and
+at eighth resolution the VGG receptive fields average
+over large enough patches that subtle texture drift in
+those regions has a negligible effect on the perceptual
+score. The ablation in Table 4 is consistent with this
+reading: both ablated variants degrade LPIPS on Mip-
+NeRF 360, and removing GAPS is the larger of the two
+penalties (+0.0085 vs +0.0041 when removing Drop-
+Gaussian), pushing LPIPS past the vanilla baseline.
+The full method is the only configuration that improves
+LPIPS over vanilla, and it does so precisely because the
+GAPS scoring, admission gate, and per-phase refresh—
+in combination with the density-adaptive regularizer—
+keep the diffusion-supervised background reconstruc-
+tions perceptually close to the held-out photographs on
+14
+
+
+unbounded scenes.
+Practical implications. Two practical points follow
+from the experiments. (i) The improvements are ob-
+tained without any architectural change to the 3DGS
+optimizer or any modification to the rasterizer, which
+means the method can be dropped into an existing
+3DGS pipeline as an additional alternating training
+stage. (ii) All experiments run on a single 24 GB con-
+sumer GPU within the same 10,000-iteration training
+budget as vanilla 3DGS, so the gains do not come from
+a longer optimization or from a heavier rendering stack;
+the cost is the diffusion forward pass at the phase bound-
+aries, which is amortized across the rest of the training
+schedule.
+6. Conclusion
+We presented an alternating optimization framework
+that augments sparse-view 3D Gaussian Splatting with
+diffusion-generated pseudo-views. The framework rests
+on three design choices that target distinct failure modes
+of the under-constrained sparse-view problem.
+First,
+we constrain a pre-trained image diffusion model with
+a four-fold pipeline—depth-conditioned ControlNet,
+IP-Adapter style transfer, scene-specific LoRA fine-
+tuning, and img2img structural anchoring—so that ev-
+ery pseudo-view is geometrically and stylistically con-
+sistent with the reconstructed scene rather than being
+a free generative sample. Second, we introduce Gen-
+erative Active Pseudo-view Selection (GAPS), which
+scores candidate viewpoints by jointly balancing recon-
+struction informativeness and generative reliability and
+follows an annealing schedule that progresses from con-
+servative interpolation in early training to exploratory
+extrapolation in later stages. A dual-criterion admis-
+sion gate together with per-pixel uncertainty-weighted
+losses prevents unreliable generations from destabiliz-
+ing training. Third, we add a density-adaptive Drop-
+Gaussian regularizer that activates only where the lo-
+cal Gaussian density exceeds a threshold, providing a
+global anti-overfitting mechanism that is largely orthog-
+onal to scene geometry.
+Experiments on LLFF and Mip-NeRF 360 show con-
+sistent improvements over vanilla 3DGS across all view
+counts.
+On LLFF, average PSNR rises by +0.40,
++0.89 and +0.70 dB at 3, 6 and 9 views, with si-
+multaneous SSIM gains (+0.0388, +0.0287, +0.0188)
+and LPIPS reductions (−0.0283, −0.0222, −0.0132);
+on Mip-NeRF 360, average PSNR rises by +1.18 dB
+at 12 views and +0.80 dB at 24 views, with SSIM
+gains of +0.0469 and +0.0260 and LPIPS reductions
+of −0.0048 and −0.0012.
+The largest absolute im-
+provements appear in the most under-constrained set-
+tings and on scenes dominated by thin or repeated struc-
+ture, in line with the central design hypothesis that dif-
+fusion supervision is most useful where the training
+cameras leave the largest unobserved volume to fill.
+Component-wise ablation on Mip-NeRF 360 confirms
+that GAPS and density-adaptive DropGaussian act on
+complementary failure modes: removing DropGaussian
+produces the largest PSNR penalty (−0.41 dB), whereas
+removing GAPS inflates LPIPS to 0.2497—worse than
+the vanilla baseline (0.2424) with no pseudo-views—
+showing that indiscriminate pseudo-view supervision is
+actively harmful on the perceptual axis and that the
+scored selection together with the per-phase refresh
+are what keep the hallucinated supervision perceptually
+clean. The full method is the only configuration that si-
+multaneously improves photometric, structural, and per-
+ceptual metrics on every benchmark.
+Several directions remain open. The Mip-NeRF 360
+LPIPS reductions, while consistently positive, remain
+an order of magnitude smaller than the LLFF reduc-
+tions at the same eighth resolution, indicating that the
+unbounded background—where sky and distant foliage
+dominate the pixel mass—still leaves residual percep-
+tual headroom that a domain-specific photographic prior
+or a tighter IP-Adapter style constraint on background
+regions could plausibly close. Extending the alternat-
+ing framework beyond static scenes to dynamic or re-
+lightable settings, and exploring video diffusion pri-
+ors to enforce temporal consistency across pseudo-view
+batches, are natural next steps. More broadly, our results
+indicate that pre-trained 2D generative priors can sup-
+ply the missing supervision for under-constrained 3D
+reconstruction problems when their outputs are gated
+and weighted carefully—a principle that extends well
+beyond the specific 3DGS pipeline studied here.
+Acknowledgements
+This work was supported by the Goertek. The authors
+would like to thank the members of the Alpha Labs for
+their valuable discussions and technical support during
+the research.
+CRediT authorship contribution statement
+Hongfei Zhu:
+Writing – original draft, Visual-
+ization, Validation, Software, Methodology, Investiga-
+tion, Formal analysis, Data curation, Conceptualization.
+15
+
+
+Haochen Deng: Writing – review & editing, Valida-
+tion. Sitao Zhang: Writing – review & editing, Re-
+sources. Ling Zhou: Writing – review & editing, Su-
+pervision, Conceptualization.
+Declaration of competing interest
+The authors declare that they have no known com-
+peting financial interests or personal relationships that
+could have appeared to influence the work reported in
+this paper.
+Data availability
+Data will be made available on request.
+Declaration of generative AI and AI-assisted tech-
+nologies in the writing process
+During the preparation of this work the authors used
+Claude (Anthropic) in order to polish language and im-
+prove the readability of the manuscript.
+After using
+this tool, the authors reviewed and edited the content
+as needed and take full responsibility for the content of
+the publication.
+References
+[1] B. Kerbl, G. Kopanas, T. Leimkühler, G. Drettakis, 3d
+gaussian splatting for real-time radiance field rendering,
+ACM Transactions on Graphics 42 (4) (2023) 139:1–
+139:14. doi:10.1145/3592433.
+[2] J. Li, J. Zhang, X. Bai, J. Zheng, X. Ning, J. Zhou,
+L. Gu, DNGaussian: Optimizing sparse-view 3D gaus-
+sian radiance fields with global-local depth normaliza-
+tion, in:
+Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR),
+2024, pp. 20775–20785.
+doi:10.1109/CVPR52733.
+2024.01963.
+[3] J. Zhang, J. Li, X. Yu, L. Huang, L. Gu, J. Zheng,
+X. Bai, CoR-GS: Sparse-view 3D Gaussian Splatting via
+co-regularization, in: Proceedings of the European Con-
+ference on Computer Vision (ECCV), 2024, pp. 335–
+352. doi:10.1007/978-3-031-73232-4_19.
+[4] H. Park, G. Ryu, W. Kim, DropGaussian: Structural reg-
+ularization for sparse-view Gaussian splatting, in: Pro-
+ceedings of the IEEE/CVF Conference on Computer Vi-
+sion and Pattern Recognition (CVPR), 2025, pp. 21600–
+21609. doi:10.1109/CVPR52734.2025.02012.
+[5] H. Kong, X. Yang, X. Wang, Generative sparse-view
+Gaussian splatting, in: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recogni-
+tion (CVPR), 2025, pp. 26745–26755. doi:10.1109/
+CVPR52734.2025.02491.
+[6] A. Topalo˘glu, K. Li, M. Niemeyer, N. Navab, A. M.
+Tekalp, F. Tombari, OracleGS: Grounding generative
+priors for sparse-view Gaussian splatting, arXiv preprint
+arXiv:2509.23258 (2025).
+[7] L. Zhang, A. Rao, M. Agrawala, Adding conditional
+control to text-to-image diffusion models, in: Proceed-
+ings of the IEEE/CVF International Conference on Com-
+puter Vision (ICCV), 2023, pp. 3836–3847. doi:10.
+1109/ICCV51070.2023.00355.
+[8] H. Ye, J. Zhang, S. Liu, X. Han, W. Yang, IP-Adapter:
+Text compatible image prompt adapter for text-to-image
+diffusion models,
+arXiv preprint arXiv:2308.06721
+(2023). doi:10.48550/arXiv.2308.06721.
+[9] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li,
+S. Wang, L. Wang, W. Chen, LoRA: Low-rank adap-
+tation of large language models, in:
+International
+Conference on Learning Representations (ICLR), 2022.
+URL
+https://openreview.net/forum?id=
+nZeVKeeFYf9
+[10] B. Mildenhall, P. P. Srinivasan, M. Tancik, J. T. Barron,
+R. Ramamoorthi, R. Ng, NeRF: Representing scenes
+as neural radiance fields for view synthesis, in: Pro-
+ceedings of the European Conference on Computer Vi-
+sion (ECCV), 2020, pp. 405–421.
+doi:10.1007/
+978-3-030-58452-8_24.
+[11] J. T. Barron, B. Mildenhall, D. Verbin, P. P. Srinivasan,
+P. Hedman, Mip-NeRF 360: Unbounded anti-aliased
+neural radiance fields, in: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recogni-
+tion (CVPR), 2022, pp. 5470–5479.
+doi:10.1109/
+CVPR52688.2022.00539.
+[12] A. Jain, M. Tancik, P. Abbeel, Putting NeRF on a
+diet: Semantically consistent few-shot view synthesis,
+in: Proceedings of the IEEE/CVF International Confer-
+ence on Computer Vision (ICCV), 2021, pp. 5885–5894.
+doi:10.1109/ICCV48922.2021.00583.
+[13] M. Niemeyer, J. T. Barron, B. Mildenhall, M. S. M.
+Sajjadi, A. Geiger, N. Radwan, RegNeRF: Regulariz-
+ing neural radiance fields for view synthesis from sparse
+inputs, in: Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR),
+2022, pp. 5480–5490.
+doi:10.1109/CVPR52688.
+2022.00540.
+[14] J. Yang, M. Pavone, Y. Wang, FreeNeRF: Improving
+few-shot neural rendering with free frequency regular-
+ization, in: Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR),
+2023, pp. 8254–8263.
+doi:10.1109/CVPR52729.
+2023.00798.
+[15] G. Wang, Z. Chen, C. C. Loy, Z. Liu, SparseNeRF: Dis-
+tilling depth ranking for few-shot novel view synthesis,
+in: Proceedings of the IEEE/CVF International Confer-
+ence on Computer Vision (ICCV), 2023, pp. 9065–9076.
+doi:10.1109/ICCV51070.2023.00832.
+[16] Z. Zhu, Z. Fan, Y. Jiang, Z. Wang, FSGS: Real-time
+few-shot view synthesis using Gaussian splatting, in:
+16
+
+
+Proceedings of the European Conference on Computer
+Vision (ECCV), 2024, pp. 145–163.
+doi:10.1007/
+978-3-031-72933-1_9.
+[17] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, B. Om-
+mer, High-resolution image synthesis with latent diffu-
+sion models, in: Proceedings of the IEEE/CVF Con-
+ference on Computer Vision and Pattern Recognition
+(CVPR), 2022, pp. 10684–10695.
+doi:10.1109/
+CVPR52688.2022.01042.
+[18] D. Podell,
+Z. English,
+K. Lacey,
+A. Blattmann,
+T. Dockhorn, J. Müller, J. Penna, R. Rombach, SDXL:
+Improving latent diffusion models for high-resolution
+image synthesis, in: The Twelfth International Confer-
+ence on Learning Representations (ICLR), 2024.
+URL
+https://openreview.net/forum?id=
+di52zR8xgf
+[19] B. Poole, A. Jain, J. T. Barron, B. Mildenhall, DreamFu-
+sion: Text-to-3D using 2D diffusion, in: The Eleventh
+International Conference on Learning Representations
+(ICLR), 2023.
+URL
+https://openreview.net/forum?id=
+FjNys5c7VyY
+[20] S. Bose, A. Dutta, S. Nag, J. Zhang, J. Li, K. Karydis,
+A. K. Roy-Chowdhury, Uncertainty-aware diffusion-
+guided refinement of 3D scenes, in: Proceedings of the
+IEEE/CVF International Conference on Computer Vi-
+sion (ICCV), 2025, pp. 28271–28281.
+[21] S. Paul,
+P. Kaushik,
+A. Yuille,
+Gaussian scenes:
+Pose-free sparse-view scene reconstruction using depth-
+enhanced diffusion priors, Transactions on Machine
+Learning Research (2025).
+URL
+https://openreview.net/forum?id=
+yp1CYo6R0r
+[22] W. Jiang, B. Lei, K. Daniilidis, FisherRF: Active view
+selection and mapping with radiance fields using Fisher
+information, in: Proceedings of the European Confer-
+ence on Computer Vision (ECCV), 2024, pp. 422–440.
+doi:10.1007/978-3-031-72624-8_24.
+[23] M. M. Li, P.-Y. Lajoie, G. Beltrame, Frequency-based
+view selection in Gaussian splatting reconstruction,
+arXiv preprint arXiv:2409.16470 (2024).
+doi:10.
+48550/arXiv.2409.16470.
+[24] M. Kim, J. Lim, B. Han, 4D Gaussian Splatting
+in the wild with uncertainty-aware regularization, in:
+Advances in Neural Information Processing Systems
+(NeurIPS), Vol. 37, 2024.
+[25] C. J. Galappaththige, T. Gottwald, P. Stehr, E. Hein-
+ert, N. Suenderhauf, D. Miller, M. Rottmann, Predictive
+photometric uncertainty in Gaussian splatting for novel
+view synthesis, arXiv preprint arXiv:2603.22786 (2026).
+doi:10.48550/arXiv.2603.22786.
+[26] N. Srivastava, G. Hinton, A. Krizhevsky, I. Sutskever,
+R. Salakhutdinov, Dropout: A simple way to prevent
+neural networks from overfitting, Journal of Machine
+Learning Research 15 (56) (2014) 1929–1958.
+[27] J. L. Schönberger, J.-M. Frahm, Structure-from-motion
+revisited, in: Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR),
+2016, pp. 4104–4113. doi:10.1109/CVPR.2016.445.
+[28] L. Yang, B. Kang, Z. Huang, Z. Zhao, X. Xu, J. Feng,
+H. Zhao, Depth anything V2, in: Advances in Neural In-
+formation Processing Systems (NeurIPS), Vol. 37, 2024.
+[29] B. Mildenhall, P. P. Srinivasan, R. Ortiz-Cayon, N. K.
+Kalantari, R. Ramamoorthi, R. Ng, A. Kar, Local light
+field fusion: Practical view synthesis with prescriptive
+sampling guidelines, ACM Transactions on Graphics
+38 (4) (2019) 29:1–29:14.
+doi:10.1145/3306346.
+3322980.
+[30] Z. Wang, A. C. Bovik, H. R. Sheikh, E. P. Simoncelli,
+Image quality assessment: From error visibility to struc-
+tural similarity, IEEE Transactions on Image Process-
+ing 13 (4) (2004) 600–612. doi:10.1109/TIP.2003.
+819861.
+[31] R. Zhang, P. Isola, A. A. Efros, E. Shechtman, O. Wang,
+The unreasonable effectiveness of deep features as a
+perceptual metric, in: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recogni-
+tion (CVPR), 2018, pp. 586–595. doi:10.1109/CVPR.
+2018.00068.
+Author biographies
+Hongfei Zhu is currently a third-year un-
+dergraduate student pursuing a B.Eng. in
+Electronic and Computer Engineering at
+Shanghai Jiao Tong University, Shanghai,
+China.
+He is also a research intern at
+the Alpha Labs of Goertek Inc., where
+he works on sparse-view 3D reconstruc-
+tion and the integration of generative pri-
+ors into 3D Gaussian Splatting pipelines.
+His research interests include 3D Gaus-
+sian Splatting, simultaneous localization
+and mapping (SLAM), virtual and aug-
+mented reality, and generative models for
+computer vision.
+Haochen Deng received his B.S. degree
+from Nanjing University in 2024 and is
+currently pursuing his M.S. degree at Fu-
+dan University, Shanghai, China.
+His
+research interests focus on 4D Gaus-
+sian Splatting, including efficient dynamic
+scene representation, reconstruction, and
+real-time novel view synthesis.
+17
+
+
+Sitao Zhang is currently a Master’s candi-
+date in Information Technology and Man-
+agement at the University of Sydney, Aus-
+tralia. He received his B.Sc. in Mathemat-
+ics from the East China University of Sci-
+ence and Technology. He is also a mem-
+ber of the XR engineering team at the Al-
+pha Labs of Goertek Inc., where he has
+worked on XR testing systems and spatial
+camera projects. His engineering interests
+span artificial intelligence, data analysis,
+and the translation of research-grade algo-
+rithms into deployable hardware and soft-
+ware.
+Ling Zhou is a Senior Algorithm Engi-
+neer at the VRMR center of Goertek Al-
+pha Lab. He is responsible for the research
+and development of computer vision, im-
+age processing, and computer graphics al-
+gorithms.
+18

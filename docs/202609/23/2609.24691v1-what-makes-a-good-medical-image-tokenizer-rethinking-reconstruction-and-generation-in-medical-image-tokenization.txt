@@ -1,0 +1,7094 @@
+What Makes a Good Medical Image Tokenizer?
+Rethinking Reconstruction and Generation in Medical Image Tokenization
+Niklas Bubeck1,2,3
+Yundi Zhang1,3
+Vasiliki Sideri-Lampretsa1,3
+Julian McGinnis1,3
+Jiancheng Yang4,5
+Daniel Rueckert1,2,3,6
+Jiazhen Pan1,2,3
+1School of Computation, Information and Technology, Technical University of Munich, Germany
+2Munich Center for Machine Learning, Technical University of Munich, Germany
+3School of Medicine, Klinikum rechts der Isar, Technical University of Munich, Germany
+4ELLIS Institute Finland, Finland
+5School of Electrical Engineering, Aalto University, Finland
+6Department of Computing, Imperial College London, UK
+niklas.bubeck@tum.de
+Abstract
+Latent diffusion models now dominate medical image gen-
+eration, and every such pipeline rests on a tokenizer that
+compresses images into the latent codes for image gener-
+ation to operate on. Thereby, the tokenizer choice bounds
+every downstream task from reconstruction fidelity and gen-
+eration quality to the representations available for down-
+stream analysis. Yet, medical imaging pipelines routinely
+utilize tokenizers from natural imaging on the hypothesis
+that their behavior carries over. However, this is an as-
+sumption never tested in the medical imaging regime, where
+datasets are orders of magnitude smaller and images ex-
+hibit far lower inter-sample variance. We present a sys-
+tematic evaluation of medical image tokenizers evaluating
+thirty configurations across ten model families on twelve
+datasets at three compression factors, spanning reconstruc-
+tion, generation, latent geometry, downstream classifica-
+tion, and memorization. We find that (1) performance on
+image reconstruction and generation strongly correlate, un-
+like prior reports on natural images; (2) modern tokenizers
+use nearly all of their codebook entries, but still leave most
+of the latent space unused; (3) training-set memorization
+is mild and is further suppressed by stronger latent space
+compression; and (4) discrete quantization can largely pre-
+serve downstream classification, with lookup-free schemes
+being the main exception.
+Figure 1. Method Overview. We take quantizers out of the library
+and evaluate them on diverse medical imaging datasets to study
+whether prevalent assumptions from natural imaging transfer to
+the medical domain.
+1. Introduction
+Medical imaging faces persistent challenges: limited data
+hinders generalization [1], expert annotations are costly [2],
+and strict privacy regulations constrain data sharing [3, 4].
+Generative AI offers a compelling path forward, enabling
+synthetic augmentation, report-to-image synthesis, and la-
+tent compression for efficient analysis. Generative mod-
+els have become dominant across a wide range of medi-
+cal imaging applications [5, 6], including MRI reconstruc-
+tion [7, 8], 3D CT and MRI generation [4, 9, 10], chest
+X-ray synthesis from radiology reports [11, 12], control-
+lable lesion editing [13], pathology and dermatology syn-
+To foster research in this direction, we will open-source the framework
+and all models upon acceptance.
+1
+arXiv:2609.24691v1  [cs.CV]  21 Sep 2026
+
+
+thesis [14–17], retinal imaging [18–20], and cell morphol-
+ogy modeling [21, 22]. Across all of these fields, genera-
+tion is built almost exclusively on diffusion over a contin-
+uous latent, while autoregressive and discrete-token mod-
+els remain comparatively rare and task-specific [23–26].
+That latent is produced by a tokenizer, which compresses
+high-dimensional images into the compact space on which
+the generator operates. Its choice bounds everything from
+downstream task performance to generation quality, yet
+most medical pipelines adopt off-the-shelf quantizers with-
+out systematic justification, transferring conclusions from
+natural imaging.
+In this paper, we study tokenizers as substrates for la-
+tent diffusion, which underpins most medical generative
+pipelines, and challenge the prevailing approach, which car-
+ries over assumptions from natural images, and question
+this transfer, which remains understudied. The first is that
+reconstruction quality is a poor proxy for generation quality,
+with recent work instead attributing generation performance
+to global semantic information and spatial structure in the
+latent space [27–30]. The second is that a healthy code-
+book, having high utilization and no collapse, signals an
+expressive latent space [31–34] leading to improved genera-
+tion performance. Both were established on ImageNet-scale
+natural images, but medical data occupy a fundamentally
+different statistical regime: collections are small and highly
+repetitive, images of the same organ share a global layout
+and differ only in subtle, localized detail, and the diagnos-
+tically meaningful signal often lives in fine-grained, high-
+frequency texture [35], such as a faint lesion, that a tok-
+enizer must preserve exactly. With less data to learn from,
+lower variation between samples, and a narrower mar-
+gin for error, conclusions drawn from natural images may
+not transfer cleanly to medical imaging. In consequence,
+we challenge the current practice and call for a careful re-
+examination before they are relied upon in this domain.
+Medical imaging raises two additional concerns that
+natural image tokenizers were never designed to address.
+First, synthetic medical data is valuable mainly because
+it protects patient privacy, but that benefit disappears if
+the model memorizes and reproduces real patients [3, 36].
+Whether the tokenizer’s compression bottleneck affects this
+leakage has not yet been studied. Moreover, the tokens are
+rarely an end in itself: the same compressed representa-
+tion is routinely reused for downstream clinical tasks such
+as classification, detection, and retrieval [37, 38], and in-
+creasingly serves as the input to multimodal and medical
+foundation models [23, 24, 39, 40], so whether quantiza-
+tion erases class-discriminative structure becomes a central
+criterion for selecting a tokenizer. Thus, compared to nat-
+ural image tokenizers, the medical domain prioritizes two
+distinct goals over perfect pixel reconstruction: the latent
+representation must preserve the critical diagnostic features
+used by clinicians, and the subsequent generator must not
+compromise privacy by memorizing and reproducing exact
+patient scans. In this work we aim to close this gap. Our
+contributions are:
+• The first medical image tokenization benchmark: a
+controlled holistic evaluation of over sixty trained mod-
+els.
+• A multi-axis evaluation protocol (reconstruction, gen-
+eration, latent geometry, memorization, and downstream
+probing) revealing that natural image assumptions about
+reconstruction–generation correlation and latent space us-
+age do not hold within our medical benchmark.
+• Reproducibility: open-source framework, all implemen-
+tations, and trained tokenizer and generator weights, pub-
+licly released.
+2. Background and Related Work
+The variational autoencoder (VAE) [41] is the foundational
+framework for learned image compression: an encoder pa-
+rameterizes a posterior qϕ(z|x), a prior p(z) regularizes the
+latent space, and a decoder pθ(x|z) reconstructs the input.
+Expressive decoders, however, can bypass the latent en-
+tirely (posterior collapse) by driving the Kullback-Leibler
+(KL) term to zero. VQ-VAE [42] avoids this by discretizing
+the bottleneck: an encoder E maps x to a continuous latent
+ze, quantized to zq via nearest-neighbor lookup in a learned
+codebook C = {ek}K
+k=1, and a decoder D reconstructs from
+the result:
+ze = E(x),
+zq = ek∗,
+k∗= arg min
+k ∥ze −ek∥2,
+ˆx = D(zq).
+(1)
+The KL term is replaced by a commitment loss ∥ze −
+sg[zq]∥2
+2 and a codebook loss ∥sg[ze] −zq∥2
+2, with sg[·]
+the stop-gradient; as arg min is non-differentiable, gra-
+dients reach the encoder via the straight-through estima-
+tor (STE). VQ-GAN [43] adds adversarial and perceptual
+losses for sharper reconstructions. Vanilla VQ nonetheless
+suffers codebook collapse, where only a fraction of codes
+are used, as well as biased STE gradients. Subsequent work
+addresses these along several axes.
+Soft Quantization. Replacing the hard arg min with a dif-
+ferentiable weighted combination:
+zq =
+K
+X
+k=1
+wk ek,
+wk ≥0,
+X
+k
+wk = 1,
+(2)
+bypasses the STE entirely. Methods differ in how wk is set:
+Wu and Flierl [44] use Bayesian posterior-mean estimation
+over centroids, SCQ [45] solves for the optimal combina-
+tion via a differentiable optimization layer, and SoftVQ-
+VAE [46] uses a temperature-scaled softmax over code-
+book similarities, wk ∝exp(−∥ze −ek∥2/τ), recover-
+2
+
+
+Figure 2. Reconstruction predicts generation performance in medical imaging. Reconstruction versus generation performance of dif-
+ferent tokenizers across compression factors and datasets, for natural images (left) and medical images (right); natural-image metrics are
+taken from prior work [28], exploiting different methods and backbones. Pearson and Spearman fits are overlaid. Results disentangled
+by dataset and compression factor are provided in the appendix (Sec. A), where the correlation holds within each stratum. Within our
+benchmark, reconstruction strongly predicts generation, in contrast to the natural-image trend.
+ing hard VQ as τ →0. This generalizes VQ-VAE’s K-
+means latent to soft K-means and, with data-dependent
+weights, to Gaussian mixtures [47], rendering codebook
+and commitment losses unnecessary.
+Space-filling (SF)
+methods [48, 49] instead quantize onto line segments be-
+tween adjacent codes, zq = (1 −γ) ej + γ ej+1 with
+γ ∈[0, 1), so neighboring codes encode similar content.
+Differentiable Quantization.
+An orthogonal line keeps
+the hard arg min in the forward pass but reparameterizes
+the output for richer encoder gradients. The STE, zq =
+ze + sg[ek∗−ze], copies the decoder gradient unchanged,
+discarding the quantization step. NSVQ [50] instead substi-
+tutes magnitude-matched random noise for the quantization
+error. The rotation trick [51] builds a rotation-rescaling ma-
+trix M with M ze = ek∗and sets zq = sg[M] ze, so the gra-
+dient ∂zq/∂ze = sg[M] encodes both angular and magni-
+tude misalignment. DiVeQ [49] adds a simulated error vec-
+tor via reparameterization, zq = ze + ∥ze −ek∗∥2 · u/∥u∥2,
+with direction u aimed at the nearest codeword, keeping the
+forward pass identical to hard VQ.
+Lookup-Free Quantization.
+Lookup-free methods drop
+the explicit codebook,
+quantizing each latent dimen-
+sion independently via per-dimension rounding zq
+=
+[q1(z1), . . . , qd(zd)] and eliminating collapse by construc-
+tion. Finite scalar quantization (FSQ) [32] bounds each di-
+mension via a tanh nonlinearity and rounds to one of Li
+uniformly spaced integer levels, ˆzi = ⌊Li−1
+2
+tanh(zi)−oi⌉,
+with oi = 1
+2 for even Li and 0 otherwise, yielding an im-
+plicit codebook of size Qd
+i=1 Li with no auxiliary losses.
+LFQ [52] takes Li = 2, binarizing via zq,i = sign(zi) ∈
+{−1, +1} for 2d codes plus an entropy loss. Binary spheri-
+cal quantization (BSQ) [53] refines LFQ by ℓ2-normalizing
+the latent onto the unit hypersphere before binarization,
+which bounds the quantization error and yields a better-
+conditioned entropy objective.
+Codebook Reparameterization.
+These methods define
+codes through learned transformations so all entries re-
+ceive gradients. SimVQ [34] factorizes the codebook as
+C = WB via a learnable linear layer over a latent basis.
+QINCo [54] replaces it with an implicit neural codebook:
+at each residual stage an MLP fℓgenerates the entries from
+the current reconstruction, Cℓ= fℓ(ˆzℓ−1), so codes adapt
+per-sample and capture inter-stage dependencies.
+Residual and Product Quantization. These meta-schemes
+wrap any base quantizer to expand its capacity.
+Resid-
+ual quantization (RQ) [55] quantizes the residual error
+over L stages: from r0 = ze, each stage picks ekℓ=
+arg mine∈Cℓ∥rℓ−1 −e∥2 and updates rℓ= rℓ−1 −ekℓ, giv-
+ing zq = PL
+ℓ=1 ekℓand up to KL vectors. Product quanti-
+zation (PQ) [56] partitions the latent into m subvectors and
+quantizes each independently, yielding (K′)m codes from
+m × K′ centroids. Both are agnostic to the base quantizer,
+acting as composable building blocks.
+3. Method
+We benchmark all tokenizers within a single autoencoding
+architecture [41], the de facto autoencoder underlying la-
+tent diffusion, ensuring our findings remain representative
+of deployed medical pipelines. We vary only the quantiza-
+tion module, holding the encoder, decoder, training budget,
+and data fixed. We first describe this shared autoencoder
+and the quantizers we plug into it (Sec. 3.1), then the gener-
+ative model trained on the resulting latents (Sec. 3.2).
+3
+
+
+Table 1. Holistic reconstruction and generation overview. Cross-dataset central tendency over the 12 datasets, grouped by compression
+f. Cells report the mean, except rFMD/gFMD, which use the more robust median since Fr´echet distances are sensitive to per-dataset
+sample counts (a few hundred to tens of thousands).↑/↓indicate better direction; FMD = Fr´echet Medical Distance (each dataset uses its
+own feature extractor). Statistical and per-dataset specific results can be found in Secs. C and E.
+f=4
+f=8
+f=16
+Method
+PSNR↑
+SSIM↑rFID↓rFMD↓gFID↓gFMD↓
+PSNR↑SSIM↑rFID↓
+rFMD↓
+gFID↓
+gFMD↓
+PSNR↑
+SSIM↑
+rFID↓
+rFMD↓
+gFID↓
+gFMD↓
+AEKL [57]
+30.2
+0.823
+47.4
+1.67
+76.2
+22.4
+30.8
+0.826
+47.5
+1.43
+73.9
+18.5
+30.6
+0.809
+55.9
+2.01
+88.8
+21.0
+SoftVQ [46]
+34.4
+0.911
+21.9
+0.23
+79.9
+20.2
+30.2
+0.817
+50.4
+1.27
+107.9
+38.9
+32.2
+0.820
+48.1
+0.93
+113.6
+10.1
+VQGAN [43]
+40.0
+0.953
+9.4
+0.05
+50.5
+26.4
+34.0
+0.847
+43.7
+0.44
+65.5
+18.0
+29.3
+0.756
+79.2
+2.22
+99.5
+15.0
+SimVQ [34]
+39.1
+0.946
+11.7
+0.09
+49.4
+14.9
+34.8
+0.885
+24.0
+0.19
+63.2
+31.5
+28.8
+0.762
+82.2
+2.86
+111.8
+34.0
+SimQINCo [54]
+40.1
+0.953
+9.5
+0.10
+52.3
+28.0
+35.0
+0.877
+26.6
+0.41
+52.8
+19.2
+31.6
+0.797
+64.5
+0.99
+91.5
+33.2
+RQVAE [55]
+41.3
+0.963
+7.0
+0.04
+52.2
+25.9
+37.1
+0.907
+19.0
+0.08
+55.5
+10.0
+34.2
+0.842
+38.2
+0.44
+70.5
+15.7
+DiVeQ [49]
+39.2
+0.940
+12.7
+0.10
+48.1
+11.5
+35.3
+0.884
+24.2
+0.20
+58.4
+13.2
+31.0
+0.794
+61.6
+1.33
+91.2
+21.2
+SF-DiVeQ [49]
+38.8
+0.943
+12.4
+0.04
+48.7
+26.1
+35.8
+0.892
+22.7
+0.19
+58.8
+17.1
+31.3
+0.793
+57.0
+1.18
+83.7
+11.2
+BSQ [53]
+30.5
+0.860
+33.5
+0.82
+104.5
+35.6
+27.7
+0.808
+54.5
+2.48
+81.5
+26.4
+27.7
+0.773
+67.9
+2.45
+102.5
+21.2
+LFQ [52]
+29.4
+0.860
+40.1
+0.94
+141.9
+56.0
+24.0
+0.708
+103.8
+13.37
+226.1
+38.7
+23.2
+0.655
+148.0
+19.24
+138.5
+31.9
+3.1. Autoencoder and Tokenization
+The encoder and decoder follow the convolutional VQ-
+GAN backbone [43] and realize Eq. (1):
+the encoder
+maps an image to a continuous latent ze, the quantizer
+discretizes it to zq, and the decoder reconstructs the in-
+put. At each setting we fix the spatial compression fac-
+tor f ∈{4, 8, 16} and the latent channel dimension d ∈
+{3, 4, 8}, so every quantizer operates on latents of identical
+shape. We remove all self-attention, yielding a purely con-
+volutional encoder-decoder. With backbone and optimiza-
+tion fixed, per-f differences are attributable to the quan-
+tizer alone. We omit self-attention, which the backbone in-
+stantiates only at certain resolutions (a subset of f), since
+its resolution-dependent global mixing would confound the
+cross-compression latent-geometry analysis (§5).
+Quantization Adaptations. Most quantizers are either de-
+signed for images or directly applicable.
+The exception
+is QINCo [54], built around an implicit neural codebook
+where a small MLP generates the codebook entries rather
+than storing them. As QINCo’s reconstruction-conditioned
+residual structure is computationally infeasible at image-
+tokenizer resolutions, we isolate the implicit codebook in
+a single-codebook variant named SimQINCo: the table C ∈
+RK×d of a standard VQ layer is replaced by
+C = gϕ(V),
+(3)
+a small shared MLP gϕ applied to a learnable coordinate
+matrix V ∈RK×d, thereby evaluating the implicit neural
+codebook in isolation.
+Training Objective. All tokenizers share an identical train-
+ing objective combining a pixel-space Mean Squared Error
+(MSE) reconstruction term, a VGG-based LPIPS perceptual
+loss [58], a hinge adversarial loss [43] against a PatchGAN
+discriminator [59], and the quantizer-specific auxiliary loss
+LQ (commitment, entropy, or codebook regularization) pre-
+scribed by each individual quantization scheme:
+L = LMSE(x, ˆx)+λp LLPIPS(x, ˆx)+λadv Ladv(ˆx)+LQ, (4)
+with λp = λadv = 0.01; the continuous AEKL baseline ad-
+ditionally minimizes a small KL term (λKL = 10−6). The
+perceptual term is linearly warmed up over the first 50k it-
+erations. The adversarial term is held inactive for the first
+100k steps and then linearly warmed up over a further 50k;
+thereafter its weight is adaptively rescaled by the gradient-
+norm ratio between LMSE + λpLLPIPS and Ladv [43]. Addi-
+tionally, to stabilize discriminator training under the limited
+data scale typical of medical datasets, we additionally (i) ap-
+ply differentiable augmentation (color, translation, cutout)
+to real and fake inputs [60], (ii) include a consistency-
+regularization term (λCR = 4) penalizing inconsistent logits
+under augmentation [61], and (iii) add a LeCAM regular-
+izer (λLeCAM = 10−3) [62] on the discriminator’s real/fake
+logit EMAs.
+3.2. Generation
+To assess each tokenizer as a generative substrate, we freeze
+the trained autoencoder and fit a single diffusion model in
+its continuous pre-quantization latent ze, rather than train-
+ing an autoregressive transformer over the discrete zq. The
+latter would entangle generation quality with codebook car-
+dinality (the AR softmax scales as K, KL, or 2d across
+families), penalizing tokenizers for reasons unrelated to la-
+tent fidelity; the continuous ze is well-defined across all to-
+kenizer families and admits a single shared generator, while
+also yielding a more robust inference pipeline since im-
+perfectly denoised samples still snap to the correct code-
+book entry under the frozen quantizer, a property leveraged
+by state-of-the-art medical latent-diffusion systems [4, 63].
+Following standard latent-diffusion practice [57], we there-
+fore rescale every tokenizer’s ze by a single scalar (the re-
+ciprocal of its standard deviation, estimated once on the
+training split) so that all generators operate on unit-variance
+latents.
+Then, following the latent-diffusion and DDPM
+paradigm [57, 64], the forward process progressively cor-
+rupts a clean latent z0 = E(x) with Gaussian noise accord-
+4
+
+
+BSQ
+LFQ
+DiVeQ
+RQVAE
+SimQinco
+SimVQ
+VQ
+SF-DiVeQ
+D/bit = 1.198e-05
+D/bit = 0.0167
+D/bit = 1.881e-05
+D/bit = 2.469e-06
+D/bit = 5.632e-09
+D/bit = 0.7358
+D/bit = 1.182e-05
+D/bit = 1.719e-04
+Pathmnist
+Chestmnist
+Dermamnist
+OCTmnist
+Pneumoniamnist
+Retinamnist
+Breastmnist
+Bloodmnist
+Tissuemnist
+OrganAmnist
+OrganCmnist
+OrganSmnist
+Figure 3. Codebook misalignment across quantization families. Joint t-SNE of the pre-quant latents Pz (colored by source dataset) and
+the selected codewords Cz (red crosses), pooled over the test split of all twelve datasets, one panel per family at f=8; distortion-per-bit
+Dper-bit=D/H(C) is annotated top-left. Codewords lying on the latent cloud indicate good alignment; drift off it is the internal codebook
+covariate shift of Sec. 4.4.
+ing to a variance schedule {βt}T
+t=1,
+q(zt | z0) = N
+ zt; √¯αt z0, (1 −¯αt) I
+
+,
+¯αt =
+tY
+s=1
+(1 −βs),
+(5)
+and a network ϵθ is trained to predict the injected noise [64],
+LDM = Ez0, t, ϵ
+
+∥ϵ −ϵθ(zt, t)∥2
+2
+
+,
+ϵ ∼N(0, I).
+(6)
+Sampling iteratively denoises zT ∼N(0, I) back to z0,
+which the frozen quantizer snaps to zq before the decoder
+maps it to pixel space.
+Conditioning.
+We instantiate ϵθ as a DiT-B/2 trans-
+former [65]. Beyond the diffusion timestep t, the network is
+conditioned on two discrete signals: the class label y and the
+source-dataset index s, the latter through a learned dataset
+embedding that augments DiT’s standard timestep and class
+embeddings, so a single network is shared across all twelve
+datasets. Each signal is mapped to a demb-dimensional vec-
+tor (ht, hy, hs); unlike vanilla DiT, which sums the timestep
+and class embeddings, we concatenate the three into a sin-
+gle conditioning vector c = [ht; hy; hs] ∈R3demb, prevent-
+ing the class and dataset factors from interfering in a shared
+additive code. Conditioning enters every block via AdaLN-
+Zero [65]: c regresses the shift, scale, and gate applied to
+the self-attention and MLP sublayers, with the modulation
+zero-initialized so each block starts at identity.
+4. Experiments
+4.1. Setup
+We benchmark eight discrete quantization families: VQ-
+GAN [43], SimVQ [34], SimQINCo [54], RQVAE [55],
+DiVeQ [49], SF-DiVeQ [49], LFQ [52], and BSQ [53], to-
+gether with continuous AEKL [57] and soft SoftVQ [46]
+baselines. Each method is trained at three spatial compres-
+sion factors f ∈{4, 8, 16} on the twelve 2D datasets of
+the MedMNIST+ collection [66] at their native 224 × 224
+resolution resulting in over 700,000 expert-labeled clinical
+images spanning pathology, radiology, dermatology, oph-
+thalmology, and microscopy, with multi-class, multi-label,
+and ordinal classification tasks.
+Following Sec. 3, every tokenizer uses the identical
+encoder-decoder backbone, loss weights, and training
+schedule; only the quantizer and compression factor vary, so
+all observed differences are attributable to the quantization
+scheme. Both stages, the tokenizer and its DiT-B/2 gener-
+ator, are trained on 2× NVIDIA H100 GPUs for two days
+each. For image generation, we use 100 sampling steps on
+a linear schedule, following [64].
+4.2. Reconstruction and Generation
+We evaluate each tokenizer in two regimes. For reconstruc-
+tion, we encode and decode every test image and report
+PSNR, SSIM, LPIPS [58], and reconstruction-FID (rFID)
+against the ground truth using torch-fidelity [67].
+For generation, we freeze the autoencoder, train a sin-
+5
+
+
+gle DiT-B/2 diffusion model [65] on its continuous latents
+(Sec. 3.2), sample per dataset as many images as its test
+split (conditioned on the dataset and, where applicable,
+class embedding to match the test-split class distribution)
+and report generation-FID (gFID). Since both FIDs use an
+ImageNet-trained Inception-V3 backbone that is poorly cal-
+ibrated to medical images, we additionally report FMD,
+which swaps this backbone for the benchmark’s official per-
+dataset ResNet-18 baseline classifier [66] (head removed)
+so the distance is measured in a feature space tuned to each
+dataset. We compute it in both regimes as a domain-aware
+counterpart to rFID and gFID.
+4.3. Codebook Metrics
+We characterize the discrete bottleneck from the per-code
+selection counts ck accumulated over the entire test split,
+with empirical probabilities pk = ck/ P
+j cj over a code-
+book of size K.
+Usage U =
+1
+K
+PK
+k=1 ⊮[ck > 0] is
+the fraction of codes ever selected, and normalized entropy
+˜H = H(C)/ log2 K, with H(C) = −PK
+k=1 pk log2 pk,
+measures how evenly information is spread across the code-
+book.
+To probe how the latent space is used, we addi-
+tionally report the stable rank of the centered pre-quant
+latents Z ∈RN×d, computed from their singular values
+σ1 ≥· · · ≥σd as sr(Z) = (P
+i σ2
+i )/σ2
+1 ∈[1, d], which
+counts the effective number of dimensions used.
+4.4. Codebook Misalignment
+To visualize the relationship between the codebook and the
+latent distribution it quantizes, we encode the test images
+of all twelve datasets to their pre-quant latents Pz = {zn},
+pool them, and collect the codewords actually selected, Cz.
+We embed Pz ∪Cz jointly with t-SNE and plot both in the
+shared 2D space, which exposes two failure modes: code-
+book collapse, where only a small fraction of codewords is
+ever selected (a sparse Cz), and internal codebook covariate
+shift, where the used codes drift off the latent cloud they are
+meant to cover. We quantify the associated rate–distortion
+efficiency with the distortion-per-bit Dper-bit = D/H(C),
+where D = 1
+N
+PN
+n=1∥zn −zq,n∥2
+2 is the mean quantization
+error between the pre-quant latent zn and its quantized value
+zq,n (the cumulative sum over residual stages, where ap-
+plicable) and H(C) = PL
+ℓ=1 H(Cℓ) is the empirical code-
+usage entropy. Charging distortion against the bits actually
+used rather than the allocated budget B = PL
+ℓ=1 log2 Kℓ
+(Tab. S6) penalizes collapse directly and prevents a larger
+codebook from appearing efficient, following [49].
+4.5. Correlation
+To test whether reconstruction predicts generation, we
+compute both Pearson and Spearman correlations across
+all model configurations.
+The Pearson coefficient r =
+Cov(X, Y )/(σXσY ) captures linear association, while the
+0.00
+0.05
+Probing gap 
+No codebook
+Compression factor
+f4
+f8
+f16
+0.0
+0.5
+1.0
+Codebook usage
+No codebook
+AEKL
+SoftVQ
+LFQ
+BSQ
+DiVeQ
+SF-DiVeQ
+SimVQ
+SimQinco
+RQVAE
+VQGAN
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Stable rank / d
+Figure 4. Codebook utilization and latent geometry are decou-
+pled. Three tokenizer properties grouped by family and compres-
+sion. Modern schemes reach near-full codebook utilization (mid)
+yet collapse their latents onto a thin, low-rank subspace (bottom),
+showing that a fully used codebook does not imply an expres-
+sive latent space and that codebook usage alone is a misleading
+indicator of tokenizer quality.
+Discretization largely preserves
+downstream-useful information (top).
+Spearman coefficient ρ
+=
+1 −6 P
+i δ2
+i /[ n(n2 −1) ],
+with δi = rank(xi) −rank(yi), captures monotonic rank
+agreement and is robust to FID’s heavy-tailed scale; re-
+porting both guards against a single outlier family driv-
+ing the trend. We attach 95% confidence intervals via the
+non-parametric bootstrap (B=10,000 resamples with re-
+placement, 2.5th/97.5th percentiles), which is rank- and
+distribution-free and thus well-suited to FID’s heavy-tailed
+scale and our moderate sample size of a few hundred (tok-
+enizer, dataset) pairs.
+4.6. Memorization
+To test whether a tokenizer’s bottleneck leaks training data,
+we adopt a nearest-neighbor replication test in the spirit of
+Somepalli et al. [68]. For each (tokenizer, dataset) configu-
+ration we embed every generated image and, as a calibrated
+reference, every held-out test image, and retrieve their near-
+est neighbors in the full training set. Embeddings come
+from two complementary encoders: SSCD [69], purpose-
+built for copy detection, and DINOv2 [70], which captures
+higher-level semantic similarity; a configuration is flagged
+only when both agree. We report copy-rate, the fraction of
+generated images whose top-1 training similarity exceeds
+the 95th percentile of the test-to-train similarity distribution,
+a per-dataset threshold that makes the real held-out data its
+own baseline (≈0.05 by construction), so that values above
+baseline indicate copying beyond what genuinely novel im-
+ages exhibit. As a complementary view we also report the
+6
+
+
+Figure 5. Memorization is mild and weakens under stronger
+compression.
+Columns: SSCD (copy-detection) and DINOv2
+(semantic) extractors. Top: copy-rate vs. compression factor f,
+with one point per (family, dataset) and black bars denoting per-f
+means. Rates remain far below the real-data baseline (dashed) and
+decrease as the bottleneck tightens. The NN-distance ratio stays
+well under the ”no single match” line.
+distance ratio between each generated image’s nearest and
+its next-k training neighbors (k=50), where values near one
+indicate no single memorized match. We cap each dataset at
+10,000 generated images and compare against the complete
+training split.
+4.7. Semantics and Downstream Evaluation
+To test if quantization preserves the semantically useful in-
+formation needed for downstream tasks, we evaluate each
+frozen tokenizer through linear probing on the datasets’ la-
+beled classes. For every model we extract two representa-
+tion variants, the continuous pre-quantization latent ze and
+its quantized counterpart zq, both flattened across the spatial
+dimensions into a single feature vector and standardized to
+zero mean and unit variance. On top of each variant, we fit
+a single linear classifier for 50 epochs with the tokenizer
+held frozen, select the best checkpoint on the validation
+split, and report test performance under each dataset’s task-
+appropriate primary metric (top-1 accuracy for multi-class
+tasks, macro-AUROC for multi-label tasks, and quadratic-
+weighted kappa for the ordinal grading task).
+The per-
+dataset gap ∆= M(ze) −M(zq) in the primary metric
+M quantifies the change in class-discriminative structure
+across the discretization step itself, isolating the effect of
+quantization from the encoder’s representation capacity.
+5. Results and Discussion
+Reconstruction and generation performance in medical
+imaging strongly correlate.
+Across all configurations,
+reconstruction metrics are strongly predictive of genera-
+tion quality:
+rFID and gFID correlate at r=0.82 with
+95% bootstrap CI [0.77, 0.86] (B=10,000 resamples over
+n=360 paired observations; Spearman ρ=0.81 [0.77, 0.85])
+(Fig. 2), and PSNR/LPIPS show the same trend (per-method
+values in Tab. 1). Moreover, Sec. A disentangles the cor-
+relation by dataset and by compression factor, showing it
+is not an artifact of pooling since the same relationship
+holds across each stratum.
+This contrasts with reported
+natural-image results, where reconstruction is a poor proxy
+for generation [27–29].
+We conjecture this reflects the
+distinct statistics of medical data, stronger anatomical pri-
+ors, lower intra-class variance, and limited texture diversity,
+which yield latent spaces whose reconstructability and gen-
+erative modelability move together; whether representation-
+aligned tokenizers would follow a different regime remains
+open. This is practically valuable since judging a tokenizer
+by generation requires training a generator per configura-
+tion while reconstruction is free from the autoencoder, the
+correlation lets practitioners select tokenizers and search ar-
+chitectures using rFID alone, reserving generator training
+for a shortlist. It further makes reconstruction a legitimate
+optimization target, since reducing reconstruction error is
+expected to improve generation.
+Decoupled codebook usage and latent geometry.
+Nearly
+every modern scheme cures the canonical VQ collapse: as
+f grows from 4 to 16, VQGAN usage falls from 79% to
+1.2%, yet reparameterized (SimVQ, SimQINCo), residual
+(RQVAE), and lookup-free (LFQ, BSQ) methods all hold
+≈100% utilization (Fig. 4; only SF-DiVeQ and SoftVQ
+collapse partially). But high usage does not imply an effi-
+cient latent space: explicit-codebook methods, even at full
+utilization, compress their latents onto a thin, anisotropic
+subspace (stable rank 0.15–0.54 of d), whereas lookup-
+free (0.55–0.87) and continuous (0.83–0.97) methods stay
+near-isotropic. This could be driven by the general quan-
+tization scheme, not the data or the gradient estimator:
+nearest-neighbor lookup lets the encoder collapse onto a
+low-rank manifold the codebook can cover, and it is no
+straight-through artifact, since DiVeQ propagates true gra-
+dients through the quantizer yet collapses just like the rest.
+The immediate consequence is definitional: since the en-
+coder packs information into a fraction of the available di-
+mensions, the nominal latent dimensionality overstates how
+much of the space each tokenizer actually uses. Beyond
+this, the collapse appears benign; stable rank shows no clear
+effect on either reconstruction or generation, so we treat it
+as an intrinsic geometric property of these quantizers and an
+axis independent of downstream quality rather than a driver
+of it.
+Codebook collapse and misalignment.
+A joint t-SNE of
+the pre-quant latents Pz and the selected codes Cz (Fig. 3)
+serves as a more diagnostic read-out of tokenizer quality
+than codebook usage alone, capturing both how much of
+7
+
+
+the codebook a model uses and how well it places that code-
+book onto the data manifold. It reveals that usage and ge-
+ometric alignment with the data are independent axes, and
+that each family trades them off in a distinct way. Vanilla
+VQGAN displays the canonical codebook collapse pattern:
+only a few live codewords concentrate tightly on the densest
+region of Pz and reconstruct what they cover at low distor-
+tion, but most codewords go unused, leaving most of the
+latent cloud unreached. Lookup-free schemes (LFQ, BSQ)
+sit at the opposite extreme: their implicit codebooks spread
+broadly across the embedding space, yielding nearly full us-
+age but settling far from the data manifold, which translates
+to high quantization error despite the healthy utilization
+numbers. Codebook-reparameterization methods fall in be-
+tween: SimVQ exhibits a usage shift in which some datasets
+are covered densely while others are left sparse, whereas
+SimQINCo blankets all twelve datasets uniformly and at
+lower distortion than SimVQ. The differentiable schemes
+achieve both wide coverage and low distortion, with Di-
+VeQ attaining the lowest Dper-bit among the single-codebook
+methods; SF-DiVeQ, despite interpolating along codeword
+segments, does not improve on it here. Residual quantiza-
+tion (RQVAE) attains the lowest distortion overall, though
+at a higher bit rate (Tab. S6), so its low Dper-bit partly reflects
+a higher operating rate.
+Memorization is mild and decreases under stronger com-
+pression. A tokenizer that reproduces its training data un-
+dermines the privacy argument for synthetic imaging, so we
+ask whether the tokenizer leaks data. Fig. 5 shows it largely
+does not: across all 720 configurations mean copy-rate stays
+well below the real-data baseline, and the nearest-neighbor
+distance ratio remains near one, meaning generated im-
+ages sit in generic high-density regions rather than locking
+onto any single example. Outright replication is rare, so
+on aggregate the bottleneck withholds identity as required.
+This is not an underfitting artifact as copy-rate is essentially
+uncorrelated with generation quality and the few elevated
+copy-rates come from the best generators (Fig. S11).
+The exceptions concentrate on Path and OCT, for partly
+different reasons (Tab. S21). Path is among the least di-
+verse datasets by every measure (low effective rank, low
+pairwise distance, high nearest-neighbor similarity), so its
+near-duplicate scans leave a generator little room for nov-
+elty. OCT only looks diverse in raw pixels, where speckle
+inflates variance; its B-scans share a stereotyped layered
+structure and stay semantically repetitive. Thus, memoriza-
+tion is rather driven by data than by tokenizer design.
+The only design choice that matters is compression:
+memorization falls steadily as the bottleneck tightens, be-
+cause a coarser latent simply cannot carry the detail that
+makes a sample traceable. This is the same trade-off we
+see on our other axes: the compression that protects privacy
+also discards diagnostic and representational signal.
+Discretization largely preserves downstream-useful infor-
+mation.
+Finally, we probe how much semantically useful
+information survives quantization by training linear clas-
+sifiers on the frozen latents (Tab. S20). Discretization is
+largely information-preserving: for explicit-codebook (VQ-
+GAN, SimVQ, SimQINCo), residual (RQVAE), and differ-
+entiable (DiVeQ, SF-DiVeQ) schemes the probe gap ∆=
+M(ze) −M(zq) is statistically indistinguishable from zero,
+i.e. the discrete latent zq matches the continuous bottleneck
+ze to within noise. The exception is the lookup-free fam-
+ily (LFQ, BSQ), whose per-dimension binarization incurs
+a consistent gap (∆≈0.02–0.05) across all three com-
+pression factors. Strikingly, this is independent of latent
+rank: lookup-free latents are the highest-rank of all families
+(Sec. 5), yet lose the most downstream-useful structure—so
+the erosion stems from the hard scalar quantization grid, not
+from the low-rank geometry of explicit-codebook methods.
+Downstream utility is thus a largely separate axis from re-
+construction and generation, one on which most quantizers
+are safe and only lookup-free binarization pays a price, a
+consideration absent from natural-image tokenizer design.
+Summary: Practitioner’s Guide in medical imaging. Un-
+der our evaluated setting we observe:
+• Reconstruction still has headroom. Reconstruction has
+not yet saturated and, since it tends to predict generation
+(r=0.82), it appears to be a reasonable lever to keep im-
+proving, with limited privacy risk given that memoriza-
+tion remains mild in our experiments.
+• Discrete tokenizers are competitive substrates for
+continuous-latent diffusion. In our setup, discrete tok-
+enizers tend to match or outperform the continuous base-
+line on reconstruction and generation while preserving
+downstream utility comparably.
+• Residual quantization is a strong default. For a favor-
+able compute-to-performance trade-off, residual quanti-
+zation (RQVAE) is a reasonable first choice, performing
+well across compression factors with little tuning.
+6. Conclusion
+Within our benchmark, medical image tokenization de-
+parts from natural-image expectations. The field’s inher-
+ited assumptions break: reconstruction predicts generation,
+a healthy codebook hides a collapsed latent, and discretiza-
+tion is largely free for both privacy and downstream use.
+Within this setting, there is no single winner, but a clear
+practitioner’s guide emerges, and reconstruction remains a
+lever worth pushing.
+Limitations and Future Work. Our study covers only 2D
+medical data. Higher-resolution and volumetric data, where
+compression and memory constraints differ, remain unex-
+plored.
+We assess each tokenizer through a continuous-
+latent diffusion model rather than autoregressive modeling
+of the discrete codes, with a single fixed DiT-B/2 generator,
+8
+
+
+so generation quality reflects latent fidelity but not code-
+sequence learnability or generator capacity. Downstream
+utility is gauged via linear probing, a deliberately simple
+proxy for richer clinical tasks. Our natural-versus-medical
+comparison also relies on reported natural-image numbers
+rather than a matched control, which we leave to future
+work alongside representation-aligned tokenizers. Looking
+forward, the decoupling of codebook usage from latent ge-
+ometry suggests designing quantizers that target the latent-
+rank axis directly rather than chasing utilization. Finally,
+our work establishes how medical tokenization departs from
+the natural-image regime but not yet why; pinning down the
+cause, be it data scarcity, low inter-sample variability, lim-
+ited texture diversity, or strong anatomical priors, is the key
+open question.
+References
+[1] M.J. Willemink, W.A. Koszek, C. Hardell, J. Wu, D. Fleis-
+chmann, H. Harvey, L.R. Folio, R.M. Summers, D.L. Rubin,
+and M.P. Lungren. Preparing medical imaging data for ma-
+chine learning. Radiology, 295(1):4–15, 2020. 1
+[2] A. Kazerouni, E. Khodapanah Aghdam, M. Heidari, R.
+Azad, M. Fayyaz, I. Hacihaliloglu, and D. Merhof. Diffu-
+sion models in medical imaging: A comprehensive survey.
+Medical Image Analysis, 88:102846, 2023. 1
+[3] G.A. Kaissis, M.R. Makowski, D. R¨uckert, and R.F. Braren.
+Secure, privacy-preserving and federated machine learning
+in medical imaging. Nature Machine Intelligence, 2(6):305–
+311, 2020. 1, 2
+[4] F. Khader, G. M¨uller-Franzes, S. Tayebi Arasteh, T. Han,
+C. Haarburger, M. Schulze-Hagen, P. Schad, S. Engelhardt,
+B. Baeßler, S. Foersch, J. Stegmaier, C. Kuhl, S. Nebelung,
+J.N. Kather, and D. Truhn. Denoising diffusion probabilistic
+models for 3D medical image generation. Scientific Reports,
+13:7303, 2023. 1, 4
+[5] Amirhossein
+Kazerouni,
+Ehsan
+Khodapanah
+Aghdam,
+Moein Heidari, Reza Azad, Mohsen Fayyaz, Ilker Haci-
+haliloglu, and Dorit Merhof. Diffusion models in medical
+imaging: A comprehensive survey. Medical Image Analysis,
+88:102846, 2023. 1
+[6] Shanshan Wang, Xuanru Zhou, Cheng Li, Shuqiang Wang,
+Ye Li, Tao Tan, and Hairong Zheng. Generative artificial
+intelligence in medical imaging: Foundations, progress, and
+clinical translation. Research, 2025. 1
+[7] H. Chung and J.C. Ye.
+Score-based diffusion models for
+accelerated MRI. Medical Image Analysis, 80:102479, 2022.
+1
+[8] Niklas Bubeck, Suprosanna Shit, Chen Chen, Can Zhao,
+Pengfei Guo, Dong Yang, Georg Zitzlsberger, Daguang Xu,
+Bernhard Kainz, Daniel Rueckert, and Jiazhen Pan. Latent
+interpolation learning using diffusion models for cardiac vol-
+ume reconstruction. arXiv preprint arXiv:2508.13826, 2025.
+1
+[9] P. Guo, C. Zhao, D. Yang, Z. Xu, V. Nath, Y. Tang, B. Si-
+mon, M. Belue, S. Harmon, B. Turkbey, and D. Xu. MAISI:
+Medical AI for synthetic imaging. In WACV, 2025. 1
+[10] Valentin Biller, Niklas Bubeck, Lucas Zimmer, Ayhan Can
+Erdur, Sandeep Nagar, Anke Meyer-Baese, Daniel R¨uckert,
+Benedikt Wiestler, and Jonas Weidner. Tumorflow: Physics-
+guided longitudinal mri synthesis of glioblastoma growth.
+arXiv preprint arXiv:2603.04058, 2026. 1
+[11] K. Packh¨auser, L. Folle, F. Thamm, and A. Maier.
+Gen-
+eration of anonymous chest radiographs using latent diffu-
+sion models for training thoracic abnormality classification
+systems. In IEEE International Symposium on Biomedical
+Imaging (ISBI), 2023. 1
+[12] P. Chambon, C. Bluethgen, J.-B. Delbrouck, R. Van der
+Sluijs, M. Połacin, J.M.Z. Chaves, T.M. Abraham, S. Puro-
+hit, C.P. Langlotz, and A. Chaudhari. RoentGen: Vision-
+language foundation model for chest X-ray generation. arXiv
+preprint arXiv:2211.12737, 2022. 1
+[13] R. Montoya-del Angel, K. Sam-Millan, K. Lekadir, and R.
+Mart´ı. MAM-E: Mammographic synthetic image generation
+with diffusion models. Sensors, 24(7):2076, 2024. 1
+[14] S. Yellapragada, A. Graikos, P. Prasanna, T. Kurc, J. Saltz,
+and D. Samaras. PathLDM: Text-conditioned latent diffusion
+model for histopathology. In WACV, 2024. 2
+[15] A. Graikos, S. Yellapragada, M.-Q. Le, S. Kapse, P.
+Prasanna, J. Saltz, and D. Samaras. Learned representation-
+guided diffusion models for large-image generation.
+In
+CVPR, 2024.
+[16] J. Fayyad, N. Bayasi, Z. Yu, and H. Najjaran. LesionGen: A
+concept-guided diffusion model for dermatology image syn-
+thesis. In MICCAI Workshop on Deep Generative Models.
+Springer, 2025.
+[17] M.A. Farooq, W. Yao, M. Schukat, M.A. Little, and P. Corco-
+ran. Derm-T2IM: Harnessing synthetic skin lesion data via
+stable diffusion models for enhanced skin disease classifica-
+tion using ViT and CNN. In IEEE Engineering in Medicine
+and Biology Society (EMBC), 2024. 2
+[18] J. Ning, X. Tang, et al. RetinaLogos: Fine-grained synthesis
+of high-resolution retinal images through captions. In MIC-
+CAI. Springer, 2025. 2
+[19] I. Ilanchezian, V. Boreiko, L. K¨uhlewein, Z. Huang, M.S.
+Ayhan, M. Hein, L. Koch, and P. Berens. Generating realis-
+tic counterfactuals for retinal fundus and OCT images using
+diffusion models. PLOS Digital Health, 2025.
+[20] S. Li, M. Dan, Y. Chu, J. Yu, Y. Zhao, and P. Zhao. Re-
+tiDiff: Diffusion-based synthesis of retinal OCT images for
+enhanced segmentation. In MICCAI. Springer, 2025. 2
+[21] S. Deltadahl, J. Gilbey, C. Van Laer, N. Boeckx, M.P.G.
+Leers, et al. Deep generative classification of blood cell mor-
+phology. Nature Machine Intelligence, 2025. 2
+[22] J. Carreras Boada, R.M. Umer, and C. Marr. CytoDiff: AI-
+driven cytomorphology image synthesis for medical diag-
+nostics.
+In IEEE/CVF International Conference on Com-
+puter Vision Workshops (ICCVW), 2025. 2
+[23] Xiaorui Su, Shvat Messica, Yepeng Huang, Ruth Johnson,
+Lukas Fesser, Shanghua Gao, Faryad Sahneh, and Marinka
+Zitnik. Multimodal medical code tokenizer. In International
+Conference on Machine Learning (ICML), 2025. 2
+[24] Chenglong Ma, Yuanfeng Ji, Jin Ye, Zilong Li, Chenhui
+Wang, Junzhi Ning, Wei Li, Lihao Liu, Qiushan Guo, Tian-
+bin Li, Junjun He, and Hongming Shan. MedITok: A unified
+9
+
+
+medical image tokenizer for autoregressive synthesis and un-
+derstanding. arXiv preprint arXiv:2505.19225, 2025. 2
+[25] Zhicheng He, Yunpeng Zhao, Junde Wu, Ziwei Niu, Zi-
+jun Li, Bohan Li, Lanfen Lin, and Yueming Jin.
+Med-
+var: Towards scalable and efficient medical image genera-
+tion via next-scale autoregressive prediction. arXiv preprint
+arXiv:2602.14512, 2026.
+[26] Niklas Bubeck, Yundi Zhang, Suprosanna Shit, Daniel
+Rueckert, and Jiazhen Pan. Reconstruct or generate: Explor-
+ing the spectrum of generative modeling for cardiac mri. In
+Deep Generative Models (DGM4MICCAI), MICCAI Work-
+shop. Springer, 2025. 2
+[27] J. Yao, B. Yang, and X. Wang. Reconstruction vs. genera-
+tion: Taming optimization dilemma in latent diffusion mod-
+els. In CVPR, 2025. 2, 7
+[28] Tongda Xu, Mingwei He, Shady Abu-Hussein, Jos´e Miguel
+Hern´andez-Lobato, Chunhang Zheng, Kai Zhao, Chao Zhou,
+Ya-Qin Zhang, and Yan Wang.
+Making reconstruction
+FID predictive of diffusion generation FID. arXiv preprint
+arXiv:2603.05630, 2026. 3
+[29] V. Ramanujan, K. Tirumala, A. Aghajanyan, L. Zettlemoyer,
+and A. Farhadi.
+When worse is better: Navigating the
+compression-generation tradeoff in visual tokenization. In
+NeurIPS, 2025. 7
+[30] Jaskirat Singh, Xingjian Leng, Zongze Wu, Liang Zheng,
+Richard Zhang, Eli Shechtman, and Saining Xie. What mat-
+ters for representation alignment: Global information or spa-
+tial structure? In ICLR, 2026. 2
+[31] Jiahui Yu, Xin Li, Jing Yu Koh, Han Zhang, Ruoming Pang,
+James Qin, Alexander Ku, Yuanzhong Xu, Jason Baldridge,
+and Yonghui Wu. Vector-quantized image modeling with im-
+proved VQGAN. In International Conference on Learning
+Representations (ICLR), 2022. 2
+[32] F. Mentzer, D. Minnen, E. Agustsson, and M. Tschannen.
+Finite scalar quantization: VQ-VAE made simple. In ICLR,
+2024. 3
+[33] Lei Zhu, Fangyun Wei, Yanye Lu, and Dong Chen. Scaling
+the codebook size of VQGAN to 100,000 with a utilization
+rate of 99%. In Advances in Neural Information Processing
+Systems (NeurIPS), 2024.
+[34] Y. Zhu, B. Li, Y. Xin, and L. Xu. Addressing representation
+collapse in vector quantized models with one linear layer. In
+ICCV, 2025. 2, 3, 4, 5, 21
+[35] Tejaswini Medi, Hsien-Yi Wang, Arianna Rampini, and Mar-
+gret Keuper. Missing fine details in images: Last seen in high
+frequencies. arXiv preprint arXiv:2509.05441, 2025. 2
+[36] Andrea Posada, Wenke Karbole, Bach Ngoc Doan, Alexan-
+der Weers, Solmaz Abdolrahimzadeh, Maria Patsiamanidi,
+Kahkashan Haider, Vaishali Khare, Daniel Rueckert, An-
+drew John Lotery, Sobha Sivaprasad, and Martin J. Menten.
+When the edit changes the patient:
+Measuring identity
+preservation in counterfactual retinal images.
+In Deep
+Generative Models Workshop at MICCAI (DGM4MICCAI),
+2026. 2
+[37] Gabriele Lozupone, Alessandro Bria, Francesco Fontanella,
+Frederick J. A. Meijer, Claudio De Stefano, and Henk-
+jan Huisman. Latent diffusion autoencoders: Toward effi-
+cient and meaningful unsupervised representation learning
+in medical imaging. Medical Image Analysis, 2026. 2
+[38] Jacob Luber et al.
+Clinically relevant latent space em-
+bedding of cancer histopathology slides through variational
+autoencoder based image compression.
+arXiv preprint
+arXiv:2303.13332, 2023. 2
+[39] Suhyeon Lee, Won Jun Kim, Jinho Chang, and Jong Chul
+Ye. LLM-CXR: Instruction-finetuned LLM for CXR image
+understanding and generation. In International Conference
+on Learning Representations (ICLR), 2024. 2
+[40] Ibrahim Ethem Hamamci, Sezgin Er, Suprosanna Shit,
+Hadrien Reynaud, Dong Yang, Pengfei Guo, Marc Edgar,
+Daguang Xu, Bernhard Kainz, and Bjoern Menze. Better
+tokens for better 3d: Advancing vision-language modeling
+in 3d medical imaging. In Advances in Neural Information
+Processing Systems (NeurIPS), 2025. 2
+[41] D.P. Kingma and M. Welling.
+Auto-encoding variational
+Bayes. In ICLR, 2014. 2, 3
+[42] A. van den Oord, O. Vinyals, and K. Kavukcuoglu. Neural
+discrete representation learning. In NeurIPS, 2017. 2
+[43] P. Esser, R. Rombach, and B. Ommer. Taming transformers
+for high-resolution image synthesis. In CVPR, pages 12873–
+12883, 2021. 2, 4, 5, 21
+[44] H. Wu and M. Flierl. Vector quantization-based regulariza-
+tion for autoencoders. In AAAI, 2020. 2
+[45] T. Gautam et al. Soft convex quantization: Revisiting vec-
+tor quantization with convex optimization. In Learning for
+Dynamics & Control Conference (L4DC), 2024. 2
+[46] H. Chen et al. SoftVQ-VAE: Efficient 1-dimensional contin-
+uous tokenizer. In CVPR, 2025. 2, 4, 5
+[47] N. Dilokthanakul, P.A.M. Mediano, M. Garnelo, M.C.H.
+Lee, H. Salimbeni, K. Arulkumaran, and M. Shanahan. Deep
+unsupervised clustering with Gaussian mixture variational
+autoencoders. In ICLR Workshop, 2017. 3
+[48] M.H. Vali and T. B¨ackstr¨om. Interpretable latent space us-
+ing space-filling curves for phonetic analysis in voice con-
+version. In Interspeech, pages 306–310, 2023. 3
+[49] M.H. Vali, T. B¨ackstr¨om, and A. Solin. DiVeQ: Differen-
+tiable vector quantization using the reparameterization trick.
+In ICLR, 2026. 3, 4, 5, 6, 21
+[50] M.H. Vali and T. B¨ackstr¨om. NSVQ: Noise substitution in
+vector quantization for machine learning. IEEE Access, 10:
+13598–13610, 2022. 3
+[51] C. Fifty, R.G. Junkins, D. Duan, A. Iger, J.W. Liu, E. Amid,
+S. Thrun, and C. R´e. Restructuring vector quantization with
+the rotation trick. In ICML, 2024. 3
+[52] L. Yu, J. Lezama, N.B. Gundavarapu, L. Versari, K. Sohn,
+D. Minnen, Y. Cheng, V. Birodkar, A. Gupta, X. Gu, A.G.
+Hauptmann, B. Gong, M.-H. Yang, I. Essa, D.A. Ross, and
+L. Jiang. Language model beats diffusion: Tokenizer is key
+to visual generation. In ICLR, 2024. 3, 4, 5, 21
+[53] Y. Zhao, Y. Xiong, and P. Kr¨ahenb¨uhl.
+Image and video
+tokenization with binary spherical quantization.
+In ICLR,
+2025. 3, 4, 5, 21
+[54] I.A.M. Huijben, M. Douze, M. Muckley, R.J.G. van Sloun,
+and J. Verbeek. Residual quantization with implicit neural
+codebooks. In ICML, 2024. 3, 4, 5, 21
+10
+
+
+[55] D. Lee, C. Kim, S. Kim, M. Cho, and W.S. Han. Autoregres-
+sive image generation using residual quantization. In CVPR,
+pages 11523–11532, 2022. 3, 4, 5, 21
+[56] H. J´egou, M. Douze, and C. Schmid. Product quantization
+for nearest neighbor search. IEEE TPAMI, 33(1):117–128,
+2011. 3
+[57] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Om-
+mer. High-resolution image synthesis with latent diffusion
+models. In CVPR, pages 10684–10695, 2022. 4, 5
+[58] R. Zhang, P. Isola, A.A. Efros, E. Shechtman, and O. Wang.
+The unreasonable effectiveness of deep features as a percep-
+tual metric. In CVPR, pages 586–595, 2018. 4, 5
+[59] P. Isola, J.-Y. Zhu, T. Zhou, and A.A. Efros. Image-to-image
+translation with conditional adversarial networks. In CVPR,
+pages 1125–1134, 2017. 4
+[60] S. Zhao, Z. Liu, J. Lin, J.-Y. Zhu, and S. Han. Differentiable
+augmentation for data-efficient GAN training. In NeurIPS,
+2020. 4
+[61] Han Zhang, Zizhao Zhang, Augustus Odena, and Honglak
+Lee. Consistency regularization for generative adversarial
+networks. In International Conference on Learning Repre-
+sentations (ICLR), 2020. 4
+[62] H.-Y. Tseng, L. Jiang, C. Liu, M.-H. Yang, and W. Yang.
+Regularizing generative adversarial networks under limited
+data. In CVPR, pages 7921–7931, 2021. 4
+[63] H. Wang, Z. Liu, K. Sun, X. Wang, D. Shen, and Z. Cui. 3D
+MedDiffusion: A 3D medical latent diffusion model for con-
+trollable and high-quality medical image generation. IEEE
+Trans. Med. Imaging, 2025. 4
+[64] J. Ho, A. Jain, and P. Abbeel. Denoising diffusion proba-
+bilistic models. In NeurIPS, 2020. 4, 5
+[65] W. Peebles and S. Xie. Scalable diffusion models with trans-
+formers. In ICCV, pages 4172–4182, 2023. 5, 6
+[66] J. Yang, R. Shi, D. Wei, Z. Liu, L. Zhao, B. Ke, H. Pfis-
+ter, and B. Ni. MedMNIST v2 – a large-scale lightweight
+benchmark for 2D and 3D biomedical image classification.
+Scientific Data, 10:41, 2023. 5, 6
+[67] A. Obukhov, M. Seitzer, P.-W. Wu, S. Zhydenko, J. Kyl, and
+E.Y.-J. Lin. High-fidelity performance metrics for generative
+models in PyTorch. Zenodo, 2020. Version 0.3.0. 5
+[68] Gowthami Somepalli, Vasu Singla, Micah Goldblum, Jonas
+Geiping, and Tom Goldstein. Diffusion art or digital forgery?
+Investigating data replication in diffusion models. In Pro-
+ceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), pages 6048–6058, 2023. 6
+[69] Ed Pizzi, Sreya Dutta Roy, Sugosh Nagavara Ravindra, Priya
+Goyal, and Matthijs Douze.
+A self-supervised descriptor
+for image copy detection. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition
+(CVPR), pages 14532–14542, 2022. 6
+[70] Maxime Oquab, Timoth´ee Darcet, Th´eo Moutakanni, Huy
+Vo, Marc Szafraniec, Vasil Khalidov, Pierre Fernandez,
+Daniel Haziza, Francisco Massa, Alaaeldin El-Nouby, Mah-
+moud Assran, Nicolas Ballas, Wojciech Galuba, Russell
+Howes, Po-Yao Huang, Shang-Wen Li, Ishan Misra, Michael
+Rabbat, Vasu Sharma, Gabriel Synnaeve, Hu Xu, Herv´e Je-
+gou, Julien Mairal, Patrick Labatut, Armand Joulin, and Pi-
+otr Bojanowski. DINOv2: Learning robust visual features
+without supervision. Transactions on Machine Learning Re-
+search (TMLR), 2024. 6
+11
+
+
+What Makes a Good Medical Image Tokenizer?
+Rethinking Reconstruction and Generation in Medical Image Tokenization
+Supplementary Material
+A. Correlation
+Table S2.
+Per-dataset correlation of PSNR with DiT-B/2
+generation-FID, with 95% bootstrap CIs (B=10,000). n=30 (to-
+kenizer, compression) configs per dataset; pooled n=360. PSNR
+correlates negatively (higher PSNR →lower/better gFID).
+Dataset
+Pearson r [95% CI]
+Spearman ρ [95% CI]
+Path
+−0.63 [−0.78, −0.37]
+−0.67 [−0.85, −0.38]
+Chest
+−0.73 [−0.89, −0.65]
+−0.89 [−0.95, −0.73]
+Derma
+−0.76 [−0.88, −0.59]
+−0.74 [−0.86, −0.50]
+OCT
+−0.76 [−0.92, −0.59]
+−0.82 [−0.94, −0.57]
+Pneu
+−0.51 [−0.70, −0.18]
+−0.43 [−0.69, −0.07]
+Reti
+−0.72 [−0.84, −0.54]
+−0.77 [−0.87, −0.57]
+Breast
+−0.83 [−0.91, −0.71]
+−0.89 [−0.95, −0.74]
+Blood
+−0.57 [−0.75, −0.34]
+−0.57 [−0.75, −0.26]
+Tiss
+−0.66 [−0.80, −0.47]
+−0.63 [−0.78, −0.36]
+OrgA
+−0.82 [−0.91, −0.72]
+−0.88 [−0.94, −0.70]
+OrgC
+−0.78 [−0.87, −0.67]
+−0.84 [−0.91, −0.69]
+OrgS
+−0.76 [−0.85, −0.66]
+−0.80 [−0.88, −0.64]
+Pooled
+−0.67 [−0.71, −0.64]
+−0.74 [−0.79, −0.69]
+Table S3.
+Per-dataset correlation of rFID with DiT-B/2
+generation-FID, with 95% bootstrap CIs (B=10,000). n=30 (to-
+kenizer, compression) configs per dataset; pooled n=360. rFID
+correlates positively with gFID across every dataset.
+Dataset
+Pearson r [95% CI]
+Spearman ρ [95% CI]
+Path
++0.61 [+0.17, +0.84]
++0.54 [+0.17, +0.78]
+Chest
++0.79 [+0.73, +0.97]
++0.87 [+0.69, +0.95]
+Derma
++0.75 [+0.60, +0.90]
++0.76 [+0.55, +0.87]
+OCT
++0.80 [+0.67, +0.98]
++0.93 [+0.79, +0.98]
+Pneu
++0.48 [+0.07, +0.76]
++0.38 [+0.06, +0.63]
+Reti
++0.82 [+0.59, +0.93]
++0.77 [+0.55, +0.88]
+Breast
++0.92 [+0.84, +0.97]
++0.92 [+0.82, +0.96]
+Blood
++0.42 [+0.11, +0.80]
++0.42 [+0.10, +0.65]
+Tiss
++0.71 [+0.24, +0.95]
++0.65 [+0.35, +0.83]
+OrgA
++0.77 [+0.62, +0.92]
++0.87 [+0.69, +0.95]
+OrgC
++0.72 [+0.53, +0.88]
++0.79 [+0.62, +0.89]
+OrgS
++0.69 [+0.49, +0.87]
++0.74 [+0.54, +0.85]
+Pooled
++0.82 [+0.77, +0.86]
++0.81 [+0.77, +0.85]
+Table S4.
+Per-compression correlation of PSNR with DiT-B/2
+generation-FID, with 95% bootstrap CIs (B=10,000). PSNR cor-
+relates negatively (higher PSNR →lower/better gFID) at every
+compression.
+Compression
+Pearson r [95% CI]
+Spearman ρ [95% CI]
+f=4
+−0.68 [−0.75, −0.61]
+−0.73 [−0.80, −0.64]
+f=8
+−0.72 [−0.78, −0.66]
+−0.79 [−0.85, −0.70]
+f=16
+−0.61 [−0.69, −0.52]
+−0.62 [−0.73, −0.48]
+Pooled
+−0.67 [−0.71, −0.64]
+−0.74 [−0.79, −0.69]
+Table S5.
+Per-compression correlation of rFID with DiT-B/2
+generation-FID, with 95% bootstrap CIs (B=10,000). rFID cor-
+relates positively with gFID at every compression, and the associ-
+ation strengthens as the bottleneck tightens.
+Compression
+Pearson r [95% CI]
+Spearman ρ [95% CI]
+f=4
++0.71 [+0.63, +0.78]
++0.76 [+0.68, +0.82]
+f=8
++0.86 [+0.81, +0.91]
++0.88 [+0.82, +0.91]
+f=16
++0.90 [+0.84, +0.94]
++0.85 [+0.76, +0.91]
+Pooled
++0.82 [+0.77, +0.86]
++0.81 [+0.77, +0.85]
+Figure S6. The reconstruction–generation coupling strength-
+ens with compression. Reconstruction metric vs. DiT-B/2 gFID
+per compression factor (n=120 each). Top: rFID; bottom: PSNR.
+Pearson OLS (95% band) and Spearman fits, with r [95% CI] and
+ρ inset. The coupling tightens as f=4→8→16.
+B. Bit-Compression
+While we aim to keep the bit budget comparable across
+quantizers, some variation is inevitable, since each fam-
+ily encodes its latents differently: single-codebook methods
+12
+
+
+Figure S7. Reconstruction predicts generation within every dataset. Per-dataset scatter of a reconstruction metric against DiT-B/2 gFID,
+one panel per MedMNIST+ dataset (n=30 (tokenizer, compression) configs each), colored by tokenizer family and marked by compression
+factor. Left block: rFID; right block: PSNR. Each panel overlays a Pearson OLS fit (with a 95% band) and a Spearman monotone fit; the
+inset box reports Pearson r [95% CI] and Spearman ρ. rFID correlates positively and PSNR negatively with gFID in all twelve datasets,
+confirming that the pooled trend is not an artifact of aggregation.
+spend one index per token, RQVAE spends several across
+its residual stages, and lookup-free schemes spend one bit
+per latent dimension. Table S6 lists the resulting per-token
+budget B for each family, which we use to normalize distor-
+tion into the distortion-per-bit Dper-bit = D/B of Sec. 4.4.
+Table S6. Per-token bit budget B = PL
+ℓ=1 log2 Kℓused to nor-
+malize distortion, Dper-bit = D/B (Sec. 4.4). Single-codebook
+families spend one index (B = log2 K, L=1); RQVAE uses L=4
+residual stages of size K; lookup-free families spend one bit per
+latent dimension (B = d). Codebooks are K=8192 at f=4 and
+K=16384 at f=8, 16. AEKL is continuous (no discrete budget);
+SoftVQ’s budget is nominal as its assignment is soft.
+Family (B)
+f=4
+f=8
+f=16
+VQGAN (log2 K)
+13
+14
+14
+SimVQ (log2 K)
+13
+14
+14
+SimQINCo (log2 K)
+13
+14
+14
+DiVeQ (log2 K)
+13
+14
+14
+SF-DiVeQ (log2 K)
+13
+14
+14
+RQVAE (4 log2 K)
+52
+56
+56
+LFQ (d)
+10
+14
+18
+BSQ (d)
+10
+14
+18
+C. Quantitative Reconstruction
+We report pixel and perceptual fidelity per dataset—PSNR
+(Tab. S7), SSIM (Tab. S8), LPIPS (Tab. S9), and pixel-MSE
+(Tab. S10)—together with reconstruction-FID (Tab. S11).
+RQVAE is the strongest reconstructor on nearly every
+dataset and compression factor, whereas the lookup-free
+families (LFQ, BSQ) trail throughout and degrade sharply
+at f=16.
+D. Qualitative Reconstructions
+Figure S8 shows two fixed test subjects (indices 7 and 12)
+from every MedMNIST dataset, reconstructed by each tok-
+enizer family at the three compression factors. The top row
+of each panel is the original; the number in the top-right of
+each cell is that image’s PSNR (dB) against its reference.
+E. Quantitative Generation
+Table S13 gives per-dataset DiT-B/2 generation-FID. The
+ranking tracks reconstruction closely—consistent with the
+r=0.82 correlation in the main paper—with the soft and
+space-filling schemes (DiVeQ, SF-DiVeQ) leading at low-
+to-mid compression and RQVAE retaking the lead at f=16.
+F. Qualitative Generations
+Figure S9 shows two conditional DiT samples per dataset
+from every tokenizer family at each compression factor,
+complementing the quantitative gFID results with a visual
+sense of how sample quality and diversity degrade as the
+bottleneck tightens.
+13
+
+
+Table S7. Per-dataset PSNR (↑). Cells: mean±σ over test images.
+Method
+Path
+Chest
+Derma
+OCT
+Pneu
+Reti
+Breast
+Blood
+Tiss
+OrgA
+OrgC
+OrgS
+mean
+f = 4
+AEKL
+25.4±3.1 31.1±1.3 30.3±2.0 27.5±1.6 30.7±1.5 31.0±1.6 26.8±1.1 30.6±1.9 38.5±2.0 30.3±2.6 30.3±3.2 30.5±3.2
+30.2
+SoftVQ
+28.1±3.1 36.2±1.6 32.0±2.2 29.6±1.8 35.8±1.8 31.2±2.5 30.6±1.3 33.8±1.2 47.0±2.2 36.3±3.9 36.0±4.3 36.4±4.2
+34.4
+VQGAN
+31.1±3.4 41.4±1.5 37.1±2.1 32.4±2.0 40.8±1.5 39.4±1.4 35.7±1.3 38.1±1.8 53.8±0.8 43.6±4.4 43.0±4.7 43.5±4.7
+40.0
+SimVQ
+30.0±3.5 41.1±1.6 36.8±2.2 31.8±2.0 40.6±1.8 38.1±1.5 34.3±1.4 37.0±1.8 52.2±1.6 42.9±4.8 42.1±5.1 42.6±5.1
+39.1
+SimQINCo 31.4±3.8 42.1±1.4 37.7±1.9 32.4±2.1 41.1±1.5 39.2±1.3 35.7±1.4 37.8±1.6 52.6±1.6 44.0±4.2 43.1±4.5 43.6±4.5
+40.1
+RQVAE
+31.9±3.5 43.1±1.6 39.1±2.2 33.4±2.1 42.5±1.6 39.0±1.4 37.0±1.4 38.2±1.4 55.3±0.9 45.8±4.2 45.2±4.8 45.5±4.7
+41.3
+DiVeQ
+29.9±3.9 40.5±1.6 37.1±2.2 31.4±2.0 40.0±1.9 39.2±1.3 34.0±1.3 37.4±1.9 52.9±1.6 43.0±5.3 42.3±5.6 42.9±5.5
+39.2
+SF-DiVeQ
+29.8±3.5 40.4±1.6 36.2±2.1 31.6±2.0 39.9±1.8 36.6±1.9 33.8±1.4 37.1±1.8 52.9±1.9 42.6±5.0 41.9±5.4 42.5±5.3
+38.8
+BSQ
+24.7±3.0 31.4±1.5 29.4±2.2 27.8±1.5 31.5±1.7 29.8±2.1 27.2±1.3 30.6±1.8 42.6±2.6 30.4±3.2 30.1±3.5 30.5±3.5
+30.5
+LFQ
+24.4±3.1 30.6±1.6 27.7±2.7 26.9±1.6 30.5±1.8 27.4±2.4 26.2±1.2 30.5±2.1 40.5±3.9 29.4±2.5 29.0±2.9 29.3±2.8
+29.4
+f = 8
+AEKL
+25.0±3.1 31.8±1.3 30.9±1.9 27.6±1.6 31.4±1.5 31.5±1.4 26.9±1.1 31.0±1.7 39.8±1.7 31.2±3.3 31.1±3.7 31.4±3.6
+30.8
+SoftVQ
+24.2±3.5 31.5±1.6 30.6±2.1 27.2±1.5 31.8±1.7 29.2±1.8 26.1±1.4 30.8±2.1 41.3±2.5 29.9±3.1 29.9±3.7 30.2±3.5
+30.2
+VQGAN
+24.8±3.9 35.4±1.9 33.3±2.2 28.4±1.8 34.9±2.1 35.0±1.5 27.9±1.6 32.7±2.6 51.0±1.4 34.9±6.4 34.8±6.9 35.5±6.9
+34.0
+SimVQ
+26.6±3.9 36.0±1.5 34.8±2.3 29.4±1.9 35.4±1.8 36.2±1.6 29.7±1.4 34.4±2.3 49.0±2.4 35.6±4.6 35.3±5.0 35.8±5.0
+34.8
+SimQINCo 26.2±3.9 36.6±1.7 34.7±2.4 29.0±1.8 36.2±2.1 35.0±1.4 29.5±1.5 34.3±2.4 48.5±1.2 36.6±5.6 36.6±6.4 37.2±6.3
+35.0
+RQVAE
+27.6±3.9 38.0±1.7 35.8±2.3 29.9±1.9 37.5±2.0 36.6±1.4 30.8±1.5 35.7±2.1 53.8±0.8 40.1±6.5 39.1±6.6 39.8±6.6
+37.1
+DiVeQ
+26.4±4.0 36.6±1.7 34.5±2.2 29.3±1.9 36.1±2.0 35.9±1.6 29.4±1.5 34.3±2.4 50.8±1.9 37.0±5.8 36.5±6.2 37.2±6.2
+35.3
+SF-DiVeQ
+27.2±4.2 37.5±1.8 35.5±2.4 29.6±1.9 36.6±2.0 37.4±1.3 30.3±1.4 35.2±2.3 49.2±2.1 37.2±5.1 37.0±5.7 37.5±5.6
+35.8
+BSQ
+22.5±3.0 29.0±1.4 26.7±2.2 26.5±1.4 28.6±1.6 27.1±2.4 24.7±1.4 28.0±1.9 38.0±3.0 27.0±2.6 27.0±3.1 27.3±3.0
+27.7
+LFQ
+20.0±2.9 25.7±2.0 24.2±3.0 24.4±1.6 24.8±1.9 24.8±2.2 20.2±2.1 24.2±2.3 33.2±3.9 22.2±2.5 22.0±2.9 22.2±3.0
+24.0
+f = 16
+AEKL
+24.3±3.6 32.0±1.4 31.2±1.9 27.4±1.6 31.4±1.6 30.0±1.5 26.5±1.3 30.9±2.3 40.5±1.6 30.8±3.5 30.8±4.1 31.2±4.0
+30.6
+SoftVQ
+24.5±4.0 34.1±1.6 32.6±2.4 28.2±1.7 33.6±2.0 33.3±1.6 26.3±1.5 32.1±2.6 44.6±2.3 32.3±4.7 32.1±5.3 32.7±5.3
+32.2
+VQGAN
+22.4±4.3 31.2±1.8 31.2±2.5 27.5±1.6 30.6±2.0 30.2±1.6 24.5±1.7 28.9±2.7 41.2±2.6 27.5±3.5 27.8±4.5 28.1±4.5
+29.3
+SimVQ
+22.7±4.0 30.2±1.6 30.5±2.3 27.0±1.5 29.6±1.7 30.1±1.3 24.4±1.5 29.0±2.6 39.0±2.6 27.3±3.2 27.6±4.1 27.9±4.0
+28.8
+SimQINCo 23.6±4.5 33.2±1.8 32.9±2.6 28.0±1.7 32.6±2.1 34.1±1.3 25.8±1.6 31.0±3.0 46.1±2.4 30.3±4.4 30.7±5.5 31.1±5.4
+31.6
+RQVAE
+25.2±4.3 35.5±1.9 33.9±2.5 28.6±1.9 34.6±2.1 35.0±1.4 27.6±1.6 33.0±2.7 52.6±1.5 34.7±6.3 34.5±6.9 35.2±6.8
+34.2
+DiVeQ
+23.5±4.4 32.7±1.7 31.9±2.3 28.0±1.7 32.0±2.1 30.8±1.0 25.5±1.6 30.8±2.9 45.5±2.6 29.9±4.2 30.2±5.3 30.6±5.2
+31.0
+SF-DiVeQ
+23.5±4.3 33.0±1.8 32.4±2.4 28.0±1.7 32.4±2.0 33.8±1.4 25.7±1.6 30.8±3.0 44.6±2.5 30.1±4.2 30.4±5.4 30.8±5.2
+31.3
+BSQ
+22.1±3.4 29.1±1.7 28.4±2.4 26.0±1.5 28.9±1.9 28.2±2.3 24.0±1.3 27.9±2.2 38.2±3.0 26.3±2.9 26.5±3.7 26.7±3.5
+27.7
+LFQ
+19.1±3.6 24.6±1.9 23.8±2.6 22.4±1.6 24.5±1.9 24.2±2.1 20.2±1.5 23.6±2.0 32.0±3.2 21.2±2.4 21.1±2.9 21.4±2.8
+23.2
+G. Codebook Statistics
+We
+characterise
+the
+discrete
+bottleneck
+by
+Usage
+(Tab. S15), the fraction of codes ever selected;
+nor-
+malised Entropy (Tab. S16), H(C)/ log2 K of the empirical
+code distribution; and Utility (Tab. S17), 1/(1 + CV)
+with CV = σ(p)/µ(p).
+Continuous baselines have no
+codebook and are omitted.
+Usage saturates near 100%
+for most modern schemes yet collapses for VQGAN as f
+grows—motivating the latent-geometry analysis, since high
+usage does not imply an efficiently used latent.
+H. Linear Probing
+We fit a linear classifier on the frozen pre-quantization latent
+ze (Tab. S18) and repeat it on the post-quantization latent
+zq (Tab. S19), each under the per-dataset task-appropriate
+primary metric (top-1 accuracy for multi-class; macro-
+AUROC for multi-label ChestMNIST; quadratic-weighted
+κ for ordinal RetinaMNIST). The near-identical means
+between ze and zq confirm that discretization is largely
+information-preserving, except for the lookup-free families
+(LFQ, BSQ); the continuous AEKL and SoftVQ autoen-
+coders have no discrete bottleneck and are omitted from
+Tab. S19.
+I. Memorization
+We test training-set replication with a nearest-neighbour
+copy detector under two feature spaces: SSCD, purpose-
+built for copy detection (Tabs. S22 and S23), and DI-
+NOv2, which captures higher-level semantic similarity and
+validates the SSCD analysis in a richer space (Tabs. S24
+and S25).
+Copy-rates are near zero almost everywhere,
+concentrating only in the lowest-variance modalities (OCT,
+Path); Fig. S10 shows this is driven by the dataset, not the
+quantizer.
+14
+
+
+Table S8. Per-dataset SSIM (↑). Cells: mean±σ over test images.
+Method
+Path
+Chest
+Derma
+OCT
+Pneu
+Reti
+Breast
+Blood
+Tiss
+OrgA
+OrgC
+OrgS
+mean
+f = 4
+AEKL
+.714±.119 .883±.027 .838±.057 .578±.088 .854±.031 .887±.024 .707±.027 .891±.035 .965±.009 .856±.091 .848±.102 .857±.100
+.823
+SoftVQ
+.846±.068 .953±.011 .907±.031 .700±.066 .939±.012 .938±.027 .852±.021 .935±.017 .993±.003 .961±.039 .954±.047 .957±.044
+.911
+VQGAN
+.906±.049 .981±.004 .943±.019 .832±.038 .973±.006 .960±.021 .941±.008 .954±.015 .997±.000 .986±.016 .983±.024 .985±.021
+.953
+SimVQ
+.884±.059 .977±.006 .937±.022 .808±.045 .968±.007 .961±.013 .926±.010 .950±.016 .997±.001 .984±.023 .979±.031 .980±.028
+.946
+SimQINCo .905±.055 .983±.004 .946±.019 .828±.040 .975±.006 .949±.019 .941±.008 .955±.015 .997±.001 .987±.016 .984±.025 .985±.022
+.953
+RQVAE
+.921±.044 .986±.003 .951±.017 .865±.033 .980±.004 .962±.015 .958±.007 .959±.014 .998±.000 .992±.010 .989±.017 .991±.015
+.963
+DiVeQ
+.869±.068 .975±.007 .932±.024 .785±.049 .964±.008 .966±.011 .916±.011 .949±.017 .997±.000 .980±.029 .976±.037 .978±.034
+.940
+SF-DiVeQ
+.879±.058 .977±.006 .935±.022 .798±.046 .966±.007 .965±.019 .918±.011 .949±.016 .998±.000 .980±.025 .976±.032 .978±.030
+.943
+BSQ
+.743±.100 .912±.021 .873±.043 .670±.067 .893±.025 .882±.034 .771±.021 .901±.032 .985±.009 .903±.069 .888±.079 .895±.077
+.860
+LFQ
+.755±.096 .903±.024 .866±.043 .666±.063 .887±.026 .900±.033 .784±.023 .903±.030 .982±.008 .895±.061 .887±.074 .893±.071
+.860
+f = 8
+AEKL
+.679±.140 .892±.026 .837±.057 .576±.089 .861±.030 .913±.023 .701±.029 .892±.036 .972±.008 .867±.100 .856±.110 .867±.107
+.826
+SoftVQ
+.636±.159 .894±.027 .854±.055 .582±.086 .875±.031 .902±.021 .667±.039 .887±.040 .982±.007 .850±.106 .836±.119 .842±.119
+.817
+VQGAN
+.644±.163 .929±.020 .866±.053 .601±.087 .898±.026 .942±.017 .727±.037 .897±.041 .996±.001 .895±.103 .879±.117 .889±.115
+.847
+SimVQ
+.741±.122 .945±.014 .890±.042 .672±.073 .922±.020 .947±.019 .811±.025 .922±.027 .996±.001 .930±.078 .920±.085 .926±.081
+.885
+SimQINCo .713±.137 .946±.015 .889±.043 .644±.079 .923±.020 .951±.013 .794±.026 .919±.030 .994±.003 .920±.085 .912±.094 .919±.091
+.877
+RQVAE
+.791±.099 .959±.011 .907±.034 .709±.066 .941±.014 .939±.016 .849±.020 .934±.022 .997±.000 .958±.057 .948±.063 .953±.059
+.907
+DiVeQ
+.730±.127 .946±.015 .890±.042 .663±.077 .924±.019 .947±.018 .801±.027 .921±.028 .997±.001 .934±.077 .923±.085 .930±.081
+.884
+SF-DiVeQ
+.759±.115 .953±.013 .897±.040 .684±.070 .932±.018 .921±.021 .825±.022 .929±.026 .997±.000 .942±.073 .932±.079 .938±.076
+.892
+BSQ
+.629±.147 .877±.030 .838±.058 .594±.081 .851±.035 .871±.038 .685±.032 .866±.046 .965±.015 .844±.094 .833±.109 .841±.106
+.808
+LFQ
+.502±.190 .806±.047 .795±.082 .540±.086 .745±.061 .798±.054 .499±.061 .802±.071 .935±.028 .699±.125 .685±.151 .694±.148
+.708
+f = 16
+AEKL
+.615±.167 .889±.027 .826±.061 .571±.092 .851±.034 .901±.027 .666±.038 .878±.046 .974±.006 .850±.113 .837±.128 .846±.125
+.809
+SoftVQ
+.612±.176 .912±.024 .849±.059 .587±.090 .878±.032 .910±.029 .650±.048 .889±.046 .989±.009 .864±.115 .842±.132 .854±.128
+.820
+VQGAN
+.490±.214 .873±.035 .817±.075 .572±.092 .828±.045 .853±.037 .566±.068 .840±.068 .977±.006 .754±.133 .742±.162 .755±.159
+.756
+SimVQ
+.514±.207 .864±.035 .816±.074 .557±.091 .819±.043 .890±.025 .573±.063 .845±.065 .970±.008 .769±.131 .758±.155 .769±.151
+.762
+SimQINCo .553±.196 .901±.029 .838±.068 .581±.091 .861±.037 .915±.025 .621±.058 .871±.056 .990±.002 .816±.125 .802±.149 .812±.146
+.797
+RQVAE
+.647±.160 .926±.022 .862±.055 .603±.089 .892±.030 .933±.017 .709±.041 .901±.042 .997±.000 .885±.109 .868±.122 .878±.119
+.842
+DiVeQ
+.551±.197 .899±.029 .835±.068 .583±.092 .856±.039 .907±.028 .612±.058 .868±.057 .990±.002 .817±.126 .802±.148 .812±.145
+.794
+SF-DiVeQ
+.549±.198 .898±.029 .834±.068 .581±.092 .859±.038 .900±.022 .621±.058 .868±.058 .990±.002 .813±.125 .800±.150 .810±.146
+.793
+BSQ
+.543±.189 .864±.034 .827±.067 .566±.087 .830±.044 .881±.026 .608±.050 .849±.057 .972±.009 .784±.125 .771±.147 .784±.143
+.773
+LFQ
+.402±.228 .766±.059 .777±.089 .499±.087 .706±.074 .775±.045 .454±.068 .766±.082 .910±.033 .600±.155 .599±.183 .608±.181
+.655
+Table S9. Per-dataset LPIPS (↓). Cells: mean±σ over test images.
+Method
+Path
+Chest
+Derma
+OCT
+Pneu
+Reti
+Breast
+Blood
+Tiss
+OrgA
+OrgC
+OrgS
+mean
+f = 4
+AEKL
+.205±.071 .113±.022 .207±.056 .240±.044 .141±.029 .105±.025 .241±.031 .068±.018 .040±.010 .110±.058 .106±.061 .102±.057
+.140
+SoftVQ
+.147±.065 .051±.011 .123±.040 .222±.055 .073±.023 .068±.029 .184±.032 .033±.007 .005±.001 .046±.049 .048±.054 .043±.049
+.087
+VQGAN
+.076±.043 .017±.004 .051±.018 .096±.027 .029±.009 .014±.006 .082±.015 .013±.003 .001±.000 .013±.022 .013±.024 .011±.018
+.035
+SimVQ
+.097±.052 .019±.005 .064±.024 .104±.027 .032±.008 .022±.008 .100±.017 .017±.004 .001±.000 .017±.029 .018±.031 .015±.025
+.042
+SimQINCo .072±.041 .015±.004 .050±.018 .094±.026 .027±.008 .015±.007 .068±.013 .012±.003 .002±.000 .011±.020 .012±.022 .010±.017
+.032
+RQVAE
+.059±.032 .011±.003 .040±.015 .068±.019 .019±.005 .013±.004 .049±.010 .010±.002 .001±.000 .008±.013 .009±.016 .007±.012
+.024
+DiVeQ
+.100±.055 .023±.006 .066±.023 .125±.030 .039±.012 .020±.006 .096±.018 .017±.004 .002±.001 .017±.032 .018±.032 .015±.027
+.045
+SF-DiVeQ
+.098±.052 .020±.005 .078±.025 .116±.029 .032±.009 .028±.012 .091±.017 .018±.004 .002±.000 .016±.027 .018±.030 .016±.025
+.044
+BSQ
+.195±.070 .083±.016 .166±.049 .203±.043 .104±.019 .095±.027 .206±.034 .060±.014 .014±.004 .083±.050 .085±.053 .080±.049
+.114
+LFQ
+.211±.081 .088±.016 .179±.058 .157±.035 .110±.019 .118±.028 .210±.035 .061±.022 .019±.006 .092±.049 .093±.061 .090±.057
+.119
+f = 8
+AEKL
+.219±.083 .094±.020 .163±.051 .232±.050 .113±.020 .082±.025 .219±.028 .065±.017 .027±.007 .104±.064 .100±.066 .095±.064
+.126
+SoftVQ
+.239±.082 .100±.023 .175±.054 .195±.038 .116±.033 .114±.027 .257±.044 .070±.019 .013±.003 .111±.068 .119±.083 .112±.081
+.135
+VQGAN
+.230±.085 .077±.018 .158±.046 .185±.038 .097±.022 .069±.018 .227±.035 .059±.019 .002±.000 .088±.073 .091±.080 .083±.077
+.114
+SimVQ
+.174±.083 .049±.010 .100±.032 .145±.029 .073±.017 .038±.015 .170±.028 .035±.010 .003±.001 .055±.056 .054±.056 .049±.052
+.079
+SimQINCo .199±.091 .056±.012 .115±.035 .184±.041 .078±.019 .048±.014 .204±.031 .041±.012 .003±.000 .061±.065 .062±.065 .057±.062
+.092
+RQVAE
+.153±.076 .038±.009 .088±.029 .151±.035 .053±.013 .032±.009 .173±.030 .026±.006 .001±.000 .035±.048 .035±.048 .031±.043
+.068
+DiVeQ
+.189±.088 .055±.012 .105±.034 .164±.030 .077±.018 .041±.013 .208±.033 .038±.010 .003±.001 .055±.061 .056±.061 .051±.057
+.087
+SF-DiVeQ
+.172±.086 .043±.010 .091±.029 .125±.026 .064±.016 .032±.011 .184±.030 .031±.008 .003±.001 .046±.058 .046±.056 .041±.052
+.073
+BSQ
+.269±.086 .118±.024 .210±.057 .179±.031 .139±.026 .137±.033 .255±.037 .087±.023 .031±.008 .136±.063 .140±.076 .135±.074
+.153
+LFQ
+.344±.086 .204±.040 .320±.100 .279±.046 .237±.039 .210±.042 .435±.056 .158±.043 .089±.034 .257±.083 .275±.100 .270±.093
+.257
+f = 16
+AEKL
+.241±.090 .099±.021 .160±.048 .240±.046 .122±.022 .082±.021 .244±.033 .074±.023 .028±.008 .122±.078 .121±.083 .114±.080
+.137
+SoftVQ
+.227±.092 .073±.017 .132±.047 .214±.047 .089±.020 .068±.021 .243±.038 .060±.024 .007±.002 .110±.078 .109±.083 .103±.080
+.120
+VQGAN
+.317±.106 .118±.028 .193±.062 .297±.063 .145±.029 .097±.025 .330±.044 .117±.045 .025±.010 .199±.093 .198±.108 .190±.103
+.186
+SimVQ
+.298±.099 .131±.031 .200±.067 .247±.050 .156±.027 .106±.029 .320±.043 .104±.040 .041±.015 .194±.088 .188±.099 .181±.095
+.180
+SimQINCo .262±.099 .083±.020 .155±.051 .227±.049 .111±.025 .068±.019 .271±.039 .075±.031 .008±.003 .144±.084 .138±.093 .131±.090
+.139
+RQVAE
+.223±.096 .060±.014 .124±.045 .179±.036 .083±.018 .050±.014 .206±.034 .055±.022 .002±.000 .091±.076 .091±.078 .084±.076
+.104
+DiVeQ
+.266±.101 .090±.022 .154±.052 .241±.048 .116±.024 .082±.020 .274±.036 .083±.032 .008±.004 .146±.082 .142±.092 .135±.089
+.145
+SF-DiVeQ
+.263±.096 .086±.021 .147±.050 .217±.045 .110±.023 .066±.019 .270±.038 .079±.031 .009±.004 .150±.085 .144±.095 .137±.092
+.140
+BSQ
+.318±.099 .128±.028 .231±.068 .234±.043 .154±.029 .132±.031 .317±.051 .112±.035 .030±.010 .173±.083 .185±.111 .179±.111
+.183
+LFQ
+.459±.101 .241±.043 .365±.106 .306±.054 .281±.042 .227±.049 .489±.066 .212±.064 .118±.034 .356±.113 .384±.141 .379±.138
+.318
+15
+
+
+Table S10. Per-dataset pixel-MSE (↓). Cells: mean±σ over test images.
+Method
+Path
+Chest
+Derma
+OCT
+Pneu
+Reti
+Breast
+Blood
+Tiss
+OrgA
+OrgC
+OrgS
+mean
+f = 4
+AEKL
+.0037±.0025
+8.1e-4±2.5e−4 .0011±6.4e−4
+.0019±7.8e−4 9.1e-4±3.1e−4 8.5e-4±3.7e−4 .0021±5.1e−4 9.4e-4±4.1e−4 1.6e-4±8.1e−5 .0011±7.1e−4
+.0012±8.5e−4
+.0011±8.2e−4
+.0013
+SoftVQ
+.0019±.0013
+2.5e-4±1.1e−4 7.4e-4±5.3e−4 .0012±5.8e−4 2.8e-4±1.2e−4 9.0e-4±6.5e−4 9.1e-4±2.8e−4 4.4e-4±1.4e−4 2.3e-5±1.4e−5 3.5e-4±3.7e−4 4.1e-4±4.5e−4 3.7e-4±4.2e−4 6.5e-4
+VQGAN
+.0010±7.7e−4 7.6e-5±2.9e−5 2.2e-4±1.5e−4 6.4e-4±3.4e−4 8.8e-5±3.1e−5 1.2e-4±5.0e−5 2.8e-4±8.5e−5 1.7e-4±6.7e−5 4.2e-6±9.6e−7 8.0e-5±1.2e−4 1.0e-4±2.0e−4 9.3e-5±1.7e−4 2.4e-4
+SimVQ
+.0013±.0011
+8.4e-5±3.6e−5 2.4e-4±2.1e−4 7.4e-4±3.9e−4 9.5e-5±4.0e−5 1.7e-4±6.5e−5 3.9e-4±1.3e−4 2.1e-4±8.3e−5 6.5e-6±2.9e−6 1.1e-4±1.7e−4 1.4e-4±2.5e−4 1.3e-4±2.2e−4 3.0e-4
+SimQINCo .0010±9.3e−4 6.6e-5±2.4e−5 1.9e-4±1.4e−4 6.4e-4±3.5e−4 8.2e-5±2.9e−5 1.3e-4±5.1e−5 2.8e-4±9.0e−5 1.8e-4±6.6e−5 6.0e-6±3.5e−6 7.3e-5±1.1e−4 9.8e-5±1.9e−4 8.8e-5±1.6e−4 2.4e-4
+RQVAE
+8.7e-4±7.5e−4 5.2e-5±2.1e−5 1.4e-4±1.1e−4 5.1e-4±2.8e−4 6.0e-5±2.2e−5 1.3e-4±4.5e−5 2.1e-4±6.9e−5 1.6e-4±5.2e−5 3.0e-6±8.1e−7 4.8e-5±7.8e−5 6.7e-5±1.5e−4 6.0e-5±1.2e−4 1.9e-4
+DiVeQ
+.0014±.0012
+9.6e-5±4.1e−5 2.3e-4±1.9e−4 8.1e-4±4.2e−4 1.1e-4±4.6e−5 1.3e-4±4.6e−5 4.2e-4±1.3e−4 2.0e-4±8.3e−5 5.6e-6±3.0e−6 1.2e-4±2.0e−4 1.5e-4±2.8e−4 1.3e-4±2.5e−4 3.2e-4
+SF-DiVeQ
+.0014±.0010
+9.8e-5±4.0e−5 2.8e-4±2.0e−4 7.8e-4±4.1e−4 1.1e-4±4.9e−5 2.5e-4±1.5e−4 4.4e-4±1.4e−4 2.1e-4±8.3e−5 5.7e-6±2.9e−6 1.2e-4±1.9e−4 1.5e-4±2.7e−4 1.4e-4±2.4e−4 3.3e-4
+BSQ
+.0042±.0027
+7.8e-4±4.4e−4
+.0013±.0010
+.0018±6.8e−4 7.6e-4±3.5e−4 .0012±6.8e−4
+.0020±5.8e−4 9.6e-4±4.0e−4 6.7e-5±5.3e−5 .0012±1.0e−3
+.0013±.0013
+.0012±.0023
+.0014
+LFQ
+.0049±.0059
+9.2e-4±3.6e−4
+.0021±.0018
+.0022±8.7e−4 9.6e-4±3.9e−4
+.0021±.0013
+.0025±7.0e−4
+.0010±9.5e−4 1.4e-4±1.6e−4 .0014±7.8e−4
+.0015±9.8e−4
+.0014±9.3e−4
+.0018
+f = 8
+AEKL
+.0040±.0025
+6.8e-4±2.0e−4 9.0e-4±5.7e−4 .0019±7.7e−4 7.7e-4±2.6e−4 7.5e-4±2.5e−4 .0021±5.1e−4 8.6e-4±3.3e−4 1.1e-4±1.6e−4 9.9e-4±7.7e−4 .0011±9.0e−4
+.0010±8.6e−4
+.0013
+SoftVQ
+.0050±.0032
+7.5e-4±3.1e−4 .0010±7.2e−4
+.0020±7.4e−4 7.2e-4±2.9e−4 .0013±5.7e−4
+.0026±7.6e−4 9.4e-4±4.5e−4 8.8e-5±5.9e−5 .0013±9.9e−4
+.0014±.0012
+.0013±.0011
+.0015
+VQGAN
+.0046±.0033
+3.2e-4±1.5e−4 5.4e-4±4.5e−4 .0016±7.1e−4 3.6e-4±1.7e−4 3.4e-4±1.3e−4 .0017±5.9e−4 6.4e-4±3.8e−4 8.4e-6±3.0e−6 7.3e-4±8.5e−4
+8.5e-4±.0010
+7.6e-4±9.9e−4 .0010
+SimVQ
+.0031±.0023
+2.6e-4±9.6e−5 3.9e-4±3.2e−4 .0013±6.2e−4 3.2e-4±1.3e−4 2.6e-4±1.3e−4 .0011±3.4e−4 4.1e-4±2.0e−4 1.5e-5±9.7e−6 4.8e-4±5.7e−4 5.6e-4±6.8e−4 5.0e-4±6.4e−4 7.2e-4
+SimQINCo
+.0033±.0024
+2.3e-4±9.9e−5 4.0e-4±3.3e−4 .0014±6.5e−4 2.7e-4±1.2e−4 3.4e-4±1.1e−4 .0012±3.8e−4 4.3e-4±2.4e−4 1.5e-5±4.3e−6 4.7e-4±6.2e−4 5.5e-4±7.3e−4 4.9e-4±7.0e−4 7.6e-4
+RQVAE
+.0024±.0018
+1.7e-4±7.4e−5 3.1e-4±2.7e−4 .0011±5.6e−4 2.0e-4±8.8e−5 2.3e-4±6.7e−5 8.8e-4±2.9e−4 3.0e-4±1.4e−4 4.3e-6±1.1e−6 2.8e-4±4.2e−4 3.4e-4±5.2e−4 3.1e-4±4.8e−4 5.5e-4
+DiVeQ
+.0032±.0023
+2.4e-4±1.0e−4 4.2e-4±3.4e−4 .0013±6.3e−4 2.7e-4±1.2e−4 2.8e-4±1.1e−4 .0012±4.1e−4 4.3e-4±2.3e−4 9.2e-6±4.9e−6 4.5e-4±6.0e−4 5.3e-4±7.0e−4 4.8e-4±6.7e−4 7.3e-4
+SF-DiVeQ
+.0027±.0020
+1.9e-4±8.2e−5 3.4e-4±2.9e−4 .0012±6.0e−4 2.4e-4±1.1e−4 1.9e-4±6.2e−5 9.7e-4±3.0e−4 3.4e-4±1.8e−4 1.3e-5±6.5e−6 3.8e-4±5.2e−4 4.5e-4±6.2e−4 4.1e-4±5.8e−4 6.2e-4
+BSQ
+.0070±.0054
+.0013±5.1e−4
+.0024±.0014
+.0024±8.8e−4
+.0015±5.0e−4
+.0023±.0013
+.0036±.0012
+.0018±7.7e−4 2.0e-4±1.6e−4
+.0024±.0014
+.0025±.0017
+.0024±.0016
+.0025
+LFQ
+.0123±.0082
+.0030±.0016
+.0050±.0067
+.0039±.0019
+.0036±.0016
+.0038±.0021
+.0108±.0062
+.0043±.0020
+7.4e-4±.0015
+.0070±.0047
+.0077±.0053
+.0075±.0055
+.0058
+f = 16
+AEKL
+.0049±.0032
+6.6e-4±2.2e−4 8.6e-4±5.4e−4 .0019±8.1e−4 7.7e-4±2.8e−4 .0011±3.9e−4
+.0023±6.7e−4 9.2e-4±4.6e−4 9.6e-5±4.0e−5 .0011±9.3e−4
+.0012±.0011
+.0011±.0011
+.0014
+SoftVQ
+.0050±.0035
+4.2e-4±1.7e−4 6.5e-4±5.6e−4 .0017±7.5e−4 4.8e-4±2.2e−4 5.1e-4±2.1e−4 .0025±8.0e−4 7.3e-4±4.4e−4 4.0e-5±2.3e−5 9.7e-4±9.5e−4
+.0011±.0012
+.0010±.0011
+.0013
+VQGAN
+.0082±.0061
+8.2e-4±3.4e−4 9.3e-4±8.3e−4 .0019±7.9e−4 9.7e-4±4.4e−4 .0010±3.6e−4
+.0038±.0013
+.0015±8.7e−4 9.2e-5±6.7e−5
+.0023±.0017
+.0026±.0022
+.0024±.0022
+.0022
+SimVQ
+.0074±.0050
+.0010±3.7e−4
+.0011±8.3e−4
+.0021±8.3e−4
+.0012±4.6e−4
+.0010±3.0e−4
+.0038±.0012
+.0015±8.1e−4 1.5e-4±9.7e−5
+.0024±.0016
+.0025±.0019
+.0023±.0019
+.0022
+SimQINCo
+.0064±.0047
+5.2e-4±2.3e−4 6.3e-4±6.2e−4 .0017±7.7e−4 6.2e-4±2.9e−4 4.1e-4±1.3e−4 .0028±9.6e−4 9.7e-4±6.2e−4 2.9e-5±1.8e−5
+.0014±.0012
+.0016±.0015
+.0014±.0015
+.0015
+RQVAE
+.0044±.0031
+3.1e-4±1.5e−4 5.0e-4±4.8e−4 .0015±7.3e−4 3.9e-4±1.8e−4 3.3e-4±1.1e−4 .0018±6.2e−4 6.0e-4±3.8e−4 5.9e-6±2.4e−6 7.3e-4±8.5e−4
+8.7e-4±.0010
+7.8e-4±1.0e−3 .0010
+DiVeQ
+.0065±.0047
+5.9e-4±2.4e−4 7.7e-4±7.2e−4 .0017±7.7e−4 7.0e-4±3.2e−4 8.5e-4±1.9e−4
+.0030±.0010
+.0010±6.4e−4 3.4e-5±2.5e−5
+.0015±.0013
+.0017±.0016
+.0015±.0016
+.0017
+SF-DiVeQ
+.0064±.0047
+5.4e-4±2.3e−4 6.9e-4±6.4e−4 .0017±7.7e−4 6.5e-4±3.0e−4 4.4e-4±1.4e−4 .0028±9.7e−4
+.0010±6.6e−4 4.1e-5±2.9e−5
+.0015±.0012
+.0016±.0016
+.0015±.0015
+.0016
+BSQ
+.0080±.0052
+.0013±5.2e−4
+.0017±.0012
+.0027±9.5e−4
+.0014±6.7e−4
+.0017±9.5e−4
+.0042±.0012
+.0018±.0010
+1.9e-4±1.4e−4
+.0029±.0018
+.0030±.0022
+.0029±.0023
+.0027
+LFQ
+.0162±.0112
+.0038±.0017
+.0050±.0035
+.0062±.0027
+.0039±.0017
+.0043±.0022
+.0101±.0036
+.0048±.0021
+8.2e-4±6.6e−4
+.0088±.0045
+.0094±.0054
+.0088±.0053
+.0068
+16
+
+
+(a) f=4
+(b) f=8
+(c) f=16
+Figure S8. Qualitative reconstructions of two fixed test subjects per dataset (columns) by every tokenizer family (rows), at compression
+factors (a) f=4, (b) f=8, and (c) f=16. Top row of each panel is the original; top-right of each cell is per-image PSNR (dB). Reconstruc-
+tion differences across families grow with compression.
+17
+
+
+(a) f=4
+(b) f=8
+(c) f=16
+Figure S9. Qualitative generations of two unconditional DiT samples per dataset (columns) by every tokenizer family (rows), at compres-
+sion factors (a) f=4, (b) f=8, and (c) f=16. Sample quality and diversity degrade with compression.
+18
+
+
+Table S11. Per-dataset reconstruction-FID (↓). Dataset-level met-
+ric (no per-image variance).
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+37.9
+23.3
+71.3
+78.6
+47.5 56.9
+104
+19.2
+29.0
+45.0
+27.6
+28.1
+47.4
+SoftVQ
+23.2
+7.06
+34.2
+34.3
+20.4 31.7
+76.8
+10.1
+2.52
+11.0
+6.14
+5.65
+21.9
+VQGAN
+11.1
+4.53
+14.4
+15.9
+10.8 9.44
+33.6
+4.79
+2.77
+1.68
+2.24
+1.96
+9.44
+SimVQ
+14.7
+5.32
+16.5
+18.3
+12.2 12.5
+47.1
+6.35
+1.96
+1.51
+2.04
+1.85
+11.7
+SimQINCo 11.6
+4.03
+14.5
+18.3
+10.1 8.88
+33.0
+5.17
+3.69
+1.47
+2.02
+1.78
+9.54
+RQVAE
+7.29
+3.47
+12.2
+10.5
+7.34 10.9
+23.8
+4.56
+0.58
+0.85
+1.32
+1.18
+6.99
+DiVeQ
+16.8
+5.93
+16.0
+24.0
+14.2 11.5
+49.8
+6.35
+1.72
+1.65
+2.16
+2.01
+12.7
+SF-DiVeQ
+14.8
+5.77
+17.3
+18.5
+14.2 14.6
+47.2
+7.27
+1.90
+2.16
+2.78
+2.52
+12.4
+BSQ
+28.0
+11.4
+69.0
+43.4
+29.9 47.7
+84.7
+18.8
+2.51
+31.4
+17.7
+17.1
+33.5
+LFQ
+37.9
+15.0
+49.6
+37.2
+42.4 66.8
+87.1
+17.4
+4.48
+58.9
+31.4
+33.7
+40.1
+f = 8
+AEKL
+41.8
+25.1
+56.1
+86.2
+47.5 43.1
+136
+21.8
+15.0
+43.3
+27.7
+27.2
+47.5
+SoftVQ
+42.9
+17.9
+69.7
+101
+39.8 57.6
+133
+20.0
+2.12
+54.8
+32.8
+33.0
+50.4
+VQGAN
+35.6
+15.6
+57.7
+93.3
+36.1 34.7
+125
+22.5
+1.95
+42.6
+30.2
+28.5
+43.7
+SimVQ
+35.2
+6.90
+21.9
+36.1
+23.0 22.3
+88.0
+13.0
+2.75
+17.6
+11.3
+9.98
+24.0
+SimQINCo 33.3
+10.5
+32.1
+41.1
+25.7 24.4
+97.2
+16.2
+2.23
+15.4
+10.8
+10.2
+26.6
+RQVAE
+29.9
+7.64
+25.2
+28.7
+20.1 20.5
+68.7
+11.3
+2.11
+4.67
+4.69
+3.98
+19.0
+DiVeQ
+34.3
+9.71
+28.0
+39.9
+24.3 24.6
+80.7
+13.8
+5.39
+12.3
+8.93
+8.20
+24.2
+SF-DiVeQ
+38.6
+10.0
+21.7
+35.4
+24.0 19.6
+87.2
+11.9
+2.10
+8.72
+7.15
+6.24
+22.7
+BSQ
+49.8
+18.9
+105
+73.9
+41.9 75.7
+115
+23.8
+7.98
+66.8
+37.4
+37.9
+54.5
+LFQ
+75.3
+70.4
+123
+109
+111
+155
+155
+53.8
+55.5
+135
+99.0
+103
+104
+f = 16
+AEKL
+52.3
+32.6
+69.3
+92.0
+56.5 40.6
+160
+24.9
+12.2
+53.6
+38.0
+38.4
+55.9
+SoftVQ
+44.8
+19.1
+45.4
+81.8
+42.3 42.4
+136
+22.8
+1.74
+57.9
+41.4
+40.5
+48.1
+VQGAN
+70.6
+42.5
+86.4
+102
+68.4 49.5
+251
+33.9
+9.86
+95.4
+70.6
+70.6
+79.2
+SimVQ
+62.9
+52.9
+88.7
+90.9
+78.0 48.8
+240
+31.6
+24.2
+109
+79.1
+80.1
+82.2
+SimQINCo 53.8
+30.4
+62.7
+78.2
+56.8 48.5
+231
+24.8
+1.94
+77.3
+54.8
+54.5
+64.5
+RQVAE
+46.1
+22.9
+32.3
+54.8
+40.7 35.7
+123
+19.2
+2.83
+32.1
+25.4
+23.6
+38.2
+DiVeQ
+57.8
+30.1
+62.0
+68.6
+52.8 43.6
+193
+25.4
+1.83
+84.5
+59.0
+60.5
+61.6
+SF-DiVeQ
+53.2
+26.8
+60.0
+67.8
+48.2 40.0
+172
+23.8
+2.70
+78.4
+55.3
+55.7
+57.0
+BSQ
+51.5
+30.8
+95.4
+103
+52.6 65.6
+154
+37.0
+9.27
+96.9
+58.7
+60.2
+67.9
+LFQ
+156
+117
+201
+137
+143
+131
+252
+86.3
+88.1
+179
+141
+145
+148
+Table S12. Per-dataset reconstruction-FMD (rFMD, ↓). Dataset-
+level metric using each dataset’s own MedMNIST feature extrac-
+tor; the aggregate is the median over datasets (scales differ per
+extractor).
+Method
+Path Chest Derma OCT
+Pneu Reti Breast Blood
+Tiss
+OrgA OrgC OrgS median
+f = 4
+AEKL
+17.3 0.829
+4.22
+2.30
+0.770 7.09
+59.9
+16.8
+1.04
+0.611 0.581 0.573
+1.67
+SoftVQ
+9.01 0.053
+4.26
+0.295 0.104 24.8
+20.6
+6.69
+0.165 0.143 0.150 0.147
+0.230
+VQGAN
+2.01 0.005
+1.50
+0.069 0.021 1.32
+1.29
+0.606 0.023 0.013 0.010 0.010
+0.046
+SimVQ
+5.62 0.007
+1.19
+0.116 0.007 1.24
+1.19
+2.61
+0.030 0.058 0.042 0.046
+0.087
+SimpleQINCo 6.16 0.004
+0.528
+0.128 0.016 11.8
+5.39
+2.70
+0.024 0.070 0.062 0.068
+0.099
+RQVAE
+2.41 0.004
+0.781
+0.043 0.012 1.64 0.851
+3.22
+0.029 0.021 0.018 0.015
+0.036
+DiVeQ
+4.83 0.009
+2.14
+0.105 0.057 2.07
+6.51
+2.55
+0.036 0.091 0.064 0.062
+0.098
+SF-DiVeQ
+5.45 0.003
+1.08
+0.036 0.007 5.44
+1.96
+3.36
+0.040 0.008 0.007 0.010
+0.038
+BSQ
+26.2 0.168
+8.99
+1.05
+0.189 22.1
+66.2
+21.8
+0.585 0.470 0.569 0.557
+0.819
+LFQ
+25.9 0.186
+11.3
+1.29
+0.180 107
+37.6
+21.1
+0.449 0.318 0.424 0.593
+0.939
+f = 8
+AEKL
+18.3 0.447
+3.49
+2.29
+0.230 32.5
+56.0
+12.4
+0.545 0.561 0.295 0.469
+1.43
+SoftVQ
+23.5 0.137
+3.85
+1.76
+0.268 32.9
+117
+7.27
+0.281 0.780 0.428 0.647
+1.27
+VQGAN
+15.7 0.039
+7.45
+0.547 0.032 4.90
+32.8
+2.58
+0.105 0.177 0.155 0.325
+0.436
+SimVQ
+12.5 0.025
+0.538
+0.279 0.039 4.30
+8.63
+2.87
+0.029 0.110 0.058 0.103
+0.194
+SimpleQINCo 14.2 0.025
+1.99
+0.298 0.074 40.5
+23.8
+8.78
+0.522 0.237 0.155 0.186
+0.410
+RQVAE
+7.45 0.009
+0.945
+0.121 0.014 4.43
+3.30
+3.43
+0.039 0.041 0.016 0.031
+0.081
+DiVeQ
+7.44 0.015
+1.79
+0.308 0.016 5.77
+8.03
+2.54
+0.086 0.025 0.030 0.047
+0.197
+SF-DiVeQ
+8.58 0.024
+0.842
+0.283 0.037 1.76
+9.74
+2.97
+0.064 0.074 0.063 0.099
+0.191
+BSQ
+53.6
+1.01
+14.7
+2.32
+0.363 167
+111
+64.4
+2.65
+0.685 0.744
+1.15
+2.48
+LFQ
+61.5
+2.42
+17.8
+5.43
+8.99
+152
+540
+165
+7.48
+9.44
+13.2
+13.5
+13.4
+f = 16
+AEKL
+20.9 0.971
+7.05
+3.05
+0.421 7.20
+69.0
+15.4
+0.611 0.567 0.519 0.833
+2.01
+SoftVQ
+22.2 0.108
+4.16
+1.37
+0.160 29.8
+83.4
+11.2
+0.334 0.493 0.290 0.473
+0.933
+VQGAN
+52.9 0.700
+4.04
+2.43
+0.420 62.4
+249
+64.1
+1.17
+1.72
+1.59
+2.01
+2.22
+SimVQ
+47.3
+2.12
+4.71
+3.61
+1.00
+12.8
+234
+39.0
+1.13
+2.04
+1.79
+2.09
+2.86
+SimpleQINCo 31.1 0.192
+1.10
+0.982 0.180 6.02
+103
+11.5
+0.155 0.747 0.626 0.993
+0.988
+RQVAE
+17.9 0.025
+3.17
+0.587 0.061 8.37
+41.5
+9.22
+0.028 0.203 0.175 0.291
+0.439
+DiVeQ
+27.1 0.204
+5.97
+1.49
+0.189 52.5
+121
+11.6
+0.060
+1.06
+0.693
+1.18
+1.33
+SF-DiVeQ
+26.1 0.174
+3.36
+1.53
+0.115 1.14
+147
+13.9
+0.177
+1.23
+0.851
+1.13
+1.18
+BSQ
+50.3 0.867
+16.0
+3.03
+0.449 32.9
+215
+41.0
+0.623
+1.74
+1.70
+1.86
+2.45
+LFQ
+62.6
+6.16
+18.4
+9.56
+7.89
+111
+655
+115
+8.44
+15.5
+23.5
+20.1
+19.2
+Table S13. Per-dataset DiT-B/2 generation-FID (↓). Dataset-level
+metric.
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+68.4
+33.2
+100
+122
+85.1 81.3
+137
+36.4
+41.7
+86.8
+58.9
+63.3
+76.2
+SoftVQ
+111
+21.1
+102
+83.3
+101
+69.0
+155
+52.0
+13.5
+82.9
+80.3
+88.9
+79.9
+VQGAN
+60.7
+18.4
+52.8
+52.7
+68.1 53.7
+105
+29.4
+11.9
+42.7
+53.3
+57.7
+50.5
+SimVQ
+64.3
+14.9
+77.3
+57.3
+50.4 51.2
+98.3
+37.7
+9.78
+39.2
+43.8
+48.4
+49.4
+SimQINCo 75.3
+11.2
+62.0
+51.6
+58.8 52.4
+108
+38.1
+8.29
+42.6
+61.5
+58.2
+52.3
+RQVAE
+66.8
+14.1
+74.9
+52.1
+76.3 36.2
+105
+42.4
+8.64
+44.0
+50.9
+54.8
+52.2
+DiVeQ
+68.7
+23.2
+62.3
+60.9
+95.9 36.3
+95.7
+34.8
+5.07
+27.0
+32.0
+35.2
+48.1
+SF-DiVeQ
+63.0
+16.6
+70.7
+59.0
+61.4 46.0
+101
+43.5
+5.12
+37.5
+36.5
+44.2
+48.7
+BSQ
+115
+38.6
+74.6
+89.1
+154
+76.7
+137
+89.3
+46.1
+148
+140
+146
+104
+LFQ
+133
+61.2
+131
+95.1
+167
+149
+182
+126
+85.4
+241
+163
+170
+142
+f = 8
+AEKL
+78.9
+38.0
+76.9
+130
+67.0 53.9
+163
+39.9
+24.4
+83.5
+63.1
+68.5
+73.9
+SoftVQ
+85.4
+45.7
+107
+145
+133
+121
+194
+89.3
+23.8
+140
+102
+108
+108
+VQGAN
+73.1
+19.7
+76.1
+127
+65.5 44.1
+168
+31.0
+6.80
+69.2
+55.6
+50.6
+65.5
+SimVQ
+66.9
+24.7
+57.7
+78.7
+125
+44.2
+116
+43.6
+20.9
+74.5
+51.9
+55.1
+63.2
+SimQINCo 69.7
+19.4
+56.2
+86.5
+61.1 53.7
+126
+26.1
+5.01
+45.4
+40.3
+44.7
+52.8
+RQVAE
+60.2
+17.9
+91.2
+68.8
+80.8 59.7
+112
+34.3
+7.98
+41.3
+45.6
+46.1
+55.5
+DiVeQ
+90.5
+21.4
+79.6
+81.5
+59.0 41.1
+120
+41.6
+15.8
+52.5
+46.3
+51.6
+58.4
+SF-DiVeQ
+74.8
+27.6
+64.4
+91.1
+112
+49.4
+110
+29.9
+14.5
+44.8
+45.1
+43.4
+58.8
+BSQ
+93.6
+33.5
+94.3
+112
+60.2 76.9
+135
+78.6
+15.1
+102
+88.1
+88.0
+81.5
+LFQ
+189
+181
+259
+256
+272
+181
+318
+226
+126
+257
+218
+230
+226
+f = 16
+AEKL
+78.7
+42.9
+95.9
+126
+89.0 66.6
+218
+47.2
+12.1
+113
+81.2
+95.5
+88.8
+SoftVQ
+88.7
+39.0
+108
+118
+127
+107
+220
+102
+20.5
+158
+137
+140
+114
+VQGAN
+91.0
+53.0
+122
+148
+85.7 53.4
+298
+37.9
+14.7
+110
+93.3
+87.8
+99.5
+SimVQ
+92.1
+69.9
+141
+120
+121
+58.2
+274
+58.2
+37.7
+139
+113
+116
+112
+SimQINCo 68.1
+38.7
+113
+120
+85.5 68.8
+285
+42.4
+4.56
+111
+76.8
+84.1
+91.5
+RQVAE
+73.0
+32.9
+71.0
+101
+66.4 63.9
+182
+52.6
+13.1
+65.0
+61.5
+63.3
+70.5
+DiVeQ
+75.6
+37.1
+78.5
+109
+68.6 60.7
+257
+40.3
+4.79
+142
+116
+105
+91.2
+SF-DiVeQ
+74.1
+34.1
+83.5
+112
+70.7 60.0
+206
+36.9
+4.99
+124
+100
+99.0
+83.7
+BSQ
+107
+41.0
+106
+138
+73.7 58.1
+213
+73.6
+13.5
+145
+133
+129
+102
+LFQ
+154
+103
+181
+108
+113
+121
+298
+59.9
+74.9
+166
+144
+138
+138
+Table S14.
+Per-dataset DiT-B/2 generation-FMD (gFMD, ↓).
+Dataset-level metric using each dataset’s own MedMNIST feature
+extractor; the aggregate is the median over datasets.
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS median
+f = 4
+AEKL
+98.3
+1.63
+18.0
+4.70
+28.2 49.8
+450
+62.7
+8.18
+20.6
+21.7
+23.0
+22.4
+SoftVQ
+43.7
+2.07
+63.8
+3.07
+11.9 35.5
+37.9
+87.1
+17.1
+12.2
+18.9
+21.5
+20.2
+VQGAN
+38.2
+4.13
+26.2
+3.15
+41.2
+210
+234
+61.5
+10.4
+25.9
+26.5
+20.0
+26.4
+SimVQ
+41.5
+3.35
+15.4
+4.18
+7.59 83.6
+45.1
+51.5
+8.51
+9.24
+14.5
+24.0
+14.9
+SimpleQINCo 55.1 0.799
+21.4
+5.62
+6.24 80.8
+322
+34.6
+10.2
+29.7
+26.3
+38.1
+28.0
+RQVAE
+32.0
+1.45
+33.9
+2.89
+16.8 67.7
+6.56
+82.1
+9.85
+23.0
+28.8
+52.7
+25.9
+DiVeQ
+35.9
+1.91
+7.44
+3.28
+55.8 29.8
+79.1
+85.6
+4.53
+5.55
+10.9
+12.1
+11.5
+SF-DiVeQ
+28.5
+4.33
+67.8
+5.14
+45.4 39.4
+46.3
+73.4
+4.61
+16.4
+14.2
+23.7
+26.1
+BSQ
+37.1
+13.6
+20.7
+13.7
+111
+78.3
+15.6
+90.3
+27.8
+34.2
+62.3
+87.3
+35.6
+LFQ
+69.1
+5.66
+64.6
+3.32
+47.0
+126
+217
+221
+32.1
+51.2
+50.2
+60.8
+56.0
+f = 8
+AEKL
+56.1
+2.10
+11.6
+8.98
+24.8 18.9
+159
+34.6
+5.93
+29.7
+12.0
+18.1
+18.5
+SoftVQ
+54.4
+3.15
+60.4
+6.07
+50.2
+586
+522
+72.1
+16.0
+20.5
+27.6
+25.5
+38.9
+VQGAN
+104 0.529
+18.3
+6.43
+20.0 54.1
+208
+17.7
+9.27
+7.92
+12.6
+21.9
+18.0
+SimVQ
+46.1
+7.44
+34.5
+4.09
+70.7 35.4
+185
+36.9
+14.9
+18.9
+14.8
+28.5
+31.5
+SimpleQINCo 79.5 0.564
+25.9
+5.54
+15.1 50.6
+54.9
+39.4
+6.25
+17.2
+13.5
+21.2
+19.2
+RQVAE
+31.6
+5.54
+40.9
+2.77
+6.45 58.7
+76.7
+26.6
+4.79
+7.33
+9.80
+10.3
+10.0
+DiVeQ
+56.5
+1.40
+7.60
+3.11
+2.73
+221
+144
+21.6
+7.56
+13.5
+13.0
+27.3
+13.2
+SF-DiVeQ
+64.5
+4.11
+85.3
+3.91
+49.8 22.1
+89.2
+43.2
+8.96
+10.4
+12.0
+11.4
+17.1
+BSQ
+81.5
+1.74
+15.6
+9.15
+12.2
+335
+199
+66.4
+20.2
+19.9
+34.0
+32.5
+26.4
+LFQ
+54.9
+4.24
+24.3
+4.46
+19.4
+453
+555
+165
+27.2
+32.9
+44.4
+68.1
+38.7
+f = 16
+AEKL
+232
+1.56
+52.6
+12.7
+69.2 19.6
+226
+56.8
+8.09
+13.5
+14.3
+22.4
+21.0
+SoftVQ
+53.6
+3.51
+27.9
+5.83
+2.81 45.7
+49.0
+24.6
+11.9
+6.48
+8.08
+8.39
+10.1
+VQGAN
+73.9
+2.78
+6.38
+16.2
+25.4 77.8
+405
+109
+9.82
+13.8
+9.84
+11.8
+15.0
+SimVQ
+86.7
+1.63
+11.9
+13.0
+75.9
+163
+467
+127
+10.7
+38.0
+30.1
+18.5
+34.0
+SimpleQINCo 168 0.875
+78.4
+3.95
+76.1 43.2
+385
+45.4
+5.06
+23.2
+12.8
+20.6
+33.2
+RQVAE
+130
+1.00
+17.5
+6.00
+44.7
+133
+276
+58.4
+5.96
+13.8
+8.76
+11.3
+15.7
+DiVeQ
+206
+1.02
+13.5
+5.86
+23.7
+104
+428
+25.7
+2.90
+25.4
+16.7
+18.6
+21.2
+SF-DiVeQ
+74.4 0.602
+10.8
+8.98
+3.67 38.9
+323
+43.5
+3.13
+11.7
+7.73
+13.9
+11.2
+BSQ
+98.2
+4.61
+58.8
+7.34
+5.07
+126
+195
+62.7
+10.2
+11.2
+20.8
+21.6
+21.2
+LFQ
+72.6
+6.88
+36.5
+10.1
+34.1 66.2
+670
+142
+11.1
+19.1
+29.7
+24.7
+31.9
+19
+
+
+Table S15. Per-dataset codebook Usage (↑).
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+VQGAN
+0.79
+0.79
+0.79
+0.79
+0.78 0.73
+0.78
+0.74
+0.31
+0.79
+0.79
+0.79
+0.74
+SimVQ
+1.00
+1.00
+0.95
+0.98
+0.98 0.87
+0.96
+0.95
+0.57
+1.00
+1.00
+1.00
+0.94
+SimQINCo 1.00
+1.00
+0.99
+0.98
+0.97 0.82
+0.97
+0.93
+0.37
+1.00
+1.00
+1.00
+0.92
+RQVAE
+0.99
+1.00
+0.96
+0.99
+0.97 0.92
+0.97
+0.92
+0.60
+1.00
+1.00
+1.00
+0.94
+DiVeQ
+1.00
+1.00
+0.99
+1.00
+0.99 0.96
+0.99
+0.96
+0.83
+1.00
+1.00
+1.00
+0.98
+SF-DiVeQ
+0.32
+0.33
+0.31
+0.31
+0.31 0.31
+0.30
+0.30
+0.31
+0.32
+0.32
+0.32
+0.31
+BSQ
+1.00
+1.00
+1.00
+1.00
+1.00 1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+LFQ
+1.00
+1.00
+1.00
+1.00
+1.00 1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+f = 8
+VQGAN
+0.12
+0.12
+0.11
+0.12
+0.12 0.11
+0.12
+0.12
+0.11
+0.12
+0.12
+0.12
+0.11
+SimVQ
+1.00
+1.00
+0.86
+0.94
+0.88 0.60
+0.77
+0.93
+0.97
+1.00
+1.00
+1.00
+0.91
+SimQINCo 1.00
+1.00
+0.92
+0.93
+0.93 0.77
+0.92
+0.98
+0.84
+1.00
+1.00
+1.00
+0.94
+RQVAE
+0.97
+1.00
+0.88
+0.96
+0.91 0.63
+0.89
+0.95
+0.70
+1.00
+1.00
+1.00
+0.91
+DiVeQ
+1.00
+1.00
+0.94
+0.98
+0.96 0.80
+0.94
+0.99
+1.00
+1.00
+1.00
+1.00
+0.97
+SF-DiVeQ
+1.00
+1.00
+1.00
+1.00
+1.00 0.98
+0.99
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+BSQ
+1.00
+1.00
+1.00
+1.00
+1.00 1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+LFQ
+1.00
+1.00
+1.00
+1.00
+1.00 1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+1.00
+f = 16
+VQGAN
+0.01
+0.01
+0.01
+0.01
+0.01 0.01
+0.01
+0.01
+0.01
+0.01
+0.01
+0.01
+0.01
+SimVQ
+0.98
+0.99
+0.65
+0.44
+0.56 0.33
+0.29
+0.93
+0.98
+1.00
+1.00
+1.00
+0.76
+SimQINCo 1.00
+0.99
+0.79
+0.77
+0.81 0.57
+0.70
+0.95
+0.93
+1.00
+1.00
+1.00
+0.88
+RQVAE
+0.97
+0.98
+0.77
+0.76
+0.78 0.47
+0.69
+0.94
+0.92
+0.98
+0.98
+0.97
+0.85
+DiVeQ
+1.00
+1.00
+0.95
+0.95
+0.89 0.87
+0.78
+1.00
+1.00
+1.00
+1.00
+1.00
+0.95
+SF-DiVeQ
+0.62
+0.62
+0.59
+0.59
+0.58 0.49
+0.52
+0.61
+0.63
+0.63
+0.62
+0.62
+0.59
+BSQ
+0.98
+1.00
+0.65
+0.49
+0.34 0.16
+0.11
+0.81
+1.00
+1.00
+0.99
+0.99
+0.71
+LFQ
+0.47
+0.45
+0.30
+0.35
+0.20 0.08
+0.09
+0.34
+0.78
+0.57
+0.52
+0.53
+0.39
+Table S16. Per-dataset codebook Entropy (↑).
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+VQGAN
+0.95
+0.90
+0.88
+0.92
+0.90 0.85
+0.93
+0.83
+0.71
+0.88
+0.88
+0.88
+0.88
+SimVQ
+0.95
+0.93
+0.89
+0.92
+0.92 0.86
+0.94
+0.87
+0.75
+0.93
+0.93
+0.93
+0.90
+SimQINCo 0.97
+0.93
+0.90
+0.94
+0.94 0.85
+0.96
+0.86
+0.69
+0.91
+0.91
+0.91
+0.90
+RQVAE
+0.71
+0.69
+0.69
+0.71
+0.70 0.69
+0.71
+0.68
+0.63
+0.69
+0.69
+0.69
+0.69
+DiVeQ
+0.95
+0.93
+0.91
+0.96
+0.93 0.86
+0.97
+0.89
+0.86
+0.93
+0.93
+0.93
+0.92
+SF-DiVeQ
+0.83
+0.83
+0.77
+0.83
+0.82 0.80
+0.85
+0.77
+0.81
+0.82
+0.83
+0.83
+0.82
+BSQ
+1.00
+1.00
+0.99
+0.99
+1.00 0.99
+1.00
+0.99
+0.99
+0.99
+0.99
+0.99
+0.99
+LFQ
+1.00
+0.99
+0.99
+0.99
+0.99 0.99
+1.00
+0.99
+0.99
+1.00
+1.00
+1.00
+0.99
+f = 8
+VQGAN
+0.74
+0.74
+0.69
+0.71
+0.74 0.67
+0.75
+0.70
+0.66
+0.76
+0.76
+0.76
+0.72
+SimVQ
+0.86
+0.78
+0.75
+0.86
+0.77 0.78
+0.87
+0.78
+0.69
+0.82
+0.81
+0.81
+0.80
+SimQINCo 0.97
+0.96
+0.91
+0.93
+0.95 0.88
+0.96
+0.92
+0.85
+0.97
+0.97
+0.97
+0.94
+RQVAE
+0.77
+0.75
+0.74
+0.76
+0.75 0.73
+0.76
+0.74
+0.68
+0.75
+0.76
+0.75
+0.74
+DiVeQ
+0.97
+0.96
+0.92
+0.95
+0.95 0.90
+0.97
+0.93
+0.94
+0.97
+0.97
+0.97
+0.95
+SF-DiVeQ
+0.99
+0.98
+0.97
+0.99
+0.98 0.95
+0.98
+0.96
+0.93
+0.98
+0.98
+0.98
+0.97
+BSQ
+1.00
+1.00
+0.99
+0.99
+0.99 0.97
+0.99
+0.99
+1.00
+1.00
+1.00
+1.00
+0.99
+LFQ
+1.00
+0.99
+0.99
+0.99
+0.99 0.97
+0.99
+0.99
+1.00
+1.00
+1.00
+1.00
+0.99
+f = 16
+VQGAN
+0.53
+0.51
+0.48
+0.48
+0.51 0.48
+0.53
+0.51
+0.48
+0.54
+0.54
+0.54
+0.51
+SimVQ
+0.68
+0.54
+0.51
+0.45
+0.54 0.49
+0.58
+0.64
+0.43
+0.62
+0.62
+0.62
+0.56
+SimQINCo 0.98
+0.95
+0.90
+0.91
+0.94 0.88
+0.94
+0.94
+0.91
+0.98
+0.98
+0.98
+0.94
+RQVAE
+0.87
+0.84
+0.82
+0.82
+0.84 0.81
+0.85
+0.84
+0.81
+0.87
+0.86
+0.86
+0.84
+DiVeQ
+0.98
+0.97
+0.95
+0.95
+0.96 0.95
+0.96
+0.96
+0.97
+0.98
+0.98
+0.98
+0.96
+SF-DiVeQ
+0.93
+0.92
+0.89
+0.90
+0.92 0.86
+0.91
+0.90
+0.90
+0.93
+0.93
+0.93
+0.91
+BSQ
+0.98
+0.99
+0.94
+0.93
+0.90 0.80
+0.82
+0.96
+0.99
+0.99
+0.99
+0.99
+0.94
+LFQ
+0.90
+0.85
+0.85
+0.89
+0.85 0.71
+0.79
+0.84
+0.91
+0.91
+0.90
+0.91
+0.86
+Table S17. Per-dataset codebook Utility (↑).
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+VQGAN
+0.49
+0.38
+0.36
+0.40
+0.40 0.25
+0.47
+0.24
+0.19
+0.30
+0.31
+0.31
+0.34
+SimVQ
+0.47
+0.42
+0.37
+0.40
+0.41 0.28
+0.45
+0.29
+0.21
+0.37
+0.40
+0.40
+0.37
+SimQINCo 0.57
+0.45
+0.40
+0.44
+0.48 0.26
+0.55
+0.27
+0.18
+0.33
+0.35
+0.35
+0.39
+RQVAE
+0.11
+0.10
+0.10
+0.11
+0.11 0.11
+0.11
+0.10
+0.09
+0.10
+0.10
+0.10
+0.10
+DiVeQ
+0.50
+0.44
+0.39
+0.53
+0.42 0.27
+0.56
+0.37
+0.34
+0.41
+0.44
+0.43
+0.43
+SF-DiVeQ
+0.32
+0.31
+0.25
+0.31
+0.30 0.25
+0.35
+0.20
+0.27
+0.28
+0.30
+0.30
+0.29
+BSQ
+0.81
+0.77
+0.72
+0.77
+0.79 0.68
+0.80
+0.75
+0.73
+0.79
+0.73
+0.71
+0.75
+LFQ
+0.80
+0.74
+0.75
+0.76
+0.75 0.67
+0.82
+0.71
+0.78
+0.81
+0.81
+0.81
+0.77
+f = 8
+VQGAN
+0.21
+0.21
+0.15
+0.17
+0.20 0.14
+0.23
+0.15
+0.14
+0.23
+0.23
+0.23
+0.19
+SimVQ
+0.18
+0.08
+0.09
+0.18
+0.08 0.15
+0.20
+0.09
+0.05
+0.09
+0.09
+0.09
+0.11
+SimQINCo 0.55
+0.50
+0.39
+0.41
+0.48 0.30
+0.53
+0.36
+0.28
+0.52
+0.53
+0.52
+0.45
+RQVAE
+0.13
+0.12
+0.13
+0.13
+0.12 0.14
+0.13
+0.12
+0.10
+0.12
+0.12
+0.12
+0.12
+DiVeQ
+0.57
+0.51
+0.41
+0.48
+0.49 0.30
+0.56
+0.36
+0.44
+0.52
+0.55
+0.55
+0.48
+SF-DiVeQ
+0.74
+0.61
+0.53
+0.70
+0.61 0.48
+0.64
+0.47
+0.40
+0.56
+0.56
+0.55
+0.57
+BSQ
+0.82
+0.78
+0.71
+0.75
+0.75 0.51
+0.69
+0.71
+0.81
+0.84
+0.82
+0.81
+0.75
+LFQ
+0.79
+0.68
+0.70
+0.70
+0.69 0.51
+0.66
+0.66
+0.78
+0.79
+0.77
+0.76
+0.71
+f = 16
+VQGAN
+0.09
+0.08
+0.06
+0.06
+0.08 0.06
+0.09
+0.07
+0.06
+0.09
+0.09
+0.09
+0.08
+SimVQ
+0.04
+0.02
+0.02
+0.02
+0.03 0.02
+0.03
+0.03
+0.02
+0.03
+0.03
+0.03
+0.03
+SimQINCo 0.62
+0.49
+0.36
+0.38
+0.47 0.34
+0.50
+0.41
+0.39
+0.65
+0.61
+0.61
+0.49
+RQVAE
+0.27
+0.23
+0.24
+0.22
+0.23 0.24
+0.25
+0.23
+0.20
+0.26
+0.25
+0.25
+0.24
+DiVeQ
+0.59
+0.54
+0.48
+0.50
+0.51 0.42
+0.53
+0.47
+0.56
+0.61
+0.60
+0.61
+0.54
+SF-DiVeQ
+0.48
+0.45
+0.38
+0.39
+0.44 0.30
+0.43
+0.37
+0.37
+0.47
+0.47
+0.47
+0.42
+BSQ
+0.61
+0.60
+0.42
+0.43
+0.37 0.15
+0.25
+0.46
+0.72
+0.67
+0.63
+0.63
+0.50
+LFQ
+0.32
+0.18
+0.22
+0.30
+0.25 0.09
+0.19
+0.18
+0.31
+0.31
+0.32
+0.32
+0.25
+Table S18. Per-dataset linear-probing primary metric (↑, on ze).
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+.789
+.584
+.682
+.721
+.979 .581
+.774
+.934
+.686
+.989
+.984
+.934
+.803
+SoftVQ
+.921
+.610
+.781
+.828
+.989 .587
+.863
+.974
+.780
+.996
+.993
+.979
+.858
+VQGAN
+.865
+.609
+.775
+.820
+.984 .606
+.880
+.961
+.807
+.990
+.987
+.963
+.854
+SimVQ
+.799
+.603
+.718
+.786
+.984 .596
+.848
+.963
+.802
+.989
+.983
+.955
+.836
+SimQINCo .858
+.606
+.782
+.791
+.986 .608
+.867
+.961
+.803
+.988
+.985
+.961
+.850
+RQVAE
+.865
+.597
+.755
+.780
+.985 .635
+.845
+.963
+.788
+.991
+.985
+.968
+.847
+DiVeQ
+.856
+.608
+.737
+.794
+.987 .638
+.867
+.969
+.802
+.992
+.987
+.965
+.850
+SF-DiVeQ
+.847
+.603
+.703
+.787
+.983 .526
+.871
+.959
+.806
+.991
+.986
+.966
+.836
+BSQ
+.911
+.599
+.728
+.853
+.985 .516
+.868
+.967
+.764
+.995
+.993
+.971
+.846
+LFQ
+.902
+.573
+.682
+.840
+.988 .651
+.819
+.961
+.752
+.997
+.995
+.973
+.844
+f = 8
+AEKL
+.854
+.612
+.688
+.776
+.978 .614
+.723
+.933
+.764
+.988
+.976
+.949
+.821
+SoftVQ
+.938
+.649
+.776
+.849
+.978 .621
+.695
+.968
+.815
+.995
+.993
+.977
+.854
+VQGAN
+.896
+.656
+.770
+.801
+.983 .596
+.881
+.946
+.799
+.990
+.982
+.956
+.855
+SimVQ
+.835
+.633
+.764
+.835
+.984 .652
+.831
+.967
+.801
+.993
+.988
+.967
+.854
+SimQINCo .880
+.639
+.761
+.823
+.983 .667
+.851
+.954
+.800
+.988
+.979
+.954
+.857
+RQVAE
+.875
+.626
+.734
+.782
+.978 .615
+.859
+.952
+.802
+.993
+.991
+.964
+.848
+DiVeQ
+.856
+.640
+.715
+.829
+.982 .580
+.847
+.963
+.795
+.994
+.988
+.971
+.847
+SF-DiVeQ
+.906
+.642
+.785
+.849
+.988 .653
+.904
+.977
+.811
+.997
+.994
+.978
+.874
+BSQ
+.874
+.622
+.710
+.837
+.986 .596
+.799
+.939
+.793
+.993
+.994
+.968
+.843
+LFQ
+.887
+.616
+.709
+.803
+.981 .632
+.851
+.935
+.781
+.992
+.991
+.969
+.846
+f = 16
+AEKL
+.877
+.643
+.750
+.796
+.973 .669
+.836
+.939
+.762
+.987
+.982
+.948
+.847
+SoftVQ
+.921
+.663
+.816
+.876
+.979 .662
+.778
+.975
+.806
+.997
+.994
+.979
+.870
+VQGAN
+.904
+.678
+.778
+.834
+.983 .661
+.876
+.955
+.781
+.986
+.977
+.946
+.863
+SimVQ
+.896
+.664
+.816
+.860
+.990 .636
+.917
+.961
+.797
+.992
+.989
+.966
+.874
+SimQINCo .901
+.672
+.792
+.812
+.982 .639
+.895
+.959
+.775
+.990
+.979
+.954
+.862
+RQVAE
+.902
+.657
+.790
+.805
+.982 .625
+.851
+.957
+.780
+.990
+.987
+.966
+.858
+DiVeQ
+.927
+.673
+.778
+.800
+.987 .658
+.822
+.958
+.782
+.990
+.983
+.964
+.860
+SF-DiVeQ
+.913
+.679
+.804
+.840
+.989 .638
+.819
+.968
+.800
+.993
+.990
+.971
+.867
+BSQ
+.925
+.659
+.756
+.876
+.989 .572
+.779
+.954
+.830
+.994
+.994
+.970
+.858
+LFQ
+.877
+.657
+.745
+.817
+.980 .654
+.855
+.959
+.826
+.998
+.997
+.982
+.862
+20
+
+
+Table S19. Per-dataset linear-probing primary metric (↑, on zq).
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+SoftVQ
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+VQGAN
+.864
+.607
+.775
+.820
+.984 .610
+.882
+.960
+.804
+.990
+.987
+.963
+.854
+SimVQ
+.797
+.603
+.718
+.785
+.984 .596
+.850
+.963
+.800
+.989
+.983
+.955
+.835
+SimQINCo .858
+.605
+.785
+.791
+.986 .609
+.865
+.961
+.800
+.988
+.985
+.960
+.849
+RQVAE
+.865
+.598
+.755
+.780
+.985 .635
+.845
+.963
+.788
+.991
+.985
+.968
+.847
+DiVeQ
+.856
+.608
+.738
+.794
+.987 .663
+.866
+.969
+.802
+.992
+.987
+.965
+.852
+SF-DiVeQ
+.846
+.603
+.705
+.785
+.983 .534
+.870
+.959
+.805
+.991
+.986
+.966
+.836
+BSQ
+.875
+.595
+.700
+.793
+.952 .497
+.815
+.935
+.747
+.988
+.982
+.949
+.819
+LFQ
+.851
+.571
+.660
+.821
+.985 .571
+.792
+.950
+.745
+.995
+.990
+.966
+.825
+f = 8
+AEKL
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+SoftVQ
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+VQGAN
+.891
+.656
+.769
+.799
+.983 .581
+.883
+.946
+.798
+.990
+.982
+.956
+.853
+SimVQ
+.835
+.632
+.764
+.831
+.983 .664
+.820
+.966
+.799
+.993
+.988
+.966
+.853
+SimQINCo .878
+.639
+.759
+.821
+.983 .672
+.852
+.953
+.798
+.988
+.979
+.954
+.856
+RQVAE
+.875
+.626
+.735
+.782
+.978 .615
+.858
+.952
+.802
+.993
+.991
+.964
+.848
+DiVeQ
+.858
+.640
+.713
+.828
+.982 .543
+.843
+.962
+.793
+.994
+.988
+.971
+.843
+SF-DiVeQ
+.906
+.643
+.782
+.847
+.988 .648
+.896
+.977
+.808
+.997
+.994
+.978
+.872
+BSQ
+.839
+.604
+.690
+.757
+.985 .628
+.784
+.936
+.748
+.991
+.991
+.965
+.827
+LFQ
+.850
+.611
+.683
+.772
+.978 .615
+.851
+.920
+.760
+.989
+.987
+.959
+.831
+f = 16
+AEKL
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+SoftVQ
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+–
+VQGAN
+.889
+.675
+.772
+.823
+.982 .680
+.875
+.954
+.776
+.986
+.977
+.946
+.861
+SimVQ
+.890
+.660
+.807
+.839
+.990 .584
+.914
+.957
+.788
+.992
+.988
+.964
+.864
+SimQINCo .898
+.670
+.792
+.808
+.983 .647
+.901
+.958
+.773
+.990
+.978
+.955
+.863
+RQVAE
+.902
+.657
+.790
+.804
+.982 .623
+.849
+.957
+.779
+.990
+.987
+.966
+.857
+DiVeQ
+.926
+.671
+.774
+.797
+.986 .664
+.827
+.958
+.781
+.990
+.983
+.964
+.860
+SF-DiVeQ
+.912
+.678
+.807
+.838
+.989 .625
+.830
+.967
+.798
+.993
+.990
+.971
+.866
+BSQ
+.882
+.623
+.722
+.788
+.989 .665
+.811
+.948
+.789
+.994
+.993
+.972
+.848
+LFQ
+.832
+.660
+.724
+.765
+.978 .569
+.806
+.937
+.804
+.994
+.992
+.971
+.836
+Table S20.
+Downstream probing gap ∆= M(ze) −M(zq)
+(Sec. 4.7), mean±σ over the twelve datasets (each under its pri-
+mary metric), per compression factor. Larger ∆means discretiza-
+tion erodes more class-discriminative structure; bold marks the
+smallest gap per column.
+Method
+f=4
+f=8
+f=16
+VQGAN [43]
+0.000±0.009
+0.008±0.025
+0.001±0.014
+SimVQ [34]
+-0.002±0.006
+0.001±0.017
+0.008±0.006
+SimQINCo [54]
+0.002±0.006
+-0.001±0.006
+-0.001±0.010
+RQVAE [55]
+0.000±0.000
+0.000±0.000
+-0.001±0.006
+DiVeQ [49]
+0.001±0.006
+-0.002±0.011
+-0.003±0.009
+SF-DiVeQ [49]
+-0.001±0.005
+0.003±0.009
+-0.004±0.017
+BSQ [53]
+0.046±0.033
+0.021±0.013
+0.018±0.029
+LFQ [52]
+0.031±0.029
+0.027±0.021
+0.037±0.024
+Figure S10. Memorization concentrates by dataset, not archi-
+tecture. Per-(family, dataset) copy-rate at f=8 under SSCD (left)
+and DINOv2 (right) features; rows are quantizer families, columns
+datasets. Elevated values cluster in the lowest-variance modalities
+(OCT, Path) and are largely constant across families, indicating
+the dataset regime governs replication.
+Figure S11. Memorization is not a generator-underfitting ar-
+tifact.
+Copy-rate and NN-distance ratio vs. gFID (SSCD, DI-
+NOv2), colored by family. Copy-rate is decoupled from gFID
+(r=−0.05/−0.15) and elevated copies come from the best (low-
+gFID) generators; NN-distance ratios stay near one throughout.
+21
+
+
+Table S21.
+Per-dataset variance/diversity of the reference im-
+ages (grayscale, up to 1,200 samples each), sorted from least to
+most diverse by effective rank. Eff. rank: effective number of
+PCA directions (trace/λmax of the sample Gram matrix); NN sim:
+mean nearest-neighbour cosine similarity (higher = more near-
+duplicates); Pairwise dist: mean pairwise cosine distance (lower
+= more homogeneous).
+Dataset
+Pixel std ↓
+Eff. rank ↓
+NN sim ↑
+Pairwise dist ↓
+Reti
+0.214
+1.7
+0.986
+0.086
+Path
+0.194
+2.3
+0.976
+0.047
+Derma
+0.146
+2.5
+0.993
+0.029
+OrgS
+0.267
+2.8
+0.938
+0.215
+OCT
+0.233
+3.0
+0.909
+0.421
+OrgA
+0.278
+3.0
+0.945
+0.251
+Pneu
+0.178
+3.5
+0.984
+0.044
+OrgC
+0.262
+3.4
+0.934
+0.216
+Chest
+0.247
+3.6
+0.974
+0.092
+Breast
+0.218
+3.6
+0.922
+0.164
+Tiss
+0.100
+3.8
+0.891
+0.285
+Blood
+0.191
+3.9
+0.987
+0.033
+Table S22. Per-dataset copy rate (↓), SSCD features.
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+.084
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.007
+SoftVQ
+.128
+.005
+.000
+.017
+.000 .000
+.000
+.000
+.001
+.000
+.000
+.000
+.013
+VQGAN
+.017
+.003
+.000
+.048
+.000 .000
+.000
+.000
+.001
+.000
+.000
+.000
+.006
+SimVQ
+.060
+.001
+.000
+.032
+.000 .000
+.000
+.000
+.005
+.000
+.000
+.000
+.008
+SimQINCo .045
+.001
+.000
+.003
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.001
+.004
+RQVAE
+.031
+.007
+.000
+.124
+.000 .000
+.000
+.000
+.013
+.000
+.000
+.000
+.015
+DiVeQ
+.047
+.005
+.000
+.037
+.000 .000
+.000
+.000
+.011
+.003
+.000
+.004
+.009
+SF-DiVeQ
+.020
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.002
+.000
+.000
+.001
+.002
+BSQ
+.008
+.000
+.000
+.015
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.002
+LFQ
+.003
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+f = 8
+AEKL
+.054
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.005
+SoftVQ
+.010
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.001
+VQGAN
+.064
+.002
+.000
+.000
+.000 .000
+.000
+.000
+.007
+.001
+.000
+.001
+.006
+SimVQ
+.036
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.003
+.000
+.000
+.001
+.003
+SimQINCo .082
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.001
+.001
+.000
+.001
+.007
+RQVAE
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+DiVeQ
+.144
+.001
+.000
+.000
+.000 .000
+.000
+.000
+.003
+.003
+.000
+.004
+.013
+SF-DiVeQ
+.081
+.000
+.000
+.004
+.000 .000
+.000
+.000
+.006
+.000
+.000
+.003
+.008
+BSQ
+.039
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.003
+LFQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+f = 16
+AEKL
+.112
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.009
+SoftVQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+VQGAN
+.011
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.001
+SimVQ
+.038
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.003
+SimQINCo .037
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.003
+.000
+.000
+.000
+.003
+RQVAE
+.029
+.000
+.000
+.002
+.000 .000
+.000
+.000
+.009
+.002
+.001
+.001
+.004
+DiVeQ
+.056
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.002
+.000
+.000
+.000
+.005
+SF-DiVeQ
+.023
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.002
+BSQ
+.112
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.009
+LFQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+Table S23. Per-dataset memorization ratio (↑), SSCD features.
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+.898
+.911
+.861
+.911
+.904 .857
+.900
+.896
+.922
+.930
+.913
+.916
+.902
+SoftVQ
+.900
+.907
+.891
+.883
+.904 .861
+.898
+.885
+.918
+.918
+.904
+.907
+.898
+VQGAN
+.898
+.896
+.867
+.865
+.885 .846
+.887
+.884
+.914
+.917
+.905
+.906
+.889
+SimVQ
+.900
+.904
+.878
+.881
+.897 .852
+.883
+.890
+.910
+.914
+.896
+.901
+.892
+SimQINCo .900
+.900
+.871
+.884
+.885 .840
+.880
+.883
+.917
+.915
+.896
+.899
+.889
+RQVAE
+.900
+.896
+.879
+.859
+.887 .853
+.872
+.889
+.907
+.914
+.895
+.896
+.887
+DiVeQ
+.895
+.890
+.874
+.872
+.886 .838
+.876
+.883
+.906
+.906
+.891
+.893
+.884
+SF-DiVeQ
+.899
+.907
+.865
+.888
+.899 .844
+.887
+.884
+.911
+.920
+.903
+.905
+.893
+BSQ
+.906
+.909
+.883
+.892
+.913 .862
+.912
+.902
+.920
+.933
+.910
+.915
+.905
+LFQ
+.913
+.928
+.902
+.922
+.928 .902
+.930
+.921
+.945
+.950
+.936
+.936
+.926
+f = 8
+AEKL
+.896
+.905
+.866
+.907
+.896 .843
+.899
+.888
+.913
+.921
+.902
+.906
+.895
+SoftVQ
+.912
+.908
+.875
+.904
+.901 .861
+.913
+.900
+.914
+.930
+.916
+.918
+.904
+VQGAN
+.900
+.896
+.867
+.892
+.889 .843
+.902
+.887
+.906
+.906
+.892
+.889
+.889
+SimVQ
+.903
+.903
+.874
+.888
+.900 .843
+.889
+.890
+.907
+.910
+.886
+.887
+.890
+SimQINCo .900
+.904
+.865
+.887
+.891 .835
+.893
+.886
+.913
+.905
+.885
+.887
+.888
+RQVAE
+.942
+.960
+.950
+.967
+.881 .958
+.950
+.963
+.974
+.963
+.955
+.946
+.951
+DiVeQ
+.893
+.899
+.868
+.890
+.891 .846
+.889
+.883
+.909
+.898
+.880
+.883
+.886
+SF-DiVeQ
+.896
+.909
+.875
+.884
+.902 .842
+.897
+.886
+.904
+.908
+.893
+.895
+.891
+BSQ
+.903
+.912
+.870
+.908
+.900 .858
+.909
+.902
+.930
+.936
+.922
+.922
+.906
+LFQ
+.931
+.950
+.917
+.940
+.938 .925
+.941
+.934
+.947
+.955
+.946
+.947
+.939
+f = 16
+AEKL
+.903
+.900
+.878
+.905
+.894 .837
+.896
+.900
+.913
+.920
+.909
+.911
+.897
+SoftVQ
+.962
+.967
+.951
+.962
+.942 .947
+.922
+.965
+.959
+.961
+.954
+.953
+.954
+VQGAN
+.910
+.901
+.877
+.913
+.892 .839
+.913
+.909
+.923
+.930
+.917
+.919
+.904
+SimVQ
+.906
+.902
+.869
+.905
+.888 .843
+.914
+.907
+.920
+.935
+.920
+.924
+.903
+SimQINCo .907
+.900
+.879
+.903
+.889 .846
+.908
+.899
+.909
+.927
+.911
+.914
+.899
+RQVAE
+.899
+.906
+.871
+.891
+.895 .837
+.902
+.894
+.906
+.901
+.893
+.895
+.891
+DiVeQ
+.904
+.901
+.873
+.901
+.895 .840
+.909
+.900
+.908
+.923
+.910
+.909
+.898
+SF-DiVeQ
+.904
+.902
+.868
+.899
+.891 .836
+.901
+.899
+.912
+.926
+.911
+.914
+.897
+BSQ
+.899
+.909
+.880
+.909
+.901 .855
+.909
+.905
+.916
+.932
+.921
+.922
+.905
+LFQ
+.919
+.910
+.871
+.917
+.900 .873
+.929
+.911
+.929
+.944
+.933
+.933
+.914
+Table S24. Per-dataset copy rate (↓), DINOv2 features.
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+.022
+.000
+.000
+.004
+.000 .000
+.000
+.000
+.003
+.000
+.002
+.004
+.003
+SoftVQ
+.069
+.000
+.000
+.030
+.000 .000
+.000
+.000
+.022
+.000
+.002
+.003
+.010
+VQGAN
+.037
+.003
+.000
+.159
+.000 .000
+.000
+.000
+.010
+.001
+.004
+.005
+.018
+SimVQ
+.085
+.001
+.000
+.213
+.000 .000
+.000
+.000
+.035
+.001
+.007
+.013
+.030
+SimQINCo .085
+.006
+.000
+.214
+.000 .000
+.000
+.000
+.018
+.000
+.004
+.004
+.028
+RQVAE
+.059
+.006
+.000
+.200
+.000 .000
+.000
+.000
+.026
+.001
+.004
+.004
+.025
+DiVeQ
+.052
+.000
+.000
+.103
+.000 .000
+.000
+.000
+.031
+.003
+.014
+.015
+.018
+SF-DiVeQ
+.023
+.002
+.000
+.156
+.000 .000
+.000
+.000
+.016
+.005
+.014
+.011
+.019
+BSQ
+.012
+.000
+.000
+.088
+.000 .000
+.000
+.000
+.008
+.000
+.001
+.000
+.009
+LFQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+f = 8
+AEKL
+.010
+.000
+.000
+.004
+.000 .000
+.000
+.000
+.009
+.000
+.007
+.006
+.003
+SoftVQ
+.000
+.000
+.000
+.001
+.000 .000
+.000
+.000
+.009
+.000
+.000
+.000
+.001
+VQGAN
+.000
+.000
+.000
+.004
+.000 .000
+.000
+.000
+.014
+.001
+.016
+.016
+.004
+SimVQ
+.012
+.000
+.000
+.049
+.000 .000
+.000
+.000
+.018
+.000
+.025
+.022
+.010
+SimQINCo .018
+.000
+.000
+.008
+.000 .000
+.000
+.000
+.011
+.001
+.009
+.010
+.005
+RQVAE
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+DiVeQ
+.037
+.000
+.000
+.011
+.000 .000
+.000
+.000
+.011
+.001
+.010
+.014
+.007
+SF-DiVeQ
+.029
+.000
+.000
+.047
+.000 .000
+.000
+.000
+.022
+.000
+.005
+.006
+.009
+BSQ
+.003
+.000
+.000
+.002
+.000 .000
+.000
+.000
+.004
+.000
+.001
+.003
+.001
+LFQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+f = 16
+AEKL
+.000
+.000
+.000
+.001
+.000 .000
+.000
+.000
+.011
+.000
+.003
+.004
+.002
+SoftVQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+VQGAN
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.001
+.001
+.000
+SimVQ
+.000
+.000
+.000
+.001
+.000 .000
+.000
+.000
+.002
+.000
+.003
+.006
+.001
+SimQINCo .000
+.000
+.000
+.004
+.000 .000
+.000
+.000
+.023
+.000
+.002
+.002
+.003
+RQVAE
+.000
+.000
+.000
+.006
+.000 .000
+.000
+.000
+.040
+.000
+.006
+.003
+.005
+DiVeQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.031
+.000
+.005
+.004
+.003
+SF-DiVeQ
+.000
+.000
+.000
+.009
+.000 .000
+.000
+.000
+.010
+.000
+.003
+.006
+.002
+BSQ
+.000
+.000
+.000
+.001
+.000 .000
+.000
+.000
+.022
+.000
+.003
+.003
+.002
+LFQ
+.000
+.000
+.000
+.000
+.000 .000
+.000
+.000
+.000
+.000
+.000
+.000
+.000
+22
+
+
+Table S25. Per-dataset memorization ratio (↑), DINOv2 features.
+Method
+Path Chest Derma OCT Pneu Reti Breast Blood Tiss OrgA OrgC OrgS mean
+f = 4
+AEKL
+.843
+.882
+.846
+.854
+.875 .865
+.771
+.884
+.826
+.822
+.812
+.814
+.841
+SoftVQ
+.832
+.873
+.852
+.846
+.883 .854
+.786
+.873
+.790
+.814
+.809
+.813
+.835
+VQGAN
+.797
+.858
+.823
+.823
+.850 .804
+.753
+.864
+.800
+.821
+.802
+.807
+.817
+SimVQ
+.796
+.859
+.816
+.828
+.847 .770
+.758
+.871
+.789
+.819
+.802
+.802
+.813
+SimQINCo .798
+.854
+.823
+.822
+.832 .816
+.761
+.855
+.793
+.822
+.797
+.806
+.815
+RQVAE
+.791
+.854
+.804
+.820
+.848 .800
+.745
+.851
+.793
+.815
+.793
+.797
+.809
+DiVeQ
+.806
+.858
+.821
+.835
+.847 .794
+.764
+.850
+.792
+.820
+.804
+.808
+.817
+SF-DiVeQ
+.808
+.857
+.825
+.828
+.844 .785
+.767
+.858
+.796
+.822
+.797
+.811
+.816
+BSQ
+.814
+.871
+.847
+.848
+.874 .889
+.770
+.860
+.783
+.813
+.782
+.787
+.828
+LFQ
+.906
+.901
+.820
+.863
+.874 .887
+.796
+.876
+.842
+.841
+.842
+.836
+.857
+f = 8
+AEKL
+.851
+.875
+.847
+.853
+.867 .853
+.776
+.879
+.809
+.819
+.804
+.810
+.837
+SoftVQ
+.875
+.882
+.845
+.861
+.888 .869
+.800
+.877
+.793
+.823
+.820
+.818
+.846
+VQGAN
+.872
+.869
+.838
+.851
+.851 .844
+.768
+.874
+.794
+.807
+.797
+.790
+.830
+SimVQ
+.824
+.870
+.821
+.842
+.864 .799
+.754
+.865
+.785
+.809
+.786
+.784
+.817
+SimQINCo .839
+.864
+.844
+.850
+.850 .797
+.778
+.872
+.797
+.812
+.796
+.799
+.825
+RQVAE
+.875
+.953
+.925
+.954
+.989 .941
+.922
+.887
+.911
+.855
+.878
+.897
+.916
+DiVeQ
+.829
+.865
+.823
+.845
+.850 .820
+.773
+.861
+.798
+.798
+.792
+.795
+.821
+SF-DiVeQ
+.819
+.864
+.815
+.836
+.857 .825
+.758
+.868
+.789
+.814
+.804
+.809
+.822
+BSQ
+.873
+.877
+.854
+.853
+.868 .901
+.779
+.883
+.802
+.848
+.836
+.835
+.851
+LFQ
+.902
+.932
+.850
+.885
+.889 .920
+.828
+.895
+.851
+.873
+.866
+.836
+.877
+f = 16
+AEKL
+.867
+.872
+.848
+.854
+.873 .881
+.758
+.884
+.811
+.817
+.807
+.805
+.840
+SoftVQ
+.936
+.807
+.864
+.911
+.889 .812
+.918
+.961
+.935
+.916
+.890
+.875
+.893
+VQGAN
+.874
+.895
+.867
+.846
+.877 .877
+.838
+.892
+.831
+.820
+.817
+.813
+.854
+SimVQ
+.874
+.882
+.856
+.861
+.880 .889
+.827
+.884
+.829
+.814
+.802
+.812
+.851
+SimQINCo .878
+.873
+.853
+.856
+.870 .871
+.813
+.883
+.797
+.806
+.807
+.806
+.843
+RQVAE
+.851
+.868
+.834
+.852
+.854 .828
+.768
+.869
+.784
+.801
+.798
+.803
+.826
+DiVeQ
+.882
+.873
+.847
+.859
+.863 .874
+.796
+.882
+.795
+.811
+.807
+.805
+.841
+SF-DiVeQ
+.881
+.874
+.846
+.846
+.864 .864
+.798
+.885
+.805
+.812
+.819
+.807
+.842
+BSQ
+.881
+.883
+.852
+.866
+.871 .860
+.787
+.885
+.793
+.827
+.826
+.815
+.845
+LFQ
+.867
+.911
+.854
+.870
+.892 .859
+.877
+.897
+.854
+.842
+.832
+.827
+.865
+23
