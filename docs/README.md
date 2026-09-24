@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-23</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-24</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 4 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>8</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-23 22:00:30 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-24 22:38:29 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今天速读了 8 篇论文、无精读，其中 3 篇并列最高分 7.0，聚焦稀疏视图三维重建、医学图像分词与扩散生成动力学三个方向。</p>
-<p>最值得看的是《GAPS》用生成式主动伪视图选择缓解稀疏视图 3D Gaussian Splatting 的视角不足，以及《Mean Velocity Matching》对扩散模型生成动态的重新思考；医学图像分词那篇则适合关注重建与生成如何权衡的读者。</p>
-<p>建议普通读者先从这三篇 7.0 的摘要与方法图入手，确认自己更关心三维重建还是生成模型，再决定是否深挖全文。</p>
+<p>今天速读 4 篇论文、精读 0 篇，方向集中在高维潜变量扩散、低样本工业目标检测和文生图安全护栏。</p>
+<p>最值得看的是 7.0 分的《On the Diffusibility of High-Dimensional Latents》，其次是两篇 6.0 分的工业检测域随机化与 InGuard 安全护栏工作。</p>
+<p>建议普通读者先读高维潜变量那篇抓核心结论，再按兴趣跟进安全护栏或工业落地场景。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -93,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">8 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="GAPS: Generative Active Pseudo-view Selection for Sparse-View 3D Gaussian Splatting">GAPS: Generative Active Pseudo-view Selection for Sparse-View 3D Gaussian Splatting</span></li><li><span class="dpr-home-dashboard-paper-title" title="What Makes a Good Medical Image Tokenizer? Rethinking Reconstruction and Generation in Medical Image Tokenization">What Makes a Good Medical Image Tokenizer? Rethinking Reconstruction and Generation in Medical Image Tokenization</span></li><li><span class="dpr-home-dashboard-paper-title" title="Mean Velocity Matching: Rethinking Generative Dynamics in Diffusion Models">Mean Velocity Matching: Rethinking Generative Dynamics in Diffusion Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="On the Diffusibility of High-Dimensional Latents">On the Diffusibility of High-Dimensional Latents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Semantically-Guided Domain Randomization for Industrial Object Detection in Low-Image-Budget Regimes">Semantically-Guided Domain Randomization for Industrial Object Detection in Low-Image-Budget Regimes</span></li><li><span class="dpr-home-dashboard-paper-title" title="InGuard: Towards Generalized Inner Guardrail for Safe Text-to-Image Generation">InGuard: Towards Generalized Inner Guardrail for Safe Text-to-Image Generation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>8</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>4</strong></span></div>
 </section>
 </div>
 

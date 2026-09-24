@@ -1,0 +1,73 @@
+{
+  "date": "20260924",
+  "date_label": "",
+  "generated_at": "2026-09-24 22:38:29 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.28473v1",
+      "route": "202609/24/2609.28473v1-on-the-diffusibility-of-high-dimensional-latents",
+      "title": "On the Diffusibility of High-Dimensional Latents",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向扩散图像生成的高维潜在空间几何分析",
+      "first_seen_at": "2026-09-24 22:38:29 UTC",
+      "updated_at": "2026-09-24 22:38:29 UTC"
+    },
+    {
+      "paper_id": "2609.26505v1",
+      "route": "202609/24/2609.26505v1-semantically-guided-domain-randomization-for-industrial-object-detection-in-low-image-budget-regimes",
+      "title": "Semantically-Guided Domain Randomization for Industrial Object Detection in Low-Image-Budget Regimes",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "结合 SDXL、ControlNet 与 IP-Adapter 的可控合成图像生成",
+      "first_seen_at": "2026-09-24 22:38:29 UTC",
+      "updated_at": "2026-09-24 22:38:29 UTC"
+    },
+    {
+      "paper_id": "2609.27620v1",
+      "route": "202609/24/2609.27620v1-inguard-towards-generalized-inner-guardrail-for-safe-text-to-image-generation",
+      "title": "InGuard: Towards Generalized Inner Guardrail for Safe Text-to-Image Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "安全可控的文本到图像生成",
+      "first_seen_at": "2026-09-24 22:38:29 UTC",
+      "updated_at": "2026-09-24 22:38:29 UTC"
+    },
+    {
+      "paper_id": "2609.28342v1",
+      "route": "202609/24/2609.28342v1-zero-shot-object-removal-via-attention-masking-latent-anchoring-and-refinement",
+      "title": "Zero-Shot Object Removal via Attention Masking, Latent Anchoring, and Refinement",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于扩散模型的零样本图像修复与生成",
+      "first_seen_at": "2026-09-24 22:38:29 UTC",
+      "updated_at": "2026-09-24 22:38:29 UTC"
+    }
+  ]
+}

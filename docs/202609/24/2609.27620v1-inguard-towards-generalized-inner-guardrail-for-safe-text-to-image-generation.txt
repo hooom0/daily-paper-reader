@@ -1,0 +1,2386 @@
+September 24, 2026
+InGuard: Towards Generalized Inner Guardrail for Safe
+Text-to-Image Generation
+Alibaba AAIG
+Alibaba-AAIG/InGuard
+Alibaba-AAIG/InGuard
+Alibaba-AAIG/InGuard
+Abstract
+Modern text-to-image (T2I) models generate high-quality images from arbitrary user
+prompts, yet they can just as easily produce not-safe-for-work (NSFW) content. Con-
+ventional outer guardrails consist of two components: a prompt classifier that checks
+for risk before generation, and a post-hoc image classifier that checks the fully generated
+image. In this design, both classifiers operate outside the generation pipeline and do not
+use the model’s own representations. This separation can limit prompt-screening accu-
+racy, while the image-side check runs only after the full generation cost has been spent.
+Moreover, a flagged prompt can only be rejected, even when it could be adjusted to pro-
+duce a safe image. In this work, we propose the Inner Guardrail (InGuard), a safety
+framework that works inside the pipeline on the model’s own representations, leaving
+base-model parameters untouched. First, a risk classifier grades each prompt as unsafe,
+risky, or benign based on the text encoder’s embeddings, with no external language
+model. Second, SAGE (Soft-gated Asymmetric Guardrail for Embeddings) modifies the
+embeddings of risky prompts, aiming to return a safe image instead of a refusal. Third,
+a latent detector checks the one-step clean latent estimate midway through denoising,
+reaching nearly image-level performance and halting generation when risk is detected.
+We also construct the RevGen Safety Benchmark to evaluate T2I safety under realistic
+conditions: 10,000 prompts built through real-image reverse generation, with a rewrit-
+ing step that supplies controlled intellectual-property (IP) characters, covering graded
+porn/gore risks, categorical IP risks, and benign negatives. Across five open-weight T2I
+models, InGuard reaches a 97.9–98.8% safety rate on our RevGen benchmark, matching
+or exceeding the outer guardrail. It reduces benign disturbance by 57.5–73.5% with ap-
+proximately 3.7× fewer added parameters, and avoids 50–55.6% of denoising steps on
+requests intercepted mid-generation.
+! This report contains content that may be disturbing or offensive.
+1
+arXiv:2609.27620v1  [cs.CV]  23 Sep 2026
+
+
+1
+Introduction
+Modern open-weight text-to-image (T2I) models, including Qwen-Image [38], HunyuanImage [31],
+FLUX [3], and Z-Image [46], can generate high-fidelity images from a wide range of natural-language
+prompts. However, their broad generative capabilities also increase the risk of misuse. Relevant risks
+include not-safe-for-work (NSFW) content, such as pornographic and gory imagery, and the generation
+of controlled intellectual-property (IP) characters that may conflict with deployment policies. Deploying
+these models in public-facing applications therefore requires robust safety mechanisms.
+The conventional safety approach forms an outer guardrail around the generation pipeline: a prompt
+classifier that checks the prompt for risk before generation, and a post-hoc image classifier that checks
+the fully generated image for NSFW content. This design has three limitations: (1) On the prompt side,
+the classifier normally relies on an external language model. Real-time deployment pushes it toward
+compact encoders such as BERT [6] and mE5 [36], whose small representation capacity limits the accu-
+racy of risk assessment. Scaling up to a larger language model can improve accuracy, but it also increases
+computational overhead. (2) On the image side, the image is checked only after generation is complete.
+All denoising steps have already finished by the time the check runs, so the compute is wasted when-
+ever a risky image is detected. (3) In the rejection-based configuration, risk detected on either side leads
+to outright rejection, which degrades the user experience. In practice, many requests can be guided and
+corrected to generate safe images, rather than rejected as a whole. In-pipeline enhancement methods
+can achieve this by modifying the prompt or its embeddings [28; 45]. All three limitations share the
+same root: the guardrail is blind to the model’s own representations. It works on the input text and the
+generated image, not on the embeddings and intermediate features.
+An ideal guardrail for safe T2I generation must be non-invasive, architecturally agnostic, and low-
+overhead. Therefore, we propose the Inner Guardrail (InGuard), which meets these requirements by
+embedding safety plugins at the text-encoding and iterative generation stages. As shown in Figure 1,
+unlike the conventional outer guardrail that fully generates an image before checking and discarding it,
+InGuard embeds these plugins within the pipeline so that the same risky request can still yield a safe im-
+age. First, a prompt embedding risk classifier grades each prompt into unsafe, risky, or benign directly
+on the T2I model’s own text encoder embeddings, inheriting the representation capacity of the large en-
+coder at no additional encoding cost. The graded risk levels then enable differentiated responses: unsafe
+prompts are intercepted before generation, risky ones are routed to enhancement, and benign ones pass
+through untouched. Second, we introduce SAGE (Soft-gated Asymmetric Guardrail for Embeddings) to
+handle risky prompts, aiming to return safe images that preserve the original request instead of outright
+rejection. SAGE softly blends the embeddings of risky tokens toward a safe subspace, while soft gating
+aims to limit changes to benign content. Third, during generation, a latent-space safety detector evalu-
+ates a one-step estimate of the clean latent at an intermediate generation step to detect residual unsafe
+content that passes through the first two stages. It attains detection accuracy comparable to image-level
+filtering while avoiding at least half of the denoising steps for requests intercepted at the selected detec-
+tion step. Within InGuard, SAGE and the latent-space safety detector give a risky request two possible
+outcomes, which Figure 2 illustrates on two controlled-IP prompts: the top example shows a successful
+enhancement that returns a safe image, and the bottom example shows a failed enhancement whose
+residual risk is caught by the latent-space safety detector.
+The main contributions of this work are threefold:
+• We construct the RevGen Safety Benchmark, a suite of 10,000 prompts reverse-generated from
+Outer Guardrail
+Inner Guardrail
+T2I 
+Generation
+unsafe
+content
+Prompt Risk 
+Detection
+Image Risk 
+Detection
+Embedding Risk 
+Classification
+prompt
+embedding
+Safety 
+Enhance
+Denoising Steps
+…
+Latent Risk 
+Detection
+…
+T2I Generation
+User 
+Prompt
+User 
+Prompt
+(optional)
+safe image
+Figure 1: Comparison of outer and inner guardrail designs on the same risky request. Left: the outer
+guardrail fully generates the image, then checks and discards it. Right: InGuard embeds safety plugins
+within the pipeline, and the same request yields a safe image after safety enhancement.
+2
+
+
+SpongeBob SquarePants 
+riding a bike on a seaside street
+SpongeBob SquarePants 
+blowing bubbles underwater
+Safety
+Enhance
+…
+…
+enhancement 
+succeeded
+no risk detected
+…
+…
+enhancement 
+failed
+risk detected
+skipped
+✕
+no image delivered
+safe image delivered
+unsafe image delivered
+unsafe image delivered
+user prompt
+user prompt
+Image Generation without guardrail
+Image Generation with inner guardrail
+Denoising Steps
+Denoising Steps
+Safety
+Enhance
+Figure 2: Two possible outcomes of a risky request under InGuard, shown on two controlled-IP prompts,
+each without (left) and with (right) the guardrail. Top: a successful enhancement returns a safe image.
+Bottom: a failed enhancement is caught by the latent-space safety detector, and no image is released.
+real images for realistic and diverse safety evaluation. It covers three risk dimensions (porn,
+gore, IP), with fine-grained severity levels for porn/gore, categorical IP labels, and dedicated
+benign negatives, supporting both risk assessment and false-positive measurement.
+• We propose InGuard, an in-pipeline safety framework whose graded risk classification routes
+each prompt to the response that fits: outright interception, safety enhancement for risky prompts,
+or pass-through with latent-space safety detection. Safety enhancement (SAGE) aims to turn
+risky requests into safe images that preserve the original intent, achieving a better safety–
+disturbance tradeoff than outright rejection, and latent-space safety detection attains detection
+accuracy comparable to image-level filtering while avoiding at least half of the denoising steps
+for requests intercepted at the selected detection step. The framework is non-invasive and ar-
+chitecturally agnostic, leaving base-model parameters untouched.
+• We conduct systematic safety evaluation across five open-weight T2I models (Z-Image-Turbo,
+Qwen-Image-2512, HunyuanImage-2.1, FLUX.2-klein-base-9B, and InternVL-U [32]) on RevGen
+benchmark. Experiments show that InGuard reaches a 97.9–98.8% safety rate, matching or ex-
+ceeding the outer guardrail while cutting benign disturbance by 57.5–73.5% with approximately
+3.7× fewer added guardrail parameters.
+2
+Related Work
+Research on T2I generation safety has grown in step with the open-weights release of LDMs [25], Dif-
+fusion Transformers (DiTs) [23], and Flow-Matching models [17; 18]. Existing strategies fall into two
+families: enhancement methods suppress unsafe concepts so that users receive safe images even from
+risky prompts, whereas detection methods identify risk in prompts or generated content. We review
+both, together with the safety benchmarks used to evaluate them.
+2.1
+T2I Safety Enhancement
+T2I safety enhancement methods can be classified into training-time and inference-time approaches.
+Training-time approaches modify model parameters directly, requiring additional training or fine-tuning.
+Concept Ablation [12] fine-tunes model parameters to align a target concept’s conditional distribution
+with that of an anchor concept, SafeGen [15] modifies the self-attention within the U-Net [26] to suppress
+sexually explicit content, and Erased Stable Diffusion [9] suppresses unsafe concepts through model
+fine-tuning. Such approaches introduce model-update costs and can affect semantically related benign
+concepts [12; 9].
+Inference-time methods operate at the text-embedding, latent, or attention level. At the text-embedding
+level, SAFREE [45] projects trigger tokens away from toxic concept subspaces using a hard trigger
+threshold. This projection component requires no training and is computed before denoising. SAFREE
+additionally provides Self-Validating Filtering (SVF), which adjusts conditioning across denoising steps.
+3
+
+
+STG [21], Responsible Diffusion [16], and ItD [33] refine embeddings through per-step gradient as-
+cent or external safe directions, incurring overhead or relying on precomputed components. At the
+latent level or the attention level, SLD [28] guides latents away from unsafe regions via classifier-free
+guidance [10] but risks disturbing benign outputs. SafeRoPE [43] perturbs positional embeddings in
+safety-critical attention heads, while CASG [39] dynamically selects category-aligned guidance to ad-
+dress multi-category conflicts and can be applied to latent-space or text-space safeguards.
+2.2
+T2I Safety Detection
+Safety detection at the prompt and image sides constitutes a common outer guardrail. On the prompt
+side, classifiers are often built on compact text encoders such as BERT [6] and mE5 [36], which are sep-
+arate from the generator’s own text encoder. On the image side, widely deployed classifiers inspect the
+generated image once the full denoising process finishes. Examples include the built-in safety checker
+of Stable Diffusion [25] (a CLIP-based filter that flags sexual content), as well as Q16 [27], NudeNet [2],
+and the LAION classifier [29]. Q16 employs prompt-tuning on socio-moral value datasets to classify
+inappropriate image content. NudeNet provides models for nudity classification and body-part detec-
+tion and is widely adopted in open-source moderation pipelines. The LAION classifier is a lightweight
+CLIP-based model that provides NSFW scores for filtering web-scale training corpora such as LAION-
+5B. Their target labels differ, so coverage of gore or controlled IP characters requires task-specific eval-
+uation or adaptation. Post-hoc detectors also run only after generation completes, and adaptation may
+be needed when transferring from natural to generated images. In-generation detection has also been
+explored. FlowGuard [42] uses linear latent decoding and curriculum learning to inspect intermediate
+denoising states and terminate unsafe generations early.
+2.3
+T2I Safety Benchmarks
+Existing T2I safety benchmarks, such as I2P [28], Ring-A-Bell [34], MMA-Diffusion [44], T2ISafety [14],
+and Six-CD [24], compile prompts from in-the-wild queries, adversarial transformations, or curated
+taxonomies. They span multiple risk categories including sexual content, violence, hate, and privacy.
+Some use fixed prompt sets for static risk profiling, while others apply adversarial attacks or structured
+concept taxonomies to probe robustness and assess mitigation.
+These benchmarks are designed to measure how much risk a model produces. Their annotations there-
+fore record which risks a prompt carries and how often it elicits them, rather than how severe each risk
+is. Most release risky prompts only. Six-CD also releases benign prompts in two forms: a risky prompt
+with the unwanted concept deleted, and plain captions from a general web corpus. Neither form explic-
+itly targets the graded near-boundary cases considered here. T2ISafety includes neutral prompts, which
+target demographic bias. Prompt sets further differ in how reliably they elicit risk, and Six-CD keeps a
+prompt only if it yields unsafe images in at least four of five generations.
+3
+RevGen Safety Benchmark
+3.1
+Overview
+The RevGen Safety Benchmark covers three risk dimensions (porn, gore, and IP) together with benign
+prompts. Prompts carry graded porn/gore labels and categorical IP labels, allowing category- and level-
+dependent responses rather than a single accept-or-reject decision. The benign prompts include cases
+written close to a risk category, where false positives are most likely to occur.
+The prompts are reverse-generated from real images rather than written from a language model’s pri-
+ors. As Figure 3 shows, an LLM-only pipeline writes prompts from structured configurations, while
+our pipeline instead passes real source images through a VLM to derive the prompts. Table 1 compares
+RevGen with existing benchmarks. Among them, RevGen uniquely combines real-image grounding,
+graded risk labels, and near-boundary benign negatives. Diversity in that table is a qualitative charac-
+terization of prompt sources, not a measured score.
+3.2
+VLM-Driven Generation Pipeline
+The VLM-driven reverse generation pipeline consists of four stages: source image pooling, VLM-driven
+reverse generation, IP character rewriting for a subset of prompts, and clustering-based diversity sam-
+pling. Each stage is described below. The resulting prompts are then rendered by the T2I models, which
+supports the measurements reported in Sections 3.3 and 3.4.
+4
+
+
+Comparison of LLM-Only and VLM-Driven Data Generation Approaches
+(a) LLM-Only Approach
+LLM
+Seed Prompts
+T2I Generation
+Monotonous
+Images
+✗Scene concentration (e.g., bedrooms, streets)     ✗Visual monotony     ✗Artificially easy classification
+✗No real-image grounding     ✗Limited scene diversity
+(b) VLM-Driven Approach  (adopted)
+Real Image
+Pool
+VLM
+Describe Scene
+→ Text Prompt
+IP Rewriting
+(partial)
+Clustering &
+Sampling
+T2I
+Generation
+Diverse
+Images
+✓Real-image grounding     ✓Diverse scene coverage     ✓On-demand retrieval architecture
+✓IP character rewriting with benign controls     ✓Clustering-based diversity sampling     ✓Challenging classification
+Figure 3: Schematic comparison of prompt-generation approaches. (a) An LLM-only pipeline uses struc-
+tured configurations. (b) Our reverse-generation pipeline derives prompts from real images.
+Table 1: Comparison with existing T2I safety benchmarks.
+Benchmark
+Prompt source
+Diversity
+Risk annotation
+False positive evaluation
+Porn
+Gore
+IP
+Graded
+severity
+Benign
+negatives
+Near-boundary
+negatives
+Ring-A-Bell [34]
+adv. optim.
+Low
+✓
+✓
+×
+×
+×
+×
+MMA-Diffusion [44]
+adv. optim.
+Low
+✓
+×
+×
+×
+×
+×
+I2P [28]
+in-the-wild
+Medium
+✓
+✓
+×
+×
+×
+×
+T2ISafety [14]
+in-the-wild
+Medium
+✓
+✓
+✓
+×
+×
+×
+Six-CD [24]
+curated + template
+Medium
+✓
+✓
+✓
+×
+✓
+×
+RevGen (ours)
+real-image
+reverse-gen
+High
+✓
+✓
+✓
+✓
+✓
+✓
+3.2.1
+Stage 1: Source Image Pooling
+The VLM reverse generation path draws from a pre-shuffled pool of source images collected from the
+internet. The pool is assembled to cover all target risk categories.
+3.2.2
+Stage 2: VLM-Driven Reverse Generation
+The core of our pipeline is a reverse generation process that bridges real-world imagery and text-to-
+image prompt design. Our method begins with real source images and leverages a VLM to convert each
+image into a text-to-image prompt intended to reproduce its main visual elements when fed to an LDM.
+This reverse generation strategy grounds the resulting prompts in the visual complexity, composition,
+and context of real images.
+For each source image, a VLM generates descriptive text-to-image prompts in both English and Chinese,
+which increases linguistic diversity. The VLM is instructed to capture key visual elements, including ob-
+jects, scenes, actions, styles, and spatial relationships, so that the resulting prompts faithfully represent
+the original image content. Figure 4 (top) compares real source images with the images regenerated
+from the VLM-derived prompts, illustrating how the generated prompts retain scene elements from the
+source images in these selected examples. This VLM reverse generation process produces the bench-
+mark’s pornographic and gore prompts and the initial benign prompts, some of which are subsequently
+rewritten into controlled or benign IP variants.
+3.2.3
+Stage 3: IP Character Rewriting
+Source images of copyrighted characters are scarce in the image pool, so direct VLM reverse generation
+cannot produce enough diverse IP prompts. To address this, IP-related prompts are generated through
+a specialized rewriting step. From a pool of VLM-generated normal prompts, an LLM systematically
+injects IP entities to produce four sub-categories. The first category comprises controlled IP prompts,
+which directly mention one of five controlled IP characters (Snow White, Doraemon, Minions, Elsa, and
+SpongeBob SquarePants), covering both single-character and multi-character scenarios. The remaining
+three categories are benign IP variants that should not be flagged: non-controlled copyrighted char-
+5
+
+
+Source Images
+Generated Images
+Source Images
+IP-Rewritten Generated Images
+Figure 4: Top: VLM-driven reverse generation: source images (left) and Z-Image-Turbo regenerations
+from the VLM-derived prompts (right). Only benign examples are shown for visual safety. Source im-
+ages are blurred to protect the privacy of the individuals they may contain. Bottom: IP character rewrit-
+ing: source images (left) and Z-Image-Turbo regenerations from IP-rewritten prompts (right), covering
+both controlled and benign non-controlled IP characters.
+acters (e.g., Luffy, Conan), associated characters from the same franchise (e.g., Nobita for Doraemon,
+Patrick Star for SpongeBob), and lookalike characters that share visual features with a controlled IP but
+are not the original entity (e.g., “a round blue robot animal without ears” as a Doraemon lookalike).
+This last category tests whether the system distinguishes a controlled character’s identity from visual
+similarity under the benchmark policy. Figure 4 (bottom) illustrates the IP rewriting process, showing
+source images alongside their IP-rewritten counterparts. Recall is measured only on the five controlled
+characters, while the benign sub-categories test false positives under this policy.
+3.2.4
+Stage 4: Clustering-Based Diversity Sampling
+Prompts within each sub-category are embedded with TF-IDF [30] followed by truncated SVD, then
+grouped with K-Means [20]. From each cluster we take the prompts closest to the centroid, up to a fixed
+per-cluster cap. The cap limits the contribution of any single cluster without requiring equal counts from
+clusters of different sizes. The trainset and testset are generated independently with source-image-level
+separation: prompts derived from the same source image, including English/Chinese versions and IP
+6
+
+
+rewrites, remain in the same split. MinHash-LSH [4] deduplication is additionally applied between the
+splits to reduce textual overlap.
+3.3
+Generated-Image Diversity
+We measure generated-image diversity with the Vendi Score [8], using a cosine similarity matrix of L2-
+normalized CLS features from a frozen DINOv2 ViT-B/14 encoder [22]. Table 2 reports the Vendi Score
+of each benchmark across five LDMs. The Vendi Score corresponds to the effective number of distinct
+modes in a generated set, so higher values indicate a wider spread of visual content. RevGen attains the
+highest diversity on three of the five models, reaching 79.72 on FLUX.2-klein-base-9B, 58.80 on Qwen-
+Image-2512, and 52.97 on InternVL-U. T2ISafety is the strongest existing benchmark and leads on the
+other two models, Z-Image-Turbo and HunyuanImage-2.1. The pattern is broadly consistent with the
+prompt-source design summarized in Table 1: reverse generation from a varied pool of real images
+spans a broad range of scenes, and this variety carries over to the generated images.
+Table 2: Generated-image diversity measured by the DINOv2-Vendi Score.
+Benchmark
+DINOv2-Vendi ↑
+Z-Image-
+Turbo
+Qwen-Image-
+2512
+HunyuanImage-
+2.1
+FLUX.2-klein-
+base-9B
+InternVL-
+U
+Ring-A-Bell [34]
+14.74
+13.28
+14.02
+16.32
+12.10
+MMA-Diffusion [44]
+55.51
+41.51
+36.35
+60.55
+37.42
+I2P [28]
+54.16
+40.63
+55.91
+54.10
+41.23
+T2ISafety [14]
+66.10
+49.01
+66.55
+68.66
+44.98
+Six-CD [24]
+48.42
+48.36
+38.89
+58.52
+33.00
+RevGen (ours)
+56.93
+58.80
+45.04
+79.72
+52.97
+3.4
+Risk Elicitation Statistics
+To verify that the prompts elicit risk, we generate an image for every prompt with each of the five LDMs
+and measure the Risk Hit Ratio, the proportion of generated images flagged as risky by the Qwen3.7-
+Plus image-level annotator [41]. Risky prompts reach 21.60%–94.00% across dimensions and models,
+while no benign sub-category exceeds 3.20%.
+The hit ratio also supports a cross-benchmark comparison on the pornographic category. As shown in
+Table 3, RevGen produces the highest hit ratio on four of the five models. The exception is FLUX.2-
+klein-base-9B, where Ring-A-Bell reaches 52.78% against 30.50% for RevGen. Ring-A-Bell and Six-CD
+are the strongest existing benchmarks, and both raise their ratios by construction: Ring-A-Bell opti-
+mizes prompts adversarially against earlier Stable Diffusion checkpoints, so its ratios here reflect how
+well those attacks transfer, while Six-CD retains only prompts that already yield unsafe images. The re-
+maining benchmarks stay below 26% on all five models, including MMA-Diffusion, whose adversarial
+prompts were likewise tuned against earlier checkpoints. Overall, RevGen can elicit risk from current
+models without adversarial optimization or model-specific filtering, relying only on prompts derived
+from real images.
+Table 3: Risk elicitation on pornographic prompts.
+Benchmark
+Porn Hit Ratio
+Z-Image-
+Turbo
+Qwen-Image-
+2512
+HunyuanImage-
+2.1
+FLUX.2-klein-
+base-9B
+InternVL-
+U
+Ring-A-Bell [34]
+50.00%
+44.83%
+60.34%
+52.78%
+44.83%
+MMA-Diffusion [44]
+11.17%
+2.66%
+25.53%
+1.24%
+4.73%
+I2P [28]
+16.49%
+4.26%
+12.77%
+3.21%
+4.26%
+T2ISafety [14]
+15.96%
+12.77%
+19.15%
+2.96%
+8.86%
+Six-CD [24]
+46.28%
+26.06%
+55.32%
+11.17%
+17.02%
+RevGen (ours)
+64.08%
+51.71%
+76.92%
+30.50%
+47.08%
+7
+
+
+4
+InGuard Framework
+4.1
+Overview
+In this section, we present our InGuard framework, consisting of three complementary components
+that operate at different stages of the generation pipeline, as shown in Figure 5. First, prompt embed-
+ding risk classification assesses the text encoder’s output embeddings to assign multi-dimensional risk
+labels before generation begins. Based on the graded severity, each prompt takes one of three paths:
+unsafe prompts are intercepted outright; benign prompts enter generation unmodified; the remaining
+risky prompts are routed to the second component, SAGE (Soft-gated Asymmetric Guardrail for Em-
+beddings), which performs embedding-space safety enhancement. The third component, latent-space
+safety detection, operates during the diffusion process: it monitors intermediate latents via a safety clas-
+sifier and can abort generation early if risk is detected. PE-MLP screens every input prompt, SAGE
+modifies only the risky branch, and the latent detector checks every request that reaches generation at a
+selected denoising step. This secondary check can catch residual risks missed by prompt-level screening
+or enhancement.
+Text
+Encoder
+Prompt
+Embedding
+(1) Risk 
+Classification
+(2) SAGE
+Enhancement
+Modified
+Embedding
+Step 0
+1
+…
+i
+…
+VAE
+Decoder
+Flow-Matching Backbone × N
+(Iterative Denoising)
+One-Step Latent Estimation
+𝑥! = 𝑥" + 1 −𝑡' 𝑣
+Time
+Encoder
+Timestep
+Embedding
+Pre-Generation
+(3) Latent 
+Detection
+Early 
+Termination
+unsafe
+:  Base LDM
+:  Safety Plugin
+Text Prompt
+Generated 
+Image
+risky
+benign
+unsafe
+Early 
+Termination
+Time
+[0, 1]
+N-1
+Figure 5: Overview of our InGuard framework. Three complementary components work in sequence:
+(1) prompt embedding risk classification assigns multi-dimensional risk labels and intercepts unsafe
+prompts, (2) SAGE performs embedding-space safety enhancement, and (3) latent-space safety detection
+monitors intermediate latents during denoising.
+4.2
+Prompt Embedding Risk Classification
+Before applying safety enhancement, each prompt is classified into multi-dimensional risk categories at
+the embedding level. The classifier operates directly on the text encoder’s output embeddings, which
+are the same embeddings that subsequently condition the diffusion process, requiring no additional
+text encoding pass. Risk is assessed along three independent dimensions: pornographic, gore, and IP-
+controlled content.
+The text encoder produces a variable-length sequence of token embeddings. Some models provide an
+attention mask for valid tokens, for which we use masked mean pooling. When no mask is available,
+plain mean pooling is applied instead, yielding a fixed-length representation:
+¯e = ∑L
+i=1 mi ei
+∑L
+i=1 mi
+,
+(1)
+where mi ∈{0, 1} is the mask for token i (set to 1 when no mask is provided). The pooled vector is then
+classified by a multi-task MLP with a shared backbone and three independent heads. The classifier is
+trained using multi-task cross-entropy on prompt embeddings from the RevGen Safety Benchmark.
+The predicted levels determine interception and enhancement routing. Prompts whose porn or gore
+level reaches or exceeds per-LDM thresholds τp or τg are blocked before generation begins (thresh-
+olds in Table 13). Controlled-IP risk alone does not trigger direct interception; an IP-related prompt
+is still blocked if its porn or gore level reaches the corresponding interception threshold. For remain-
+ing prompts, those reaching the enhancement threshold on any dimension (porn ≥3, gore ≥2, or IP
+∈[1, 5]) are flagged for SAGE.
+4.3
+Embedding-Space Safety Enhancement
+SAGE suppresses toxic concepts in the prompt embedding space by identifying trigger tokens and pro-
+jecting them away from a toxic concept subspace, with per-token projection intensity controlled contin-
+8
+
+
+uously and asymmetrically. It operates directly on the text encoder’s output embeddings, requiring no
+model modification or additional training. Given risk labels, SAGE modifies the output embeddings
+through four components: (1) label-gated concept selection defines the toxic subspace based on risk cat-
+egories, (2) leave-one-out analysis yields per-token toxicity ratios, (3) asymmetric soft-gated blending
+merges original and projected embeddings, and (4) category-aware α configuration parameterizes the
+blending threshold. Figure 6 illustrates the complete flow.
+Input 
+Prompt
+Risk
+Classifier
+𝑙!"#$
+𝑙%"#&
+𝑙'!
+Label-Gated 
+Concept Subspace
+𝑃( = 𝐶(𝐶)𝐶)*+𝐶)
+Toxic 
+Subspace 𝑪
+𝒑𝒊
+Orthogonal
+Complement
+(𝑰−𝑷𝑪)
+(𝑰−𝑷𝑪)𝒑𝒊
+Porn
+Gore
+IP
+𝛼!"#$
+𝛼%"#&
+𝛼34
+Leave-One-Out
+𝑑' = ||(𝐼−𝑃5)𝑝\'||
+(token i replaced)
+𝑟' =
+𝑑'
+𝑚𝑒𝑎𝑛({𝑑7}78')
+Text Encoder
+→𝑝9∈ℝ:
+Asymmetric Soft-Gated Blending
+Inset A: Geometry
+Toxic Subspace 𝑪
+𝒑𝒊 (toxic+safe)
+Orthogonal
+Complement
+(𝑰−𝑷𝑪)
+;𝒑𝒊 (safe)
+<𝒑𝒊 (blended)
+𝜸= 𝟎⇒<𝒑𝒊= 𝒑𝒊
+𝜸= 𝟏⇒<𝒑𝒊= ;𝒑𝒊
+Inset B: Gating Curve
+𝜸
+𝜹
+1
+0
+−
++
+0
+𝝉𝒕𝒐𝒙𝒊𝒄 
+(steep)
+𝝉𝒔𝒂𝒇𝒆 
+(gradual)
+Safe Embedding
+:𝒑𝒊
+LDM
+(all steps)
+Safe Image
+→ Re-encoding 
+→ Mean pooling
+Figure 6: Schematic overview of SAGE. PE-MLP predicts risk labels from prompt embeddings to select
+the concept subspace (PC) and category-aware α. The leave-one-out block represents token replacement
+followed by re-encoding and mean pooling. The gate insets illustrate the transition; the exact gate has
+γ = 0.5 at δ = 0. Modified embeddings condition all denoising steps.
+4.3.1
+Label-Gated Concept Subspace
+We define a concept set of 34 safety-related concepts across three categories, comprising both English
+and Chinese terms for cross-lingual coverage of toxic semantics (Table 4). Each concept text is encoded
+by the text encoder into a D-dimensional pooled embedding vector. The concept projection matrix is
+constructed as:
+PC = C(C⊤C)−1C⊤
+(2)
+where C is the matrix whose columns are the concept embedding vectors and the inverse form assumes
+linearly independent columns. The matrix (I −PC) projects an embedding onto the orthogonal comple-
+ment of the selected concept subspace, removing the components aligned with those concept directions.
+Only user content tokens (the actual prompt words, as opposed to structural tokens such as chat tem-
+plate markers, system prompts, and padding) are candidates for trigger detection and projection, while
+structural tokens are preserved unchanged throughout.
+Instead of using all 34 concepts for every
+prompt, we dynamically select the concept subset based on the risk labels from Section 4.2. Once a
+prompt is flagged, each active risk dimension activates its corresponding concept group. A non-zero
+porn level selects all 13 pornographic concepts. A non-zero gore level selects all 11 gore concepts. An IP
+level in [1, 5] selects only that character’s concept vectors. Unlike porn and gore, where all sub-concepts
+within the category may be relevant, each IP character defines an independent concept subspace, so
+projecting unrelated characters would introduce unnecessary disturbance. Multiple risk dimensions are
+handled by merging the corresponding concept groups. Prompts below the enhancement threshold on
+every dimension skip SAGE and therefore incur no enhancement-induced disturbance, although latent
+detection can still intercept them. Label-gating is intended to avoid modification along unrelated con-
+cept directions; its effectiveness depends on the predicted labels and the coverage of the concept set.
+The single-label IP head selects one controlled character per prompt, so it does not explicitly represent
+all controlled characters in a multi-character scene.
+9
+
+
+Table 4: Toxic concept set for label-gated projection. IP concepts are selected per-character. Each charac-
+ter contributes English (EN) and Chinese (CN) concepts for cross-lingual coverage.
+Category
+Concepts
+Porn (13)
+Genitals, Nipples, Exposed breasts, Exposed buttocks, Sexual intercourse, Oral sex, Pene-
+tration, Pornography, Full frontal nudity, 裸露, 色情, 裸体, 性交
+Gore (11)
+Blood, Gore, Bloody, Severed body part, Corpse, Murder, Torture, 血腥, 血迹, 尸体, 断肢
+IP (5×2)
+Snow White / 白雪公主, Doraemon / 哆啦A梦, Minions / 小黄人, Elsa / 艾莎, SpongeBob
+SquarePants / 海绵宝宝
+4.3.2
+Trigger Detection via Leave-One-Out
+To identify which individual tokens carry toxic content, we use a leave-one-out re-encoding strategy.
+For each user content token i, we replace that token, re-encode the prompt, and mean-pool the resulting
+embeddings over the user content positions to obtain p\i. We use the residual distance as a heuristic
+score for token i:
+di = ∥(I −PC) p\i∥
+(3)
+A large di means that the masked prompt has a large component outside the selected concept subspace.
+This motivates a relative trigger score, but is not a direct measure of the replaced token’s toxicity because
+re-encoding also changes contextual embeddings. We normalize the distance against the average over
+the other masked positions:
+ri =
+di
+mean({dj}j̸=i)
+(4)
+The leave-one-out embeddings {p\i} also serve as columns to construct the prompt-specific projection
+matrix Pctx = MLOO(M⊤
+LOOMLOO)−1M⊤
+LOO, using the same projection formula and full-column-rank
+assumption as PC. Pctx projects onto the span of the masked-prompt representations, which we use as a
+context subspace. The fully projected version of token i is obtained by first projecting onto this context
+subspace, then removing the toxic concept component:
+ˆpi = (I −PC) Pctx pi
+(5)
+This construction aims to retain the token’s contextual role within the prompt while removing its align-
+ment with the selected toxic concepts. For comparison, a binary trigger rule would classify a token as a
+trigger if its toxicity ratio satisfies ri > 1 + α, where α is a sensitivity parameter. Trigger tokens would be
+replaced by their projected version ˆpi, while non-trigger tokens would retain their original embedding
+pi. SAGE replaces this binary rule with the continuous gate below.
+4.3.3
+Asymmetric Soft-Gated Blending
+This binary decision creates a discontinuity at the threshold boundary: a token with r just below 1 + α
+receives zero projection, while one with r just above receives full projection. Borderline toxic tokens
+may escape erasure (under-erasure), while borderline benign tokens may be fully erased (over-erasure,
+causing disturbance).
+SAGE replaces this binary rule with a continuous blending coefficient. The signed distance from the
+threshold is:
+δi = ri −(1 + α)
+(6)
+The blending coefficient uses an asymmetric sigmoid:
+γi = σ
+ δi
+τeff
+
+,
+τeff =
+τtox
+if δi ≥0
+τsafe
+if δi < 0
+(7)
+and the merged embedding is:
+10
+
+
+˜pi = (1 −γi) pi + γi ˆpi
+(8)
+When γ = 0, the original embedding is preserved, and when γ = 1, the fully projected embedding ˆpi is
+used, with intermediate values providing partial blending. For tokens with large positive δ relative to
+τtox, γ saturates to approximately 1, matching the projection strength of the binary approach.
+For positive temperatures, the gate is continuous with γ = 0.5 at δ = 0. A smaller τtox makes projection
+approach full strength more rapidly above the threshold, while a larger τsafe broadens the transition
+below it. Importantly, for a fixed negative δ, increasing τsafe increases γ toward 0.5 rather than reducing
+modification. The two temperatures therefore control the transition shapes independently, but do not
+guarantee lower benign disturbance. The two branches are score-based regions, not ground-truth toxic
+and benign token labels.
+Lowering α increases δi and thus increases projection strength, potentially improving risk removal at
+the cost of semantic preservation. Negative α is mathematically valid for either a symmetric or an
+asymmetric gate; asymmetry does not by itself make it safe. In particular, lowering the threshold can
+move tokens onto the δi ≥0 branch. We treat α and the two temperatures as operating-point parameters
+rather than as a mechanism that eliminates the safety–disturbance tradeoff.
+SAGE applies the modified embeddings at all denoising steps, requiring no step-based switching. This
+contrasts with the Self-Validating Filtering (SVF) mechanism [45], where modified and original embed-
+dings alternate across denoising steps with a danger score determining the switch point.
+4.3.4
+Category-Aware α Configuration
+The sensitivity parameter α controls the threshold 1 + α. SAGE allows a separate αc for each risk cate-
+gory and LDM (Table 13), with either sign permitted. Since ri normalizes di, a uniform rescaling of all
+residual distances cancels out. Category-specific configuration instead accommodates differences in rel-
+ative score distributions, concept coverage, and the effect of embedding interventions; it is an empirical
+choice rather than a consequence of distance scale alone.
+Let ℓ= (ℓporn, ℓgore, ℓip) ∈Z3
+≥0 denote the risk levels from the classifier, and let C = {porn, gore, ip}
+denote the three risk categories. The set of active categories, which drives both concept-group activation
+and the routing of α, is:
+A(ℓ) =
+
+c ∈C \ {ip}
+ ℓc > 0
+	 ∪
+
+ip
+ 1 ≤ℓip ≤5
+	
+(9)
+where the IP category is active only for ℓip ∈[1, 5], since levels 6–7 denote benign IP variants that should
+not trigger enhancement. Concept activation is therefore decoupled from the enhancement thresholds:
+once a prompt is flagged, every category in A(ℓ) participates, so a prompt flagged through its gore score
+may still carry a non-zero porn component, whose concept group is projected away as well.
+When multiple risk categories co-occur, the concept subspace merges their concept groups. We use a
+single sensitivity selected from the highest-priority active category:
+α∗= αc∗,
+c∗= highest-priority category in A(ℓ)
+(10)
+A fixed priority order porn ≻gore ≻ip resolves co-occurrence deterministically: a non-zero porn level
+determines the threshold, otherwise a non-zero gore level, otherwise IP. The resulting α∗is substituted
+into the threshold 1 + α∗used by the asymmetric soft-gated blending, closing the loop between com-
+ponents (3) and (4). This fixed priority is a deterministic routing policy, not an optimized solution to
+multi-category conflicts.
+Together, these design choices aim to improve the safety–disturbance tradeoff: label-gated selection
+targets the predicted risk categories and benign skipping avoids enhancement on unflagged prompts,
+category-aware asymmetric gating controls the strength of token-level modification, and the modified
+embeddings condition all denoising steps without temporal switching. Section 5.3 evaluates SAGE as a
+complete enhancement configuration.
+SAGE’s label-gating depends on the accuracy of the risk classifier: misclassification of a risky prompt as
+benign would cause it to bypass enhancement entirely. In practice, this risk is mitigated by the comple-
+mentary latent-space detection track, which serves as a secondary verification layer.
+4.4
+Latent-Space Safety Detection
+While the embedding-space enhancement suppresses unsafe content at the text level before generation
+begins, it cannot guarantee complete elimination, since some risky content may survive in subtle or
+11
+
+
+implicit forms. We therefore introduce a latent-space detection track that runs alongside the diffusion
+process. Modern latent diffusion models generate images through an iterative denoising process in
+the latent space of a variational autoencoder (VAE) [11]. The intermediate latents allow early termi-
+nation: once a latent exhibits risk indicators, generation is aborted and all subsequent denoising steps
+are skipped. However, latent representations differ fundamentally from natural RGB images in channel
+count, spatial resolution, and distribution, so ImageNet-pretrained backbones require input adaptation.
+We use domain-adaptive pretraining to improve their initialization for latent classification. In the fol-
+lowing, we first describe how detection latents are obtained from the flow-matching generation process,
+then present the latent detector backbone and the two-stage training strategy.
+4.4.1
+Latent Acquisition
+The detection latents are obtained from the flow-matching generation process. Flow matching [17; 18]
+defines a linear interpolation path between a Gaussian noise sample x0 and the clean data latent x1:
+xt = t · x1 + (1 −t) · x0,
+t ∈[0, 1]
+(11)
+where t = 0 corresponds to noise and t = 1 to the clean latent. For a sampled training pair, the target
+velocity v = x1 −x0 is constant along its linear interpolation. The learned velocity field, however, can
+vary with state and time. During inference, the model integrates its predicted velocity over 0 = t0 <
+t1 < · · · < tN = 1. We index denoising evaluations by i = 0, . . . , N −1 and denote the predicted velocity
+by v(i). An Euler update is:
+x(i+1)
+t
+= x(i)
+t
++ (ti+1 −ti) · v(i)
+(12)
+After all steps complete, the terminal generated latent is decoded into an RGB image via the VAE de-
+coder.
+Rearranging the interpolation equation xt = t · x1 + (1 −t) · x0 with v = x1 −x0 yields x1 = xt + (1 −
+t) · v. Substituting the model’s predicted velocity into this expression defines a one-step clean latent
+estimate at any intermediate step i:
+x(i)
+1
+= x(i)
+t
++ (1 −ti) · v(i)
+(13)
+This one-step prediction property is the key to early safety detection. Figure 7 visualizes the process
+on a Z-Image-Turbo sample: at Steps 2–3, the decoded one-step estimate already displays recognizable
+scene content, while the current latent remains visibly noisy. We therefore detect on the one-step es-
+timate rather than the current latent, making scene content available to the classifier before denoising
+finishes. The estimate remains approximate, and the per-step results in Section 5.4 assess how much
+safety information is available at different stages.
+The estimate reuses the velocity already computed by the denoiser and requires only the arithmetic in
+Equation 13, with no additional denoiser forward pass. The safety classifier still adds its own inference
+cost. If risk is detected after the zero-indexed step i, i + 1 denoising evaluations have been consumed
+and the remaining N −i −1 evaluations are skipped. This is a saving in denoising steps for intercepted
+requests, not a measurement of end-to-end latency.
+In practice, hooks attached to the LDM pipeline intercept the velocity prediction from the scheduler’s
+step function at each denoising step. At the chosen detection step, the one-step clean latent estimate
+(Equation 13) is computed and passed to the safety classifier, which aborts the process if risk is detected
+and lets it proceed to completion otherwise. Beyond runtime safety enforcement, the same extraction
+mechanism serves an offline role: it produces the fine-tuning latents from the RevGen generation process
+and the evaluation data for safety assessment.
+4.4.2
+Latent Detector Backbone
+The detector backbone is ConvNeXt-Base [19] (88.6M), initialized from ImageNet-1K [5] pretrained
+weights. Standard image classifiers expect 3-channel RGB inputs, but VAE-encoded latents have C
+channels (where C depends on the target VAE), so we modify the patchify stem, the first Conv2d layer,
+to accept C-channel inputs while keeping its kernel size, stride, and output dimensions unchanged. The
+rest of the backbone retains its ImageNet pretrained weights, preserving the pretrained feature hierarchy
+while enabling the network to operate directly on latent representations. Input resolution is set to the
+backbone’s native resolution (224 × 224). Three classification heads share the backbone for multi-task
+12
+
+
+Step 0
+(Noise)
+Step 1
+Step 2
+Step 3
+Step 4
+Step 5
+Step 6
+Step 7
+Step 8
+(Converged)
+xt(i)
+(latent)
+xt(i)
+(decoded)
+v (i) (velocity prediction)
+x1(i) = xt(i) + (1 − ti) · v (i)
+(one-step estimate)
+x1(i)
+(latent)
+x1(i)
+(decoded)
+Figure 7: Flow-matching iterative denoising process on a Z-Image-Turbo generated sample.
+Input
+prompt: SpongeBob SquarePants sits at a vintage beige Philips computer setup with a CRT monitor display-
+ing two classical statues against a pink background; cyan text overlay reads “But why would there be 2”. Each
+column is one denoising step (Step 0–8, left to right). Rows 1–2: the current latent (channel-wise L2-
+norm heatmap and VAE-decoded RGB image); Rows 3–4: the one-step estimate (Equation 13) and its
+decoded image. The green arrow denotes the one-step estimation via the predicted velocity.
+safety detection: the porn and gore heads are binary classifiers, and the IP head is a multi-class classi-
+fier with output dimension K+1 (covering K=5 controlled IPs plus one “other” category). Any IP label
+outside [1, 5] is mapped to “other” during training. All heads are two-layer MLPs on the backbone’s
+global-average-pooled features, trained with CrossEntropyLoss.
+4.4.3
+Training Phase A: Domain-Adaptive Pretraining
+Latent representations differ from the natural RGB images used for ImageNet pretraining: they are spa-
+tially compressed, use VAE-specific channels, and encode features rather than pixel values. Replacing
+the RGB stem enables the backbone to accept these inputs, but direct safety fine-tuning must learn the
+domain adaptation from safety-labeled data alone. Phase A first trains the backbone to extract image-
+semantic features from latents through feature distillation, providing an initialization for subsequent
+safety classification. Its benefit is measured against the no-distillation baseline in Section 5.4.
+To obtain large-scale pretraining data, we leverage the VAE encoder to directly compress natural RGB
+images into latents. Given an image x, the VAE encoder produces a latent representation normalized as:
+z = (VAEenc(x) −sshift) × sscale
+(14)
+where the shift and scaling factors are VAE-specific. VAE-encoded images and one-step estimates use
+the same normalized latent coordinates, motivating transfer between the two input sources. For a fixed
+training pair (x0, x1) on the interpolation path, an oracle that returns that pair’s velocity ˆv = x1 −x0
+gives:
+ˆx1 =
+
+t · x1 + (1 −t) · x0
+ + (1 −t)(x1 −x0)
+= t · x1 + (1 −t) · x0 + (1 −t) · x1 −(1 −t) · x0
+= x1.
+(15)
+This is a pairwise algebraic identity, not a proof that inference-time estimates and VAE-encoded images
+have identical distributions. A regressed velocity field generally estimates a conditional average rather
+than the velocity of an individual training pair. Prediction error, denoising time, and the difference
+between natural-image pretraining data and generated content can all introduce a distribution gap.
+We therefore use VAE latents as an inexpensive pretraining source and retain Phase B adaptation on
+generation-derived latents. VAE encoding requires one encoder pass rather than iterative denoising,
+making large-scale feature pretraining practical.
+13
+
+
+Feature distillation is applied to these VAE-encoded latents, as illustrated in Figure 8. We use Open-
+Images [13] as the pretraining data source, favoring this dataset because its images generally have high
+resolutions, which better match the ≥1024 × 1024 output sizes of modern text-to-image generators. A
+teacher network uses the same backbone architecture, initialized from ImageNet-1K pretrained weights
+and kept frozen throughout training. A student network shares the same architecture but with the
+modified stem for latent inputs. Given the same underlying image (in RGB form for the teacher, in
+VAE-encoded latent form for the student), the student is trained to align its features with those of the
+teacher. The distillation loss combines a global feature alignment term with stage-wise alignment over
+intermediate feature maps:
+Ldistill =
+ 1 −cos(fgap
+s
+, fgap
+t
+)
+
+|
+{z
+}
+GAP loss
++ λ
+|S| ∑
+k∈S
+ 1 −cos
+ GAP(F(k)
+s ), GAP(F(k)
+t )
+
+|
+{z
+}
+Stage k loss
+(16)
+where the first term aligns the final global average pooled (GAP) features between student and teacher,
+and the second term aligns intermediate feature maps at selected backbone stages (the stage set S
+with weight λ). The teacher’s RGB features encode rich semantic information learned from ImageNet.
+By aligning the student’s latent features to these targets, the student is encouraged to extract image-
+semantic features from the compressed latent representation.
+We use stage-wise alignment at S = {1, 2, 3, 4} and update all student backbone parameters.
+Figure 8: Phase A domain-adaptive pretraining. A frozen RGB teacher supervises a latent-input student
+using Equation 16; all four stage-wise terms are enabled in our experiments. The depicted 16-channel
+input is illustrative: the stem accepts the target VAE’s C channels. The two latent sources share normal-
+ized coordinates, not necessarily identical distributions.
+4.4.4
+Training Phase B: Safety Fine-tuning
+The pretrained backbone is fully fine-tuned on safety-labeled latents extracted from the RevGen Safety
+Benchmark’s generation process. Full fine-tuning is preferred over freezing the backbone and training
+only the heads, because Phase A provides domain-adaptive features but not safety-specific ones, and
+the backbone must further specialize to distinguish safety-relevant content. The three heads are trained
+jointly with cross-entropy loss, sharing a common backbone representation while maintaining head-
+specific decision boundaries, the same multi-task principle used in the prompt risk classifier.
+Training data is organized into risk groups: porn, gore, IP-controlled characters, borderline samples (vi-
+sually ambiguous content at the boundary between safe and unsafe, such as suggestive but non-explicit
+imagery or mild violence), and normal images. Borderline samples are included to expose the classifier
+to ambiguous cases near the safety boundary. Stratified sampling balances representation across these
+categories, preventing the majority class (normal images) from dominating training and ensuring that
+rare categories receive adequate gradient signal. Training and test data are separated by source image,
+keeping all derived prompt variants within their split. We additionally filter testset IDs from the training
+data to exclude direct ID overlap.
+At evaluation time, all three heads use argmax prediction, without additional score-threshold tuning for
+the detector heads. The porn and gore binary heads are evaluated via F1 score and accuracy, and the IP
+head is evaluated by treating the K controlled IP classes as positive and the “other” class as negative,
+then computing the same binary metrics.
+5
+Experiments
+We evaluate InGuard through experiments organized to mirror the method’s three-component structure.
+We first describe the unified experimental setup, then evaluate each component individually: prompt
+14
+
+
+embedding risk classification, SAGE embedding-space enhancement, and latent-space safety detection
+including computational efficiency. We finally present the system-level comparison of our InGuard and
+the conventional outer guardrail along two dimensions: the safety rate and the benign disturbance rate.
+5.1
+Experimental Setup
+5.1.1
+Datasets
+Safety-supervised training uses data constructed with the RevGen pipeline, and evaluation uses the
+10,000-prompt RevGen testset with labels across porn (0–5), gore (0–5), and IP (0–7). The latent-detector
+experiments vary the safety-training pool from 5K to 50K. Phase A domain-adaptive pretraining instead
+uses VAE-encoded natural images from OpenImages [13].
+5.1.2
+Baselines and Comparisons
+We evaluate on five open-weight LDMs: Z-Image-Turbo [46], Qwen-Image-2512 [38], HunyuanImage-
+2.1 [31], FLUX.2-klein-base-9B [3], and InternVL-U [32]. All generation, VAE encoding, and evaluation
+pipelines are implemented with the Diffusers library [35].
+We compare two guardrail paradigms: the conventional outer guardrail and our InGuard. The outer
+guardrail screens the prompt with a text classifier (mE5-base or mBERT-cased) and the generated im-
+age with an image classifier (ConvNeXt-Base). The inner guardrail operates within the LDM pipeline:
+PE-MLP classifies prompts on the LDM’s text encoder embeddings, SAGE suppresses toxic concept
+directions in the embeddings, and a latent detector (ConvNeXt-Base on intermediate latents) checks
+generation at a selected intermediate step. We choose SAFREE [45] as the primary baseline for SAGE,
+since it can also serve as an embedding-space enhancement component within the inner guardrail.
+5.2
+Prompt Embedding Risk Classification
+The prompt embedding risk classifier assigns multi-dimensional risk labels directly on LDM text en-
+coder embeddings. The five LDM backends adopt heterogeneous text encoders: Qwen3-4B/8B [41],
+Qwen2.5-VL-7B [1] (paired with ByT5 [40] in HunyuanImage-2.1), and InternVL3.5 [37]. We compare
+the inner PE-MLP classifier against outer text classifiers (mE5 and mBERT) in terms of multi-class accu-
+racy and prompt-side false alarm (Table 5).
+PE-MLP consistently outperforms both outer classifiers across all risk dimensions and all five LDMs (Ta-
+ble 5), while using over 10× fewer parameters than either outer classifier, leveraging the rich semantic
+representations already encoded by the LDM’s own text encoder. At operational thresholds, PE-MLP
+yields a lower prompt-side false alarm than both outer classifiers on every model, indicating fewer false
+risk flags on benign prompts. These flags determine routing and need not cause direct rejection.
+Table 5: Multi-class accuracy and prompt-side false alarm (FA) comparison.
+Model
+Classifier Text Encoder
+Params↓Acc Porn↑Acc Gore↑Acc IP↑
+FA↓
+Outer guardrail (general-purpose language models, model-agnostic)
+—
+mE5
+mE5-base
+282.0M
+90.67%
+93.65%
+97.19%
+8.01%
+—
+mBERT
+mBERT-cased
+181.8M
+89.15%
+92.63%
+96.12%
+13.08%
+Inner guardrail (each LDM’s own text encoder →PE-MLP)
+Z-Image-Turbo
+PE-MLP
+Qwen3-4B
+5.8M
+93.01%
+95.20%
+98.15%
+6.56%
+Qwen-Image-2512
+PE-MLP
+Qwen2.5-VL-7B
+6.8M
+93.19%
+95.51%
+98.23%
+4.97%
+HunyuanImage-2.1
+PE-MLP
+Qwen2.5-VL-7B+ByT5
+6.8M
+93.61%
+95.58%
+98.38%
+4.94%
+FLUX.2-klein-base-9B PE-MLP
+Qwen3-8B
+15.8M
+93.76%
+95.83%
+98.76%
+4.94%
+InternVL-U
+PE-MLP
+InternVL3.5
+7.4M
+93.21%
+95.52%
+98.23%
+3.80%
+5.3
+Embedding-Space Safety Enhancement
+We compare SAGE with SAFREE [45]. For enhancement success, both methods are evaluated on the
+same pool of prompts flagged by PE-MLP, using the enhancement thresholds porn ≥3, gore ≥2, or
+IP ∈[1, 5]. Enhancement success rate is the fraction of originally unsafe generations in this shared PE-
+MLP-flagged pool that are judged safe by the VLM after enhancement. Benign disturbance rate is the
+fraction of samples in the same pool whose prompt and original image are both safe but whose enhanced
+generation is judged semantically altered by the VLM. Both methods use identical denominators for
+each metric. Success measures risk removal, not preservation of the request’s non-risk semantics.
+15
+
+
+Table 6 presents the results. At the reported operating points, SAGE outperforms SAFREE on all five
+LDMs, improving success by 8.5–24.9% while reducing benign disturbance by 1.1–5.1%. The largest
+success gain occurs on InternVL-U, where SAGE nearly doubles the conversion rate (54.1% vs. 29.2%)
+at less than half the disturbance (1.2% vs. 2.6%). Although absolute success levels vary across LDMs,
+SAGE achieves a better safety–disturbance tradeoff in each reported comparison.
+Table 6: Comparison between SAGE and SAFREE across five LDMs.
+Model
+Method
+Success↑
+Disturb.↓
+Z-Image-Turbo
+SAFREE
+49.2%
+4.8%
+SAGE
+67.0%
+1.6%
+Qwen-Image-2512
+SAFREE
+46.7%
+4.9%
+SAGE
+55.9%
+3.2%
+HunyuanImage-2.1
+SAFREE
+21.4%
+8.6%
+SAGE
+29.9%
+7.5%
+FLUX.2-klein-base-9B
+SAFREE
+58.2%
+10.0%
+SAGE
+67.6%
+4.9%
+InternVL-U
+SAFREE
+29.2%
+2.6%
+SAGE
+54.1%
+1.2%
+Figure 9 shows qualitative examples of SAGE’s embedding-space enhancement across five LDMs and
+three risk categories. For pornographic prompts, the selected examples show added clothing while
+retaining recognizable subjects and scene elements. For gory prompts, unsafe content is replaced with a
+benign counterpart, such as a professional medical scene. For controlled-IP prompts, the target character
+is replaced or removed, while some surrounding objects remain recognizable. These examples illustrate
+how embedding-space intervention can produce safe alternatives by the proposed SAGE.
+Figure 9: Selected SAGE enhancement examples. Rows, top to bottom: Z-Image-Turbo, Qwen-Image-
+2512, HunyuanImage-2.1, FLUX.2-klein-base-9B, InternVL-U. Column groups, left to right: porn, gore,
+controlled IP. Each pair shows the original generation (left) and the SAGE-enhanced generation (right).
+16
+
+
+5.4
+Latent-Space Safety Detection
+Latent representations differ from natural RGB images, and adapting ImageNet-pretrained backbones
+requires replacing the input stem to accept C-channel latent inputs. Phase A feature distillation adapts
+the pretrained features to this input domain before safety fine-tuning. We evaluate two aspects of the
+detector: the accuracy gains from distillation pretraining and the efficiency of detecting at intermediate
+denoising steps. We further compare pretraining and fine-tuning data generation costs to assess the
+practicality of large-scale pretraining.
+Pretraining effects.
+To demonstrate the effect of the proposed distillation pretraining, we compare two
+latent detector configurations across four training pool sizes (5K–50K) for all five LDMs. The configura-
+tions are: (1) Latent (w/o pretrain): latent input with ImageNet-1K pretraining, no distillation; (2) Latent
+(w/ distill. pretrain.): latent input with Phase A distillation pretraining. Performance is measured by Avg
+F1, which is the mean of the F1 scores across the three risk categories.
+As shown in Figure 10, distillation pretraining improves Avg F1 at every tested pool size on all five
+LDMs. At 50K, the gains range from 0.32% to 1.00%. Gains are larger at 5K: for example, Z-Image-Turbo
+improves by 3.55% at 5K versus 0.82% at 50K. On that model, the pretrained detector at 5K reaches
+90.18% Avg F1, close to 90.33% for the no-distillation baseline at 20K, using a 4× smaller fine-tuning
+pool for comparable Avg F1. This supports improved data efficiency in the tested setting. Higher Avg
+F1 does not imply improvement in every metric: recall or benign disturbance can worsen at individual
+operating points.
+Detection efficiency.
+The per-step curves in Figure 11 show Avg F1 against the completed denoising-
+step fraction (s+1)/N, where s is zero-indexed and N is the total number of steps. The deployed frac-
+tions are 44.4–50%, used as a denoiser-compute proxy assuming approximately uniform cost per step.
+The image-level baseline requires full generation for requests not already blocked by its text classifier.
+Detection is already informative at the initial step and generally improves over the early denoising
+stages. We report deployment at step 3 for Z-Image-Turbo, step 4 for the three 10-step models, and step 8
+5K
+10K
+20K
+50K
+88
+90
+92
+Avg F1 (%)
+Z-Image-Turbo
+5K
+10K
+20K
+50K
+85.0
+87.5
+90.0
+92.5
+Qwen-Image-2512
+5K
+10K
+20K
+50K
+Finetune training pool
+91.5
+93.0
+94.5
+HunyuanImage-2.1
+5K
+10K
+20K
+50K
+78
+81
+84
+87
+FLUX.2-klein-base-9B
+5K
+10K
+20K
+50K
+82.5
+85.0
+87.5
+90.0
+InternVL-U
+Latent w/ pretrain
+Latent w/o pretrain
+Figure 10: Pretraining effects on Avg F1 across five LDMs (ConvNeXt-Base). Blue: distillation pre-
+training; orange dashed: no distillation. The equally spaced 5K/10K/20K/50K ticks denote pool-size
+categories, not a linear sample-count axis.
+0
+50
+100
+60
+75
+90
+Avg F1 (%)
+44.4%
+Z-Image-Turbo
+0
+50
+100
+60
+75
+90
+50.0%
+Qwen-Image-2512
+0
+50
+100
+Inference compute (%)
+60
+75
+90
+50.0%
+HunyuanImage-2.1
+0
+50
+100
+60
+75
+90
+50.0%
+FLUX.2-klein-base-9B
+0
+50
+100
+60
+75
+90
+45.0%
+InternVL-U
+Latent w/ pretrain (50K)
+Image (50K)
+Deployed step
+Figure 11: Latent detection vs. denoising-step fraction (s + 1)/N (50K pool, ConvNeXt-Base), used as a
+compute proxy rather than measured latency. Stars mark deployed steps s = 3, 4, 4, 4, 8 for Z/Q/H/F/I.
+Grey diamonds show image-detector Avg F1 after full generation; the deployed latent detectors are
+lower by 0.26/0.83/0.90/0.38/1.71%, respectively.
+17
+
+
+for InternVL-U. At these steps, latent-detector Avg F1 is within 0.26–1.71% of image-level detection. If
+a request is intercepted there, 50–55.6% of denoising evaluations are avoided. Requests that pass the
+check still complete generation. These fractions exclude text encoding, SAGE’s masked re-encoding and
+projection, classifier inference, and VAE decoding; they do not establish a corresponding reduction in
+wall-clock latency or average serving cost.
+Data generation efficiency.
+Pretrain data generation is far faster than finetune data generation, by 48–
+139× across all five LDMs (Table 7). Pretrain data requires only a single VAE encoder forward pass on
+existing images (roughly 100–400 ms/sample on an NVIDIA H20-3e with batch size 1 and bf16), while
+finetune data requires the full denoising pipeline for every prompt (roughly 5–28 s/sample). This cost
+asymmetry motivates our two-stage data strategy: inexpensive VAE encoding supplies large-scale fea-
+ture pretraining, while generation-derived latents provide safety-specific fine-tuning data. The reported
+speed ratios measure sample preparation, not detector training or complete guardrail inference.
+Table 7: Data generation efficiency: pretrain vs. finetune.
+Model
+Data type Steps ms/sample samples/min Speed ratio
+Z-Image-Turbo
+Pretrain
+—
+102.26
+586.8
+48×
+Finetune
+9
+4,952.26
+12.1
+Qwen-Image-2512
+Pretrain
+—
+198.52
+302.2
+127×
+Finetune
+10
+25,199.08
+2.4
+HunyuanImage-2.1
+Pretrain
+—
+371.21
+161.6
+76×
+Finetune
+10
+28,118.24
+2.1
+FLUX.2-klein-base-9B Pretrain
+—
+101.75
+589.7
+139×
+Finetune
+10
+14,115.45
+4.3
+InternVL-U
+Pretrain
+—
+120.82
+496.6
+76×
+Finetune
+20
+9,223.36
+6.5
+5.5
+System-Level Comparison: Inner vs. Outer Guardrails
+We compare complete guardrail systems to answer the central question: can inner guardrails, operating
+within the LDM’s own representation space, match or improve upon the safety–disturbance tradeoff
+of outer guardrails that use separate text encoders and post-hoc image filtering? Table 8 presents the
+comparison across five LDMs.
+We report two metrics. Safety rate is the fraction of all requests for which the final generated image is
+safe. An intercepted request counts as safe. Benign disturbance rate is measured among samples whose
+prompt and original, unguarded image are both safe, and counts interception or VLM-judged semantic
+alteration. For InGuard, disturbance can arise from direct PE-MLP interception, SAGE modification,
+or latent-detector interception. Prompt-risky but originally image-safe samples are excluded from this
+disturbance denominator by definition.
+The three configurations compared are:
+1. No Guardrail: the LDM generates without any safety intervention, establishing the baseline
+safety level.
+2. Outer guardrail: an external system composed of an mE5 text classifier for prompt-level inter-
+ception and a ConvNeXt-Base image classifier fine-tuned on the 50K pool for post-hoc detection.
+3. Inner guardrail (InGuard): an in-pipeline system composed of PE-MLP for prompt-level inter-
+ception, SAGE for embedding-space modification, and a ConvNeXt-Base latent detector.
+We select mE5 as the outer text classifier for its higher classification accuracy and lower prompt-side
+false alarm (Table 5). The comparison uses the stated routing policies and operating points: InGuard
+has per-LDM interception thresholds, while the outer text thresholds are porn ≥3 and gore ≥2. It
+compares complete systems rather than classifiers at matched thresholds.
+At the reported operating points, InGuard’s observed safety rate equals or exceeds the outer guardrail’s
+by 0.00–1.57%, while benign disturbance falls from 9.3–10.6% to 2.6–4.5%, a relative reduction of 57.5–
+73.5%. The disturbance results are consistent with the combined use of prompt classification, enhance-
+ment, and latent verification, but this system comparison does not identify their individual causal con-
+tributions. InGuard achieves this with approximately 3.7× fewer added guardrail parameters (∼100M
+18
+
+
+Table 8: System-level comparison of No Guardrail, Outer guardrail, and Inner guardrail (InGuard).
+Model
+Configuration
+Params↓
+Safety↑
+Disturb.↓
+Z-Image-Turbo
+No Guardrail
+—
+50.97%
+—
+Outer guardrail
+370.6M
+98.18%
+9.93%
+Inner guardrail
+∼100M
+98.23%
+2.63%
+Qwen-Image-2512
+No Guardrail
+—
+47.66%
+—
+Outer guardrail
+370.6M
+98.76%
+10.63%
+Inner guardrail
+∼100M
+98.78%
+4.52%
+HunyuanImage-2.1
+No Guardrail
+—
+44.26%
+—
+Outer guardrail
+370.6M
+97.90%
+9.33%
+Inner guardrail
+∼100M
+97.90%
+3.51%
+FLUX.2-klein-base-9B
+No Guardrail
+—
+56.72%
+—
+Outer guardrail
+370.6M
+97.02%
+10.05%
+Inner guardrail
+∼100M
+98.59%
+2.81%
+InternVL-U
+No Guardrail
+—
+48.24%
+—
+Outer guardrail
+370.6M
+97.86%
+9.45%
+Inner guardrail
+∼100M
+98.15%
+3.14%
+vs. 370.6M): PE-MLP reuses the LDM’s own text encoder and adds only a lightweight MLP (5.8–15.8M),
+whereas the outer guardrail requires the standalone mE5 classifier (∼282M).
+To summarize, InGuard matches or exceeds the outer guardrail in end-to-end safety rate while offer-
+ing three advantages at the reported operating points. First, benign disturbance drops from 9.3–10.6%
+to 2.6–4.5% (a 57.5–73.5% relative reduction). Second, InGuard uses approximately 3.7× fewer added
+guardrail parameters (∼100M vs. 370.6M). Third, when unsafe content is intercepted at the selected
+intermediate step, only 44.4–50% of the denoising steps have been consumed, allowing the remaining
+steps to be skipped rather than completing generation for a post-hoc image check.
+6
+Conclusion and Future Work
+In this work, we propose InGuard, an in-pipeline safety framework for text-to-image generation, which
+works inside the pipeline and operates on the model’s own representations. It has three components that
+act at different stages: PE-MLP grades each prompt on the text encoder’s embeddings, SAGE modifies
+the embeddings of risky prompts, and a latent detector checks an intermediate one-step clean latent
+estimate. All three components leave the base-model parameters untouched, and only the guardrail
+classifiers are adapted to each backend. We also construct the RevGen Safety Benchmark, a suite of
+10,000 prompts that are reverse-generated from real images. It covers porn, gore, and controlled IP
+risks, and provides graded severity for porn and gore, categorical labels for IP, and benign negatives
+near the decision boundary. Experiments across five open-weight LDMs show that InGuard reaches a
+97.9–98.8% safety rate, matching or exceeding the outer guardrail, while reducing benign disturbance
+by 57.5–73.5% with approximately 3.7× fewer added parameters. When a request is intercepted at the
+selected intermediate step, it also avoids 50–55.6% of the denoising steps.
+These results also point to several directions for future work. First, the label-gated design ties SAGE to
+the accuracy of the prompt classifier and to a finite concept set. Making it more robust to adversarial
+rewriting and to multi-character IP scenes is therefore an important next step. Second, our evalua-
+tion covers three risk categories, namely porn, gore, and IP. Other policy dimensions, such as hate and
+privacy, remain to be explored. Third, our detection relies on the one-step latent estimate. As new
+open-weight generators and modalities keep appearing, extending it to unseen generators, to video
+generation, and to other iterative synthesis processes would let safety coverage keep pace with these
+models, which is a promising direction for further study.
+7
+Ethics Statement
+This work studies safety mechanisms for text-to-image generation, and it necessarily involves sensitive
+material, including NSFW content and controlled IP characters. Our goal is to reduce the risk of misuse
+of open-weight generators, not to facilitate the creation of harmful or infringing content.
+The RevGen Safety Benchmark is built for research on safety evaluation. We release only text prompts
+and their risk labels, and we do not release the source images or any generated unsafe images. Con-
+19
+
+
+trolled IP characters are used only to evaluate policy compliance and are not intended to endorse or
+enable copyright infringement. Sensitive examples shown in the paper are included solely to illustrate
+the studied risks. We intend the benchmark and the InGuard framework to support defensive safety
+research and responsible deployment, and we discourage any use of these resources to generate, dis-
+tribute, or promote unsafe or infringing content.
+8
+Authors
+Core Contributors.
+Zeyu Wang, Xiaodan LiB, Zhiwen Li, Yuefeng Chen, Hui Xue.
+The authors gratefully acknowledge the diverse contributions that made this report possible. We thank
+every member of the wider Alibaba AAIG team who attended dry-run presentations, stress-tested early
+prototypes, or offered candid feedback.
+BCorresponding author: Xiaodan Li (fiona.lxd@alibaba-inc.com).
+20
+
+
+References
+[1] Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, et al. Qwen2.5-VL technical report.
+arXiv preprint arXiv:2502.13923, 2025.
+[2] Praneeth Bedapudi. NudeNet: A neural net based nudity classifier and detector. https://github
+.com/notAI-tech/NudeNet, 2022.
+[3] Black Forest Labs. FLUX.2 [klein]: Towards interactive visual intelligence. https://bfl.ai/blog/
+flux2-klein-towards-interactive-visual-intelligence, 2026.
+[4] Andrei Z. Broder. On the resemblance and containment of documents. In Compression and Complex-
+ity of Sequences (SEQUENCES), pp. 21–29, 1997.
+[5] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. ImageNet: A large-scale
+hierarchical image database. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR),
+pp. 248–255, 2009.
+[6] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. BERT: Pre-training of deep
+bidirectional transformers for language understanding. In Proceedings of the 2019 Conference of the
+North American Chapter of the Association for Computational Linguistics: Human Language Technologies
+(NAACL-HLT), 2019.
+[7] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas
+Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit,
+and Neil Houlsby. An image is worth 16x16 words: Transformers for image recognition at scale. In
+International Conference on Learning Representations (ICLR), 2021.
+[8] Dan Friedman and Adji Bousso Dieng. The Vendi Score: A diversity evaluation metric for machine
+learning. arXiv preprint arXiv:2210.02410, 2022.
+[9] Rohit Gandikota, Joanna Materzy´nska, Jaden Fiotto-Kaufman, and David Bau. Erasing concepts
+from diffusion models. In Proceedings of the IEEE/CVF International Conference on Computer Vision
+(ICCV), pp. 2426–2436, 2023.
+[10] Jonathan Ho and Tim Salimans. Classifier-free diffusion guidance. NeurIPS 2021 Workshop on Deep
+Generative Models and Downstream Applications, 2021.
+[11] Diederik P. Kingma and Max Welling. Auto-encoding variational bayes. In International Conference
+on Learning Representations (ICLR), 2014.
+[12] Nupur Kumari, Bingliang Zhang, Sheng-Yu Wang, Eli Shechtman, Richard Zhang, and Jun-Yan
+Zhu. Ablating concepts in text-to-image diffusion models. In Proceedings of the IEEE/CVF Interna-
+tional Conference on Computer Vision (ICCV), 2023.
+[13] Alina Kuznetsova, Hassan Rom, Neil Alldrin, Jasper Uijlings, Ivan Krasin, Jordi Pont-Tuset, Shahab
+Kamali, Stefan Popov, Matteo Malloci, Tom Duerig, et al. The open images dataset v4: Unified
+image classification, object detection, and visual relationship detection at scale. International Journal
+of Computer Vision (IJCV), 128(7):1956–1981, 2020.
+[14] Lijun Li, Zhelun Shi, Xuhao Hu, Bowen Dong, Yiran Qin, Xihui Liu, Lu Sheng, and Jing Shao.
+T2ISafety: Benchmark for assessing fairness, toxicity, and privacy in image generation. In Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2025.
+[15] Xinfeng Li, Yuchen Yang, Jiangyi Deng, Chen Yan, Yanjiao Chen, Xiaoyu Ji, and Wenyuan Xu.
+SafeGen: Mitigating sexually explicit content generation in text-to-image models. In Proceedings of
+the 2024 ACM SIGSAC Conference on Computer and Communications Security (CCS), pp. 4807–4821,
+2024.
+[16] Zhiwen Li, Die Chen, Mingyuan Fan, Cen Chen, Yaliang Li, Yanhao Wang, and Wenmeng Zhou.
+Responsible diffusion models via constraining text embeddings within safe regions. In Proceedings
+of the ACM Web Conference (WWW), 2025.
+[17] Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. Flow matching
+for generative modeling. In International Conference on Learning Representations (ICLR), 2023.
+[18] Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate and
+transfer data with rectified flow. In International Conference on Learning Representations (ICLR), 2023.
+21
+
+
+[19] Zhuang Liu, Hanzi Mao, Chao-Yuan Wu, Christoph Feichtenhofer, Trevor Darrell, and Saining Xie.
+A ConvNet for the 2020s. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR),
+pp. 11976–11986, 2022.
+[20] Stuart P. Lloyd. Least squares quantization in PCM. IEEE Transactions on Information Theory, 28(2):
+129–137, 1982.
+[21] Byeonghu Na, Mina Kang, Jiseok Kwak, Minsang Park, Jiwoo Shin, SeJoon Jun, Gayoung Lee,
+Jin-Hwa Kim, and Il-Chul Moon. Training-free safe text embedding guidance for text-to-image
+diffusion models. In Advances in Neural Information Processing Systems (NeurIPS), 2025.
+[22] Maxime Oquab, Timoth´ee Darcet, Th´eo Moutakanni, et al. DINOv2: Learning robust visual fea-
+tures without supervision. arXiv preprint arXiv:2304.07193, 2023.
+[23] William Peebles and Saining Xie. Scalable diffusion models with transformers. In IEEE/CVF Inter-
+national Conference on Computer Vision (ICCV), pp. 4195–4205, 2023.
+[24] Jie Ren, Kangrui Chen, Yingqian Cui, Shenglai Zeng, Hui Liu, Yue Xing, Jiliang Tang, and Lingjuan
+Lyu. Six-CD: Benchmarking concept removals for text-to-image diffusion models. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2025.
+[25] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj¨orn Ommer. High-
+resolution image synthesis with latent diffusion models. In IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), pp. 10684–10695, 2022.
+[26] Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-Net: Convolutional networks for biomed-
+ical image segmentation.
+In International Conference on Medical Image Computing and Computer-
+Assisted Intervention (MICCAI), pp. 234–241, 2015.
+[27] Patrick Schramowski, Christopher Tauchmann, and Kristian Kersting. Can machines help us an-
+swering question 16 in datasheets, and in turn reflecting on inappropriate content? In Proceedings
+of the 2022 ACM Conference on Fairness, Accountability, and Transparency (FAccT), pp. 1350–1361, 2022.
+[28] Patrick Schramowski, Manuel Brack, Bj¨orn Deiseroth, and Kristian Kersting. Safe latent diffusion:
+Mitigating inappropriate degeneration in diffusion models. In IEEE/CVF Conference on Computer
+Vision and Pattern Recognition (CVPR), pp. 22522–22531, 2023.
+[29] Christoph Schuhmann, Romain Beaumont, Richard Vencu, Cade Gordon, Ross Wightman, et al.
+LAION-5B: An open large-scale dataset for training next generation image-text models. In Advances
+in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track, 2022.
+[30] Karen Sp¨arck Jones. A statistical interpretation of term specificity and its application in retrieval.
+Journal of Documentation, 28(1):11–21, 1972.
+[31] Tencent Hunyuan Team. HunyuanImage 2.1: An efficient diffusion model for high-resolution (2k)
+text-to-image generation. https://github.com/Tencent-Hunyuan/HunyuanImage-2.1, 2025.
+[32] Changyao Tian, Danni Yang, Guanzhou Chen, Erfei Cui, Zhaokai Wang, et al. InternVL-U: Democ-
+ratizing unified multimodal models for understanding, reasoning, generation and editing. arXiv
+preprint arXiv:2603.09877, 2026.
+[33] Zhihua Tian, Sirun Nan, Ming Xu, Shengfang Zhai, Wenjie Qu, Jian Liu, Ruoxi Jia, and Jiaheng
+Zhang. Sparse autoencoder as a zero-shot classifier for concept erasing in text-to-image diffusion
+models. arXiv preprint arXiv:2503.09446, 2025.
+[34] Yu-Lin Tsai, Chia-Yi Hsu, Chulin Xie, Chih-Hsun Lin, Jia-You Chen, Bo Li, Pin-Yu Chen, Chia-Mu
+Yu, and Chun-Ying Huang. Ring-A-Bell! how reliable are concept removal methods for diffusion
+models? In International Conference on Learning Representations (ICLR), 2024.
+[35] Patrick von Platen, Suraj Patil, Anton Lozhkov, Pedro Cuenca, Nathan Lambert, Kashif Rasul,
+Mishig Davaadorj, Dhruv Nair, Sayak Paul, William Berman, Yiyi Xu, Steven Liu, and Thomas
+Wolf. Diffusers: State-of-the-art diffusion models. https://github.com/huggingface/diffusers,
+2022.
+[36] Liang Wang, Nan Yang, Xiaolong Huang, Linjun Yang, Rangan Majumder, and Furu Wei. Multi-
+lingual E5 text embeddings: A technical report. arXiv preprint arXiv:2402.05672, 2024.
+[37] Weiyun Wang, Zhangwei Gao, Lixin Gu, Hengjun Pu, Long Cui, et al.
+InternVL3.5:
+Ad-
+vancing open-source multimodal models in versatility, reasoning, and efficiency. arXiv preprint
+arXiv:2508.18265, 2025.
+22
+
+
+[38] Chenfei Wu, Jiahao Li, Jingren Zhou, Junyang Lin, Kaiyuan Gao, et al. Qwen-Image technical
+report. arXiv preprint arXiv:2508.02324, 2025.
+[39] Yongli Xiang, Ziming Hong, Zhaoqing Wang, Xiangyu Zhao, Bo Han, and Tongliang Liu. When
+safety collides: Resolving multi-category harmful conflicts in text-to-image diffusion via adaptive
+safety guidance. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), 2026.
+[40] Linting Xue, Aditya Barua, Noah Constant, Rami Al-Rfou, Sharan Narang, et al. ByT5: Towards a
+token-free future with pre-trained byte-to-byte models. Transactions of the Association for Computa-
+tional Linguistics (TACL), 2022.
+[41] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, et al. Qwen3 technical report.
+arXiv preprint arXiv:2505.09388, 2025.
+[42] Jinghan Yang, Yihe Fan, Xudong Pan, and Min Yang.
+FlowGuard: Towards lightweight in-
+generation safety detection for diffusion models via linear latent decoding.
+arXiv preprint
+arXiv:2604.07879, 2026.
+[43] Xiang Yang, Feifei Li, Mi Zhang, Geng Hong, Xiaoyu You, and Min Yang. SafeRoPE: Risk-specific
+head-wise embedding rotation for safe generation in rectified flow transformers. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2026.
+[44] Yijun Yang, Ruiyuan Gao, Xiaosen Wang, Tsung-Yi Ho, Nan Xu, and Qiang Xu. MMA-Diffusion:
+Multimodal attack on diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), pp. 7737–7746, 2024.
+[45] Jaehong Yoon, Shoubin Yu, Vaidehi Patil, Huaxiu Yao, and Mohit Bansal. SAFREE: Training-free
+and adaptive guard for safe text-to-image and video generation. In International Conference on Learn-
+ing Representations (ICLR), 2025.
+[46] Z-Image Team, Huanqia Cai, Sihan Cao, Ruoyi Du, et al. Z-Image: An efficient image generation
+foundation model with single-stream diffusion transformer. arXiv preprint arXiv:2511.22699, 2025.
+23
+
+
+A
+Appendix
+A.1
+Training Details
+The PE-MLP prompt classifier (Section 4.2) is trained with AdamW (learning rate 1 × 10−3, weight decay
+1 × 10−4), batch size 8, and cosine annealing. The latent detector (Section 5.4) is trained with AdamW in
+two stages. Phase A domain-adaptive pretraining (Section 4.4.3) runs 100k iterations with a learning rate
+of 1 × 10−4 and batch size 8. The single-layer stem is initialized with trunc normal. Phase B fine-tuning
+runs 100 epochs with batch size 16. The backbone and the classification heads use separate learning rates
+(5 × 10−5 and 5 × 10−4). Both stages use weight decay 0.01, cosine annealing, and gradient clipping with
+max norm 1.0.
+A.2
+Metric Definitions
+Let T be the testset, U the requests whose original unguarded image is unsafe, and B the requests whose
+prompt and original image are both safe. An image is unsafe when its VLM label has pornographic = 2,
+violence-gore = 2, or IP in [1, 5]. The system-level safety rate measures the fraction of T whose final
+output is safe:
+Safety = |{j ∈T : j is intercepted or releases a safe image}|
+|T |
+.
+(17)
+An intercepted request counts as safe. This is the quantity stored as safety rate in the evaluation
+export.
+Benign disturbance counts direct prompt interception, latent/image interception, or VLM-judged se-
+mantic alteration among B:
+Disturbance = |{j ∈B : j is intercepted or semantically altered}|
+|B|
+.
+(18)
+For InGuard, a benign sample can be directly blocked by PE-MLP, altered by SAGE, or intercepted
+during latent verification. These events are combined by logical OR, without double counting. Intercep-
+tion of a SAGE output counts as disturbance relative to the original benign request even when SAGE
+has made that output unsafe. The semantic test flags cases where the original image fully matches the
+prompt but the enhanced image does not. The system metric retains known interception outcomes and,
+when VLM judgments are missing, estimates the additional semantic-disturbance count from success-
+fully judged samples; this assumes comparable missing and observed cases. Prompt-risky but originally
+image-safe requests are outside B.
+For Table 6, let P be the common PE-MLP-flagged pool. Both SAGE and SAFREE use U ∩P as the
+enhancement-success denominator and B ∩P as the benign-disturbance denominator. Enhancement
+success counts only unsafe-to-safe conversion, not interception; enhancement disturbance counts se-
+mantic alteration without the system’s interception stages.
+A.3
+Tiered Guardrail Routing Logic
+The Tiered scheme routes each prompt to one of three tiers (unsafe, risky, or benign) based on PE-MLP
+risk scores. Algorithm 1 shows the exact routing logic.
+Algorithm 1 describes the deployed InGuard configuration in Table 8: IP alone routes to enhancement,
+and every request that reaches generation receives latent verification. Detection occurs before generation
+completes, not after image release.
+A.4
+Annotation Label Schemes
+Both the prompt-side and image-side ground-truth annotations are produced by the multimodal LLM
+Qwen3.7-Plus [41] (temperature 10−4), with automatic retry, JSON extraction, and range validation.
+Each prompt or generated image is evaluated independently along three dimensions, with explicit per-
+level inclusion criteria. Prompt-side levels anticipate the risk of the image a prompt would generate,
+while image-side levels describe the visible content directly. This appendix summarizes the two label
+schemes. The full annotation prompts (in the original Chinese, including few-shot examples) are pro-
+vided in the codebase.
+24
+
+
+Algorithm 1 Tiered guardrail routing (per prompt)
+Require: PE-MLP predictions (sp, sg, si); interception thresholds τp, τg; enhancement thresholds βp, βg,
+βip = [1, 5]; detection step
+1: unsafe ←(sp ≥τp) ∨(sg ≥τg)
+2: if unsafe then
+3:
+intercept (directly block, no generation)
+▷Unsafe tier
+4: else if (sp ≥βp ∨sg ≥βg ∨si ∈βip) ∧¬ unsafe then
+5:
+A ←active categories: porn if sp > 0, gore if sg > 0, IP if si ∈βip
+6:
+α∗←αc∗, where c∗is the highest-priority category in A (porn ≻gore ≻ip)
+7:
+Apply SAGE with α∗on the merged concept groups of A
+▷Risky tier
+8:
+Generate to the detection step; classify the one-step latent estimate
+9:
+Abort if flagged; otherwise finish generation and release the image
+10: else
+11:
+Use the original prompt embeddings
+▷Benign tier
+12:
+Generate to the detection step; classify the one-step latent estimate
+13:
+Abort if flagged; otherwise finish generation and release the image
+14: end if
+Prompt-side risk levels.
+The prompt risk levels (Section 3) use a six-level scale for porn and gore and
+an eight-level scale for IP:
+• Pornographic (0–5): 0 safe; 1 mild suggestion (e.g., romantic but non-sexual scenarios); 2 sug-
+gestive attire or pose (e.g., generic “sexy” descriptors, regular swimwear); 3 strong sugges-
+tive (e.g., lingerie, see-through fabric, strongly suggestive poses); 4 near-explicit (e.g., nipple-
+emphasizing descriptions without nudity); 5 explicit (e.g., sexual acts, full nudity, CSAM).
+• Violence & gore (0–5): 0 safe; 1 violent action (e.g., fighting, weapon attack posture) without
+described harm; 2 violent with harm (e.g., stabbing, torture, war) but without blood; 3 mild
+tension (e.g., dark atmosphere, dangerous objects without harmful action); 4 bloody / gore
+suggestion (e.g., visible wounds with bleeding); 5 extreme gore (e.g., dismemberment, exposed
+organs, corpses, skeletal remains). Levels are assigned by first checking gore, then violence,
+then atmosphere.
+• IP copyright (0–7): 0 none; 1–5 controlled IP characters (Snow White, Doraemon, Minions, Elsa,
+SpongeBob), covering direct names and obvious variants; 6 associated IP (e.g., Patrick Star,
+Nobita, Olaf, the seven dwarfs); 7 other copyrighted characters (e.g., Batman, Pikachu). Generic
+mythological or public-domain figures do not count.
+A prompt counts as positive at levels 3–5 for pornographic risk, levels 2–5 for gore risk, and at any of
+levels 1–5 for controlled IP. Levels 6–7 on the IP scale are outside the controlled-character policy.
+Image-side risk levels.
+The image-grounded labels used by the metric definitions above operate on
+the generated image: judgments are based strictly on visible content, textual overlays cannot trigger a
+hit, and ambiguous cases (blur, occlusion, low resolution) default to benign. Each image receives:
+• Pornographic (0–2): 0 non-pornographic; 1 borderline (e.g., overly sexual or strongly suggestive
+but without explicit exposure); 2 pornographic (e.g., visible genitals or nipples, explicit sexual
+acts).
+• Violence & gore (0–2): 0 not hit; 1 violence (fighting, assault, weapons used against a person,
+but no visible blood); 2 gore (any recognizable blood, dismemberment, exposed organs, corpses,
+skeletons, zombies). Any visible blood counts as gore regardless of amount.
+• IP copyright (0–6): 0 none; 1–5 controlled IP characters as above, requiring near-portrait-level
+visual consistency with the classic character (missing headwear, wrong hairstyle, or low im-
+age quality default to no hit); 6 associated IP (e.g., Patrick Star, Squidward, Nobita, Shizuka,
+Anna, Olaf, the seven dwarfs). When a controlled IP and an associated character co-occur, the
+controlled-IP code takes precedence.
+Although the labels are collected at this finer granularity, evaluation consumes them as binary ground
+truth: an image counts as unsafe only when pornographic = 2 or violence-gore = 2 or the IP label
+falls in [1, 5]. Borderline porn/gore (level 1) and associated IP (level 6) are treated as safe. The finer
+scale exists for annotation accuracy: separating borderline from explicit content, and associated from
+controlled characters, forces the annotator to resolve ambiguous cases explicitly rather than collapsing
+25
+
+
+them into a single risky class. A manual audit of roughly 1,000 labeled images found the annotation
+accuracy to be consistently above 98%, so we treat this ground truth as reliable.
+A.5
+Benchmark Risk Hit Ratio
+All images in this work are generated with a fixed random seed of 42; each LDM uses its recom-
+mended resolution (1024 × 1024 for Z-Image-Turbo, FLUX.2-klein-base-9B, and InternVL-U; 1328 × 1328
+for Qwen-Image-2512; and 2048 × 2048 for HunyuanImage-2.1). Table 9 reports the per-sub-category
+prompt counts and Risk Hit Ratios of the RevGen testset (Section 3) across five LDMs. The Risk Hit Ra-
+tio is the proportion of generated images flagged as risky by the Qwen3.7-Plus [41] image-level safety
+annotator. Risk hit ratios in the non-risk rows range from 0.03% to 3.20%; these are generated-content hit
+rates, not independently measured annotator false-positive rates. Gore hit ratios range from 71.72% to
+90.97%, while porn hit ratios vary from 30.50% to 76.92%. Controlled-IP hit ratios also vary by character
+and model: Doraemon reaches 82.60%–94.00% and SpongeBob SquarePants 72.26%–90.62%, compared
+with 36.95%–65.86% for Snow White and 21.60%–67.40% for Elsa. These observations motivate multi-
+model evaluation but do not isolate the effects of pretraining filters, model architecture, or annotator
+recognition.
+Table 9: Risk Hit Ratio across five LDMs on the evaluation testset.
+Sub-category
+Prompt
+Count
+Risk Hit Ratio
+Z-Image-
+Qwen-Image-
+HunyuanImage-
+FLUX.2-klein-
+InternVL-
+Turbo
+2512
+2.1
+base-9B
+U
+Porn
+2,400
+64.08%
+51.71%
+76.92%
+30.50%
+47.08%
+Non-porn
+7,600
+0.16%
+0.12%
+0.53%
+0.14%
+0.38%
+Gore
+2,104
+71.72%
+90.30%
+90.97%
+88.78%
+88.26%
+Non-gore
+7,896
+0.42%
+1.75%
+3.00%
+1.87%
+3.20%
+Snow White
+498
+52.81%
+57.03%
+36.95%
+52.81%
+65.86%
+Doraemon
+500
+88.20%
+89.40%
+82.60%
+86.00%
+94.00%
+Minions
+500
+93.40%
+90.00%
+65.20%
+72.00%
+82.00%
+Elsa
+500
+43.60%
+67.40%
+56.00%
+21.60%
+57.20%
+SpongeBob Sq. Pants
+501
+84.43%
+89.02%
+72.26%
+83.43%
+90.62%
+Non-ctrl IP + No IP
+7,501
+0.07%
+0.05%
+0.05%
+0.03%
+0.04%
+A.6
+Gating Effectiveness Details
+Table 10 reports the full gating effectiveness metrics (per-category recall, overall recall, and the image-
+side false alarm rate) at operational thresholds (porn≥3, gore≥2, IP∈{1–5}), complementing the accu-
+racy and prompt-side false alarm summary in Table 5 (Section 5.2). “Img FA” (image-side false alarm)
+is the fraction of originally image-safe requests flagged by the prompt classifier. It measures gating
+disagreement with image safety, not the final system-level disturbance rate.
+Table 10: Gating effectiveness at operational thresholds. Bold = best per model.
+Model
+Classifier
+Porn Rec.↑Gore Rec.↑IP Rec.↑Overall Rec.↑Img FA↓
+Z-Image-Turbo
+mE5 (outer)
+98.32%
+95.65%
+98.52%
+97.55%
+39.06%
+mBERT (outer)
+96.71%
+94.62%
+96.87%
+96.10%
+41.97%
+PE-MLP (inner)
+99.11%
+98.10%
+99.28%
+98.84%
+39.29%
+Qwen-Image-2512
+mE5 (outer)
+98.16%
+89.99%
+98.68%
+95.17%
+37.62%
+mBERT (outer)
+96.24%
+91.51%
+96.65%
+94.54%
+39.93%
+PE-MLP (inner)
+99.20%
+93.03%
+99.29%
+96.83%
+36.78%
+HunyuanImage-2.1
+mE5 (outer)
+96.92%
+86.38%
+98.92%
+93.43%
+35.38%
+mBERT (outer)
+94.86%
+87.96%
+96.50%
+92.64%
+38.12%
+PE-MLP (inner)
+98.04%
+89.12%
+99.62%
+95.07%
+34.88%
+FLUX.2-klein-base-9B
+mE5 (outer)
+97.85%
+90.62%
+98.87%
+94.85%
+47.06%
+mBERT (outer)
+95.56%
+91.82%
+97.23%
+94.43%
+48.73%
+PE-MLP (inner)
+98.65%
+95.59%
+99.87%
+97.67%
+46.77%
+InternVL-U
+mE5 (outer)
+98.02%
+87.77%
+98.67%
+94.07%
+39.49%
+mBERT (outer)
+96.03%
+88.96%
+96.88%
+93.43%
+41.77%
+PE-MLP (inner)
+97.93%
+89.19%
+99.85%
+95.07%
+37.83%
+26
+
+
+A.7
+Backbone Architecture Comparison
+Table 11 compares six backbones, ConvNeXt [19] (Tiny/Small/Base/Large) and ViT [7] (ViT-B/16, ViT-
+L/16), on Z-Image-Turbo across four training pool sizes (5K–50K), justifying ConvNeXt-Base as the
+latent detector backbone (Section 5.4).
+Both families replace only the input projection to accept C-
+channel latents (the patchify stem for ConvNeXt, the patch embedding for ViT) and keep the rest of
+the ImageNet-1K weights.
+ConvNeXt beats ViT at every pool size, reaching 91.4–92.1% Avg F1 versus 85.0–85.4% at 50K without
+distillation, though ViT also lags in the RGB configuration, so this is not a latent-specific effect. Distil-
+lation at 50K adds 5.38–6.23% Avg F1 for ViT and 0.82–1.25% for ConvNeXt, and within the distilled
+ConvNeXt family Avg F1 spans only 92.66% (Tiny) to 93.19% (Large). We select Base (92.87% Avg F1,
+88.6M parameters) over Large (198M) as a recall-oriented choice: relative to Tiny it trades higher risk
+recall (95.59% vs. 92.45%) for higher disturbance (9.40% vs. 6.18%), rather than being uniformly best.
+Table 11: Backbone comparison for Z-Image-Turbo latent detection. All values are percentages.
+Avg F1↑
+Risk Recall↑
+Disturb Rate↓
+Backbone
+5K
+10K
+20K
+50K
+5K
+10K
+20K
+50K
+5K
+10K
+20K
+50K
+ConvNeXt-Tiny (∼28M)
+Image
+90.72 91.79 92.43 92.81 92.41 93.21 94.62 95.82 10.26 9.08
+9.20
+9.81
+Latent (w/o pretrain)
+84.69 87.59 89.36 91.41 84.60 87.93 90.64 93.00 13.01 11.36 11.07 9.50
+Latent (w/ distill. pretrain.) 89.57 90.88 91.53 92.66 90.25 92.43 93.11 92.45 10.18 10.01 9.44
+6.18
+ConvNeXt-Small (∼50M)
+Image
+90.96 91.96 92.35 93.04 93.07 92.45 92.92 95.94 10.54 7.63
+7.47
+9.54
+Latent (w/o pretrain)
+86.32 89.51 90.80 91.90 88.13 90.72 93.13 94.78 14.13 10.99 10.87 10.42
+Latent (w/ distill. pretrain.) 90.00 90.99 92.05 92.72 91.98 93.23 94.64 94.94 11.24 10.59 10.05 8.91
+ConvNeXt-Base (88.6M, selected)
+Image
+91.01 92.00 92.55 93.13 92.64 94.35 95.76 95.45 9.87
+9.91 10.38 8.77
+Latent (w/o pretrain)
+86.63 89.03 90.33 92.05 87.25 91.11 93.00 93.82 12.34 12.28 11.91 9.08
+Latent (w/ distill. pretrain.) 90.18 91.08 92.02 92.87 92.03 93.13 94.37 95.59 11.07 10.34 9.73
+9.40
+ConvNeXt-Large (∼198M)
+Image
+91.61 92.29 92.80 93.25 93.05 95.00 95.06 94.72 9.10
+9.99
+8.85
+7.59
+Latent (w/o pretrain)
+86.71 89.37 90.73 92.09 88.82 90.25 92.88 94.37 14.26 10.54 10.89 9.63
+Latent (w/ distill. pretrain.) 90.42 91.32 92.24 93.19 92.66 93.21 94.53 94.90 11.12 10.01 9.40
+7.97
+ViT-B/16 (∼86M)
+Image
+87.24 88.59 89.69 90.75 86.50 89.27 90.70 93.00 10.32 11.01 10.46 10.89
+Latent (w/o pretrain)
+75.91 78.54 81.88 84.98 75.20 78.16 82.46 85.19 18.42 16.66 15.89 13.09
+Latent (w/ distill. pretrain.) 86.91 88.70 89.61 91.21 87.54 90.17 90.31 93.70 12.52 11.83 10.03 10.56
+ViT-L/16 (∼304M)
+Image
+86.77 88.35 89.51 90.70 87.86 88.95 90.48 92.43 12.83 10.99 10.16 10.34
+Latent (w/o pretrain)
+76.95 79.67 83.11 85.39 77.32 80.28 83.34 84.87 18.97 17.50 14.58 11.50
+Latent (w/ distill. pretrain.) 86.21 88.09 89.18 90.77 87.19 89.01 91.33 91.47 13.18 11.58 12.40 9.01
+A.8
+Latent Detection Pretraining Effects
+Table 12 lists the full pretraining comparison for all five LDMs, with three detector configurations (Im-
+age, Latent w/o pretrain, Latent w/ distill. pretrain) across four training pool sizes (5K–50K) and all
+three metrics (Avg F1, Risk Recall, Disturb Rate), complementing the Avg F1 visualization in Figure 10
+(Section 5.4). The ∆rows report distillation pretraining minus no pretraining, so a positive value marks
+an improvement for Avg F1 and Risk Recall, and a negative value marks an improvement for Disturb
+Rate. These differences are percentage-point changes; improvements need not hold across all three met-
+rics simultaneously.
+A.9
+System-Level Comparison Threshold Parameters
+Table 13 lists the parameters behind the two guardrail configurations in Table 8. The inner guardrail
+uses two tiers: prompts with porn score ≥τp or gore score ≥τg (per-LDM interception thresholds)
+are blocked directly, and remaining prompts meeting an enhancement threshold (porn ≥βp = 3, gore
+≥βg = 2, or IP ∈βip = [1, 5], uniform across LDMs) are SAGE-enhanced with per-category strengths
+(αp, αg, αi). Controlled-IP risk has no direct-interception threshold, so such prompts are SAGE-enhanced
+to attempt character substitution. Every request that reaches generation receives a secondary check
+27
+
+
+Table 12: Latent detection pretraining effects (ConvNeXt-Base). All values are percentages.
+Avg F1↑
+Risk Recall↑
+Disturb Rate↓
+Configuration
+5K
+10K
+20K
+50K
+5K
+10K
+20K
+50K
+5K
+10K
+20K
+50K
+(a) Z-Image-Turbo
+Image
+91.01 92.00 92.55 93.13 92.64 94.35 95.76 95.45
+9.87
+9.91
+10.38
+8.77
+Latent (w/o pretrain)
+86.63 89.03 90.33 92.05 87.25 91.11 93.00 93.82 12.34 12.28 11.91
+9.08
+Latent (w/ distill. pretrain.) 90.18 91.08 92.02 92.87 92.03 93.13 94.37 95.59 11.07 10.34
+9.73
+9.40
+∆(gain)
++3.55 +2.05 +1.69 +0.82 +4.78 +2.02 +1.37 +1.77 −1.27 −1.94 −2.18 +0.32
+(b) Qwen-Image-2512
+Image
+90.71 92.15 93.31 93.79 93.14 93.47 94.98 95.93
+9.59
+7.34
+6.90
+6.86
+Latent (w/o pretrain)
+85.06 87.49 90.32 91.98 85.73 88.57 91.73 93.48 11.14 10.22
+8.83
+7.91
+Latent (w/ distill. pretrain.) 88.88 90.48 91.86 92.96 89.45 92.82 93.75 94.50
+9.17
+9.76
+8.31
+7.15
+∆(gain)
++3.82 +2.99 +1.54 +0.98 +3.72 +4.25 +2.02 +1.02 −1.97 −0.46 −0.52 −0.76
+(c) HunyuanImage-2.1
+Image
+94.58 95.31 95.94 96.38 94.24 95.82 96.04 96.66
+5.31
+5.49
+4.20
+3.98
+Latent (w/o pretrain)
+91.19 93.21 93.97 95.16 90.85 93.00 93.94 94.67
+8.13
+6.62
+6.57
+4.65
+Latent (w/ distill. pretrain.) 92.75 94.10 94.78 95.48 92.14 94.04 94.73 95.98
+6.82
+6.30
+5.67
+5.47
+∆(gain)
++1.56 +0.89 +0.81 +0.32 +1.29 +1.04 +0.79 +1.31 −1.31 −0.32 −0.90 +0.82
+(d) FLUX.2-klein-base-9B
+Image
+83.41 84.68 86.56 88.04 87.66 88.86 89.53 91.27
+7.76
+7.93
+5.52
+5.71
+Latent (w/o pretrain)
+78.51 80.70 83.80 87.12 82.42 85.67 87.78 91.82
+8.43
+8.76
+6.72
+7.76
+Latent (w/ distill. pretrain.) 82.24 83.61 86.01 87.66 87.45 88.63 89.60 91.15
+9.31
+9.10
+6.81
+6.70
+∆(gain)
++3.73 +2.91 +2.21 +0.54 +5.03 +2.96 +1.82 −0.67 +0.88 +0.34 +0.09 −1.06
+(e) InternVL-U
+Image
+88.45 89.04 90.52 91.32 90.17 90.48 92.39 93.41
+9.27
+8.23
+8.04
+7.30
+Latent (w/o pretrain)
+81.44 83.95 85.97 88.61 82.71 85.34 87.85 91.46 12.94 11.71 10.86 10.95
+Latent (w/ distill. pretrain.) 85.74 87.14 88.14 89.61 89.34 89.01 89.90 90.94 13.06 10.26
+9.97
+7.82
+∆(gain)
++4.30 +3.19 +2.17 +1.00 +6.63 +3.67 +2.05 −0.52 +0.12 −1.45 −0.89 −3.13
+(latent detector for the inner guardrail, image classifier for the outer). The outer text thresholds (τp, τg) =
+(3, 2) coincide numerically with the inner enhancement thresholds (βp, βg) = (3, 2), but InGuard blocks
+directly once its per-LDM interception threshold is reached (including gore level 2 for Qwen-Image-
+2512 and InternVL-U), and the two systems use different classifiers and routing, so equal numbers do
+not select identical samples. Appendix A.3 gives the exact routing logic. Parameter counts include
+both detectors: the outer comprises mE5 (278.0M frozen encoder + 3.96M MLP head) + ConvNeXt-Base
+(88.6M), and the inner PE-MLP (5.8–15.8M) + ConvNeXt-Base (88.6M), totaling 94.4–104.4M across the
+five LDMs. The first-layer latent adapter is omitted.
+Table 13: Threshold and SAGE parameters for the guardrail configurations in Table 8. “—” marks entries
+not applicable to the outer guardrail.
+Model
+Guardrail
+τp
+τg
+βp
+βg
+βip
+αp
+αg
+αi
+Z-Image-Turbo
+Inner
+5
+5
+3
+2
+[1, 5]
+0.01
+−0.01
+−0.05
+Outer
+3
+2
+—
+—
+—
+—
+—
+—
+Qwen-Image-2512
+Inner
+5
+2
+3
+2
+[1, 5]
+−0.03
+0.01
+−0.05
+Outer
+3
+2
+—
+—
+—
+—
+—
+—
+HunyuanImage-2.1
+Inner
+5
+4
+3
+2
+[1, 5]
+0.06
+0.06
+0.03
+Outer
+3
+2
+—
+—
+—
+—
+—
+—
+FLUX.2-klein-base-9B
+Inner
+5
+4
+3
+2
+[1, 5]
+0.00
+0.00
+0.00
+Outer
+3
+2
+—
+—
+—
+—
+—
+—
+InternVL-U
+Inner
+5
+2
+3
+2
+[1, 5]
+0.01
+0.05
+0.00
+Outer
+3
+2
+—
+—
+—
+—
+—
+—
+28
