@@ -1,6 +1,9 @@
 * <a class="dpr-sidebar-root-link" href="#/">首页</a>
 * <a class="dpr-sidebar-root-link dpr-sidebar-noactive-link" href="javascript:void(0)" data-dpr-hash="#/tutorial/README">使用教程</a>
 * Daily Papers
+  * 2026-09-25 <!--dpr-date:20260925-->
+    * 速读区
+      * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202609/25/2609.28561v1-care-condition-aware-representation-regularization-for-diffusion-models" data-sidebar-item="{&quot;title&quot;: &quot;CARE: Condition-Aware Representation Regularization for Diffusion Models&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2609.28561v1-care-condition-aware-representation-regularization-for-diffusion-models&quot;, &quot;score&quot;: &quot;7.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;image-gen&quot;}], &quot;evidence&quot;: &quot;面向扩散模型的条件感知表示正则化&quot;}">CARE: Condition-Aware Representation Regularization for Diffusion Models</a>
   * 2026-09-24 <!--dpr-date:20260924-->
     * 速读区
       * <a class="dpr-sidebar-item-link dpr-sidebar-item-structured" href="#/202609/24/2609.28473v1-on-the-diffusibility-of-high-dimensional-latents" data-sidebar-item="{&quot;title&quot;: &quot;On the Diffusibility of High-Dimensional Latents&quot;, &quot;link&quot;: &quot;https://arxiv.org/abs/2609.28473v1-on-the-diffusibility-of-high-dimensional-latents&quot;, &quot;score&quot;: &quot;7.0&quot;, &quot;tags&quot;: [{&quot;kind&quot;: &quot;query&quot;, &quot;label&quot;: &quot;image-gen&quot;}], &quot;evidence&quot;: &quot;面向扩散图像生成的高维潜在空间几何分析&quot;}">On the Diffusibility of High-Dimensional Latents</a>

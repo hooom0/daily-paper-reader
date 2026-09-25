@@ -1,0 +1,55 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-25T21:48:49.039383+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.28561v1",
+      "source": "arxiv",
+      "title": "CARE: Condition-Aware Representation Regularization for Diffusion Models",
+      "abstract": "Recent advances in diffusion models highlight the importance of representation regularization for improving sample quality and training efficiency. However, commonly used regularization methods often overlook the built-in conditions (such as labels or texts) which directly determine the generation target. In this work, we demonstrate how conditioning signals affect the feature distribution and introduce the CARE (Condition-Aware REpresentation regularization). CARE is a lightweight plug-and-play regularization framework that dynamically modulates feature distribution based on condition similarity. CARE leverages built-in conditioning signals to judiciously guide the representation space, promoting tighter feature clusters for similar conditions without relying on explicit alignment losses or external supervision. Empirically, CARE consistently improves both visual fidelity and convergence stability across both class-to-image and text-to-image tasks. On ImageNet, CARE achieves a 19.08\\% reduction in FID in 400k training steps, leading to a 3.5$\\times$ speed-up. When applied to text-to-image generation, CARE lowers FID by 16.61\\% in 200k iterations and improves semantic alignment between generated samples and text prompts. Moreover, CARE can be seamlessly integrated with existing regularization methods, yielding additional performance gains.",
+      "authors": [
+        "Fengjia Guo",
+        "Zhuoyi Yang",
+        "Jie Tang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CV"
+      ],
+      "published": "2026-09-23T09:21:06+00:00",
+      "link": "https://arxiv.org/pdf/2609.28561v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "condition-aware representation regularization for diffusion models",
+      "llm_evidence_cn": "面向扩散模型的条件感知表示正则化",
+      "llm_evidence": "面向扩散模型的条件感知表示正则化",
+      "canonical_evidence": "面向扩散模型的条件感知表示正则化",
+      "llm_tldr_en": "Existing regularization for diffusion models ignores built-in conditions; CARE is a lightweight plug-and-play framework that modulates feature distribution by condition similarity to improve sample quality.",
+      "llm_tldr_cn": "扩散模型中的表示正则化对提升样本质量与训练效率至关重要，但常用方法忽略了直接决定生成目标的标签或文本等内置条件。本文提出CARE，一种轻量即插即用的正则化框架，依据条件相似度动态调制特征分布，使相似条件形成更紧致的特征簇。研究表明条件信号显著影响特征分布，CARE能有效改善生成质量与训练效率，对条件式图像生成具有普适价值。",
+      "llm_tldr": "扩散模型中的表示正则化对提升样本质量与训练效率至关重要，但常用方法忽略了直接决定生成目标的标签或文本等内置条件。本文提出CARE，一种轻量即插即用的正则化框架，依据条件相似度动态调制特征分布，使相似条件形成更紧致的特征簇。研究表明条件信号显著影响特征分布，CARE能有效改善生成质量与训练效率，对条件式图像生成具有普适价值。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

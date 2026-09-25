@@ -1,0 +1,25 @@
+{
+  "date": "20260925",
+  "date_label": "",
+  "generated_at": "2026-09-25 21:49:06 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.28561v1",
+      "route": "202609/25/2609.28561v1-care-condition-aware-representation-regularization-for-diffusion-models",
+      "title": "CARE: Condition-Aware Representation Regularization for Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向扩散模型的条件感知表示正则化",
+      "first_seen_at": "2026-09-25 21:49:06 UTC",
+      "updated_at": "2026-09-25 21:49:06 UTC"
+    }
+  ]
+}

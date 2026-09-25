@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-24</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-25</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 4 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 1 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>1</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-24 22:38:29 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-25 21:49:06 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今天速读 4 篇论文、精读 0 篇，方向集中在高维潜变量扩散、低样本工业目标检测和文生图安全护栏。</p>
-<p>最值得看的是 7.0 分的《On the Diffusibility of High-Dimensional Latents》，其次是两篇 6.0 分的工业检测域随机化与 InGuard 安全护栏工作。</p>
-<p>建议普通读者先读高维潜变量那篇抓核心结论，再按兴趣跟进安全护栏或工业落地场景。</p>
+<p>今日速读 1 篇扩散模型论文，聚焦条件感知的表征正则化方法 CARE（7.0/10）。其思路是为不同条件定制正则化，提升生成质量与条件一致性，值得关注扩散模型可控生成方向。普通读者可先看它的条件感知正则化设计，再对照自己任务里的条件类型试用。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -93,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">4 篇</strong>
+    <strong class="dpr-home-dashboard-count">1 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="On the Diffusibility of High-Dimensional Latents">On the Diffusibility of High-Dimensional Latents</span></li><li><span class="dpr-home-dashboard-paper-title" title="Semantically-Guided Domain Randomization for Industrial Object Detection in Low-Image-Budget Regimes">Semantically-Guided Domain Randomization for Industrial Object Detection in Low-Image-Budget Regimes</span></li><li><span class="dpr-home-dashboard-paper-title" title="InGuard: Towards Generalized Inner Guardrail for Safe Text-to-Image Generation">InGuard: Towards Generalized Inner Guardrail for Safe Text-to-Image Generation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CARE: Condition-Aware Representation Regularization for Diffusion Models">CARE: Condition-Aware Representation Regularization for Diffusion Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>4</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>1</strong></span></div>
 </section>
 </div>
 
