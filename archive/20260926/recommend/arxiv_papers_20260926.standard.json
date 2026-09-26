@@ -1,0 +1,213 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-26T22:17:27.627516+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 5,
+    "quick_skim_target": 11,
+    "quick_selected": 5
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.24287v1",
+      "source": "arxiv",
+      "title": "Classifier-Free Guidance in Flow Matching: Non-Autonomous Potentials, Overshoot, and Posterior-Mean Control",
+      "abstract": "Classifier-free guidance (CFG) improves conditional generation in Flow Matching, but strong guidance can distort the generated distribution and reduce diversity. We provide a geometric account of this behavior by viewing Flow Matching as a time-varying gradient flow and characterizing how CFG reshapes its underlying potential. This view explains how stronger alignment can be accompanied by mean displacement and trajectory concentration, and motivates controlling guidance through the model-implied terminal posterior mean. We therefore propose Posterior-Mean-Capped CFG (PMC-CFG), a training-free, per-sample method that adaptively retains the strongest feasible guidance without additional network evaluations. Experiments on synthetic and large-scale image-generation benchmarks show that PMC-CFG limits guidance-induced distortion and concentration while improving the alignment--diversity trade-off, with particularly strong benefits when nominal guidance is large.",
+      "authors": [
+        "Jishen Peng",
+        "Zheng Ma"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-21T08:46:59+00:00",
+      "link": "https://arxiv.org/pdf/2609.24287v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "classifier-free guidance for conditional generation",
+      "llm_evidence_cn": "面向条件生成的无分类器引导",
+      "llm_evidence": "面向条件生成的无分类器引导",
+      "canonical_evidence": "面向条件生成的无分类器引导",
+      "llm_tldr_en": "Viewing Flow Matching as a time-varying gradient flow, this work explains how classifier-free guidance reshapes its potential and proposes PMC-CFG, a training-free per-sample method that keeps strong guidance without extra network evaluations.",
+      "llm_tldr_cn": "无分类器引导能提升流匹配的条件生成质量，但引导过强会扭曲生成分布并降低多样性。本文把流匹配视为时变梯度流，刻画引导对潜在势函数的重塑，解释对齐增强伴随的均值位移与轨迹集中现象。据此提出免训练、逐样本的PMC-CFG，自适应保留最强可行引导且不增加网络评估。实验表明该方法兼顾对齐与多样性，为文本到图像等条件生成提供实用的引导控制手段。",
+      "llm_tldr": "无分类器引导能提升流匹配的条件生成质量，但引导过强会扭曲生成分布并降低多样性。本文把流匹配视为时变梯度流，刻画引导对潜在势函数的重塑，解释对齐增强伴随的均值位移与轨迹集中现象。据此提出免训练、逐样本的PMC-CFG，自适应保留最强可行引导且不增加网络评估。实验表明该方法兼顾对齐与多样性，为文本到图像等条件生成提供实用的引导控制手段。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.23817v2",
+      "source": "arxiv",
+      "title": "VISTA: Video-Injected Stylized Text-to-Animation",
+      "abstract": "We present VISTA, a two-stage framework for generating stylized 3D human motion by fusing structural content from text prompts with expressive style from reference videos, without requiring jointly paired (text, video, stylized motion) triplets. A Dual-channel Autoencoder first maps motion sequences and video clips into a shared latent manifold. A masked autoregressive diffusion backbone then operates within this manifold, injecting video-derived style through a dedicated late-fusion Dual-AdaLN pathway while preserving text-conditioned content structure. A cross-batch unpaired training protocol with latent cycle consistency enables joint learning across separate semantically rich and stylistically diverse datasets. As a proof-of-concept for controllable animation synthesis, we validate VISTA on rendered motion-capture references: it achieves the highest style recognition accuracy among video-conditioned methods while preserving competitive content alignment, and its decomposed 3-way classifier-free guidance provides independent, user-controllable calibration of the content-style balance at inference time.",
+      "authors": [
+        "Monseej Purkayastha",
+        "Anindita Ghosh",
+        "Philipp Slusallek"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.GR"
+      ],
+      "published": "2026-09-20T19:11:53+00:00",
+      "link": "https://arxiv.org/pdf/2609.23817v2",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "text-conditioned stylized generation with autoregressive diffusion",
+      "llm_evidence_cn": "文本条件结合自回归扩散的风格化生成",
+      "llm_evidence": "文本条件结合自回归扩散的风格化生成",
+      "canonical_evidence": "文本条件结合自回归扩散的风格化生成",
+      "llm_tldr_en": "VISTA is a two-stage framework using a dual-channel autoencoder and masked autoregressive diffusion to fuse text content with video style for stylized 3D human motion without paired triplets.",
+      "llm_tldr_cn": "风格化三维人体动作生成通常需要配对的文本、视频与风格化动作三元组，数据获取困难。本文提出两阶段框架VISTA，用双通道自编码器将动作序列与视频片段映射到共享潜在流形，再由掩码自回归扩散骨干在该流形中生成动作。它通过专门的后期融合Dual-AdaLN通路注入视频风格，同时保留文本条件的内容结构，并借助跨批次无配对训练与潜在循环一致性联合学习。作为可控动画合成的概念验证，展示了结构与风格融合的新途径。",
+      "llm_tldr": "风格化三维人体动作生成通常需要配对的文本、视频与风格化动作三元组，数据获取困难。本文提出两阶段框架VISTA，用双通道自编码器将动作序列与视频片段映射到共享潜在流形，再由掩码自回归扩散骨干在该流形中生成动作。它通过专门的后期融合Dual-AdaLN通路注入视频风格，同时保留文本条件的内容结构，并借助跨批次无配对训练与潜在循环一致性联合学习。作为可控动画合成的概念验证，展示了结构与风格融合的新途径。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.28083v1",
+      "source": "arxiv",
+      "title": "ZoomDiff: A High-Fidelity Diffusion Model for Dual-Camera Smooth Zooming",
+      "abstract": "Digital zoom transitions between dual cameras often exhibit conspicuous discontinuities in geometric structure and chromatic consistency, degrading the user experience. While recent dual-camera smooth zoom (DCSZ) methods attempt to mitigate this by fine-tuning frame interpolation (FI) models on DCSZ data, they struggle with the large cross-view disparities and complex geometric transformations. Considering that the generative prior of diffusion models is suitable for addressing this problem, we explore their application to DCSZ. However, naively applying existing diffusion-based FI models still yields low-fidelity transitions due to insufficient conditional guidance, high-frequency information loss during VAE encoding, as well as inadequate temporal consistency. To address this, we propose ZoomDiff, a high-fidelity diffusion model that leverages dual-camera inputs in both latent and pixel spaces for photo-realistic transitions. Specifically, we first strengthen dual-image conditional guidance during the multi-step denoising process to improve geometric consistency. Then we inject flow-aligned multi-scale features from the VAE encoder into the VAE decoder to recover high-frequency details, where flow-guided temporal consistency supervision are introduced to produce more smooth transitions. Extensive experiments on both synthetic and real-world datasets demonstrate that ZoomDiff outperforms state-of-the-art methods quantitatively and qualitatively. Project page: https://jiayi-hit.github.io/ZoomDiff.github.io/.",
+      "authors": [
+        "Jiayi Zhang",
+        "Renlong Wu",
+        "Yukang Ding",
+        "Sibin Deng",
+        "Wangmeng Zuo"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-23T13:22:58+00:00",
+      "link": "https://arxiv.org/pdf/2609.28083v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "high-fidelity diffusion model for dual-camera smooth zooming image synthesis",
+      "llm_evidence_cn": "用于双摄平滑变焦图像合成的高保真扩散模型",
+      "llm_evidence": "用于双摄平滑变焦图像合成的高保真扩散模型",
+      "canonical_evidence": "用于双摄平滑变焦图像合成的高保真扩散模型",
+      "llm_tldr_en": "Explores diffusion generative priors for dual-camera smooth zooming, proposing ZoomDiff to fix insufficient conditional guidance, VAE high-frequency loss and weak temporal consistency for higher-fidelity transitions.",
+      "llm_tldr_cn": "论文针对双摄数码变焦过渡中几何结构与色彩不一致、既有帧插值方法难以应对大视角差异的问题，探索扩散模型生成先验在双摄平滑变焦中的应用。作者指出现有扩散帧插值因条件引导不足、VAE编码高频损失与时间一致性欠缺而保真度低，并提出针对性改进的ZoomDiff。结果生成更连贯高保真的变焦过渡，展示了扩散生成先验在图像合成任务中的实用价值。",
+      "llm_tldr": "论文针对双摄数码变焦过渡中几何结构与色彩不一致、既有帧插值方法难以应对大视角差异的问题，探索扩散模型生成先验在双摄平滑变焦中的应用。作者指出现有扩散帧插值因条件引导不足、VAE编码高频损失与时间一致性欠缺而保真度低，并提出针对性改进的ZoomDiff。结果生成更连贯高保真的变焦过渡，展示了扩散生成先验在图像合成任务中的实用价值。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.29240v1",
+      "source": "arxiv",
+      "title": "TOLA: Text-aware One-Step Latent Adaptation for Diffusion-based Text Image Super-Resolution",
+      "abstract": "Text image super-resolution (TSR) aims to recover visually faithful and readable text under unknown degradations. Existing diffusion-based methods typically rely on multi-step prediction of either the high-resolution image or its text prior, resulting in prohibitive computational cost and inference latency. More critically, an erroneous text prior may be repeatedly injected into the denoising process, causing image and text predictions to reinforce each other and progressively amplify an early recognition error into a sharp yet semantically incorrect character. To address these limitations, we propose TOLA, a Text-aware One-step Latent Adaptation framework without iterative image-text diffusion. TOLA consists of two key modules. First, a confidence-weighted text conditioning module constructs the semantic condition only once and suppresses unreliable OCR predictions before they contaminate image reconstruction. Second, a lightweight latent residual correction module explicitly estimates and corrects the structured residual errors to recover missing or distorted stroke details. Extensive experiments demonstrate our state-of-the-art performance across all evaluation metrics on both CTR-TSR-Test ($\\times 4$) and RealCE-200 benchmarks. It is worth noting that our TOLA consistently surpasses existing diffusion-based TSR methods by at least 2.72 dB in PSNR on CTR-TSR-Test.",
+      "authors": [
+        "Yike Xu",
+        "Yue Shi",
+        "Yong Guo",
+        "Jiezhang Cao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-24T08:48:10+00:00",
+      "link": "https://arxiv.org/pdf/2609.29240v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "one-step latent adaptation for diffusion-based text image super-resolution",
+      "llm_evidence_cn": "面向扩散式文本图像超分的单步潜变量适配",
+      "llm_evidence": "面向扩散式文本图像超分的单步潜变量适配",
+      "canonical_evidence": "面向扩散式文本图像超分的单步潜变量适配",
+      "llm_tldr_en": "Proposes TOLA, a text-aware one-step latent adaptation framework for diffusion-based text image super-resolution that avoids iterative image-text diffusion and the amplification of erroneous text priors.",
+      "llm_tldr_cn": "论文针对扩散式文本图像超分依赖多步预测、计算与延迟高，且错误文本先验在去噪中反复注入并放大识别错误的问题。作者提出文本感知单步潜变量适配框架TOLA，摒弃图像与文本的迭代扩散，通过两个关键模块一次完成潜空间适配。结果在保持文字可读性的同时降低推理步数与延迟，为高效可靠的文本图像恢复提供新思路。",
+      "llm_tldr": "论文针对扩散式文本图像超分依赖多步预测、计算与延迟高，且错误文本先验在去噪中反复注入并放大识别错误的问题。作者提出文本感知单步潜变量适配框架TOLA，摒弃图像与文本的迭代扩散，通过两个关键模块一次完成潜空间适配。结果在保持文字可读性的同时降低推理步数与延迟，为高效可靠的文本图像恢复提供新思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "latent diffusion models for high-resolution image synthesis",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.30130v1",
+      "source": "arxiv",
+      "title": "Multimodal Thinking with Renderable Programs",
+      "abstract": "Current vision-language models (VLMs) excel at visual content understanding and text-based reasoning, yet their structure limits the advancement of incorporating images into the reasoning chain. Though Omnimodal models have made efforts in unifying text and image generation, they focus on visual tasks in the open-domain, lacking tractability due to rasterized or latent representations of images. We introduce SVGLM, a framework that uses scalable vector graphics (SVG) primitives to connect text and image in reasoning tasks. We exploit the duality of SVG as both image description and text instructions, yielding a more compact, interpretable solution to equip general VLMs with the capability of generating images within the reasoning process. We provide a large curated dataset of SVG-based image editing dataset, as well as the paradigm to tune open-source VLMs. Experiments on a mathematical reasoning benchmark demonstrate that SVGLM achieves strong SVG generation power as well as think-with-image intelligence. Our results highlight SVG as a suitable medium for building more robust digital domain agents, bridging the gap between text-based thinking and pixel-based images.",
+      "authors": [
+        "Sunli Chen",
+        "Ding Zhong",
+        "Ziqiao Ma",
+        "Jiaxin Liu",
+        "Zeyuan Yang",
+        "Hao Zhang",
+        "Lie Lu",
+        "Joyce Chai",
+        "Chuang Gan"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.CL"
+      ],
+      "published": "2026-09-24T17:03:44+00:00",
+      "link": "https://arxiv.org/pdf/2609.30130v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "framework generating images from text within reasoning via SVG",
+      "llm_evidence_cn": "用SVG在推理中由文本生成图像",
+      "llm_evidence": "用SVG在推理中由文本生成图像",
+      "canonical_evidence": "用SVG在推理中由文本生成图像",
+      "llm_tldr_en": "SVGLM uses scalable vector graphics primitives to link text and image, exploiting SVG duality as description and instruction to let general VLMs generate images during reasoning.",
+      "llm_tldr_cn": "现有视觉语言模型擅长视觉理解与文本推理，却难以把图像纳入推理链，且栅格化或潜表示缺乏可解释性。本文提出SVGLM框架，利用可缩放矢量图形原语连接文本与图像，借助SVG兼具图像描述与文本指令的双重性，使通用VLM具备在推理过程中生成图像的能力，并构建了大规模数据集。",
+      "llm_tldr": "现有视觉语言模型擅长视觉理解与文本推理，却难以把图像纳入推理链，且栅格化或潜表示缺乏可解释性。本文提出SVGLM框架，利用可缩放矢量图形原语连接文本与图像，借助SVG兼具图像描述与文本指令的双重性，使通用VLM具备在推理过程中生成图像的能力，并构建了大规模数据集。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
