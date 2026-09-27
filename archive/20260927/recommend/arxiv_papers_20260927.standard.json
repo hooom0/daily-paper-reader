@@ -1,0 +1,92 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-27T22:17:55.449680+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 2,
+    "quick_skim_target": 11,
+    "quick_selected": 2
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.22647v1",
+      "source": "arxiv",
+      "title": "Math2Visual-X: A Modular Framework for Pedagogically Aligned Lower-Primary Math Visuals Generation",
+      "abstract": "Visual representations can help lower-primary learners understand Math Word Problems, but generating classroom-usable visuals remains difficult. Existing symbolic systems are controllable but limited in coverage, while end-to-end text-to-image systems often fail to satisfy exact mathematical constraints. This paper presents a symbolic visual generation framework for lower-primary MWP generation with broader problem coverage and more scalable asset generation. The framework includes an LLM-based routing layer, three worksheet-oriented generation modules, and two fallback mechanisms for open-world SVG asset acquisition. A human evaluation comparing Math2Visual-X with Stable Diffusion XL, Nano Banana, and GPT Image showed that the proposed method achieved the strongest overall performance. The results indicate that the framework offers a scalable and pedagogically grounded approach for automatic MWP visual generation.",
+      "authors": [
+        "H. D. E. Maduranga",
+        "S. K. Munasinghe",
+        "K. P. T. I. Weerasekara",
+        "Surangika Ranathunga",
+        "Nisansa de Silva"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-18T23:47:19+00:00",
+      "link": "https://arxiv.org/pdf/2609.22647v1",
+      "tags": [
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "text-to-image systems compared for generating math visuals",
+      "llm_evidence_cn": "对比文生图系统以生成数学可视化图",
+      "llm_evidence": "对比文生图系统以生成数学可视化图",
+      "canonical_evidence": "对比文生图系统以生成数学可视化图",
+      "llm_tldr_en": "Math2Visual-X builds a symbolic framework for generating pedagogically aligned lower-primary math visuals, combining LLM routing with worksheet modules, and outperforms Stable Diffusion XL and other text-to-image systems in constraint fidelity.",
+      "llm_tldr_cn": "小学低年级数学应用题的可视化生成困难：符号系统可控但覆盖面窄，端到端文生图系统又难以满足精确数学约束。本文提出Math2Visual-X符号化生成框架，包含基于大模型的路径分发层、三个面向练习册的生成模块与两套开放世界SVG素材获取回退机制。与Stable Diffusion XL、Nano Banana、GPT Image的对比人工评测显示其在教学对齐与约束满足上更优，为可控教育图像生成提供了实用方案。",
+      "llm_tldr": "小学低年级数学应用题的可视化生成困难：符号系统可控但覆盖面窄，端到端文生图系统又难以满足精确数学约束。本文提出Math2Visual-X符号化生成框架，包含基于大模型的路径分发层、三个面向练习册的生成模块与两套开放世界SVG素材获取回退机制。与Stable Diffusion XL、Nano Banana、GPT Image的对比人工评测显示其在教学对齐与约束满足上更优，为可控教育图像生成提供了实用方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.26623v1",
+      "source": "arxiv",
+      "title": "A Data-Interventional Framework for Auditing Privacy and Fairness in Generative Medical Imaging",
+      "abstract": "Diffusion-based synthetic data generation offers a promising route for sharing medical imaging data without releasing sensitive patient records. However, generative models face a fundamental tension between privacy and fairness: they may memorize rare training samples, leading to privacy risks, or fail to reproduce underrepresented features, resulting in unfair synthetic distributions. While prior work has largely focused on either memorization or fairness in isolation, their interaction remains insufficiently understood. In this work, we introduce a data-interventional framework to systematically analyze privacy and fairness in diffusion models. We discuss synthetic anatomical fingerprints (SAFs), rare and manually injected image features, as controlled probes to study whether models generalize sensitive attributes across identities, memorize training samples, or suppress rare signals entirely. Across multiple conditioning modalities, we observe a consistent behavior: models either forget these fingerprints or memorize the entire image in which they appear, but do not generalize them to novel images. To support large-scale auditing where explicit sample extraction is infeasible, we further introduce the indicator metric t', which estimates a model's susceptibility to memorization by exploiting the internal structure of the diffusion process. By comparing conditioning signals of varying surprisal, we reveal a clear relationship between conditioning rarity and memorization behavior. Highly surprising conditioning signals act as retrieval keys that amplify memorization, whereas low-surprisal conditioning signals systematically suppress rare features, even when these appear repeatedly in the training data. Our findings provide actionable insights and concrete mitigation strategies for safe and fair synthetic medical data sharing. Code is available at https://github.com/MischaD/Privacy.",
+      "authors": [
+        "Mischa Dombrowski",
+        "Bernhard Kainz"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-22T15:55:44+00:00",
+      "link": "https://arxiv.org/pdf/2609.26623v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "diffusion-based synthetic medical image generation with privacy and fairness auditing",
+      "llm_evidence_cn": "基于扩散的医学图像合成生成，关注隐私与公平性审计",
+      "llm_evidence": "基于扩散的医学图像合成生成，关注隐私与公平性审计",
+      "canonical_evidence": "基于扩散的医学图像合成生成，关注隐私与公平性审计",
+      "llm_tldr_en": "This work studies diffusion-based synthetic medical image generation, where models risk memorizing rare samples or failing to reproduce underrepresented features, and introduces a data-interventional framework to audit the privacy-fairness tradeoff.",
+      "llm_tldr_cn": "基于扩散的合成数据生成可在不泄露患者记录的前提下共享医学影像，但生成模型面临隐私与公平性的根本矛盾：既可能记忆稀有样本造成隐私风险，也可能无法复现代表性不足的特征导致分布不公平。本文提出数据干预框架，系统分析扩散模型中的隐私与公平性及其相互作用，并引入合成解剖指纹等工具进行审计。该框架为医学图像合成中的数据共享提供了可操作的评估方法，但聚焦于审计而非通用图像生成。",
+      "llm_tldr": "基于扩散的合成数据生成可在不泄露患者记录的前提下共享医学影像，但生成模型面临隐私与公平性的根本矛盾：既可能记忆稀有样本造成隐私风险，也可能无法复现代表性不足的特征导致分布不公平。本文提出数据干预框架，系统分析扩散模型中的隐私与公平性及其相互作用，并引入合成解剖指纹等工具进行审计。该框架为医学图像合成中的数据共享提供了可操作的评估方法，但聚焦于审计而非通用图像生成。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

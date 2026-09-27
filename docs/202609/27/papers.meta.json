@@ -1,0 +1,39 @@
+{
+  "label": "2026-09-27",
+  "date": "2026-09-27",
+  "generated_at": "2026-09-27T22:18:29",
+  "count": 2,
+  "papers": [
+    {
+      "paper_id": "202609/27/2609.22647v1-math2visual-x-a-modular-framework-for-pedagogically-aligned-lower-primary-math-visuals-generation",
+      "section": "quick",
+      "title_en": "Math2Visual-X: A Modular Framework for Pedagogically Aligned Lower-Primary Math Visuals Generation",
+      "authors": "H. D. E. Maduranga, S. K. Munasinghe, K. P. T. I. Weerasekara, Surangika Ranathunga, Nisansa de Silva",
+      "date": "2026-09-18",
+      "pdf": "https://arxiv.org/pdf/2609.22647v1",
+      "score": "6.0",
+      "evidence": "对比文生图系统以生成数学可视化图",
+      "tldr": "小学低年级数学应用题依赖视觉表征，但生成课堂可用的数学插图仍很困难：符号系统可控但覆盖有限，端到端文生图又难以满足精确数学约束。本文提出Math2Visual-X符号化视觉生成框架，包含LLM路由层、三个练习纸生成模块和两种开放世界SVG素材回退机制。与Stable Diffusion XL、Nano Banana和GPT Image对比，人类评估显示其综合表现最佳。该框架为自动数学应用题视觉生成提供了可扩展且具教学依据的方案。",
+      "tags": "query:image-gen",
+      "abstract_en": "Visual representations can help lower-primary learners understand Math Word Problems, but generating classroom-usable visuals remains difficult. Existing symbolic systems are controllable but limited in coverage, while end-to-end text-to-image systems often fail to satisfy exact mathematical constraints. This paper presents a symbolic visual generation framework for lower-primary MWP generation with broader problem coverage and more scalable asset generation. The framework includes an LLM-based routing layer, three worksheet-oriented generation modules, and two fallback mechanisms for open-world SVG asset acquisition. A human evaluation comparing Math2Visual-X with Stable Diffusion XL, Nano Banana, and GPT Image showed that the proposed method achieved the strongest overall performance. The results indicate that the framework offers a scalable and pedagogically grounded approach for automatic MWP visual generation.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202609/27/2609.26623v1-a-data-interventional-framework-for-auditing-privacy-and-fairness-in-generative-medical-imaging",
+      "section": "quick",
+      "title_en": "A Data-Interventional Framework for Auditing Privacy and Fairness in Generative Medical Imaging",
+      "authors": "Mischa Dombrowski, Bernhard Kainz",
+      "date": "2026-09-22",
+      "pdf": "https://arxiv.org/pdf/2609.26623v1",
+      "score": "6.0",
+      "evidence": "基于扩散的医学图像合成生成，关注隐私与公平性审计",
+      "tldr": "扩散模型合成医学影像可避免共享患者数据，却面临隐私与公平性的张力：或记忆罕见样本，或无法复现弱势特征。本文提出数据干预审计框架，用合成解剖指纹作为可控探针，并引入指标t'估计记忆易感性。实验发现模型要么遗忘指纹，要么记忆整图，但不泛化到新图像；高意外条件信号像检索键放大记忆，低意外信号则系统性抑制罕见特征。该工作为安全公平的医学数据共享提供可操作策略。",
+      "tags": "query:image-gen",
+      "abstract_en": "Diffusion-based synthetic data generation offers a promising route for sharing medical imaging data without releasing sensitive patient records. However, generative models face a fundamental tension between privacy and fairness: they may memorize rare training samples, leading to privacy risks, or fail to reproduce underrepresented features, resulting in unfair synthetic distributions. While prior work has largely focused on either memorization or fairness in isolation, their interaction remains insufficiently understood. In this work, we introduce a data-interventional framework to systematically analyze privacy and fairness in diffusion models. We discuss synthetic anatomical fingerprints (SAFs), rare and manually injected image features, as controlled probes to study whether models generalize sensitive attributes across identities, memorize training samples, or suppress rare signals entirely. Across multiple conditioning modalities, we observe a consistent behavior: models either forget these fingerprints or memorize the entire image in which they appear, but do not generalize them to novel images. To support large-scale auditing where explicit sample extraction is infeasible, we further introduce the indicator metric t', which estimates a model's susceptibility to memorization by exploiting the internal structure of the diffusion process. By comparing conditioning signals of varying surprisal, we reveal a clear relationship between conditioning rarity and memorization behavior. Highly surprising conditioning signals act as retrieval keys that amplify memorization, whereas low-surprisal conditioning signals systematically suppress rare features, even when these appear repeatedly in the training data. Our findings provide actionable insights and concrete mitigation strategies for safe and fair synthetic medical data sharing. Code is available at https://github.com/MischaD/Privacy.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-26</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-27</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 5 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 2 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>2</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-26 22:18:09 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-27 22:18:27 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-09-26 日报速读5篇，精读挂零，主攻流匹配与生成模型前沿。最值得看的是《Classifier-Free Guidance in Flow Matching》（7.0分），拆解了过冲与后验均值控制问题。普通读者可先从这篇入手，再顺带浏览视频风格化动画与双摄平滑变焦两篇应用向工作。</p>
+<p>2026-09-27 日报：今日速读 2 篇，精读 0 篇。值得关注的两个方向是低年级数学教学视觉的模块化生成（Math2Visual-X）与生成式医学影像的隐私与公平性审计框架。普通读者可先看这两篇的摘要与结论，判断是否与自己的教学或医疗 AI 场景相关。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -91,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">5 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Classifier-Free Guidance in Flow Matching: Non-Autonomous Potentials, Overshoot, and Posterior-Mean Control">Classifier-Free Guidance in Flow Matching: Non-Autonomous Potentials, Overshoot, and Posterior-Mean Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="VISTA: Video-Injected Stylized Text-to-Animation">VISTA: Video-Injected Stylized Text-to-Animation</span></li><li><span class="dpr-home-dashboard-paper-title" title="ZoomDiff: A High-Fidelity Diffusion Model for Dual-Camera Smooth Zooming">ZoomDiff: A High-Fidelity Diffusion Model for Dual-Camera Smooth Zooming</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Math2Visual-X: A Modular Framework for Pedagogically Aligned Lower-Primary Math Visuals Generation">Math2Visual-X: A Modular Framework for Pedagogically Aligned Lower-Primary Math Visuals Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="A Data-Interventional Framework for Auditing Privacy and Fairness in Generative Medical Imaging">A Data-Interventional Framework for Auditing Privacy and Fairness in Generative Medical Imaging</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>5</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
 </section>
 </div>
 

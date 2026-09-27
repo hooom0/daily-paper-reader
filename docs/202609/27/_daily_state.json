@@ -1,0 +1,41 @@
+{
+  "date": "20260927",
+  "date_label": "",
+  "generated_at": "2026-09-27 22:18:27 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.22647v1",
+      "route": "202609/27/2609.22647v1-math2visual-x-a-modular-framework-for-pedagogically-aligned-lower-primary-math-visuals-generation",
+      "title": "Math2Visual-X: A Modular Framework for Pedagogically Aligned Lower-Primary Math Visuals Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "对比文生图系统以生成数学可视化图",
+      "first_seen_at": "2026-09-27 22:18:27 UTC",
+      "updated_at": "2026-09-27 22:18:27 UTC"
+    },
+    {
+      "paper_id": "2609.26623v1",
+      "route": "202609/27/2609.26623v1-a-data-interventional-framework-for-auditing-privacy-and-fairness-in-generative-medical-imaging",
+      "title": "A Data-Interventional Framework for Auditing Privacy and Fairness in Generative Medical Imaging",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于扩散的医学图像合成生成，关注隐私与公平性审计",
+      "first_seen_at": "2026-09-27 22:18:27 UTC",
+      "updated_at": "2026-09-27 22:18:27 UTC"
+    }
+  ]
+}
