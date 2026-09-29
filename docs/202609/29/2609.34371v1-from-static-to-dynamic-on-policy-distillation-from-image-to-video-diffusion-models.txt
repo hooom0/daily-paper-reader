@@ -1,0 +1,2535 @@
+Preprint.
+FROM STATIC TO DYNAMIC: ON-POLICY DISTILLA-
+TION FROM IMAGE TO VIDEO DIFFUSION MODELS
+Bingqing Jiang1∗
+Li Luo1∗
+Zichao Yu1∗
+Yujin Han1∗
+Zhaolong Su2
+Difan Zou1†
+1The University of Hong Kong
+2Cornell University
+ABSTRACT
+On-policy distillation (OPD) specializes pretrained video diffusion models
+through teacher supervision along the student’s own generation trajectory. Al-
+though large video models are natural teachers, developing specialized video
+experts can require costly video data and training, while querying them incurs
+substantially higher latency than querying image experts. More readily avail-
+able and cheaper to query, image experts offer a cost-effective alternative, par-
+ticularly for largely temporal-agnostic capabilities such as aesthetics and OCR
+that admit frame-level supervision. However, heterogeneous image and video la-
+tent spaces prevent direct supervision of intermediate student states, while im-
+age experts lack cross-frame motion supervision, making temporal consistency
+vulnerable to frame-level improvements.
+In this paper, we propose MILD, a
+Motion-Preserving Image-to-Video Latent Distillation framework that transfers
+specialized image expertise while preserving pretrained video dynamics. MILD
+uses a learnable linear connector that aligns student latent states and predicted
+updates with those of image experts, enabling supervision transfer across hetero-
+geneous latent spaces. We further constrain image-guided corrections around the
+pretrained student’s predictions to preserve video dynamics and incorporate an
+optical-flow-based motion reward to improve motion quality and temporal con-
+sistency. Across specialized image experts and multiple video-student backbones,
+our method consistently outperforms video-teacher OPD baselines, with further
+studies demonstrating effective transfer across connector designs and heteroge-
+neous architectures. These results establish image-to-video distillation as an effec-
+tive route to improving video generation by drawing on the diverse and evolving
+capabilities of the image-generation ecosystem.
+1
+INTRODUCTION
+I2V
+V2V
+0
+2
+4
+1.831
+4.586
+s/query
+2.5× lower latency
+Teacher-query latency ↓
+I2V
+V2V
+0
+20
+40
+60
+GiB
+25.80
+47.76
+46.0% less core-state memory
+Est. core memory ↓
+I2V OPD
+V2V OPD
+Figure 1:
+Computational costs of I2V and
+V2V OPD. Both train Wan2.1-1.3B using SD3.5-
+Medium and Wan2.1-14B teachers, respectively.
+Left: estimated student training-state and teacher
+memory, excluding activations and auxiliary mod-
+ules. Right: measured teacher-query latency.
+Video diffusion models have achieved substan-
+tial progress in visual fidelity and temporal co-
+herence (Ho et al., 2022; Blattmann et al., 2023;
+Wan et al., 2025).
+As these models become
+stronger, an increasingly important practical
+setting is to adapt a pretrained video model to-
+ward specific downstream capabilities, such as
+improved aesthetics and text rendering, without
+retraining the model from scratch. On-policy
+distillation (OPD) is an effective strategy for
+this setting which queries the teacher on states
+sampled from the student’s own generation pro-
+cess, thereby steering the student’s generation
+distribution toward that of the stronger teacher
+during post-training (Li et al., 2026; Fang et al., 2026). In the video domain, stronger video dif-
+fusion teachers have been shown to improve weaker video models (Yin et al., 2025; Huang et al.,
+∗These authors contributed equally to this work.
+†Corresponding author: dzou@cs.hku.hk
+1
+arXiv:2609.34371v1  [cs.CV]  28 Sep 2026
+
+
+Preprint.
+(c) Compositional generation
+(b) Text rendering
+(a) Aesthetic quality
+Prompt: Illustration of a mouse using a mushroom as an umbrella.
+Prompt: A side view of an owl sitting in a field.
+Prompt: A smartphone screen with a notification reading "1000000
+Unreads" displayed prominently, set against a cluttered desk with scattered
+notes and a cup of coffee, capturing the overwhelmed feeling of the user.
+Wan2.1-1.3B
+V2V OPD
+I2V OPD
+Wan2.1-1.3B
+V2V OPD
+I2V OPD
+Wan2.1-1.3B
+V2V OPD
+I2V OPD
+Image-level capabilities
+Video-level capabilities
+Prompt: The camera moves through the vast expanse of the universe,
+where stars twinkle against the dark backdrop, the Milky Way arcing like a
+silver river across the sky. Nebulae slowly rotate in the distance, emitting an
+ethereal glow. The camera continues forward, entering a massive galaxy
+where stars and planets interlace. As the camera draws closer, a vast nebula
+unfolds, its clouds swirling in silent space, shades of purple and deep blue
+resembling a cosmic storm. Further in, a planet slowly spins in the void, its
+surface covered in molten volcanoes and frozen ice plains. A comet streaks
+across the sky, its brilliant tail illuminating the darkness. Finally, the camera
+pulls back, revealing the endless expanse of the universe, with galaxies
+suspended in the vast void between them.
+Wan2.1-1.3B
+V2V OPD
+I2V OPD
+Prompt: Two white sheep are eating grass.
+Prompt: Vase, pan right.
+Wan2.1-1.3B
+V2V OPD
+I2V OPD
+Wan2.1-1.3B
+V2V OPD
+I2V OPD
+(c) Camera motion control
+(b) Count and action accuracy
+(a) Complex scene generation
+Frame 0
+Frame 0
+Frame 0
+Frame 44
+Frame 80
+Frame 80
+Frame 80
+Frame 44
+Frame 44
+Frame 0
+Frame 80
+Frame 44
+Frame 0
+Frame 80
+Frame 44
+Frame 0
+Frame 80
+Frame 44
+Figure 2:
+Qualitative comparisons of Base, V2V OPD, and I2V OPD. Base denotes the pre-
+trained Wan2.1-1.3B model. Top: aesthetic quality on DrawBench, text rendering on the Text Ren-
+dering benchmark, and compositional generation. Bottom: complex scene generation, count and
+action accuracy, and camera motion control on VBench-2.0 prompts.
+2026), for example by accelerating student inference through distillation. However, OPD training
+requires repeated evaluations of an expensive video teacher at student-generated states, introducing
+substantial computational overhead. As shown in Fig. 1, video-teacher OPD has an estimated core
+model-state memory footprint of 47.76 GiB and a mean teacher-query latency of 4.59 seconds under
+the evaluated configurations. In contrast, image-teacher OPD reduces these costs to 25.80 GiB and
+1.83 seconds, respectively, while image generation models can provide supervision for downstream
+video tasks such as visual aesthetics and text rendering (Guo et al., 2023; Kwon et al., 2024; Chen
+et al., 2024; Zhu et al., 2024). Qualitative comparisons in Fig. 2 further illustrate the potential of
+image-teacher OPD to improve visual quality and prompt adherence over the pretrained student and
+video-teacher OPD.
+This motivates us to explore whether image generation models post-trained for specialized tasks can
+serve as attractive teachers for video generation, improving the student video model while maintain-
+ing training efficiency. However, applying image models to video generation faces two challenges.
+First, image and video models typically use different VAEs, resulting in mismatched latent spaces
+with different channel dimensions and spatial or temporal compression rates. Thus, the student’s
+video latents during training cannot be directly processed by the image teacher, nor can the teacher’s
+predictions serve as targets in the student’s latent space. Second, image experts are trained on static
+images and do not capture temporal dynamics such as cross-frame object and scene evolution, so
+their frame-level supervision may disrupt temporal coherence. These challenges raise a central
+question: How can we transfer specialized image expertise to a video student through on-policy
+distillation across heterogeneous latent spaces while preserving its learned temporal dynamics?
+To address this question, we propose MILD, a Motion-Preserving Image-to-Video Latent
+Distillation framework that transfers specialized visual capabilities from image experts while pre-
+serving pretrained video dynamics. In particular, we first develop an adaptive connector to bridge
+image and video latent spaces and maintain their alignment as the student evolves throughout train-
+ing. To preserve video dynamics, we anchor image-guided corrections to the student’s frozen pre-
+trained predictions and constrain their magnitude and inter-frame variation. An optical-flow-based
+motion reward further complements static image expertise with explicit motion feedback, improving
+motion quality and temporal consistency. Our main contributions are summarized as follows:
+• We introduce an image-to-video OPD framework, MILD, that transfers specialized visual capabil-
+ities from image experts to video students, reducing reliance on costly specialized video teachers.
+Its adaptive connector supports both linear and nonlinear designs and enables transfer across dif-
+ferent VAEs and backbone architectures.
+• We combine image-expert supervision with a frozen video reference and explicit temporal con-
+straints to improve frame quality while preserving pretrained video dynamics. An auxiliary motion
+reward complements image supervision with direct feedback on video motion.
+• Experiments on Wan2.1-1.3B, Wan2.2-5B, and LTX-Video-2B demonstrate effective capability
+transfer at lower teacher-query costs on VBench-2.0 and EvalCrafter, while connector ablations
+and cross-architecture distillation support the framework’s generality.
+2
+
+
+Preprint.
+Frozen image experts (Diffusion models)
+Aesthetics
+Composition
+Text rendering
+Prompt-dependent
+Frozen video anchor
+Prompt + noise
+Video student
+On-policy trajectory
+Video latent
+Learnable connector
+Align image and video spaces
+State mapping
+Video latent
+Image latent
+Velocity alignment
+Connector update only
+Score pullback
+Video-space
+image guidance
+Anchored spatial target
+Temporal filtering and
+bounded corrections
+Video-space target
+Conditional motion refinement
+Clean latent
+Frozen VAE
+Decoded video
+Frozen
+flow estimator
+Frozen
+motion reward Bounded motion
+correction
+Reward gradient
+Video-space OPD
+Query mapped states
+Image scores
+Detach
+Student update
+Distill the detached video-space target on-policy
+A golden retriever walks past a teal flower shop with a 
+“BLOOM” sign, a red wooden chair, and a blue planter filled 
+with flowers. Warm sunlight, realistic details, natural 
+motion, and a stationary camera.
+Figure 3: Overview of MILD. Learnable connectors transfer image-expert supervision to on-policy
+video states. A frozen video anchor bounds spatial corrections, while optical-flow feedback provides
+motion refinement. Predictions are fused into a detached distillation target; connectors use a separate
+alignment objective.
+2
+RELATED WORK
+Image priors for video generation.
+Prior work extends image models with temporal mod-
+ules (Singer et al., 2022; Blattmann et al., 2023; Guo et al., 2023), fine-tunes spatial modules with
+high-quality images (Chen et al., 2024), or uses inference-time denoiser fusion (Shao et al., 2025)
+and image-supervised distillation (Zhai et al., 2024). We transfer specialized image predictions
+across heterogeneous latent spaces, using bounded corrections to a video anchor to compensate for
+missing temporal context.
+On-policy diffusion distillation.
+OPD supervises students along their own generation trajecto-
+ries (Lu & Lab, 2025; Yu et al., 2026). DMD2 reduces multi-step training–inference mismatch (Yin
+et al., 2024); CausVid distills bidirectional video teachers into autoregressive students, while Self
+Forcing reduces exposure bias through self-generated rollouts (Yin et al., 2025; Huang et al., 2026).
+DiffusionOPD and Flow-OPD consolidate specialized image teachers along student denoising tra-
+jectories (Li et al., 2026; Fang et al., 2026). We transfer image expertise to video by pulling image
+scores into video coordinates and integrating video denoising and motion refinement.
+Motion-aware video post-training.
+Prior work improves motion through temporal adaptation,
+video guidance, or motion-specific objectives (Zhao et al., 2024; Lee et al., 2025; Li et al., 2025;
+Xue et al., 2025). InstructVideo uses image rewards for video fine-tuning, while VADER back-
+propagates reward gradients through video generation (Yuan et al., 2024; Prabhudesai et al.). Our
+motion feedback corrects image-induced denoising directions to construct temporally compatible
+targets from frame-level supervision.
+3
+METHOD
+Figure 3 outlines MILD from frozen image teachers to a video student. We begin by defining
+the distillation objective (Section 3.1) and introducing learnable connectors to align heterogeneous
+representations (Section 3.2). Building on this alignment, we constrain and refine image supervision
+using a video anchor and motion feedback (Section 3.3). Finally, we describe target fusion and
+connector alignment (Section 3.4).
+3.1
+ON-POLICY DISTILLATION OBJECTIVE
+We first formulate an on-policy distillation objective that matches the video student’s denoising
+transitions to target transitions at latent states sampled from its current generation trajectories. Let
+vθ(xt, t, c) denote the student’s velocity at video latent xt, diffusion time t, and text condition c, and
+let ¯v(xt, t, c) denote a target velocity in the same video latent space. For a reverse step from t to
+3
+
+
+Preprint.
+t −h, let πu(· | xt, t, c) denote the transition induced by velocity u. The OPD objective is
+LOPD = Ec,t, xt∼pθ(·|t,c) [ℓt(vθ, ¯v)] ,
+ℓt(vθ, ¯v) := 1
+dDKL(πvθ(· | xt, t, c) ∥π¯v(· | xt, t, c)) , (1)
+where pθ(· | t, c) is the distribution of states visited by the current student at time t, and d is the
+number of video-latent entries. Both transitions in the KL divergence are conditioned on the same
+(xt, t, c). We next obtain a closed form for this loss under the reverse-SDE Euler formulation of
+OPD (Li et al., 2026). We use the rectified-flow convention xt = (1 −t)x0 + tϵ, where ϵ ∼N(0, I)
+is independent of x0 (Liu et al., 2023). For 0 < t < 1 and 0 < h ≤t, the transition associated
+with u ∈{vθ, ¯v} is πu = N(µu, σ2
+t hI), where µu is its reverse-SDE Euler mean and σt > 0 is the
+shared diffusion coefficient. Under this convention, the difference between the transition means is
+µvθ −µ¯v = −h
+
+1 + σ2
+t (1 −t)
+2t
+
+(vθ −¯v).
+Since the transitions share the same covariance, their KL divergence depends only on this mean
+difference. Substitution gives
+ℓt(vθ, ¯v) = ∥µvθ −µ¯v∥2
+av
+2σ2
+t h
+= w(t, h)∥vθ −¯v∥2
+av,
+(2)
+w(t, h) =
+h
+2σ2
+t
+
+1 + σ2
+t (1 −t)
+2t
+2
+,
+(3)
+where ∥q∥2
+av = ∥q∥2
+2/d. Thus, matching these Gaussian denoising transitions is equivalent to min-
+imizing a weighted velocity error in video coordinates. The complete reverse-SDE derivation is
+provided in Appendix A.1.
+3.2
+CROSS-ARCHITECTURE IMAGE GUIDANCE TRANSFER
+Video students and image experts use different VAEs and latent layouts, so their latent states and
+denoising velocities cannot be compared directly. We introduce a differentiable connector Fψ :
+RdV →RdI to evaluate student states using image experts, where dV and dI denote the respective
+latent dimensions.
+Transferring image guidance.
+We select video-latent slices at fixed temporal intervals, resize
+them to the experts’ spatial layout, and map them into the image latent space with a learnable trans-
+formation. The K frozen experts share a VAE and input layout, allowing a common connector. To
+compare denoising behavior, we also map the student’s velocity into image coordinates. Holding ψ
+fixed, the chain rule gives
+zt = Fψ(xt),
+bvI
+θ = JFψ(xt)vθ(xt, t, c),
+(4)
+where JFψ is the Jacobian with respect to xt. The mapped velocity bvI
+θ can therefore be compared
+with the expert predictions uk(zt, t, c) at the mapped student state. Expert predictions are expressed
+in image coordinates and cannot directly serve as video-space updates. Since the connector need not
+be invertible, we convert the expert velocities into image scores sI
+k and pull their guidance back to
+the video latent space through the chain rule:
+gI = JFψ(xt)⊤
+K
+X
+k=1
+βk(c)sI
+k,
+βk(c) ≥0,
+X
+k
+βk(c) = 1.
+(5)
+Here, gI gives a video-space direction toward greater agreement with the image experts. The fixed
+prompt-dependent weights βk(c) select relevant expertise; for example, OCR guidance is disabled
+when text rendering is not required. Appendix A.2 details score conversion and pullback.
+Aligning the connector.
+Matching latent dimensions alone does not ensure that the mapped video
+states preserve the visual content or denoising behavior expected by the image experts. We therefore
+train the connector using content and velocity alignment. For content alignment, we encode the
+same image with both VAEs: the video VAE receives a static clip of repeated images, while the
+image VAE’s output is replicated across the selected temporal slices. This yields paired clean latents
+4
+
+
+Preprint.
+(¯x0, ¯z0). For velocity alignment, we compare the mapped student velocity with expert predictions
+at states sampled from the student’s current trajectories:
+Lconn = λzE∥Fψ(¯x0) −¯z0∥2
+av + λv
+K
+K
+X
+k=1
+E∥bvI
+θ −uk(zt, t, c)∥2
+av + λregR(ψ).
+(6)
+The content term grounds the mapping in shared visual content, while the velocity term adapts it to
+the student’s evolving denoising trajectories. The regularizer R(ψ) penalizes deviations from the
+initial connector parameters. During connector updates, input latents, student velocities, and expert
+predictions are detached, so only ψ is optimized. Although zt depends on Fψ, expert predictions are
+fixed targets; the velocity term updates the connector through JFψ(xt)vθ.
+Our default connector is a bias-free linear map Fψ(x) = Aψx, implemented using fixed slice selec-
+tion and resizing followed by learnable spatial convolutions. Its Jacobian satisfies JFψ(x)v = Aψv,
+so the same operator maps both states and velocities. Nonlinear connectors use Jacobian–vector
+products under the same alignment objective. Neither implementation requires an invertible map-
+ping, a shared image–video VAE, or matching backbone architectures. Appendix A.3 provides the
+derivation and nonlinear training details.
+3.3
+PRESERVING VIDEO DYNAMICS AND REFINING MOTION
+Transferred image guidance can improve spatial content, but it does not account for inter-frame
+relationships. We therefore constrain its effect using a frozen video reference and optionally add
+explicit motion feedback.
+Preserving video dynamics.
+We use the velocity vA predicted by a frozen video reference as an
+anchor and apply the transferred image guidance as a controlled correction:
+evI = CI
+
+vA, vA −
+t
+1 −tαtgI
+
+,
+0 < t < 1.
+(7)
+The factor t/(1 −t) converts a score correction into a velocity correction under the rectified-flow
+convention. The scale αt ≥0 normalizes guidance relative to the anchor score and caps the initial
+correction. The operator CI further limits its magnitude relative to the anchor and suppresses abrupt
+inter-frame variation. This produces an image-enhanced target while constraining departures from
+pretrained video behavior. Appendix A.4.1 details the guidance normalization and the temporal
+correction operator.
+Refining motion with explicit feedback.
+Constraining image guidance limits temporal disruption
+but does not directly reward realistic motion. We hence optionally refine the image-enhanced target
+using a learned motion reward R. A frozen RAFT estimator (Teed & Deng, 2020) extracts optical
+flow from the decoded video, and a motion discriminator scores it. The discriminator is trained to
+distinguish real-video flows from generated and temporally corrupted flows. Specifically, we decode
+the clean latent prediction bx0 = xt −t sg[evI] and use the reward gradient to refine the target:
+evM = CM
+ evI, evI −γt∇xtR
+ DV(bx0)
+
+.
+(8)
+Here, DV is the frozen video decoder, sg stops gradients through the image target, and γt ≥0
+controls the reward correction. Before temporal processing, subtracting this gradient from the ve-
+locity moves the clean prediction locally toward higher motion reward. The operator CM controls
+the correction magnitude and its inter-frame variation. The decoder, RAFT, and discriminator re-
+main frozen during refinement, while allowing gradients through their inputs. Appendix B describes
+discriminator training, and Appendix A.4.2 details reward differentiation and correction scaling.
+3.4
+JOINT OPTIMIZATION
+At each student-update state, we combine the frozen video anchor vA, image-enhanced target evI,
+and, when applied, motion-refined target evM. Motion refinement requires differentiation through
+video decoding and optical-flow estimation, so we apply it only at selected states; anchor and image
+supervision remain active at every state. Let rt ∈{0, 1} indicate whether motion refinement is
+applied at xt. For positive weights ωA, ωI, and ωM, define Zt = ωA + ωI + rtωM. The fused
+video-space target is ¯vt = Z−1
+t
+(ωAvA + ωIevI + rtωMevM). Appendix B specifies the diffusion-time
+range eligible for motion refinement and the per-iteration activation budget.
+5
+
+
+Preprint.
+Video
+Image
+0.0
+0.5
+1.0
+0.365
+0.527
+0.438
+0.869
+GenEval ↑
+Video
+Image
+0.0
+0.5
+1.0
+0.163
+0.429
+0.191
+0.975
+OCR ↑
+Video
+Image
+0
+2
+4
+6
+5.181
+5.286
+5.239
+5.834
+Aesthetic ↑
+Video
+Image
+0.0
+0.5
+1.0
+0.325
+0.488
+0.419
+0.869
+GenEval ↑
+Video
+Image
+0.0
+0.5
+1.0
+0.252
+0.398
+0.3025
+0.975
+OCR ↑
+Video
+Image
+0
+2
+4
+6
+4.785
+5.284
+5.243
+5.834
+Aesthetic ↑
+(a) Wan2.1 setting
+(b) Wan2.2 setting
+Wan2.1-1.3B (student)
+Wan2.1-14B (video teacher)
+Wan2.1-1.3B + Aes. SFT (video-data post-trained teacher)
+Wan2.2-5B (student)
+Wan2.2-A14B (video teacher)
+Wan2.2-5B + Aes. SFT (video-data post-trained teacher)
+GenEval expert (image teacher)
+OCR expert (image teacher)
+Aesthetic expert (image teacher)
+Figure 4:
+Spatial capability comparisons across Wan2.1 and Wan2.2 settings. Each setting
+compares the student, a larger video teacher, a video teacher post-trained on aesthetic video data,
+and specialized image teachers. Image experts achieve the highest GenEval, OCR, and Aesthetic
+scores in both settings.
+For N states sampled from the current student trajectories, we optimize the student with
+Lstudent = 1
+N
+N
+X
+j=1
+Ztj ℓtj
+ vθ(xtj, tj, c), sg[¯vtj]
+
+.
+(9)
+Because ℓt is a weighted squared velocity error, the factor Zt restores the component weights after
+target normalization: with the component targets detached, the student gradient equals that from
+matching each active target separately with its corresponding fusion weight.
+Student updates change the on-policy states and velocities used to align the connector. After a
+connector-only warm-up, each iteration updates the student using Eq. (9) and the connector using
+Eq. (6). The fused target is detached during student updates; input states, student velocities, and
+image-expert predictions are detached during connector updates. Thus, each objective updates only
+its intended parameters. The video anchor, image experts, and auxiliary motion networks remain
+frozen, and inference uses only the updated student. Appendix A.5 details the two update rules.
+4
+EXPERIMENTS
+4.1
+EXPERIMENTAL SETTING
+Table 1:
+Experimental setup.
+Video-teacher
+pairings and shared image-expert backbone. Each
+V2V configuration uses one video teacher.
+Video student
+V2V teacher
+Image experts
+Wan2.1-1.3B
+Wan2.1-14B
+SD3.5-Medium
+Wan2.2-5B
+Wan2.2-A14B
+Wan2.2-5B
+Wan2.2-A14B
+LTX-Video-2B LTX-Video-13B
+Setup.
+We evaluate MILD on Wan2.1-1.3B,
+Wan2.2-5B (Wan et al., 2025), and LTX-Video-
+2B (HaCohen et al., 2024), using a frozen copy
+of each pretrained student as its video anchor.
+Following DiffusionOPD (Li et al., 2026), we
+use three SD3.5-Medium (Esser et al., 2024)
+image experts specializing in compositional
+generation (Ghosh et al., 2023), aesthetics, and
+text rendering. Table 1 lists the video-teacher
+pairings and the image-expert backbone shared
+across students. Ordered as GenEval, aesthetic,
+and OCR experts, their image-score weights are (0.5, 0.5, 0) for ordinary prompts and (0.4, 0.4, 0.2)
+for text-related prompts. We construct a pool of 10,000 training prompts, with 5,000 from OpenVid-
+1M (Nan et al., 2025) and 5,000 from LVD-2M (Xiong et al., 2024). Each iteration samples one
+prompt and generates an on-policy trajectory for an 81-frame video at 480×832 resolution. Training
+comprises 50 connector-alignment iterations followed by 200 joint optimization iterations. Further
+implementation details and motion-reward validation are provided in Appendices B and C.1.
+Baselines. We compare MILD with the pretrained students and two types of V2V OPD baselines:
+V2V OPD (teacher name) uses a larger pretrained video teacher, while V2V OPD (Aes. SFT
+teacher) uses an aesthetic-SFT video teacher. To construct the latter, we fine-tune a copy of each
+student backbone on video–text data from AesVideo-Bench (Han et al., 2026), then freeze the result-
+ing model as its V2V OPD teacher. Table 1 lists the video-teacher pairings, including Wan2.2-5B
+and Wan2.2-A14B teachers for Wan2.1-1.3B to assess transfer across video model variants. We
+evaluate video quality using VBench-2.0 (Zheng et al., 2025) and EvalCrafter (Liu et al., 2024).
+4.2
+MAIN RESULTS
+6
+
+
+Preprint.
+Table 2: Evaluation results on VBench-2.0 and EvalCrafter. MILD outperforms both V2V OPD
+baselines on the aggregate scores of both benchmarks across all three student backbones. Compared
+with the larger-teacher V2V OPD baseline, MILD reduces the sum of per-GPU peak allocated mem-
+ory by 39.32%, 64.07%, and 19.53% on Wan2.1-1.3B, Wan2.2-5B, and LTX-Video-2B, respectively
+(Figure 5). Bold and underlined values indicate the best and second-best results within each student
+group.
+VBench-2.0 ↑
+EvalCrafter ↑
+Method
+Creativity Commonsense Controllability
+Human
+Fidelity Physics AVG.
+Visual
+Quality
+Text–Video
+Alignment
+Motion
+Quality
+Temporal
+Consistency
+Final Sum
+Score
+Large video teachers (reference)
+Wan2.1-14B
+48.91
+59.95
+27.44
+90.94
+44.09
+54.27
+66.25
+56.78
+53.97
+63.93
+240.93
+Wan2.2-A14B
+52.98
+67.73
+35.36
+82.59
+51.60
+58.05
+66.47
+60.22
+54.58
+63.10
+244.37
+LTX-Video-13B
+55.02
+40.84
+13.90
+87.60
+43.14
+48.10
+64.08
+51.99
+56.00
+65.04
+237.11
+Wan2.1-1.3B
+Base
+45.86
+59.68
+22.85
+85.16
+42.07
+51.12
+65.78
+56.51
+53.36
+63.22
+238.87
+V2V OPD (Wan2.1-14B)
+47.34
+63.71
+24.67
+85.17
+45.32
+53.24
+66.64
+56.38
+53.70
+63.03
+239.75
+V2V OPD (Aes. SFT teacher)
+48.12
+61.13
+24.94
+86.45
+44.94
+53.12
+65.47
+58.62
+54.45
+63.16
+241.70
+MILD
+47.89
+64.56
+25.17
+85.47
+46.52
+53.92
+66.84
+57.89
+54.58
+63.79
+243.10
+Wan2.2-5B
+Base
+48.20
+58.50
+20.02
+81.89
+49.31
+51.58
+61.48
+55.63
+54.00
+61.93
+233.04
+V2V OPD (Wan2.2-A14B)
+48.29
+60.81
+20.79
+81.98
+51.60
+52.69
+62.06
+57.51
+54.07
+63.10
+236.74
+V2V OPD (Aes. SFT teacher)
+48.64
+61.69
+19.07
+83.75
+50.62
+52.75
+62.23
+57.79
+54.11
+62.73
+236.86
+MILD
+49.50
+62.84
+21.80
+84.89
+54.29
+54.66
+63.76
+59.12
+54.43
+62.79
+240.10
+LTX-Video-2B
+Base
+47.95
+43.72
+12.17
+67.35
+37.77
+41.79
+56.31
+46.78
+54.96
+62.76
+220.81
+V2V OPD (LTX-13B)
+56.68
+33.38
+16.22
+68.82
+45.43
+44.11
+56.50
+47.05
+55.19
+64.39
+223.13
+V2V OPD (Aes. SFT teacher)
+56.75
+45.36
+15.97
+69.15
+47.14
+46.87
+56.62
+47.61
+55.21
+64.21
+223.65
+MILD
+57.23
+48.85
+16.78
+72.38
+50.06
+49.06
+56.58
+48.41
+55.30
+64.51
+224.80
+Table 3: Cross-architecture video-to-video OPD on VBench-2.0. All OPD variants use Wan2.1-
+1.3B as the student, with the teacher specified in parentheses. Distillation from Wan2.2 teachers
+improves the student’s overall performance, showing that the proposed connector transfers supervi-
+sion between heterogeneous video diffusion models.
+Method
+Creativity
+Commonsense
+Controllability
+Human Fidelity
+Physics
+AVG.
+Wan2.1-1.3B
+45.86
+59.68
+22.85
+85.16
+42.07
+51.12
+V2V OPD (Wan2.1-14B)
+47.34
+63.71
+24.67
+85.17
+45.32
+53.24
+V2V OPD (Wan2.2-A14B)
+48.74
+65.72
+24.59
+82.37
+42.91
+52.87
+V2V OPD (Wan2.2-5B)
+48.29
+58.50
+23.70
+82.51
+43.14
+51.23
+V2V OPD
+MILD
+0
+250
+500
+750
+1000
+GiB
+599.45
+363.73
+39.32% lower
+Student: Wan2.1-1.3B
+Video teacher: Wan2.1-14B
+V2V OPD
+MILD
+860.18
+309.08
+64.07% lower
+Student: Wan2.2-5B
+Video teacher: Wan2.2-A14B
+V2V OPD
+MILD
+267.60
+215.33
+19.53% lower
+Student: LTX-Video-2B
+Video teacher: LTX-Video-13B
+Sum of per-GPU peak allocated memory ↓
+V2V OPD (video teacher)
+MILD (image teachers: 3 × SD3.5-Medium)
+Figure 5: GPU memory comparison across stu-
+dent backbones. MILD reduces the sum of per-
+GPU peak allocated memory relative to V2V OPD
+across all three backbones. The metric sums each
+participating GPU’s peak allocated memory.
+Quantitative Analysis.
+Table 2 compares
+MILD with the pretrained students and V2V
+OPD baselines across three student back-
+bones on VBench-2.0 and EvalCrafter. MILD
+achieves stronger aggregate benchmark per-
+formance while reducing GPU memory us-
+age, as shown in Figure 5.
+On Wan2.1-
+1.3B, Wan2.2-5B, and LTX-Video-2B, MILD
+achieves VBench-2.0 averages of 53.92, 54.66,
+and 49.06, exceeding the best V2V OPD re-
+sults of 53.24, 52.75, and 46.87, respectively.
+It also surpasses both V2V OPD baselines in
+EvalCrafter final score across all three backbones. Meanwhile, the sum of per-GPU peak allocated
+memory is reduced by 39.32%, 64.07%, and 19.53%, respectively, relative to the V2V OPD baseline.
+These results demonstrate that specialized image-expert supervision can outperform video-to-video
+distillation while requiring less aggregate GPU memory. Figure 4 compares specialized image ex-
+perts with students, larger video teachers, and video teachers post-trained on aesthetic video data
+across the Wan2.1 and Wan2.2 settings. The GenEval and OCR experts score 0.869 and 0.975, re-
+spectively, compared with 0.527 and 0.429 for Wan2.1-14B and 0.488 and 0.398 for Wan2.2-A14B.
+The aesthetic expert scores 5.834, exceeding all evaluated video models, whose highest score is
+5.286. These capability advantages support using specialized image experts as sources of spatial
+supervision for video post-training. Beyond appearance, MILD improves motion quality, temporal
+consistency, controllability, and physics over each pretrained student, indicating that transferring
+static image expertise is compatible with improved temporal behavior. Table 3 further demonstrates
+the connector’s applicability to cross-architecture video-to-video OPD. Distilling Wan2.2-A14B or
+Wan2.2-5B into Wan2.1-1.3B raises its VBench-2.0 average from 51.12 to 52.87 or 51.23, respec-
+7
+
+
+Preprint.
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Prompt: The moon changes from silver to yellow.
+Prompt: A cat is on the table, then the cat runs to the left of the table.
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Figure 6: Qualitative comparisons using Wan2.2-5B as the student. Frames 0, 44, and 80 illus-
+trate MILD’s ability to accurately follow prompts involving color changes and directional motion.
+In contrast, baselines fail to respond correctly to the moon’s color change and produces artifacts
+(left), while the cat’s motion direction is incorrect (right). More visualizations are in Appendix C.3.
+Table 4: Frame-level spatial capability evaluation using Wan2.2-5B. We evaluate the middle
+frame of each generated video, using DrawBench prompts for the five model-based metrics and
+FlowGRPO evaluation splits for GenEval and OCR, consistent with DiffusionOPD (Li et al., 2026).
+MILD achieves the highest score on every metric among the compared student variants.
+DrawBench
+FlowGRPO splits
+Method
+Aesthetic
+PickScore
+HPSv2
+CLIPScore
+ImageReward
+GenEval
+OCR
+Base
+4.7855
+0.7841
+0.2293
+0.2372
+−0.4390
+0.3252
+0.2522
+V2V OPD (Aes. SFT teacher)
+4.9169
+0.7931
+0.2321
+0.2414
+−0.3098
+0.4023
+0.2617
+V2V OPD (Wan2.2-A14B)
+4.8217
+0.7819
+0.2253
+0.2338
+−0.4610
+0.4067
+0.2556
+MILD
+5.0305
+0.8111
+0.2470
+0.2438
+0.0320
+0.4454
+0.2697
+tively. This extension shows that the connector provides a supervision interface for heterogeneous
+diffusion models beyond the image-to-video setting. Architectural differences, particularly between
+the mixture-of-experts Wan2.2-A14B teacher and the dense student, may affect transfer effective-
+ness; understanding and mitigating these effects remains future work. Appendix C.2 provides further
+comparisons with video models fine-tuned on aesthetic video data, showing that MILD retains an
+overall advantage and supporting the effectiveness of transferring specialized image expertise to
+video generation.
+Qualitative Analysis. Figure 6 compares frames 0, 44, and 80 from videos generated with Wan2.2-
+5B as the student. For the moon prompt, MILD shows a clear transition toward yellow while retain-
+ing visible lunar texture, whereas V2V OPD with the aesthetic SFT teacher shows little color change.
+For the cat prompt, MILD depicts the cat moving left across the table and leaving the frame by the
+final sampled frame, while the compared baselines keep the cat visible on the table. These cases
+suggest that MILD transfers spatial expertise while retaining the ability to generate prompt-aligned
+temporal changes. Appendix C.3 provides additional cases using Wan2.2-5B as the student, while
+Appendix C.4 compares the aesthetic image expert with the video teacher post-trained on aesthetic
+video data to illustrate differences in visual expertise available for distillation.
+4.3
+SPATIAL CAPABILITY TRANSFER
+We evaluate spatial capability transfer using the evaluation splits and metrics adopted by Dif-
+fusionOPD (Li et al., 2026).
+For each evaluation prompt, we first generate a video and ex-
+tract its middle frame for image-level assessment, using the same frame-selection protocol across
+all methods. On DrawBench (Saharia et al., 2022), we evaluate Aesthetic (Schuhmann, 2022),
+PickScore (Kirstain et al., 2023), HPSv2 (Wu et al., 2023), CLIPScore (Hessel et al., 2021), and
+ImageReward (Xu et al., 2023) to assess visual aesthetics, predicted human preference, and text–
+image alignment. For compositional generation and text rendering, we use the GenEval (Ghosh
+et al., 2023) and OCR evaluation splits provided by FlowGRPO (Liu et al., 2026), applying their
+respective scoring procedures to the extracted middle frames. As shown in Table 4, MILD leads
+the compared student variants on all seven frame-level metrics. It achieves a PickScore of 0.8111,
+an ImageReward score of 0.0320, and an OCR score of 0.2697; its GenEval score also exceeds the
+strongest V2V OPD result (0.4454 versus 0.4067). These results support the transfer of specialized
+8
+
+
+Preprint.
+Table 5: Ablation study on Wan2.2-5B using VBench-2.0. The full model uses auxiliary motion
+refinement, joint optimization, the default connector, and prompt-dependent image-score weights
+that enable OCR guidance only for text-related prompts. Single-expert variants use only the indi-
+cated image expert.
+Variant
+Creativity
+Commonsense
+Controllability
+Human Fidelity
+Physics
+AVG.
+Pretrained model (reference)
+Wan2.2-5B (Base)
+48.20
+58.50
+20.02
+81.89
+49.31
+51.58
+Supervision and optimization strategy
+w/o image experts
+45.97
+60.79
+20.48
+82.11
+50.95
+52.06
+w/o motion refinement
+48.64
+61.75
+19.73
+83.45
+53.68
+53.45
+V2V OPD (Wan2.2-A14B) + motion refinement
+46.86
+61.68
+20.40
+83.61
+52.74
+53.06
+Alternating optimization
+48.42
+62.84
+20.34
+83.83
+53.93
+53.87
+MILD (joint optimization)
+49.50
+62.84
+21.80
+84.89
+54.29
+54.66
+Connector architecture
+1×1 linear connector
+48.20
+60.80
+19.62
+83.75
+52.37
+52.95
+Nonlinear connector
+48.74
+61.39
+19.68
+84.33
+52.78
+53.38
+MILD (default connector)
+49.50
+62.84
+21.80
+84.89
+54.29
+54.66
+Expert selection, weighting, and routing
+GenEval expert only
+47.99
+61.38
+19.53
+83.12
+49.78
+52.36
+Aesthetic expert only
+49.26
+61.09
+19.70
+84.52
+51.58
+53.23
+Uniform weights (1/3, 1/3, 1/3)
+48.68
+59.66
+20.01
+83.16
+53.21
+52.94
+MILD (prompt-dependent weights)
+49.50
+62.84
+21.80
+84.89
+54.29
+54.66
+image expertise to video generation and complement the video-level evaluations of motion quality
+and temporal consistency. Qualitative comparisons are provided in Appendix C.5.
+4.4
+ABLATION STUDY
+We ablate image guidance, motion refinement, optimization strategy, connector architecture, and ex-
+pert configuration on Wan2.2-5B using VBench-2.0, keeping all other settings fixed unless otherwise
+stated. Results are reported in Table 5.
+Supervision and optimization strategy. We remove image-expert guidance while retaining mo-
+tion feedback, or remove motion refinement while retaining image guidance; both variants retain
+the video anchor. The full model achieves an average score of 54.66, compared with 52.06 with-
+out image experts and 53.45 without motion refinement, and outperforms both variants across all
+five categories. It also exceeds V2V OPD with Wan2.2-A14B under the same motion-refinement
+procedure (53.06), supporting the effectiveness of image-expert transfer when both approaches re-
+ceive motion feedback. Joint optimization outperforms an alternating schedule of one connector
+update followed by 16 student updates (54.66 versus 53.87), consistent with the benefit of adapt-
+ing the connector as the student policy evolves. Both schedules retain the separate objectives and
+gradient-detachment rules in Section 3.4.
+Connector architecture. We replace the default spatial linear connector with a 1×1 linear or non-
+linear connector under the same alignment objective. Linear connectors apply the same operator
+to states and velocities, while the nonlinear variant uses Jacobian–vector products. The 1×1 linear
+and nonlinear variants score 52.95 and 53.38, respectively, both above the pretrained student’s 51.58
+but below the default connector’s 54.66. These results show that the framework supports different
+connector architectures, while the default design performs best among those tested.
+Expert selection, weighting, and activation. We compare the default multi-expert policy with
+GenEval-only, aesthetic-only, and uniformly weighted variants, keeping the image-guidance scales
+and target-fusion weights fixed. With experts ordered as GenEval, aesthetic, and OCR, these vari-
+ants use weights (1, 0, 0), (0, 1, 0), and (1/3, 1/3, 1/3), respectively, for every prompt. The default
+policy scores 54.66, compared with 53.23 for the stronger single-expert variant and 52.94 for uni-
+form weighting. This comparison supports the combined use of specialized experts with prompt-
+dependent weighting and activation.
+5
+CONCLUSION
+We presented MILD for transferring specialized image expertise to video diffusion models through
+on-policy distillation. Learnable connectors align heterogeneous latent representations, while video-
+anchor constraints and motion feedback support spatial improvements alongside temporal consis-
+tency. Experiments across three video backbones demonstrate effective capability transfer and con-
+sistent aggregate gains over video-teacher OPD baselines. Our results establish that image experts
+can be a practical source of diverse supervision for video post-training.
+9
+
+
+Preprint.
+REFERENCES
+Andreas Blattmann, Robin Rombach, Huan Ling, Tim Dockhorn, Seung Wook Kim, Sanja Fidler,
+and Karsten Kreis.
+Align your latents: High-resolution video synthesis with latent diffusion
+models. In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp.
+22563–22575. IEEE, 2023.
+Haoxin Chen, Yong Zhang, Xiaodong Cun, Menghan Xia, Xintao Wang, Chao Weng, and Ying
+Shan. Videocrafter2: Overcoming data limitations for high-quality video diffusion models. In
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 7310–7320.
+IEEE, 2024.
+Zhaoxi Chen, Tianqi Liu, Long Zhuo, Jiawei Ren, Zeng Tao, He Zhu, Fangzhou Hong, Liang Pan,
+and Ziwei Liu. 4DNex: Feed-forward 4d generative modeling made easy. In 1st Workshop on
+Reliable and Interactive World Model in Computer Vision Non Archival, 2025.
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas M¨uller, Harry Saini, Yam
+Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, et al. Scaling rectified flow transformers for
+high-resolution image synthesis. In International conference on machine learning, 2024.
+Zhen Fang, Wenxuan Huang, Yu Zeng, Yiming Zhao, Shuang Chen, Kaituo Feng, Yunlong Lin, Lin
+Chen, Zehui Chen, Shaosheng Cao, et al. Flow-opd: On-policy distillation for flow matching
+models. arXiv preprint arXiv:2605.08063, 2026.
+Dhruba Ghosh, Hannaneh Hajishirzi, and Ludwig Schmidt. Geneval: An object-focused framework
+for evaluating text-to-image alignment. Advances in Neural Information Processing Systems, 36:
+52132–52152, 2023.
+Yuwei Guo, Ceyuan Yang, Anyi Rao, Zhengyang Liang, Yaohui Wang, Yu Qiao, Maneesh
+Agrawala, Dahua Lin, and Bo Dai. Animatediff: Animate your personalized text-to-image diffu-
+sion models without specific tuning. arXiv preprint arXiv:2307.04725, 2023.
+Yoav HaCohen, Nisan Chiprut, Benny Brazowski, Daniel Shalem, Dudu Moshe, Eitan Richardson,
+Eran Levin, Guy Shiran, Nir Zabari, Ori Gordon, et al. Ltx-video: Realtime video latent diffusion.
+arXiv preprint arXiv:2501.00103, 2024.
+Yujin Han, Yujie Wei, Yefei He, Xinyu Liu, Tianle Li, Zichao Yu, Andi Han, Shiwei Zhang, Tingyu
+Weng, and Difan Zou. Aesrm: Improving video aesthetics with expert-level feedback. arXiv
+preprint arXiv:2604.28078, 2026.
+Jack Hessel, Ari Holtzman, Maxwell Forbes, Ronan Le Bras, and Yejin Choi.
+Clipscore: A
+reference-free evaluation metric for image captioning. In Proceedings of the 2021 conference
+on empirical methods in natural language processing, pp. 7514–7528, 2021.
+Jonathan Ho, Tim Salimans, Alexey Gritsenko, William Chan, Mohammad Norouzi, and David J
+Fleet. Video diffusion models. Advances in neural information processing systems, 35:8633–
+8646, 2022.
+Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang,
+and Weizhu Chen.
+Lora: Low-rank adaptation of large language models.
+arXiv preprint
+arXiv:2106.09685, 2021.
+Xun Huang, Zhengqi Li, Guande He, Mingyuan Zhou, and Eli Shechtman. Self forcing: Bridging
+the train-test gap in autoregressive video diffusion. Advances in Neural Information Processing
+Systems, 38:167283–167308, 2026.
+Yuval Kirstain, Adam Polyak, Uriel Singer, Shahbuland Matiana, Joe Penna, and Omer Levy. Pick-
+a-pic: An open dataset of user preferences for text-to-image generation. Advances in neural
+information processing systems, 36:36652–36663, 2023.
+Mingi Kwon, Seoung Wug Oh, Yang Zhou, Difan Liu, Joon-Young Lee, Haoran Cai, Baqiao Liu,
+Feng Liu, and Youngjung Uh. Harivo: Harnessing text-to-image models for video generation. In
+European Conference on Computer Vision, pp. 19–36. Springer, 2024.
+10
+
+
+Preprint.
+Dohun Lee, Bryan Sangwoo Kim, Geon Yeong Park, and Jong Chul Ye. Videoguide: Improving
+video diffusion models without training through a teacher’s guide. In IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), pp. 2599–2608. IEEE, 2025.
+Jiachen Li, Qian Long, Jian Skyler Zheng, Xiaofeng Gao, Robinson Piramuthu, Wenhu Chen, and
+William Wang. T2v-turbo-v2: Enhancing video model post-training through data, reward, and
+conditional guidance design. In International Conference on Learning Representations, volume
+2025, pp. 92279–92305, 2025.
+Quanhao Li, Junqiu Yu, Kaixun Jiang, Yujie Wei, Zhen Xing, Pandeng Li, Ruihang Chu, Shiwei
+Zhang, Yu Liu, and Zuxuan Wu. Diffusionopd: A unified perspective of on-policy distillation in
+diffusion models. arXiv preprint arXiv:2605.15055, 2026.
+Jie Liu, Gongye Liu, Jiajun Liang, Yangguang Li, Jiaheng Liu, Xintao Wang, Pengfei Wan,
+Di Zhang, and Wanli Ouyang. Flow-grpo: Training flow matching models via online rl. Ad-
+vances in neural information processing systems, 38:40783–40818, 2026.
+Xingchao Liu, Chengyue Gong, and qiang liu. Flow straight and fast: Learning to generate and
+transfer data with rectified flow. In International Conference on Learning Representations, 2023.
+Yaofang Liu, Xiaodong Cun, Xuebo Liu, Xintao Wang, Yong Zhang, Haoxin Chen, Yang Liu,
+Tieyong Zeng, Raymond Chan, and Ying Shan. Evalcrafter: Benchmarking and evaluating large
+video generation models. In IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), pp. 22139–22149. IEEE, 2024.
+Ilya Loshchilov and Frank Hutter.
+Decoupled weight decay regularization.
+arXiv preprint
+arXiv:1711.05101, 2017.
+Kevin Lu and Thinking Machines Lab. On-policy distillation. Thinking Machines Lab: Connection-
+ism, 2025. doi: 10.64434/tml.20251026. https://thinkingmachines.ai/blog/on-policy-distillation.
+Lars Mescheder, Andreas Geiger, and Sebastian Nowozin. Which training methods for gans do
+actually converge?
+In International conference on machine learning, pp. 3481–3490. PMLR,
+2018.
+Kepan Nan, Rui Xie, Penghao Zhou, Tiehan Fan, Zhenheng Yang, Zhijie Chen, Xiang Li, Jian Yang,
+and Ying Tai. Openvid-1m: A large-scale high-quality dataset for text-to-video generation. In
+International conference on learning representations, volume 2025, pp. 1045–1064, 2025.
+Mihir Prabhudesai, Russell Mendonca, Zheyang Qin, Katerina Fragkiadaki, and Deepak Pathak.
+Video diffusion alignment via reward gradients (2024). arXiv preprint arXiv:2407.08737.
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Remi Denton, Seyed Kam-
+yar Seyed Ghasemipour, Raphael Gontijo-Lopes, Burcu Karagol Ayan, Tim Salimans, Jonathan
+Ho, David J. Fleet, and Mohammad Norouzi. Photorealistic text-to-image diffusion models with
+deep language understanding. In Alice H. Oh, Alekh Agarwal, Danielle Belgrave, and Kyunghyun
+Cho (eds.), Advances in Neural Information Processing Systems, 2022.
+Christoph Schuhmann.
+LAION-Aesthetics, 2022.
+URL https://laion.ai/blog/
+laion-aesthetics/.
+Shitong Shao, Lichen Bai, Haoyi Xiong, Zeke Xie, et al. Iv-mixed sampler: Leveraging image
+diffusion models for enhanced video synthesis. In International Conference on Learning Repre-
+sentations, volume 2025, pp. 12396–12424, 2025.
+Uriel Singer, Adam Polyak, Thomas Hayes, Xi Yin, Jie An, Songyang Zhang, Qiyuan Hu, Harry
+Yang, Oron Ashual, Oran Gafni, et al. Make-a-video: Text-to-video generation without text-video
+data. arXiv preprint arXiv:2209.14792, 2022.
+Zachary Teed and Jia Deng. Raft: Recurrent all-pairs field transforms for optical flow. In European
+conference on computer vision, pp. 402–419. Springer, 2020.
+11
+
+
+Preprint.
+Team Wan, Ang Wang, Baole Ai, Bin Wen, Chaojie Mao, Chen-Wei Xie, Di Chen, Feiwu Yu,
+Haiming Zhao, Jianxiao Yang, et al.
+Wan: Open and advanced large-scale video generative
+models. arXiv preprint arXiv:2503.20314, 2025.
+Xiaoshi Wu, Keqiang Sun, Feng Zhu, Rui Zhao, and Hongsheng Li. Human preference score:
+Better aligning text-to-image models with human preference. In 2023 IEEE/CVF International
+Conference on Computer Vision (ICCV), pp. 2096–2105. IEEE, 2023.
+Tianwei Xiong, Yuqing Wang, Daquan Zhou, Zhijie Lin, Jiashi Feng, and Xihui Liu. Lvd-2m: A
+long-take video dataset with temporally dense captions. Advances in Neural Information Pro-
+cessing Systems, 37:16623–16644, 2024.
+Jiazheng Xu, Xiao Liu, Yuchen Wu, Yuxuan Tong, Qinkai Li, Ming Ding, Jie Tang, and Yuxiao
+Dong. Imagereward: Learning and evaluating human preferences for text-to-image generation.
+Advances in Neural Information Processing Systems, 36:15903–15935, 2023.
+Haotian Xue, Qi Chen, Zhonghao Wang, Xun Huang, Eli Shechtman, Jinrong Xie, and Yongxin
+Chen. Mogan: Improving motion quality in video diffusion via few-step motion adversarial post-
+training. arXiv preprint arXiv:2511.21592, 2025.
+Tianwei Yin, Micha¨el Gharbi, Taesung Park, Richard Zhang, Eli Shechtman, Fredo Durand, and
+William T Freeman. Improved distribution matching distillation for fast image synthesis. Ad-
+vances in neural information processing systems, 37:47455–47487, 2024.
+Tianwei Yin, Qiang Zhang, Richard Zhang, William T Freeman, Fredo Durand, Eli Shechtman,
+and Xun Huang. From slow bidirectional to fast autoregressive video diffusion models. In 2025
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 22963–22974.
+IEEE, 2025.
+Zichao Yu, Chengzhi Yu, Shengze Xu, Yujin Han, Bingqing Jiang, Xu Wang, and Difan Zou. Mis-
+match matters: On-policy distillation beyond token agreement. arXiv preprint arXiv:2608.09836,
+2026.
+Hangjie Yuan, Shiwei Zhang, Xiang Wang, Yujie Wei, Tao Feng, Yining Pan, Yingya Zhang, Ziwei
+Liu, Samuel Albanie, and Dong Ni. Instructvideo: Instructing video diffusion models with human
+feedback. In 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR),
+pp. 6463–6474. IEEE, 2024.
+Yuanhao Zhai, Kevin Lin, Zhengyuan Yang, Linjie Li, Jianfeng Wang, Chung-Ching Lin, David
+Doermann, Junsong Yuan, and Lijuan Wang. Motion consistency model: Accelerating video
+diffusion with disentangled motion-appearance distillation. Advances in Neural Information Pro-
+cessing Systems, 37:111000–111021, 2024.
+Rui Zhao, Yuchao Gu, Jay Zhangjie Wu, David Junhao Zhang, Jia-Wei Liu, Weijia Wu, Jussi Keppo,
+and Mike Zheng Shou. Motiondirector: Motion customization of text-to-video diffusion models.
+In European Conference on Computer Vision, pp. 273–290. Springer, 2024.
+Dian Zheng, Ziqi Huang, Hongbo Liu, Kai Zou, Yinan He, Fan Zhang, Lulu Gu, Yuanhan Zhang,
+Jingwen He, Wei-Shi Zheng, et al. Vbench-2.0: Advancing video generation benchmark suite for
+intrinsic faithfulness. arXiv preprint arXiv:2503.21755, 2025.
+Yuanzhi Zhu, Hanshu Yan, Huan Yang, Kai Zhang, and Junnan Li. Accelerating video diffusion
+models via distribution matching. arXiv preprint arXiv:2412.05899, 2024.
+12
+
+
+Preprint.
+CONTENTS
+1
+Introduction
+1
+2
+Related Work
+3
+3
+Method
+3
+4
+Experiments
+6
+5
+Conclusion
+9
+A Detailed derivations
+14
+B
+Implementation Details
+19
+C Additional Analyses
+21
+13
+
+
+Preprint.
+Roadmap.
+The appendix is organized as follows:
+• Appendix A provides the detailed derivations behind the proposed method: the closed-form OPD
+loss from rectified flow, the connector velocity mapping, the anchored image and motion targets
+together with their correction bounds, and the gradients used for joint optimization.
+• Appendix B gives implementation details: model configurations, training hyperparameters, and
+evaluation protocols.
+• Appendix C presents additional analyses, including the motion-reward validation.
+A
+DETAILED DERIVATIONS
+We use the notation of Section 3 and suppress the conditioning variable c where unambiguous.
+Local transition calculations use 0 < t < 1, 0 < h ≤t, and a diffusion coefficient σt > 0 that
+depends only on time. Density calculations assume the regularity and boundary conditions needed
+to interchange derivatives and integrals. The SDE argument further assumes well-posedness and
+a matched initial marginal. Connector parameters are held fixed when differentiating a path with
+respect to diffusion time.
+A.1
+FROM RECTIFIED FLOW TO THE CLOSED-FORM OPD LOSS
+We derive the Gaussian transition kernels used in Eq. (1) and evaluate their KL divergence. The
+rectified-flow interpolation xt = (1 −t)x0 + tϵ, where ϵ ∼N(0, I) is independent of x0, defines
+the reference conditional density pt(x | x0, c) = N(x; (1 −t)x0, t2I). Differentiating its marginal
+gives
+∇x log pt(x | c) =
+R
+pdata(x0 | c)∇xpt(x | x0, c) dx0
+pt(x | c)
+= E
+
+−x −(1 −t)x0
+t2
+ xt = x, c
+
+= −1
+t E[ϵ | xt = x, c].
+The regression-optimal rectified-flow velocity is vt(x, c) = E[ϵ −x0 | xt = x, c]. Since ϵ =
+xt + (1 −t)(ϵ −x0), we have
+E[ϵ | xt = x, c] = x + (1 −t)vt(x, c).
+Consequently, the reference score and its regression-optimal velocity satisfy
+∇x log pt(x | c) = −x + (1 −t)vt(x, c)
+t
+.
+For a learned or constructed velocity u, we use the same algebraic form to define the score estimate
+St(x, u) := −[x + (1 −t)u]/t. This estimate need not equal the score of the reference marginal.
+For the exact velocity field vt and reference score st = ∇log pt, the flow satisfies ∂tpt = −∇·
+(ptvt). Introducing the increasing reverse clock τ = 1 −t, consider
+dYτ =
+
+−vt(Yτ, c) + σ2
+t
+2 st(Yτ, c)
+
+dτ + σt dBτ,
+t = 1 −τ.
+For qτ = p1−τ, the corresponding Fokker–Planck operator gives
+−∇·
+
+qτ
+
+−vt + σ2
+t
+2 st
+
++ σ2
+t
+2 ∆qτ
+= ∇· (qτvt) −σ2
+t
+2 ∇· (qτst) + σ2
+t
+2 ∆qτ
+= ∇· (qτvt) = ∂τqτ,
+where the second equality uses qτst = ∇qτ. Under the stated assumptions, this continuous-time
+SDE has the reference flow marginals. This result applies to the exact fields vt and st.
+14
+
+
+Preprint.
+For distillation, we use the corresponding drift expression to construct local transitions from pre-
+dicted velocities. In decreasing diffusion time, substituting St(x, u) gives
+bt(x, u) = u −σ2
+t
+2 St(x, u)
+= σ2
+t
+2t x + χtu,
+χt = 1 + σ2
+t (1 −t)
+2t
+.
+(10)
+Euler–Maruyama discretization over a step t →t −h yields
+xt−h = xt −hbt(xt, u) + σt
+√
+h ξ,
+ξ ∼N(0, I).
+At fixed step size h, the conditional transition is therefore
+πu(· | xt, t, c) = N(µu, σ2
+t hI),
+µu =
+
+1 −hσ2
+t
+2t
+
+xt −hχtu,
+(11)
+where u is evaluated at (xt, t, c). Evaluating the student and target velocities at the same state cancels
+the state-dependent term in their means:
+µvθ −µ¯v = −hχt(vθ −¯v).
+Because the two Gaussian kernels share the covariance σ2
+t hI, their KL divergence is
+DKL(πvθ∥π¯v) = ∥µvθ −µ¯v∥2
+2
+2σ2
+t h
+= hχ2
+t
+2σ2
+t
+∥vθ −¯v∥2
+2.
+Dividing by the number of video-latent entries d and substituting χt gives
+ℓt(vθ, ¯v) = 1
+dDKL(πvθ∥π¯v) =
+h
+2σ2
+t
+
+1 + σ2
+t (1 −t)
+2t
+2
+∥vθ −¯v∥2
+av,
+which establishes Eqs. (2)–(3). The KL equality is exact for the constructed Gaussian kernels, while
+the Euler step approximates the continuous-time dynamics. The OPD objective in Eq. (1) evaluates
+this local loss at states visited by the current student; it does not assume that pθ(· | t, c) equals the
+reference marginal pt.
+A.2
+MAPPING IMAGE GUIDANCE TO VIDEO LATENTS
+A.2.1
+STATE AND VELOCITY MAPPING
+Consider a differentiable rectified-flow path x(t) and a connector Fψ whose parameters remain fixed
+along that path. For z(t) = Fψ(x(t)), differentiability gives
+Fψ(x(t + ∆t)) −Fψ(x(t)) = JFψ(x(t)) ˙x(t)∆t + o(|∆t|).
+Dividing by ∆t and taking the limit yields
+˙z(t) = JFψ(x(t)) ˙x(t).
+Setting ˙x(t) = vθ(x(t), t, c) gives the mapped velocity in Eq. (4). The connector may change
+between training iterations but is fixed within this local diffusion-time derivative. This chain-rule
+mapping requires no inverse of Fψ and does not imply exact transport of stochastic transition distri-
+butions.
+For a bias-free linear connector Fψ(x) = Aψx, the Jacobian is constant and JFψ(x)v = Aψv. Fixed
+linear slice selection and spatial resizing can be included in Aψ, so the complete operator maps both
+states and velocities.
+15
+
+
+Preprint.
+A.2.2
+VELOCITY-TO-SCORE CONVERSION AND SCORE PULLBACK
+The image-expert predictions uk(zt, t, c) are velocities in image latent coordinates.
+Under the
+rectified-flow convention, we convert each prediction into the image-space score estimate
+sI
+k = −zt + (1 −t)uk(zt, t, c)
+t
+.
+As in the video-space calculation, this expression equals an image reference marginal’s score when
+uk is its regression-optimal velocity. For learned experts, it is the score estimate used to construct
+guidance.
+To derive the pullback, first consider exact image scores sI
+k(z, t, c) = ∇z log pI
+k,t(z | c). With the
+prompt-dependent weights βk(c) fixed, define Φt(x) = PK
+k=1 βk(c) log pI
+k,t(Fψ(x) | c). For any
+direction δx,
+d
+daΦt(x + aδx)
+
+a=0
+=
+K
+X
+k=1
+βk(c)(sI
+k)⊤JFψ(x)δx
+=
+"
+JFψ(x)⊤
+K
+X
+k=1
+βk(c)sI
+k
+#⊤
+δx.
+Because this holds for every δx, it gives ∇xΦt(x) = JFψ(x)⊤P
+k βk(c)sI
+k, as in Eq. (5). The
+vector–Jacobian product uses the scores evaluated at the queried state and does not require deriva-
+tives through the image experts. It also requires neither an inverse connector nor a change-of-
+variables determinant. The potential Φt need not define a normalized density over video latents.
+For learned score estimates, the same pullback defines the local image-expert direction used by the
+method.
+A.3
+CONNECTOR ALIGNMENT AND NONLINEAR TRAINING
+The connector objective in Eq. (6) combines paired-latent content alignment with velocity alignment
+on student-visited states. In the content term, ¯x0 and ¯z0 are fixed encodings of the same visual
+content under the video and image VAEs. In the velocity term, the sampled video state xt and
+student velocity vθ(xt, t, c) are fixed inputs, while each expert prediction is a detached target. Thus,
+the expert’s input zt = Fψ(xt) may change as ψ changes, but gradients are not propagated through
+the expert prediction uk(zt, t, c).
+For a nonlinear connector,
+velocity alignment differentiates the Jacobian–vector product
+JFψ(xt)vdet, where vdet = sg[vθ(xt, t, c)]. Assuming the required mixed derivatives exist, its
+derivative for output coordinate j and parameter coordinate p is
+∂[JFψ(xt)vdet]j
+∂ψp
+=
+X
+i
+∂2Fψ,j(xt)
+∂ψp ∂xi
+vdet
+i
+.
+These mixed input–parameter derivatives allow the velocity term to train a nonlinear connector.
+For the default linear connector Fψ(x) = Aψx, the corresponding term reduces to Aψvdet. In
+either case, the connector’s velocity term is an image-space mean-squared error; it does not use the
+reverse-SDE weight w(t, h). The full parameter gradient is given in Appendix A.5.
+A.4
+ANCHORED IMAGE AND MOTION TARGETS
+A.4.1
+IMAGE-TARGET CONVERSION AND CORRECTION BOUND
+Let sA = St(xt, vA). For a provisional nonnegative scale at, adding image guidance gI to the anchor
+score and converting back to velocity gives
+−t(sA + atgI) −xt
+1 −t
+= −tsA −xt
+1 −t
+−
+t
+1 −tatgI
+= vA −
+t
+1 −tatgI.
+16
+
+
+Preprint.
+This establishes the sign and time factor of the image-guidance correction in Eq. (7) before applying
+CI.
+To set its strength, let M be a binary mask selecting video-latent coordinates covered by image
+supervision. For one sample, define the stabilized RMS
+rM(q) =
+s
+∥M ⊙q∥2
+2
+∥M∥1 + ε,
+ε > 0.
+(12)
+Let κI ≥0 be the image-score RMS multiplier and ρ(0)
+I
+≥0 the initial velocity-correction cap rela-
+tive to the anchor. We normalize the image contribution and rescale its induced velocity correction
+if necessary:
+at = κI
+rM(sA)
+rM(gI) + ε,
+δvI = −
+t
+1 −tatgI,
+cI = min
+ 
+1, ρ(0)
+I rM(vA)
+rM(δvI) + ε
+!
+.
+By homogeneity, rM(atgI) ≤κIrM(sA). Setting αt = cIat gives the initial image-enhanced
+proposal v(0)
+I
+= vA + cIδvI = vA −[t/(1 −t)]αtgI. Its correction obeys
+rM(v(0)
+I
+−vA) = cIrM(δvI)
+≤ρ(0)
+I rM(vA).
+(13)
+This bound applies to the initial proposal. The processed target evI = CI(vA, v(0)
+I
+) additionally
+applies temporal processing and magnitude control. A bound on evI requires the corresponding
+properties of CI; it does not follow from Eq. (13) alone.
+Temporal correction constraints.
+The image and motion branches use the same correction oper-
+ator with different settings. For a base velocity b and proposed velocity p, define ∆= p −b and
+its temporal mean µ∆= T −1 PT
+τ=1 ∆τ, broadcast across temporal slices. We separate the shared
+component from the temporal residual and filter the latter:
+e = ∆−µ∆,
+b∆= µ∆+ ηHe,
+(14)
+where η controls the residual contribution. The three-point temporal filter is
+[He]τ = 1
+4eτ−1 + 1
+2eτ + 1
+4eτ+1,
+e0 = e1,
+eT +1 = eT .
+The filtered correction is scaled and added to the base:
+Cη,ρ(b, p) = b + sb(b∆)b∆,
+0 ≤sb(b∆) ≤1,
+(15)
+where ρ = (ρg, ρf, ρd) specifies global, per-slice, and temporal-difference bounds. For one sample,
+let r denote RMS over all latent entries and rτ RMS over channels and spatial entries at temporal
+slice τ. Define the adjacent-slice difference [Db]τ = bτ+1 −bτ. The per-slice and temporal-
+difference reference levels are
+qb,τ = max(rτ(b), ξr(b)) ,
+qd,τ = max(rτ(Db), ξr(b)) ,
+where ξ supplies a floor when a local reference is small. The scaling factors are
+sg =
+ρgr(b)
+r(b∆) + ε
+,
+sf = min
+τ
+ρfqb,τ
+rτ(b∆) + ε
+,
+sd = min
+τ<T
+ρdqd,τ
+rτ(Db∆) + ε
+,
+sb(b∆) = min(1, sg, sf, sd).
+17
+
+
+Preprint.
+One scalar is applied to every entry of each sample. Writing ∆safe = sb(b∆)b∆, linearity of D and
+homogeneity of RMS give
+r(∆safe) ≤ρgr(b),
+rτ(∆safe) ≤ρfqb,τ,
+rτ(D∆safe) ≤ρdqd,τ.
+The operators in the main text are CI = CηI,ρI and CM = CηM,ρM. Their parameter values are
+reported in Appendix B.
+A.4.2
+MOTION-REFINEMENT SIGN AND CORRECTION BOUND
+Motion refinement evaluates the clean latent predicted by evI. Let bI = sg[evI] and define f(x0) =
+R(DV(x0)). Holding bI fixed gives
+bx0 = xt −tbI,
+gM = ∇xf(x −tbI)|x=xt = ∇f(bx0).
+If y = DV(bx0), m = O(y) is the optical flow computed by the frozen estimator, and R(y) =
+DM(O(y)), the chain rule gives
+gM = JDV(bx0)⊤JO(y)⊤∇mDM(m).
+The decoder, flow estimator, and discriminator remain frozen but retain these input derivatives.
+Define the per-sample RMS r(q) =
+p
+∥q∥2
+2/dV and let seI = St(xt, evI). Let χM ≥0 be the gradient
+RMS multiplier, κM ≥0 the motion-guidance scale, κmax ≥0 the time-factor cap, and ρ(0)
+M ≥0
+the initial velocity-correction cap. We compute
+¯gM = χM
+r(seI)
+r(gM) + εgM,
+δvM = −κM min
+
+t
+1 −t, κmax
+
+¯gM,
+cM = min
+ 
+1, ρ(0)
+M r(evI)
+r(δvM) + ε
+!
+.
+Collecting the scalar factors, define
+γt = cMκM min
+
+t
+1 −t, κmax
+
+χM
+r(seI)
+r(gM) + ε.
+The initial motion-refined proposal is v(0)
+M = evI + cMδvM = evI −γtgM. By homogeneity,
+r(v(0)
+M −evI) = cMr(δvM)
+≤ρ(0)
+M r(evI).
+(16)
+The sign follows from its effect on the predicted clean latent:
+xt −tv(0)
+M = bx0 + tγtgM.
+For a nonzero gM and a positive scalar a →0, differentiability gives
+f(bx0 + agM) = f(bx0) + a∥gM∥2
+2 + o(a).
+Thus, a sufficiently small positive correction follows a local reward-ascent direction for the initial
+clean latent. This does not guarantee reward improvement after a finite correction, temporal pro-
+cessing, target fusion, or a full rollout. The processed target evM = CM(evI, v(0)
+M ) additionally applies
+temporal and magnitude control. The fused target is detached before student optimization, so the
+student loss does not differentiate through the reward gradient.
+18
+
+
+Preprint.
+A.5
+GRADIENT DERIVATION FOR JOINT OPTIMIZATION
+We differentiate Eq. (9) with sampled states, motion-activation indicators, and constructed targets
+held fixed. The sampling distribution of the current student is not differentiated.
+At each state, let Tt contain (ωA, vA) and (ωI, evI), together with (ωM, evM) when rt = 1. Then
+Zt = P
+(ω,q)∈Tt ω and ¯vt = Z−1
+t
+P
+(ω,q)∈Tt ωq. Expanding the squared residuals gives
+X
+(ω,q)∈Tt
+ωℓt(v, q) = Ztℓt(v, ¯vt) + w(t, h)
+X
+(ω,q)∈Tt
+ω∥q −¯vt∥2
+av.
+With the targets fixed, the second term is independent of student parameters. Hence, the fused-target
+loss has the same student gradient as the weighted sum of the active video-space losses, although
+their scalar values differ.
+Let Vθ,j = Jθvθ(xtj, tj, c) and ej = vθ(xtj, tj, c) −sg[¯vtj]. The student gradient is
+∇θLstudent = 2
+N
+N
+X
+j=1
+Ztjw(tj, hj)
+dV
+V ⊤
+θ,jej.
+Image expertise enters this gradient through ¯vtj; the student loss has no separate image-space
+prediction-matching term. Since the fused target is detached, ∇ψLstudent = 0.
+For connector optimization, write B
+=
+JFψ(xt), vdet
+=
+sg[vθ(xt, t, c)], and udet
+k
+=
+sg[uk(Fψ(xt), t, c)]. Hold the latent inputs and these student and expert predictions fixed when
+differentiating with respect to ψ. Define q = Fψ(¯x0) −¯z0 and econn
+k
+= Bvdet −udet
+k . Differentiat-
+ing Eq. (6) gives
+∇ψLconn = 2λz
+dI Epair
+
+(JψFψ(¯x0))⊤q
+
++ 2λv
+KdI
+K
+X
+k=1
+Erollout
+
+(Jψ(Bvdet))⊤econn
+k
+
++ λreg∇ψR(ψ).
+The velocity-alignment term uses mean-squared error without the reverse-SDE weight w(t, h). Its
+parameter derivative for a nonlinear connector is given in Appendix A.3. Detached student predic-
+tions and latent inputs imply ∇θLconn = 0.
+For the initialization regularizer, we use
+R(ψ) =
+1
+|P|
+X
+p∈P
+∥p −p(0)∥2
+2
+dp
+,
+∇pR = 2(p −p(0))
+|P|dp
+,
+where P is the set of connector parameter tensors, dp counts entries in tensor p, and p(0) is its initial
+value. Each tensor is normalized by its size before averaging.
+B
+IMPLEMENTATION DETAILS
+Checkpoints and optimization.
+The student checkpoints are Wan2.1-T2V-1.3B, Wan2.2-TI2V-
+5B, and LTXV-2B-0.9.6-dev, referred to in the main text as Wan2.1-1.3B, Wan2.2-5B, and LTX-
+Video-2B. The image experts are SD3.5-Medium models with separate LoRA adapters (Hu et al.,
+2021). The GenEval, aesthetic, and OCR experts are trained for 200, 1,800, and 1,800 training steps,
+respectively. Expert predictions use a classifier-free guidance scale of 4.5.
+For MILD post-training, we sample one prompt per iteration from the 10,000-prompt pool drawn
+from OpenVid-1M (Nan et al., 2025) and LVD-2M (Xiong et al., 2024). The current student gener-
+ates one on-policy trajectory for an 81-frame video at 480 × 832 resolution, giving a global batch
+size of one video. We sample four states from this trajectory using the trajectory-index ranges in Ta-
+ble 6. The first 50 iterations update only the connector shared by the three image experts for that
+backbone; the following 200 iterations jointly optimize the student and connector.
+19
+
+
+Preprint.
+Table 6: Backbone-specific implementation settings. Trajectory-index ranges specify candidate
+states for OPD supervision; temporal stride is measured in RGB-frame indices.
+Setting
+Wan2.1-1.3B
+Wan2.2-5B
+LTX-Video-2B
+Student denoising steps
+50
+50
+40
+OPD trajectory-index range
+2–47
+2–47
+2–37
+Student learning rate
+5 × 10−7
+3 × 10−7
+2 × 10−6
+Connector learning rate
+5 × 10−6
+1 × 10−5
+2 × 10−6
+Connector hidden channels
+16
+48
+128
+Image-supervision temporal stride
+4
+4
+8
+Supervised latent slices
+21
+21
+11
+Effective image-score multiplier κI
+0.10
+0.10
+0.20
+Initial image velocity cap ρ(0)
+I
+0.10
+0.10
+0.25
+Motion guidance scale κM
+0.02
+0.02
+0.05
+Initial motion velocity cap ρ(0)
+M
+0.05
+0.05
+0.10
+Anchor fusion weight ωA
+0.15
+0.15
+0.15
+Image-target fusion weight ωI
+0.10
+0.10
+0.10
+Motion-target fusion weight ωM
+0.05
+0.05
+0.05
+During joint training, losses and gradients for all sampled states are evaluated using parameters at
+the start of the iteration. Gradients are accumulated before either optimizer is stepped; the stu-
+dent optimizer is stepped first, followed by the connector optimizer. Student optimization uses
+AdamW (Loshchilov & Hutter, 2017) with zero weight decay, a cosine learning-rate schedule, a 5%
+learning-rate warm-up ratio, and a minimum learning rate of 10% of the initial value. Student and
+connector gradients are clipped at 1.0 and 0.1, respectively. Computation uses BF16, while master
+parameters and optimizer states are maintained in FP32. We maintain FP32 exponential moving-
+average weights with decay 0.99. The Wan samplers use a sigma shift of 5.0; LTX-Video uses a
+guidance rescale of 0.7 and a maximum text length of 256 tokens. Backbone-specific settings are
+listed in Table 6.
+Connector implementation.
+The default connector applies bilinear resizing followed by 1 × 1,
+3×3, and 1×1 convolutions. All convolutions omit biases and nonlinear activations. The input and
+hidden channel counts match the student’s latent channel count, while the output has 16 channels.
+We initialize the connector as a near-identity mapping. The latent-alignment, velocity-alignment,
+and parameter-regularization coefficients in Eq. (6) are 0.1, 0.01, and 0.001, respectively. Temporal
+sampling uses the strides in Table 6, covering all temporal latent slices of the evaluated videos.
+Temporal correction settings.
+The image and motion branches use the correction operator de-
+fined in Appendix A.4.1, with different parameters.
+The image branch uses ηI = 0.25 and
+ρI = (0.05, 0.05, 0.10), taking vA as its base velocity. The motion branch uses ηM = 0.50 and
+ρM = (0.025, 0.025, 0.05), taking evI as its base. Both branches use the reference floor ξ = 0.05.
+The operator acts across all latent temporal slices without a coverage mask. Its final scalar scales
+both the shared component and filtered temporal residual; no further filtering or clipping is applied
+after target fusion.
+Motion representation and discriminator.
+For each adjacent-frame flow field (ui, vi), we con-
+struct Mi = (ui, vi,
+p
+u2
+i + v2
+i ) and stack these fields along the temporal dimension. We use the
+torchvision implementation of RAFT-Small (Teed & Deng, 2020) with 12 flow-estimation updates.
+Motion volumes used for discriminator training are computed offline and cached in FP32. During
+OPD, flow is recomputed within the differentiable reward computation. The discriminator consists
+of a 3D convolutional stem and three factorized spatiotemporal residual stages, with spatial convo-
+lution followed by temporal convolution in each block. Spatial average pooling produces temporal
+tokens, which are augmented with temporal positional embeddings and processed by a two-layer
+Transformer before a scalar-logit output head.
+20
+
+
+Preprint.
+Table 7: Motion-discriminator training data. Generated negatives use the corresponding video
+backbone; counts precede balanced sampling.
+Source
+Train
+Validation
+Real videos
+3,412
+379
+Generated videos
+3,412
+379
+Temporal hard negatives
+3,412
+379
+Total
+10,236
+1,137
+Motion-discriminator data and objective.
+Motion-discriminator training is separate from the
+10,000-prompt MILD post-training setup.
+All three motion discriminators use the same real-
+video sources and data-construction protocol. The positive collection contains 1,791 videos from
+OpenVid-1M (Nan et al., 2025) and 2,000 videos from 4DNeX-10M (Chen et al., 2025). For each
+student backbone, we generate one negative video per positive example using its associated cap-
+tion and corresponding pretrained video model: Wan2.1-1.3B, Wan2.2-5B (Wan et al., 2025), or
+LTX-Video-2B (HaCohen et al., 2024). Generation uses text-only conditioning.
+Each positive video also contributes one temporal hard negative, constructed by uniformly sampling
+frame shuffling, repetition and dropping, temporal jitter, or discontinuous temporal splicing. Rever-
+sal and static-video transformations are excluded because they need not imply implausible motion.
+Each corrupted example remains paired with its source video within the same split. This produces
+11,373 entries per discriminator, equally divided among positive videos, model-generated negatives,
+and temporal hard negatives. Table 7 reports the training and validation counts.
+Let m+ denote real motion volumes and m−denote generated or temporally corrupted volumes.
+We use a logistic discrimination objective with R1 regularization (Mescheder et al., 2018):
+LDM = Em+[softplus(−DM(m+))] + Em−[softplus(DM(m−))] + λR1
+2 Em+[∥∇m+DM(m+)∥2
+2].
+We use AdamW with learning rate 2 × 10−4, batch size four, balanced sampling of positive and
+negative examples, and BF16 computation for 20 epochs. The R1 coefficient is λR1 = 1, with the
+penalty evaluated every 16 optimizer steps.
+Prompt routing and motion-refinement settings.
+The prompt router detects visible-text re-
+quests using text-related keywords and quoted strings. For image-score aggregation, the normal-
+ized weights of the GenEval, aesthetic, and OCR experts are (0.5, 0.5, 0) for ordinary prompts and
+(0.4, 0.4, 0.2) for text-related prompts. These weights apply only to score aggregation. Connector
+training uses paired clean-latent alignment and equally weighted velocity-alignment targets from all
+three experts for every prompt, including when the OCR score-pullback weight is zero.
+The effective image-score multiplier κI is the minimum of the configured image-score scale and
+score-ratio ceiling. It is 0.10 for the Wan backbones and 0.20 for LTX-Video-2B. Motion refinement
+uses gradient RMS multiplier χM = 1 and time-factor cap κmax = 4. Backbone-specific motion-
+guidance scales κM and initial velocity caps ρ(0)
+M are listed in Table 6. These coefficients are distinct
+from the temporal residual scales ηI and ηM.
+During student updates, at most one of the four sampled states receives motion refinement, provided
+its diffusion time satisfies t ∈[0.2, 0.6]. If no state is eligible, motion refinement is skipped for that
+iteration. The fusion weights (ωA, ωI, ωM) are shared across all three backbones, whereas image
+and motion guidance scales are backbone-specific, as shown in Table 6. The active fusion weights
+sum to Zt = 0.25 without motion refinement and Zt = 0.30 with it. This sum determines both
+target normalization and the outer student-loss coefficient.
+C
+ADDITIONAL ANALYSES
+C.1
+MOTION-REWARD VALIDATION
+We evaluate the learned motion discriminators through three complementary metrics. AUROC mea-
+sures their ability to distinguish motion volumes from real videos from those of generated or tem-
+21
+
+
+Preprint.
+Table 8:
+Validation of the motion discriminators. Higher AUROC and pairwise accuracy are
+better. Reward–magnitude correlation is reported as a signed value.
+Student backbone
+AUROC
+Pairwise
+accuracy
+Reward–magnitude
+correlation
+Wan2.1-1.3B
+0.9552
+0.9472
+−0.0817
+Wan2.2-5B
+0.9288
+0.9736
+−0.1078
+LTX-Video-2B
+0.8925
+0.9538
+−0.0521
+Table 9:
+Comparison with direct aesthetic video fine-tuning. Aesthetic SFT denotes video
+models fine-tuned on aesthetic video data and evaluated directly, without subsequent OPD. Bold
+indicates the better result within each backbone. Higher is better for all metrics.
+VBench-2.0
+EvalCrafter
+Method
+Creativity Commonsense Controllability
+Human
+Fidelity Physics AVG.
+Visual
+Quality
+Text–Video
+Alignment
+Motion
+Quality
+Temporal
+Consistency
+Final Sum
+Score
+Wan2.1-1.3B
+Aesthetic SFT
+49.84
+61.13
+24.94
+86.45
+44.94
+53.46
+66.38
+58.90
+54.18
+63.34
+242.80
+MILD
+47.89
+64.56
+25.17
+85.47
+46.52
+53.92
+66.84
+57.89
+54.58
+63.79
+243.10
+Wan2.2-5B
+Aesthetic SFT
+50.65
+63.13
+22.94
+83.44
+46.76
+53.38
+63.60
+57.89
+54.45
+62.88
+238.82
+MILD
+49.50
+62.84
+21.80
+84.89
+54.29
+54.66
+63.76
+59.12
+54.43
+62.79
+240.10
+LTX-Video-2B
+Aesthetic SFT
+57.01
+47.99
+15.80
+73.35
+48.72
+48.57
+57.57
+47.87
+55.16
+64.39
+224.99
+MILD
+57.23
+48.85
+16.78
+72.38
+50.06
+49.06
+56.58
+48.41
+55.30
+64.51
+224.80
+porally corrupted videos. Pairwise accuracy measures how often a real motion volume receives a
+higher reward than its temporally corrupted counterpart. Reward–magnitude correlation measures
+the association between the discriminator logit and mean optical-flow magnitude. Together, these
+metrics assess discrimination performance, sensitivity to temporal corruption, and association with
+motion magnitude.
+As shown in Table 8, all three discriminators distinguish real motion from the evaluated negative
+samples and consistently rank original motion above its temporally corrupted counterpart. The
+reward–magnitude correlations are small in absolute value, indicating limited linear association with
+motion magnitude on these validation samples. These findings support sensitivity to the evaluated
+temporal corruptions, without establishing general motion understanding or independence from mo-
+tion magnitude.
+Under this shared data protocol, positive and generated videos are partitioned independently, while
+each temporal corruption remains in the same split as its source video. The resulting split is disjoint
+at the video-file level, but caption-matched positive and generated videos can appear in different
+splits. Frame rates are also not standardized before flow extraction. The reported results therefore
+characterize performance under this validation protocol and do not establish generalization to unseen
+caption groups or robustness to frame-rate differences.
+C.2
+COMPARISON WITH AESTHETIC VIDEO FINE-TUNING
+Quantitative comparison.
+We compare MILD with Aesthetic SFT video teacher, which directly
+fine-tunes each pretrained video backbone on aesthetic video data.
+Table 9 shows that MILD
+achieves higher VBench-2.0 average scores across all three backbones and higher EvalCrafter ag-
+gregate scores on both Wan backbones, while scoring slightly lower on LTX-Video-2B (224.80 vs.
+224.99). MILD also achieves higher physics scores across all three backbones, while improvements
+in other dimensions vary by backbone. These results support the effectiveness of transferring spe-
+cialized image expertise compared with direct aesthetic video fine-tuning.
+Qualitative comparison.
+Figure 7 compares MILD with direct aesthetic video fine-tuning using
+Wan2.2-5B on VBench-2.0. For the moon prompt, MILD shows a clear transition toward yellow
+while retaining visible lunar texture. For the cat prompt, MILD depicts a single cat moving left and
+leaving the frame, whereas Aesthetic SFT introduces an additional cat and does not clearly depict
+22
+
+
+Preprint.
+Prompt: The moon changes from silver to yellow.
+Prompt: A cat is on the table, then the cat runs to the left of the table.
+MILD
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Aes. SFT video teacher
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+MILD
+Aes. SFT video teacher
+Figure 7:
+Qualitative comparison with direct aesthetic video fine-tuning on VBench-2.0 us-
+ing Wan2.2-5B. Frames 0, 44, and 80 illustrate appearance changes and directional motion under
+matched prompts.
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Prompt: The camera starts at a distance, showing an abandoned city with empty streets, shattered glass 
+windows in high-rise buildings, and winds blowing dust and discarded advertisements. The neon lights flicker on, 
+casting a cold glow in the empty night sky. The camera moves downward, revealing the vacant streets, where 
+puddles reflect the neon lights, and the wet pavement gives the city a desolate feel. Next, the camera moves into 
+a dimly lit alley, where broken store signs and walls covered in graffiti and grime add to the sense of decay. The 
+camera continues moving forward, capturing the faint creaking of an advertisement board swaying in the wind. 
+As the camera shifts toward the horizon, a massive abandoned skyscraper looms, its once-glorious facade now 
+faded, with dim blue light leaking from the broken elevator windows. Finally, the camera pulls back, showing the 
+entire city in the dark of night, lifeless and abandoned, as if time has stopped here.
+Prompt: The camera slowly descends into an ancient cave, where the rock walls are covered in moss and lichen. 
+The air is damp, and water drips from the ceiling, creating a rhythmic sound. The camera shifts to reveal a 
+massive stalactite hanging from the ceiling, sharp like a blade. The camera moves deeper into the cave, arriving 
+at an underground lake, its deep blue waters reflecting the stalactites and stone columns. A few bats fly by, 
+breaking the stillness of the lake's surface. Finally, the camera pulls back to reveal the vastness of the cave, with 
+the lake, columns, and stalactites blending together to create a mysterious, dreamlike underground world.
+Figure 8: Abandoned-city and underground-cave comparisons. Left: MILD depicts prominent
+illuminated signs, wall markings, and wet-pavement reflections. Right: MILD renders distinct fore-
+ground stalactites, textured rock surfaces, and visible bat silhouettes. Each example shows frames
+0, 44, and 80.
+the requested leftward motion. These examples complement the quantitative results, illustrating
+MILD’s ability to follow temporal instructions while preserving visual details.
+C.3
+ADDITIONAL VIDEO CASE STUDIES
+We present five additional qualitative comparisons using Wan2.2-5B as the student, complementing
+the cases in Section 4.2. Each example compares the pretrained student, V2V OPD with Wan2.2-
+A14B, V2V OPD with an aesthetic-SFT teacher, and MILD under the same prompt. Frames 0, 44,
+and 80 are shown for each generated video. These examples examine scene detail, text legibility,
+and subject composition.
+Scene detail and spatial organization.
+Figure 8 compares the abandoned-city and underground-
+cave examples. In the abandoned city, MILD depicts prominent illuminated signs, visible wall mark-
+ings, and reflections on the wet pavement. These details make the foreground street and surrounding
+buildings easier to distinguish than in the darker baseline outputs. In the cave, MILD renders pro-
+nounced foreground stalactites, textured green rock surfaces, and recognizable bat silhouettes above
+the blue underground lake. The bats are particularly visible in the first sampled frame and appear
+farther into the cave in the later frames. The foreground rock formations and illuminated background
+also provide a clear sense of depth.
+23
+
+
+Preprint.
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Prompt: The camera begins with an aerial view of a modern city's skyline bathed in the golden light of sunset. 
+The distant skyscrapers are outlined by the warm glow of the sun, with their glass facades reflecting the colors of 
+the sky. As the camera moves downward, the streets below are illuminated by city lights, with traffic beginning to 
+grow busier. The shadows of trees and buildings stretch long across the pavement as the sunlight fades and 
+nightfall approaches. The camera shifts to a bridge, where the lights turn on, casting a glow across the river 
+below, its surface sparkling with reflections of the bridge lights. The camera continues forward, capturing a few 
+birds flying across the sky, leaving brief traces of their flight. Finally, the camera pulls back, revealing the entire 
+city skyline, now bathed in the final twilight glow, as the city lights and the darkening sky blend together to form 
+a magnificent urban landscape.
+Prompt: The word 'START' on a blue t-shirt
+Figure 9: Text-rendering and twilight-city comparisons. Left: MILD renders “START” more
+clearly in the frames where the complete word is visible. Right: MILD depicts distinct architecture,
+illuminated bridge contours, and water reflections. Each example shows frames 0, 44, and 80.
+Wan2.2-5B
+V2V OPD (Wan2.2-A14B)
+MILD
+V2V OPD (Aes. SFT teacher)
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Frame 0
+Frame 44
+Frame 80
+Prompt: A whale and a seagull flying side by side, the whale soaring through the clouds while the seagull glides 
+effortlessly.
+Figure 10: Whale-and-seagull composition. MILD depicts a more prominent seagull alongside the
+whale, with both subjects clearly identifiable across frames 0, 44, and 80.
+Text rendering and urban scene detail.
+Figure 9 presents the blue-T-shirt and twilight-city ex-
+amples. For the T-shirt prompt, the pretrained student renders “SART,” while the V2V OPD outputs
+contain distorted or ambiguous lettering. MILD renders “START” more clearly in the first two sam-
+pled frames, where the word is fully visible; the lettering is partially cropped in the final frame. In
+the twilight-city example, MILD depicts distinct building outlines and illuminated bridges along the
+central waterway. The bridge contours and their reflections remain readily identifiable across the
+displayed viewpoints, illustrating detailed architectural content within the generated sequence.
+Subject visibility and composition.
+Figure 10 examines the unusual composition of a whale and
+a seagull flying together. Although both subjects appear in the baseline outputs, their seagulls oc-
+cupy relatively small image regions. MILD depicts a larger, more prominent seagull with a clearly
+24
+
+
+Preprint.
+Prompt: A close-up photograph of an engraved
+silver ring with the inscription "Forever Yours"
+delicately etched into its surface, set against a soft,
+blurred background of romantic, warm tones.
+Prompt: A futuristic urban street at night, a cyborg
+shop sign glowing "Upgrades Available" in neon blue,
+reflecting
+off
+wet
+pavements,
+with
+cybernetic
+pedestrians and sleek, futuristic buildings in the
+background.
+Prompt: A medieval knight's castle with a grand 
+drawbridge, the wooden sign above it boldly 
+declaring "Trespassers Will Be Jousted", surrounded 
+by a moat with water lilies and a cloudy sky.
+Prompt: A cozy café interior with a rustic wooden
+table, a steaming cup of coffee, and a small white
+card that reads "PasswordIsCoffee123" prominently
+displayed next to the coffee. Soft, warm lighting
+enhances the inviting atmosphere.
+Prompt: A photo of two hair driers.
+Prompt: A photo of four skateboards.
+Prompt: A photo of a yellow fork.
+Prompt: A photo of a chair left of a zebra.
+OCR — Visual Text Rendering
+Prompt: A magnifying glass over a page of a 1950s
+batman comic.
+Prompt: A screenshot of an iOS app for ordering
+different types of milk.
+Prompt: A red car and a white sheep.
+Prompt: Illustration of a mouse using a mushroom
+as an umbrella.
+GenEval — Compositionality & Text–Image Alignment
+DrawBench — Aesthetics & Visual Quality
+Figure 11: Qualitative comparison of aesthetic image and video teachers. Each pair shows the
+Wan2.2-5B video teacher post-trained on aesthetic video data (left) and the aesthetic image expert
+(right) under the same prompt. Rows show DrawBench, GenEval, and OCR examples, illustrating
+differences in visual detail, compositional accuracy, and text rendering available for distillation.
+distinguishable body and wing silhouette alongside the whale. Both subjects remain identifiable in
+all three sampled frames, making the requested two-subject composition visually explicit.
+C.4
+QUALITATIVE COMPARISON OF AESTHETIC TEACHERS
+Figure 11 compares the aesthetic image expert with the Wan2.2-5B video teacher post-trained on
+aesthetic video data under matched prompts. These examples examine the visual expertise avail-
+able for distillation in the Wan2.2-5B student setting, complementing the quantitative teacher com-
+parisons in Figure 4. On DrawBench prompts, the image expert produces more clearly defined
+details in the magnifying-glass and comic example and richer texture and lighting in the mouse-
+and-mushroom scene. The GenEval cases further reveal differences in compositional accuracy: the
+image expert depicts four skateboards, a yellow fork, and a chair to the left of a zebra, whereas the
+video teacher misses the requested count, object identity, or relation. On OCR prompts, the image
+expert renders phrases such as “Trespassers Will Be Jousted,” “Upgrades Available,” and “Forever
+Yours” more legibly and accurately. However, improved legibility does not always imply exact text
+reproduction, as illustrated by the altered spacing in the coffee example. Together, these selected
+cases illustrate spatial capabilities that image experts can offer for video distillation; they do not
+assess temporal quality or establish student gains.
+C.5
+QUALITATIVE COMPARISONS OF SPATIAL CAPABILITIES
+Figure 12 compares MILD with the pretrained Wan2.2-5B student and two V2V OPD baselines
+under matched prompts, complementing the quantitative evaluation in Section 4.3.
+Visual appearance and attribute alignment.
+For the black-dog prompt, MILD depicts a predom-
+inantly black coat with visible fur shading and facial details. The pretrained student and aesthetic-
+SFT-teacher OPD produce dogs with substantial tan or white markings, whereas the larger-video-
+teacher baseline also captures the requested black coat. This example illustrates MILD’s ability to
+combine subject detail with color-attribute alignment.
+Text rendering.
+MILD renders “FREE HUGS” clearly on the arm and “LAST CALL” legibly
+on the neon sign. The pretrained student and aesthetic-SFT-teacher OPD do not clearly reproduce
+25
+
+
+Preprint.
+Prompt: A black colored dog.
+Prompt: A close-up of a prison tattoo on a muscular arm, reading "Free Hugs" in bold, intricate letters. The skin is slightly weathered, and a faint scar runs alongside the 
+tattoo, adding depth to the scene. The background is blurred, focusing all attention on the powerful, symbolic message.
+Wan2.2-5B
+Aes. SFT OPD
+V2V OPD
+Ours
+Prompt: A photo of three oranges
+(a) 
+Aesthetic 
+quality
+(b) Text 
+rendering
+(c) 
+Compositional 
+generation
+Prompt: A bustling nightlife scene with a neon bar sign flashing "Last Call" above a crowded counter, patrons engaged in lively conversations, and the ambient glow of the 
+neon reflecting off glasses and faces.
+Prompt: Two cats and one dog sitting on the grass.
+Prompt: A photo of four bowls
+Figure 12:
+Spatial capability comparisons using Wan2.2-5B. Columns show the pretrained
+student, OPD with an aesthetic-SFT video teacher, OPD with a larger video teacher, and MILD.
+Matched-prompt examples illustrate color-attribute alignment, text rendering, and object composi-
+tion in sampled video frames.
+Aes. SFT video teacher
+MILD
+Prompt: A black colored dog.
+Prompt: A close-up of a prison tattoo on a 
+muscular arm, reading "Free Hugs" in bold, 
+intricate letters. The skin is slightly 
+weathered, and a faint scar runs alongside 
+the tattoo, adding depth to the scene. The 
+background is blurred, focusing all attention 
+on the powerful, symbolic message.
+Prompt: A photo of three oranges.
+Prompt: A bustling nightlife scene with a 
+neon bar sign flashing "Last Call" above a 
+crowded counter, patrons engaged in lively 
+conversations, and the ambient glow of the 
+neon reflecting off glasses and faces.
+Prompt: Two cats and one dog sitting on the 
+grass.
+Prompt: A photo of four bowls.
+Figure 13: Spatial capability comparison with direct aesthetic video fine-tuning using Wan2.2-
+5B. Matched-prompt examples illustrate color-attribute alignment, text rendering, and object com-
+position in sampled video frames.
+the requested phrases, while the larger-video-teacher baseline produces incomplete or altered text,
+such as “Fre Hugs”. These examples illustrate improved text fidelity on both skin and illuminated
+signage.
+26
+
+
+Preprint.
+Compositional generation.
+MILD depicts the requested two cats and one dog, three oranges,
+and four bowls. The pretrained student and aesthetic-SFT-teacher OPD omit one cat in the animal
+example. In the orange example, these two baselines show only two visible oranges, while the larger-
+video-teacher baseline depicts four. The bowl examples likewise show count mismatches among the
+baselines. Together, these cases illustrate more accurate object counts and category composition
+with MILD.
+Comparison with direct aesthetic video fine-tuning.
+Figure 13 further compares MILD with
+Aesthetic SFT video teacher, evaluated directly without subsequent OPD. Using Wan2.2-5B, MILD
+more closely matches the requested black coat, clearly renders “FREE HUGS” and “LAST CALL”,
+and satisfies the specified object counts. Aesthetic SFT exhibits color-attribute, text, and counting
+errors in these examples. These comparisons illustrate MILD’s advantages in spatial prompt fidelity
+over direct aesthetic video fine-tuning.
+27

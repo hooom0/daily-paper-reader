@@ -1,9 +1,9 @@
 {
   "date": "20260929",
   "date_label": "",
-  "generated_at": "2026-09-29 00:12:19 UTC",
+  "generated_at": "2026-09-29 22:42:29 UTC",
   "recommend_exists": true,
-  "run_count": 1,
+  "run_count": 2,
   "papers": [
     {
       "paper_id": "2609.30733v1",
@@ -16,10 +16,26 @@
           "label": "image-gen"
         }
       ],
-      "score": 8.0,
+      "score": 9.0,
       "evidence": "通过增强目标显著性实现可控文生图",
       "first_seen_at": "2026-09-29 00:12:19 UTC",
-      "updated_at": "2026-09-29 00:12:19 UTC"
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.31780v1",
+      "route": "202609/29/2609.31780v1-panoptic-scene-program-diffusion-transformer",
+      "title": "Panoptic Scene Program Diffusion Transformer",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "通过场景程序潜变量实现可控组合式文本到图像生成",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
     },
     {
       "paper_id": "2609.31154v1",
@@ -35,7 +51,167 @@
       "score": 7.0,
       "evidence": "通过超网络实现可控文本到图像生成的概念擦除",
       "first_seen_at": "2026-09-29 00:12:19 UTC",
-      "updated_at": "2026-09-29 00:12:19 UTC"
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.32188v1",
+      "route": "202609/29/2609.32188v1-presence-is-not-faithfulness-figurative-vehicle-intrusion-in-text-to-image-generation",
+      "title": "Presence Is Not Faithfulness: Figurative Vehicle Intrusion in Text-to-Image Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "文生图生成在比喻性提示下的忠实性问题",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.32376v1",
+      "route": "202609/29/2609.32376v1-an-end-to-end-latent-rollout-approach-for-pushing-few-step-imagenet-256-generation-to-fid-111-without-frchet-losses",
+      "title": "An End-to-End Latent-Rollout Approach for Pushing Few-Step ImageNet-$256$ Generation to FID $1.11$ without Fréchet Losses",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "基于潜变量展开的少步扩散与流匹配图像生成",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.32389v1",
+      "route": "202609/29/2609.32389v1-refcompose-multi-reference-image-generation-via-lora-conditioned-diffusion",
+      "title": "RefCompose: Multi-Reference Image Generation via LoRA-Conditioned Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "基于LoRA条件扩散的多参考可控图像生成",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.33203v1",
+      "route": "202609/29/2609.33203v1-structured-residual-connectivity-matters-for-diffusion-transformers",
+      "title": "Structured Residual Connectivity Matters for Diffusion Transformers",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向图像合成的扩散Transformer结构化残差连接",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.33735v1",
+      "route": "202609/29/2609.33735v1-constrained-edit-fields-for-training-free-flow-editing",
+      "title": "Constrained Edit Fields for Training-Free Flow Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "具备空间控制的无训练文本引导流编辑",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.34539v1",
+      "route": "202609/29/2609.34539v1-tsgate-timestep-aware-gated-attention-for-diffusion-transformers",
+      "title": "TSGate: Timestep-Aware Gated Attention for Diffusion Transformers",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "自由形式提示下的扩散Transformer文本到图像生成",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.31378v1",
+      "route": "202609/29/2609.31378v1-contrafm-s2o-flow-matching-based-one-step-sar-to-optical-image-translation-model-with-contrastive-learning",
+      "title": "ContraFM-S2O: Flow Matching-Based One-step SAR-to-Optical Image Translation Model with Contrastive Learning",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于流匹配的一步式图像到图像生成模型",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.34371v1",
+      "route": "202609/29/2609.34371v1-from-static-to-dynamic-on-policy-distillation-from-image-to-video-diffusion-models",
+      "title": "From Static to Dynamic: On-Policy Distillation from Image to Video Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "从图像扩散到视频扩散模型的在线策略蒸馏",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.35023v1",
+      "route": "202609/29/2609.35023v1-proxy2world-learning-to-generate-worlds-from-lightweight-proxies-without-seeing-them",
+      "title": "Proxy2World: Learning to Generate Worlds From Lightweight Proxies without Seeing Them",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过流匹配实现深度条件RGB生成的可控世界模型",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
+    },
+    {
+      "paper_id": "2609.35289v1",
+      "route": "202609/29/2609.35289v1-domain-adaptive-zero-shot-image-enhancement-via-locality-constrained-diffusion-guidance",
+      "title": "Domain-adaptive Zero-Shot Image Enhancement via Locality-Constrained Diffusion Guidance",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散采样中局部性约束的引导条件",
+      "first_seen_at": "2026-09-29 22:42:29 UTC",
+      "updated_at": "2026-09-29 22:42:29 UTC"
     },
     {
       "paper_id": "2609.30840v1",

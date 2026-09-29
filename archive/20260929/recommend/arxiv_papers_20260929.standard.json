@@ -1,15 +1,15 @@
 {
   "mode": "standard",
-  "generated_at": "2026-09-29T00:11:20.460605+00:00",
+  "generated_at": "2026-09-29T22:39:18.259140+00:00",
   "stats": {
     "mode": "standard",
     "tag_count": 1,
-    "deep_divecandidates": 1,
+    "deep_divecandidates": 2,
     "deep_cap": 6,
-    "deep_selected": 1,
-    "quick_candidates": 2,
+    "deep_selected": 2,
+    "quick_candidates": 13,
     "quick_skim_target": 11,
-    "quick_selected": 2
+    "quick_selected": 11
   },
   "deep_dive": [
     {
@@ -34,14 +34,49 @@
         "keyword:image-gen",
         "query:image-gen"
       ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "controllable text-to-image generation via saliency-marked prompts with learnable marker tokens",
+      "llm_evidence_cn": "通过显著性标记提示与可学习标记token实现可控文本到图像生成",
+      "llm_evidence": "通过显著性标记提示与可学习标记token实现可控文本到图像生成",
+      "canonical_evidence": "通过显著性标记提示与可学习标记token实现可控文本到图像生成",
+      "llm_tldr_en": "Introduces Target Saliency Boosting for text-to-image generation and proposes GazeME, which uses saliency-marked prompts with learnable marker tokens to amplify a target object's visual saliency.",
+      "llm_tldr_cn": "文本到图像生成已能控制物体的内容、位置与形式，但场景中物体间视觉注意力的分配仍鲜有研究。本文提出目标显著性增强任务，旨在无需视觉先验地提升指定物体在生成图中的视觉显著度。作者提出GazeME框架，在物体描述周围插入可学习标记token构成显著性标记提示，利用显著性的相对性在全局分布中放大目标。该工作为目标级别的注意力可控生成提供了轻量新方案。",
+      "llm_tldr": "文本到图像生成已能控制物体的内容、位置与形式，但场景中物体间视觉注意力的分配仍鲜有研究。本文提出目标显著性增强任务，旨在无需视觉先验地提升指定物体在生成图中的视觉显著度。作者提出GazeME框架，在物体描述周围插入可学习标记token构成显著性标记提示，利用显著性的相对性在全局分布中放大目标。该工作为目标级别的注意力可控生成提供了轻量新方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.31780v1",
+      "source": "arxiv",
+      "title": "Panoptic Scene Program Diffusion Transformer",
+      "abstract": "Modern text-to-image models produce high-fidelity images but still struggle with compositional prompts that require instance identity, attribute ownership, counting, spatial ordering, and role-sensitive relations. We introduce Panoptic Scene Program Diffusion Transformer (PSP-DiT), a diffusion-transformer architecture that treats a panoptic scene program as a first-class latent variable rather than an external control signal or post-hoc parse. PSP-DiT jointly denoises image latents and scene-program latents through coupled transformer streams, while panoptic grounding and cycle-consistency objectives tie object instances, attributes, relations, and counts to visual support in the generated image. Under matched training and inference settings, PSP-DiT improves over a strong flat-text baseline across GenEval 2, SANEval-Simple, PSG-Score, and DetailMaster, with the largest gains on counting, attribute binding, role-sensitive relations, and long structured prompts. The method preserves image quality, adds modest inference overhead, and remains robust to imperfect scene programs.",
+      "authors": [
+        "Chika Maduabuchi"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-09-24T20:05:30+00:00",
+      "link": "https://arxiv.org/pdf/2609.31780v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
       "llm_score": 8.0,
-      "llm_evidence_en": "controllable text-to-image generation by boosting target saliency",
-      "llm_evidence_cn": "通过增强目标显著性实现可控文生图",
-      "llm_evidence": "通过增强目标显著性实现可控文生图",
-      "canonical_evidence": "通过增强目标显著性实现可控文生图",
-      "llm_tldr_en": "Text-to-image generation controls what and where objects appear, but not their visual saliency. GazeME uses saliency-marked prompts with learnable marker tokens to boost a target object's saliency without visual priors.",
-      "llm_tldr_cn": "现有文生图技术已能控制物体出现的位置与方式，但物体之间视觉显著性如何分配仍缺乏研究。本文提出目标显著性增强这一新任务，并设计轻量框架GazeME，利用带显著性标记的提示词与可学习标记令牌指示需增强的物体，且不依赖任何视觉先验。实验证明该方法能有效提升指定目标的视觉显著性，为可控图像生成提供了注意力层面的新调控手段。",
-      "llm_tldr": "现有文生图技术已能控制物体出现的位置与方式，但物体之间视觉显著性如何分配仍缺乏研究。本文提出目标显著性增强这一新任务，并设计轻量框架GazeME，利用带显著性标记的提示词与可学习标记令牌指示需增强的物体，且不依赖任何视觉先验。实验证明该方法能有效提升指定目标的视觉显著性，为可控图像生成提供了注意力层面的新调控手段。",
+      "llm_evidence_en": "controllable compositional text-to-image generation via scene program latent",
+      "llm_evidence_cn": "通过场景程序潜变量实现可控组合式文本到图像生成",
+      "llm_evidence": "通过场景程序潜变量实现可控组合式文本到图像生成",
+      "canonical_evidence": "通过场景程序潜变量实现可控组合式文本到图像生成",
+      "llm_tldr_en": "Text-to-image models still fail on compositional prompts needing identity, attributes, counting and relations. PSP-DiT treats a panoptic scene program as a first-class latent variable, jointly denoising image and program latents through coupled transformer streams.",
+      "llm_tldr_cn": "现代文本到图像模型能生成高保真图像，但在需要实例身份、属性归属、计数、空间顺序与角色敏感关系的组合式提示上仍表现不佳。作者提出PSP-DiT，将全景场景程序作为一等潜变量而非外部控制信号，通过耦合Transformer流联合去噪图像潜变量与场景程序潜变量。全景接地与循环一致性目标把物体、属性、关系与计数绑定到视觉证据，在匹配设置下优于强基线，提升组合式可控生成能力。",
+      "llm_tldr": "现代文本到图像模型能生成高保真图像，但在需要实例身份、属性归属、计数、空间顺序与角色敏感关系的组合式提示上仍表现不佳。作者提出PSP-DiT，将全景场景程序作为一等潜变量而非外部控制信号，通过耦合Transformer流联合去噪图像潜变量与场景程序潜变量。全景接地与循环一致性目标把物体、属性、关系与计数绑定到视觉证据，在匹配设置下优于强基线，提升组合式可控生成能力。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -52,6 +87,44 @@
     }
   ],
   "quick_skim": [
+    {
+      "id": "2609.32188v1",
+      "source": "arxiv",
+      "title": "Presence Is Not Faithfulness: Figurative Vehicle Intrusion in Text-to-Image Generation",
+      "abstract": "Text-to-image (TTI) models increasingly generate high-quality images from natural-language prompts, yet figurative language exposes a failure: a vehicle that should guide the depiction of a tenor may instead be rendered as a visible object. We call this failure Figurative Vehicle Intrusion: the intruding content is textually licensed, but it is assigned the wrong visual role, showing that visual presence is not always faithfulness and that presence-oriented evaluation can miss such errors. To study it systematically, we introduce Vehicle Intrusion and Semantic Tenor Assessment (VISTA), a multilingual benchmark of figurative prompts organized by Figurative Form and Mapping Mechanism. We further propose V-Score, a diagnostic question-answering metric that evaluates role-aware figurative faithfulness in generated images. Evaluations on recent high-performing TTI models show that vehicle intrusion persists across languages and figurative categories. As a lightweight mitigation, we introduce VISTA-Guard, which partially reduces vehicle intrusion and suggests a practical path toward more figuratively faithful TTI generation. All resources will be released publicly.",
+      "authors": [
+        "Xiaoyu Ma",
+        "Chen Yang",
+        "Hao Chen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-26T03:26:17+00:00",
+      "link": "https://arxiv.org/pdf/2609.32188v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "text-to-image generation faithfulness with figurative prompts",
+      "llm_evidence_cn": "文生图生成在比喻性提示下的忠实性问题",
+      "llm_evidence": "文生图生成在比喻性提示下的忠实性问题",
+      "canonical_evidence": "文生图生成在比喻性提示下的忠实性问题",
+      "llm_tldr_en": "The paper identifies Figurative Vehicle Intrusion in text-to-image models and introduces the VISTA benchmark and V-Score to show that visual presence of a prompt element does not guarantee faithfulness.",
+      "llm_tldr_cn": "文生图模型虽能根据自然语言提示生成高质量图像，但比喻性语言会暴露忠实性失败：本应引导描述的喻体被错误渲染为可见物体。本文提出该失败模式并构建多语言基准VISTA，按比喻形式与映射机制组织提示，同时设计诊断性评分V-Score。实验表明视觉存在不等于忠实性，面向存在的评测会遗漏此类错误。",
+      "llm_tldr": "文生图模型虽能根据自然语言提示生成高质量图像，但比喻性语言会暴露忠实性失败：本应引导描述的喻体被错误渲染为可见物体。本文提出该失败模式并构建多语言基准VISTA，按比喻形式与映射机制组织提示，同时设计诊断性评分V-Score。实验表明视觉存在不等于忠实性，面向存在的评测会遗漏此类错误。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
     {
       "id": "2609.31154v1",
       "source": "arxiv",
@@ -76,14 +149,128 @@
         "keyword:image-gen",
         "query:image-gen"
       ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "multi-concept erasure in text-to-image generation models",
+      "llm_evidence_cn": "文本到图像生成模型中的多概念擦除",
+      "llm_evidence": "文本到图像生成模型中的多概念擦除",
+      "canonical_evidence": "文本到图像生成模型中的多概念擦除",
+      "llm_tldr_en": "HyperErase tackles multi-concept erasure in text-to-image models by reframing it as prompt-conditioned parameter amortization, training a scale-calibrated hypernetwork to synthesize erasure parameters adapted to diverse prompts and concepts.",
+      "llm_tldr_cn": "针对文本到图像生成的安全隐患，现有概念擦除方法采用静态权重、难以适应多样提示且多概念间存在参数干扰的问题，本文提出 HyperErase 框架，将概念擦除重构为提示条件参数摊销，用超网络根据文本描述动态合成擦除参数并做尺度校准。实验表明其能在多概念场景下缓解干扰、保持生成质量，为T2I模型的可控安全生成提供更灵活的方案。",
+      "llm_tldr": "针对文本到图像生成的安全隐患，现有概念擦除方法采用静态权重、难以适应多样提示且多概念间存在参数干扰的问题，本文提出 HyperErase 框架，将概念擦除重构为提示条件参数摊销，用超网络根据文本描述动态合成擦除参数并做尺度校准。实验表明其能在多概念场景下缓解干扰、保持生成质量，为T2I模型的可控安全生成提供更灵活的方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.32376v1",
+      "source": "arxiv",
+      "title": "An End-to-End Latent-Rollout Approach for Pushing Few-Step ImageNet-$256$ Generation to FID $1.11$ without Fréchet Losses",
+      "abstract": "Iterative generation poses a joint optimization problem across steps, as intermediate predictions shape subsequent computations and ultimately determine the final output distribution. Few-step generators distilled from pretrained diffusion and flow-matching models make such optimization computationally practical end to end. We build on this opportunity with a distill-then-refine approach that uses teacher imitation to establish a strong initialization for a few-step rollout in latent space, then shifts to end-to-end refinement of the complete latent rollout against real data. We introduce FiST (Flow-in-Stage Transformer), an architecture that composes learned latent-state transitions in a few stages using a shared Transformer, with optional cross-stage hidden communication. Distillation applies teacher-forced regression to selected states along teacher trajectories; refinement replaces this supervision with adversarial and auxiliary classification objectives on the final latent output. A trainable discriminator module operates on semantically rich features extracted from clean real and generated latents by a frozen SiT backbone pretrained with REPA. All training takes place in latent space, without image decoding. During refinement, FiST consumes its own intermediate predictions, and endpoint gradients pass through every generation stage. For class-conditional generation on ImageNet at $256\\times256$, our approach achieves FID 1.11 (IS 282) with three stages and FID 1.15 (IS 280) with two. These results demonstrate competitive few-step generation through learned distribution-level supervision, without explicit Fréchet-distance minimization. Ablations characterize how distillation, pretrained checkpoint choices, refinement supervision, and cross-stage hidden communication affect generation quality.",
+      "authors": [
+        "Xiaoran Xu",
+        "Yujing Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-26T08:52:12+00:00",
+      "link": "https://arxiv.org/pdf/2609.32376v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
       "llm_score": 7.0,
-      "llm_evidence_en": "concept erasure for controllable text-to-image generation via hypernetwork",
-      "llm_evidence_cn": "通过超网络实现可控文本到图像生成的概念擦除",
-      "llm_evidence": "通过超网络实现可控文本到图像生成的概念擦除",
-      "canonical_evidence": "通过超网络实现可控文本到图像生成的概念擦除",
-      "llm_tldr_en": "HyperErase reframes concept erasure in text-to-image models as prompt-conditioned parameter amortization, training a hypernetwork to synthesize prompt-specific parameters that erase multiple concepts while adapting to diverse prompts.",
-      "llm_tldr_cn": "该文针对文本到图像生成中概念擦除方法多为静态权重、难以适应多样提示且多概念间存在参数干扰的问题，提出HyperErase框架。方法将概念擦除重构为提示条件化的参数摊销，训练超网络把文本描述映射为提示特定的参数，从而实现尺度校准的多概念擦除。实验表明该框架能更好适应提示变化并缓解参数干扰，为扩散模型的安全可控生成提供了更灵活的机制。",
-      "llm_tldr": "该文针对文本到图像生成中概念擦除方法多为静态权重、难以适应多样提示且多概念间存在参数干扰的问题，提出HyperErase框架。方法将概念擦除重构为提示条件化的参数摊销，训练超网络把文本描述映射为提示特定的参数，从而实现尺度校准的多概念擦除。实验表明该框架能更好适应提示变化并缓解参数干扰，为扩散模型的安全可控生成提供了更灵活的机制。",
+      "llm_evidence_en": "few-step diffusion and flow-matching image generation with latent rollout",
+      "llm_evidence_cn": "基于潜变量展开的少步扩散与流匹配图像生成",
+      "llm_evidence": "基于潜变量展开的少步扩散与流匹配图像生成",
+      "canonical_evidence": "基于潜变量展开的少步扩散与流匹配图像生成",
+      "llm_tldr_en": "Iterative generation is a joint optimization across steps, and few-step generators distilled from pretrained diffusion and flow models make end-to-end optimization practical. A distill-then-refine latent rollout approach reaches FID 1.11 on ImageNet-256.",
+      "llm_tldr_cn": "迭代生成是一个跨步骤的联合优化问题，中间预测会影响后续计算并最终决定输出分布，而从预训练扩散与流匹配模型蒸馏的少步生成器使端到端优化变得可行。作者采用先蒸馏后精炼策略，用教师模仿获得潜空间少步展开的良好初始化，再针对真实数据对完整潜变量展开做端到端精炼，并提出FiST架构。方法在ImageNet-256上达到FID 1.11且不使用Fréchet损失，展示少步图像生成的新水平。",
+      "llm_tldr": "迭代生成是一个跨步骤的联合优化问题，中间预测会影响后续计算并最终决定输出分布，而从预训练扩散与流匹配模型蒸馏的少步生成器使端到端优化变得可行。作者采用先蒸馏后精炼策略，用教师模仿获得潜空间少步展开的良好初始化，再针对真实数据对完整潜变量展开做端到端精炼，并提出FiST架构。方法在ImageNet-256上达到FID 1.11且不使用Fréchet损失，展示少步图像生成的新水平。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.31378v1",
+      "source": "arxiv",
+      "title": "ContraFM-S2O: Flow Matching-Based One-step SAR-to-Optical Image Translation Model with Contrastive Learning",
+      "abstract": "In recent years, diffusion models and GAN-based models have become the mainstream approaches for SAR-to-optical image translation, owing to their advantages, such as high-quality generation and stable training. However, they have shortcomings such as high inference latency and the generated optical images suffer from low detail fidelity, often resulting in blurred edges and loss of fine textures. Thus, we propose ContraFM-S2O, which is a flow matching-based model for SAR-to-optical image translation. Unlike conventional diffusion models, ContraFM-S2O learns to predict the velocity field in training and solves ODE instead of SDE during inference to improve the sampling efficiency. In addition, ContraFM-S2O replaces instantaneous velocity with average velocity along the interpolation path to realize one-step SAR-to-optical image translation and uses contrastive learning to improve the quality of the generated optical images. Experiments show our model achieves state-of-the-art on SAR2Opt and QXS datasets, outperforming baselines, and reduces inference latency via one-step generation.",
+      "authors": [
+        "Mingqian Yu",
+        "Wei-kuan Chiang",
+        "Qiurui Wang",
+        "Peilin Zhao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-25T15:15:11+00:00",
+      "link": "https://arxiv.org/pdf/2609.31378v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "flow-matching one-step generative model for image-to-image translation",
+      "llm_evidence_cn": "基于流匹配的一步式图像到图像生成模型",
+      "llm_evidence": "基于流匹配的一步式图像到图像生成模型",
+      "canonical_evidence": "基于流匹配的一步式图像到图像生成模型",
+      "llm_tldr_en": "ContraFM-S2O uses flow matching for one-step SAR-to-optical image translation, predicting a velocity field and solving an ODE at inference to cut latency and sharpen details.",
+      "llm_tldr_cn": "针对扩散模型与GAN在SAR到光学图像转换中推理延迟高、细节保真度低的问题，本文提出流匹配模型ContraFM-S2O。该方法训练时预测速度场，推理时求解ODE而非SDE以提升采样效率，并结合对比学习增强细节保真。实验表明模型在保持边缘与纹理的同时显著降低推理开销，为跨模态图像生成提供高效方案。",
+      "llm_tldr": "针对扩散模型与GAN在SAR到光学图像转换中推理延迟高、细节保真度低的问题，本文提出流匹配模型ContraFM-S2O。该方法训练时预测速度场，推理时求解ODE而非SDE以提升采样效率，并结合对比学习增强细节保真。实验表明模型在保持边缘与纹理的同时显著降低推理开销，为跨模态图像生成提供高效方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.32389v1",
+      "source": "arxiv",
+      "title": "RefCompose: Multi-Reference Image Generation via LoRA-Conditioned Diffusion",
+      "abstract": "Filmmakers and visual artists routinely need to compose multiple references, actors, locations, props, cultural elements, into a single coherent shot, but existing tools either fail to scale past a handful of references or destroy fine grained subject identity in the process, since per reference tokenization scales memory linearly with reference count $N$ and generated content often departs from the given references rather than reproducing them. We propose \\textbf{RefCompose}, a pixel space compositional conditioning framework that decouples \\emph{where} things go from \\emph{what} they look like, via a single fixed resolution reference canvas that keeps conditioning size constant regardless of reference count. Spatial layout is induced at inference time from a frozen diffusion transformer and extracted via Grounding DINO, requiring no LLM or dedicated layout model, while dual stream LoRA adapters inject a layout derived depth map and the encoded canvas through separate low rank streams, disentangling geometric scaffolding from localized appearance. On the Dense Layout protocol, RefCompose consistently outperforms layout based and state of the art multi reference baselines on color, texture, shape, spatial accuracy, and identity/content preservation at higher reference counts, all with constant inference memory, making it a practical building block for multi subject cinematic composition at production scale.",
+      "authors": [
+        "Sai Sri Teja Kuppa",
+        "Parth Shinde",
+        "Priyadharsan Balaji S",
+        "Jinka Harshavardhan",
+        "Sriprabha Ramanarayanan"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "eess.IV"
+      ],
+      "published": "2026-09-26T09:07:48+00:00",
+      "link": "https://arxiv.org/pdf/2609.32389v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "multi-reference controllable image generation via LoRA-conditioned diffusion",
+      "llm_evidence_cn": "基于LoRA条件扩散的多参考可控图像生成",
+      "llm_evidence": "基于LoRA条件扩散的多参考可控图像生成",
+      "canonical_evidence": "基于LoRA条件扩散的多参考可控图像生成",
+      "llm_tldr_en": "RefCompose enables composing many reference images into one coherent shot with constant conditioning size, decoupling spatial layout from appearance via a fixed reference canvas and LoRA conditioning.",
+      "llm_tldr_cn": "针对影视创作中需将多个参考（人物、场景、道具）合成到同一画面、而现有工具难以扩展到多个参考且易破坏主体身份的问题，本文提出RefCompose。该框架在像素空间进行组合式条件控制，通过固定分辨率的参考画布将条件尺寸与参考数量解耦，把空间布局与外观表征分离，并借助LoRA条件扩散实现可控生成。方法在保持细粒度主体身份的同时支持多参考组合，为可控图像生成提供了新方案。",
+      "llm_tldr": "针对影视创作中需将多个参考（人物、场景、道具）合成到同一画面、而现有工具难以扩展到多个参考且易破坏主体身份的问题，本文提出RefCompose。该框架在像素空间进行组合式条件控制，通过固定分辨率的参考画布将条件尺寸与参考数量解耦，把空间布局与外观表征分离，并借助LoRA条件扩散实现可控生成。方法在保持细粒度主体身份的同时支持多参考组合，为可控图像生成提供了新方案。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -94,34 +281,37 @@
       "quick_tier": "7"
     },
     {
-      "id": "2609.30840v1",
+      "id": "2609.34371v1",
       "source": "arxiv",
-      "title": "Aligning One-Step Generative Models with Reward-Weighted Transport Distillation",
-      "abstract": "One-step generators enable high-quality visual generation with a single network evaluation, but their post-training is difficult: general implicit generators provide neither tractable likelihoods nor denoising trajectories, and many rewards are non-differentiable. We introduce Reward-Weighted Transport Distillation (RWTD), a post-training method that requires only generated samples and scalar reward evaluations. Rather than aligning solely to the conventional reward-tilted reference distribution, RWTD constructs an adaptive target that mixes separately tilted current and reference distributions. The current component incorporates improvements discovered during training, while the reference component anchors the target to the pretrained generator. RWTD realizes this target through feature-space optimal transport and fixed-point regression. Theoretical analysis shows that the fixed-point distributions of RWTD interpolate between off-policy reward tilting of the reference and on-policy tilting of the current model, providing a principled approach to balancing reward adaptation with retention of prior knowledge. Empirically, RWTD substantially improves the GenEval score of the one-step SANA Sprint 1.6B backbone from 0.73 to 0.80, while separate preference alignment experiments demonstrate strong cross-reward generalization that yields balanced improvements and preservation of compositional capabilities.",
+      "title": "From Static to Dynamic: On-Policy Distillation from Image to Video Diffusion Models",
+      "abstract": "On-policy distillation (OPD) specializes pretrained video diffusion models through teacher supervision along the student's own generation trajectory. Although large video models are natural teachers, developing specialized video experts can require costly video data and training, while querying them incurs substantially higher latency than querying image experts. More readily available and cheaper to query, image experts offer a cost-effective alternative, particularly for largely temporal-agnostic capabilities such as aesthetics and OCR that admit frame-level supervision. However, heterogeneous image and video latent spaces prevent direct supervision of intermediate student states, while image experts lack cross-frame motion supervision, making temporal consistency vulnerable to frame-level improvements. In this paper, we propose MILD, a Motion-Preserving Image-to-Video Latent Distillation framework that transfers specialized image expertise while preserving pretrained video dynamics. MILD uses a learnable linear connector that aligns student latent states and predicted updates with those of image experts, enabling supervision transfer across heterogeneous latent spaces. We further constrain image-guided corrections around the pretrained student's predictions to preserve video dynamics and incorporate an optical-flow-based motion reward to improve motion quality and temporal consistency. Across specialized image experts and multiple video-student backbones, our method consistently outperforms video-teacher OPD baselines, with further studies demonstrating effective transfer across connector designs and heterogeneous architectures. These results establish image-to-video distillation as an effective route to improving video generation by drawing on the diverse and evolving capabilities of the image-generation ecosystem.",
       "authors": [
-        "Austin Wang",
-        "Ziheng Cheng",
-        "Lexing Ying"
+        "Bingqing Jiang",
+        "Li Luo",
+        "Zichao Yu",
+        "Yujin Han",
+        "Zhaolong Su",
+        "Difan Zou"
       ],
-      "primary_category": "cs.LG",
+      "primary_category": "cs.CV",
       "categories": [
-        "cs.LG",
-        "cs.CV"
+        "cs.CV",
+        "cs.AI"
       ],
-      "published": "2026-09-25T05:35:32+00:00",
-      "link": "https://arxiv.org/pdf/2609.30840v1",
+      "published": "2026-09-28T05:46:11+00:00",
+      "link": "https://arxiv.org/pdf/2609.34371v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "post-training method for one-step visual generative models",
-      "llm_evidence_cn": "面向一步视觉生成模型的后训练方法",
-      "llm_evidence": "面向一步视觉生成模型的后训练方法",
-      "canonical_evidence": "面向一步视觉生成模型的后训练方法",
-      "llm_tldr_en": "One-step generators produce high-quality visual samples but are hard to post-train. Reward-Weighted Transport Distillation aligns them using only samples and scalar rewards via an adaptive mixed target.",
-      "llm_tldr_cn": "一步生成器能以单次网络评估实现高质量视觉生成，但其后训练十分困难，因为通用隐式生成器既没有可计算的似然，也没有可用的去噪轨迹，且许多奖励不可微。作者提出奖励加权传输蒸馏（RWTD），只需生成样本与标量奖励评估，构造一个自适应目标，混合分别倾斜的当前分布与参考分布，其中当前分量吸收训练中发现的改进，参考分量锚定预训练生成器。该工作为一步视觉生成模型的后训练提供了通用而实用的对齐方法。",
-      "llm_tldr": "一步生成器能以单次网络评估实现高质量视觉生成，但其后训练十分困难，因为通用隐式生成器既没有可计算的似然，也没有可用的去噪轨迹，且许多奖励不可微。作者提出奖励加权传输蒸馏（RWTD），只需生成样本与标量奖励评估，构造一个自适应目标，混合分别倾斜的当前分布与参考分布，其中当前分量吸收训练中发现的改进，参考分量锚定预训练生成器。该工作为一步视觉生成模型的后训练提供了通用而实用的对齐方法。",
+      "llm_evidence_en": "on-policy distillation from image to video diffusion models",
+      "llm_evidence_cn": "从图像扩散到视频扩散模型的在线策略蒸馏",
+      "llm_evidence": "从图像扩散到视频扩散模型的在线策略蒸馏",
+      "canonical_evidence": "从图像扩散到视频扩散模型的在线策略蒸馏",
+      "llm_tldr_en": "On-policy distillation transfers frame-level supervision from cheaper image experts to video diffusion models, addressing heterogeneous latent spaces to specialize video generation at lower cost.",
+      "llm_tldr_cn": "视频扩散模型的专精化通常需要昂贵的视频数据与训练，而查询大型视频教师延迟高。本文提出从图像到视频的在线策略蒸馏，利用更廉价易得的图像专家沿学生自身生成轨迹提供帧级监督，并处理图像与视频异构潜空间问题。该方法在美学、OCR等时序无关能力上提升视频模型表现，降低训练与推理成本。",
+      "llm_tldr": "视频扩散模型的专精化通常需要昂贵的视频数据与训练，而查询大型视频教师延迟高。本文提出从图像到视频的在线策略蒸馏，利用更廉价易得的图像专家沿学生自身生成轨迹提供帧级监督，并处理图像与视频异构潜空间问题。该方法在美学、OCR等时序无关能力上提升视频模型表现，降低训练与推理成本。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -130,6 +320,208 @@
       "matched_requirement_id": "req-1",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
+    },
+    {
+      "id": "2609.33203v1",
+      "source": "arxiv",
+      "title": "Structured Residual Connectivity Matters for Diffusion Transformers",
+      "abstract": "Diffusion Transformers (DiTs) have established themselves as a scalable backbone for high-fidelity image synthesis. However, unlike U-Net based diffusion models that rely on rigid, hand-crafted skip connections, DiTs predominantly use a uniform residual stream that integrates all preceding layers as a monolithic state. In this work, we rethink residual connections in diffusion transformers and propose to transform them from passive summation into an active retrieval mechanism optimized for image denoising. First, we conduct a systematic analysis of DiT's internal representation, revealing a latent preference for early-layer feature reuse and symmetric layer guidance. Motivated by this, we introduce a structured connectivity design that explicitly integrates local residual connections with long-range pathways. Instead of static skip connections or dense all-layer routing, our method enables each transformer block to selectively ``attend'' to critical earlier representations, dynamically retrieving spatial and semantic cues through direct, differentiable cross-depth paths. Experiments show that our adaptive connectivity leads to faster convergence, with up to $1.73\\times$ fewer training iterations, and significant gains in FID and visual quality with less than $0.1\\%$ additional parameters, further improving a strong REPA-XL/2 model from $5.9$ to $4.34$ FID without guidance and reaching $1.39$ FID with classifier-free guidance. Our findings suggest that adaptive cross-layer connectivity is a critical yet underexplored factor in diffusion transformers, and that incorporating structured information pathways provides a simple and effective direction for improving scalable generative models.",
+      "authors": [
+        "Yuhe Liu",
+        "Xinyin Ma",
+        "Gongfan Fang",
+        "Songhua Liu",
+        "Xinchao Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-27T04:42:36+00:00",
+      "link": "https://arxiv.org/pdf/2609.33203v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "structured residual connectivity for diffusion transformers in image synthesis",
+      "llm_evidence_cn": "面向图像合成的扩散Transformer结构化残差连接",
+      "llm_evidence": "面向图像合成的扩散Transformer结构化残差连接",
+      "canonical_evidence": "面向图像合成的扩散Transformer结构化残差连接",
+      "llm_tldr_en": "This paper rethinks residual connections in diffusion transformers, turning passive summation into an active retrieval mechanism guided by early-layer reuse and symmetric layer preferences, improving high-fidelity image synthesis.",
+      "llm_tldr_cn": "针对扩散Transformer普遍采用统一残差流、缺少U-Net式跳连而限制去噪表征利用的问题，本文系统分析DiT内部表征，发现其对早期层特征复用与对称层引导存在潜在偏好，据此将被动求和的残差连接改造为面向图像去噪的主动检索机制。实验表明该结构化连接设计能提升高保真图像合成效果，为DiT骨干设计提供新方向。",
+      "llm_tldr": "针对扩散Transformer普遍采用统一残差流、缺少U-Net式跳连而限制去噪表征利用的问题，本文系统分析DiT内部表征，发现其对早期层特征复用与对称层引导存在潜在偏好，据此将被动求和的残差连接改造为面向图像去噪的主动检索机制。实验表明该结构化连接设计能提升高保真图像合成效果，为DiT骨干设计提供新方向。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.35023v1",
+      "source": "arxiv",
+      "title": "Proxy2World: Learning to Generate Worlds From Lightweight Proxies without Seeing Them",
+      "abstract": "Lightweight scene proxies let creators control scene layout and motion while leaving room for imagination in appearance, lighting, and visual effects. However, a suitable proxy is not uniquely defined, making paired proxy-video data difficult to construct automatically at scale. We present Proxy2World, a controllable world model that learns these complementary capabilities from ordinary posed RGBD videos, without training on authored proxy-video pairs. The model jointly learns depth-conditioned RGB generation and joint RGBD generation through cross-modal flow matching. Learning both tasks enables proxy-camera hybrid denoising at inference to follow the proxy structure while producing natural, detailed visuals. We further introduce ProxyBench to evaluate this capability across a diverse set of scenes, camera trajectories, and subject motions. Experiments on ProxyBench show that Proxy2World achieves a better balance between structural adherence and visual quality than camera-controlled and geometry-conditioned methods, supported by quantitative metrics, VLM assessments, human evaluations and diverse qualitative results.",
+      "authors": [
+        "Hongli Xu",
+        "Weilong Yan",
+        "Anbang Wang",
+        "Chunyu Zou",
+        "Siyu Hong",
+        "Jingwei Huang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-28T12:22:35+00:00",
+      "link": "https://arxiv.org/pdf/2609.35023v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "controllable world model with depth-conditioned RGB generation via flow matching",
+      "llm_evidence_cn": "通过流匹配实现深度条件RGB生成的可控世界模型",
+      "llm_evidence": "通过流匹配实现深度条件RGB生成的可控世界模型",
+      "canonical_evidence": "通过流匹配实现深度条件RGB生成的可控世界模型",
+      "llm_tldr_en": "Proxy2World is a controllable world model that learns depth-conditioned RGB generation and joint RGBD generation through cross-modal flow matching from ordinary posed RGBD videos, enabling proxy-camera hybrid denoising that follows proxy structure while producing natural visuals.",
+      "llm_tldr_cn": "轻量场景代理能帮助创作者控制布局与运动，却把外观、光照与特效留给想象，然而合适的代理并不唯一，导致成对代理-视频数据难以大规模自动构造。作者提出可控世界模型Proxy2World，从普通带位姿的RGBD视频出发，通过跨模态流匹配联合学习深度条件RGB生成与联合RGBD生成。两种任务的联合训练使推理时的代理-相机混合去噪既能遵循代理结构，又能生成自然细致的画面。该工作为无需成对代理数据的可控视觉生成提供了新方案。",
+      "llm_tldr": "轻量场景代理能帮助创作者控制布局与运动，却把外观、光照与特效留给想象，然而合适的代理并不唯一，导致成对代理-视频数据难以大规模自动构造。作者提出可控世界模型Proxy2World，从普通带位姿的RGBD视频出发，通过跨模态流匹配联合学习深度条件RGB生成与联合RGBD生成。两种任务的联合训练使推理时的代理-相机混合去噪既能遵循代理结构，又能生成自然细致的画面。该工作为无需成对代理数据的可控视觉生成提供了新方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.33735v1",
+      "source": "arxiv",
+      "title": "Constrained Edit Fields for Training-Free Flow Editing",
+      "abstract": "Text-guided image editing aims to perform a desired edit while preserving source content unrelated to it. Pretrained rectified-flow models enable training-free editing of real images through modifications to their sampling trajectories. However, responses at locations unrelated to the desired edit can still accumulate along the editing trajectory and become visible in the final result. To overcome this, we propose Constrained Edit Fields (CEF), which assigns each spatial location a continuous edit responsibility that quantifies its relevance to the desired edit. CEF estimates edit responsibility directly from the source image when the relevant content is present. For edits whose target content is absent from the source, CEF first generates an unconstrained proposal to reveal its realized spatial support and then estimates responsibility from that proposal. At each editing step, CEF decomposes the base edit field into prompt-induced and trajectory-induced components, enabling edit responsibility to preserve instruction-relevant updates while suppressing unintended trajectory-induced changes. Evaluated on all 700 PIE-Bench examples, CEF achieves state-of-the-art Structure Distance, background LPIPS, and background MSE with both Stable Diffusion 3.5 Medium and FLUX, while retaining competitive instruction alignment. On Stable Diffusion 3.5 Medium, it reduces these metrics over the previous best results by 10.2%, 21.2%, and 48.0%, respectively.",
+      "authors": [
+        "Jingxuan Kang",
+        "Yinsong Wang",
+        "Che Liu",
+        "Chen Qin"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-09-27T16:37:43+00:00",
+      "link": "https://arxiv.org/pdf/2609.33735v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "training-free text-guided flow editing with spatial control",
+      "llm_evidence_cn": "具备空间控制的无训练文本引导流编辑",
+      "llm_evidence": "具备空间控制的无训练文本引导流编辑",
+      "canonical_evidence": "具备空间控制的无训练文本引导流编辑",
+      "llm_tldr_en": "Constrained Edit Fields assign each spatial location an edit-responsibility value so training-free rectified-flow image editing suppresses changes unrelated to the intended edit.",
+      "llm_tldr_cn": "文本引导图像编辑需在完成目标编辑的同时保留源图中无关内容。本文提出约束编辑场CEF，为每个空间位置分配连续编辑责任值以量化其与目标编辑的相关性，从而约束预训练整流流模型的采样轨迹。对源图缺失目标内容的编辑，CEF先生成无约束提案再施加约束，有效抑制无关区域变化，提升无训练编辑的内容保持能力。",
+      "llm_tldr": "文本引导图像编辑需在完成目标编辑的同时保留源图中无关内容。本文提出约束编辑场CEF，为每个空间位置分配连续编辑责任值以量化其与目标编辑的相关性，从而约束预训练整流流模型的采样轨迹。对源图缺失目标内容的编辑，CEF先生成无约束提案再施加约束，有效抑制无关区域变化，提升无训练编辑的内容保持能力。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.35289v1",
+      "source": "arxiv",
+      "title": "Domain-adaptive Zero-Shot Image Enhancement via Locality-Constrained Diffusion Guidance",
+      "abstract": "Denoising Diffusion Probabilistic Models have shown remarkable performance in unconditional image generation. In order to generate images with desired semantics, recent works have restricted the solution space by using guidance constraints in the diffusion sampling process.   However, for image enhancement across different domains, these methods struggle to balance two main requirements: looking realistic in the target domain (photorealistic images) and preserving relevant features of the source domain, e.g., low-quality renderings or art paintings. Here, small local changes can alter the fidelity of the image completely, while large changes in other regions might be insignificant.   We introduce LocDiff, a locality-constrained guidance method for image enhancement, which serves as a zero-shot extension to pre-trained diffusion models, ensuring the preservation of critical features during domain adaptation. In this way, we retain important local features, while allowing less critical regions to remain unconstrained and not interfere with the guidance process for relevant regions. We evaluate our method on two different domain-shift tasks: For art-to-photo translation, we apply the method in a fully zero-shot setting, preserving facial identity from paintings while generating photorealistic details. For enhancing low-quality fetal ultrasound renderings, we demonstrate zero-shot inference with auxiliary prior alignment. Here, the objective is to artificially add high-resolution characteristics and produce photorealistic ultrasound renderings, a target domain for which no ground truth distribution exists. Our experimental results demonstrate that LocDiff achieves favorable realism-faithfulness trade-offs compared to state-of-the-art methods, enabling controllable cross-domain enhancement.",
+      "authors": [
+        "Theresa Neubauer",
+        "Dimitrios Lenis",
+        "Astrid Berg",
+        "Maria Wimmer",
+        "Gaia Romana De Paolis",
+        "Philip Matthias Winter",
+        "David Major",
+        "Johannes Novotny",
+        "Ariharasudhan Muthusami",
+        "Katja Bühler"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-28T14:35:56+00:00",
+      "link": "https://arxiv.org/pdf/2609.35289v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "locality-constrained guidance constraints in diffusion sampling",
+      "llm_evidence_cn": "扩散采样中局部性约束的引导条件",
+      "llm_evidence": "扩散采样中局部性约束的引导条件",
+      "canonical_evidence": "扩散采样中局部性约束的引导条件",
+      "llm_tldr_en": "LocDiff introduces locality-constrained diffusion guidance to balance realism and source-feature preservation in domain-adaptive zero-shot image enhancement.",
+      "llm_tldr_cn": "去噪扩散概率模型在无条件图像生成中表现优异，但跨域图像增强需要同时兼顾目标域真实感与源域特征保持，现有引导方法难以平衡。本文提出LocDiff，一种局部性约束的扩散引导方法，通过约束采样过程中的局部变化来生成所需语义。该方法实现域自适应零样本图像增强，为基于引导的可控生成提供了局部可控的采样策略。",
+      "llm_tldr": "去噪扩散概率模型在无条件图像生成中表现优异，但跨域图像增强需要同时兼顾目标域真实感与源域特征保持，现有引导方法难以平衡。本文提出LocDiff，一种局部性约束的扩散引导方法，通过约束采样过程中的局部变化来生成所需语义。该方法实现域自适应零样本图像增强，为基于引导的可控生成提供了局部可控的采样策略。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.34539v1",
+      "source": "arxiv",
+      "title": "TSGate: Timestep-Aware Gated Attention for Diffusion Transformers",
+      "abstract": "Diffusion Transformers (DiTs) have emerged as the dominant architecture for high-fidelity image and video generation. Recent DiT systems increasingly use structured prompts for training, improving caption quality and prompt adherence. However, their generation quality can degrade severely under out-of-domain (OOD) prompts, including the free-form descriptions supplied by users at inference time. Although LLM-based rewriting can convert these prompts into structured formats, it does not guarantee that the rewritten prompts align with the training distribution. Our analysis links this degradation to attention sinks and reduced early-step image-to-text attention and shows that sink suppression alone is insufficient to restore generation quality. Despite effective sink suppression, models trained with standard gated attention exhibit reduced early-step image-to-text attention and suboptimal generation quality. Based on these insights, we propose Timestep-Aware Gated Attention (TSGate), which injects a timestep-conditioned bias into the gate signal so that gating behavior adapts across denoising steps. Extensive experiments show that TSGate consistently outperforms both the baseline and standard gated attention across multiple benchmarks, improving the raw-prompt DPG score by 9.5% over the baseline.",
+      "authors": [
+        "Boyu Zhang",
+        "Yifan Liu",
+        "Shuxia Lin",
+        "Qingjian Ni",
+        "Yinfei Xu",
+        "Xu Yang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-28T08:05:08+00:00",
+      "link": "https://arxiv.org/pdf/2609.34539v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "diffusion transformer text-to-image generation under free-form prompts",
+      "llm_evidence_cn": "自由形式提示下的扩散Transformer文本到图像生成",
+      "llm_evidence": "自由形式提示下的扩散Transformer文本到图像生成",
+      "canonical_evidence": "自由形式提示下的扩散Transformer文本到图像生成",
+      "llm_tldr_en": "Diffusion Transformers dominate high-fidelity image generation and increasingly use structured prompts, but degrade on out-of-domain free-form user prompts. TSGate analyzes attention sinks and reduced early image-to-text attention, then adds timestep-aware gated attention.",
+      "llm_tldr_cn": "扩散Transformer已成为高保真图像与视频生成的主流架构，并越来越多地使用结构化提示训练以提升文本遵循度，但在域外提示（包括用户自由描述）下生成质量会显著下降。作者分析发现该退化与注意力汇及早期图像到文本注意力减弱有关，仅抑制注意力汇并不足以恢复质量。为此提出TSGate，即时间步感知门控注意力，在推理时改善文本到图像对齐，提升对自由形式提示的鲁棒生成。",
+      "llm_tldr": "扩散Transformer已成为高保真图像与视频生成的主流架构，并越来越多地使用结构化提示训练以提升文本遵循度，但在域外提示（包括用户自由描述）下生成质量会显著下降。作者分析发现该退化与注意力汇及早期图像到文本注意力减弱有关，仅抑制注意力汇并不足以恢复质量。为此提出TSGate，即时间步感知门控注意力，在推理时改善文本到图像对齐，提升对自由形式提示的鲁棒生成。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
     }
   ]
 }

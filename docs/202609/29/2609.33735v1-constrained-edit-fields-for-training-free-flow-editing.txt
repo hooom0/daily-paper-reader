@@ -1,0 +1,1442 @@
+Constrained Edit Fields for Training-Free Flow Editing
+Jingxuan Kang, Yinsong Wang, Che Liu, Chen Qin∗
+Imperial College London
+j.kang26@imperial.ac.uk, c.qin15@imperial.ac.uk
+Abstract
+Text-guided image editing aims to perform a desired edit
+while preserving source content unrelated to it. Pretrained
+rectified-flow models enable training-free editing of real im-
+ages through modifications to their sampling trajectories.
+However, responses at locations unrelated to the desired edit
+can still accumulate along the editing trajectory and become
+visible in the final result. To overcome this, we propose Con-
+strained Edit Fields (CEF), which assigns each spatial lo-
+cation a continuous edit responsibility that quantifies its rel-
+evance to the desired edit. CEF estimates edit responsibility
+directly from the source image when the relevant content is
+present. For edits whose target content is absent from the
+source, CEF first generates an unconstrained proposal to re-
+veal its realized spatial support and then estimates responsi-
+bility from that proposal. At each editing step, CEF decom-
+poses the base edit field into prompt-induced and trajectory-
+induced components, enabling edit responsibility to preserve
+instruction-relevant updates while suppressing unintended
+trajectory-induced changes. Evaluated on all 700 PIE-Bench
+examples, CEF achieves state-of-the-art Structure Distance,
+background LPIPS, and background MSE with both Stable
+Diffusion 3.5 Medium and FLUX, while retaining competi-
+tive instruction alignment. On Stable Diffusion 3.5 Medium, it
+reduces these metrics over the previous best results by 10.2%,
+21.2%, and 48.0%, respectively.
+Introduction
+Text-guided image editing aims to modify a source image
+according to an editing instruction while preserving content
+unrelated to the desired edit. Rectified-flow models (Lip-
+man et al. 2023; Liu, Gong, and Liu 2023) such as SD3 and
+FLUX have demonstrated strong text-to-image generation
+capabilities (Esser et al. 2024; Stability AI 2024; Black For-
+est Labs 2024). Training-free editing methods leverage these
+pretrained models to edit real images by modifying their
+sampling trajectories, without task-specific finetuning (Xu
+et al. 2025; Avrahami et al. 2025; Wang et al. 2025; Kim
+et al. 2025; Kulikov et al. 2025; Xie et al. 2025; Yang and Ye
+2026). In flow-based editing, the source and target descrip-
+tions yield different velocity predictions at each sampling
+step, and their difference forms the edit field that updates the
+editing trajectory (Kulikov et al. 2025). However, this field
+∗Corresponding author.
+Source
+Unconstrained
+CEF (ours)
+Editing instruction
+“Close the man's eyes”
+Base edit field
+Constrained edit field
+Figure 1: Effect of constraining the edit field. The uncon-
+strained edit field introduces updates across the latent grid,
+closing the subject’s eyes while substantially altering his ap-
+pearance. CEF constrains these updates according to edit
+responsibility, completing the desired edit while preserving
+the source appearance.
+spans the entire latent grid and can introduce updates at loca-
+tions unrelated to the desired edit. As shown in Figure 1, the
+editor closes the subject’s eyes as instructed and substantially
+alters his appearance and facial structure.
+Existing training-free methods improve source preserva-
+tion by refining editing trajectories (Mokady et al. 2023; Xu
+et al. 2025; Wang et al. 2025; Xie et al. 2025; Yang and
+Ye 2026), reusing source representations (Hertz et al. 2023;
+Tumanyan et al. 2023; Cao et al. 2023; Avrahami et al. 2025;
+Kim et al. 2025; Yang et al. 2026), or providing spatial guid-
+ance (Avrahami, Lischinski, and Fried 2022; Couairon et al.
+2023; Zhu et al. 2025; Long et al. 2026; Jiao et al. 2026; Cui
+et al. 2026). However, the cumulative effect of spatially dif-
+fuse edit responses along the trajectory remains insufficiently
+characterized. Although such responses may be weak at indi-
+vidual steps, repeated integration can amplify them into visi-
+ble source degradation. As shown in Figure 2, the cumulative
+field displacement outside the edited region reaches 27.0% of
+the total unconstrained update within the edited region, and
+visualizations of the image differences show unrelated fa-
+arXiv:2609.33735v1  [cs.CV]  27 Sep 2026
+
+
+(a) Non-edited-region accumulation
+0
+50
+100
+Editing progress (%)
+0
+10
+20
+30
+Accumulated change (%)
+27.0%
+4.9%
+Unconstrained
+Constrained (CEF)
+Change retained by CEF (%)
+Edited
+Non-edited
+79.4%
+13.6%
+(b) Accumulated pixel change
+"hold a crystal ball"
+Start
+Final · 33/33
+intended
+unintended
+9/33
+17/33
+33/33
+Pixel change
+small
+large
+Figure 2: Accumulation of unintended changes. (a) Cumu-
+lative field displacement outside the edited region, relative
+to the total unconstrained update inside it. CEF suppresses it
+while preserving most edited-region updates. (b) Pixel differ-
+ences along the unconstrained trajectory reveal the intended
+edit and progressively emerging facial changes.
+cial changes progressively emerging during sampling. These
+observations demonstrate that weak stepwise responses can
+accumulate into substantial deviations, highlighting the need
+to account for each location’s relevance to the desired edit.
+We propose Constrained Edit Fields (CEF), which as-
+signs each spatial location a continuous edit responsibility
+that quantifies how much of its local update is admitted into
+the constrained edit field. CEF estimates this responsibility
+from the CLIPSeg responses that localize the content in-
+volved in the desired edit (Lüddecke and Ecker 2022). The
+editing instruction identifies the relevant content, and visual
+evidence reveals its realized spatial support. For content ob-
+servable in the source image, CEF computes responsibility
+directly from the sourceresponse.Forcontentabsentfromthe
+source, CEF first uses an unconstrained base editor to gener-
+ate a proposal and estimates responsibility from its response
+to reveal the realized spatial support. CEF then reuses the
+sampled noise sequence used to generate the proposal dur-
+ing the constrained edit. The proposal and constrained edit
+therefore share the sampled noise sequence while following
+different latent trajectories.
+At each editing step, the base edit field compares a target-
+prompt velocity on the editing trajectory with a source-
+prompt velocity on the source trajectory, and therefore com-
+bines changes in both the prompt and trajectory. CEF exactly
+decomposes this field into prompt-induced and trajectory-
+induced changes. The prompt-induced change provides a di-
+rectional reference for distinguishing the aligned component
+of the trajectory-induced change. Edit responsibility then
+modulates their spatial contributions, imposing stronger con-
+straints on the remaining trajectory-induced change where
+responsibility is low. The resulting constrained field updates
+the editing trajectory.
+Experiments on all 700 PIE-Bench examples (Ju et al.
+2024) using Stable Diffusion 3.5 Medium (Esser et al. 2024;
+Stability AI 2024) and FLUX (Black Forest Labs 2024)
+demonstrate that CEF consistently improves source preserva-
+tion while maintaining strong editing instruction alignment.
+CEF establishes new best results for Structure Distance, back-
+ground LPIPS, and background MSE on both backbones.
+Our contributions are summarized as follows:
+• We show that weak responses at locations unrelated to the
+desired edit accumulate along the sampling trajectory, and
+propose edit responsibility to spatially regulate the edit
+field according to each location’s relevance.
+• We propose CEF, which estimates edit responsibility from
+visual evidence in the source image or an unconstrained
+proposal, and exactly decomposes the base edit field into
+prompt-induced and trajectory-induced changes.
+• Experiments on all 700 PIE-Bench examples using Sta-
+ble Diffusion 3.5 Medium and FLUX demonstrate that
+CEF achieves state-of-the-art source preservation while
+faithfully aligning with the editing instructions.
+Related Work
+Training-Based
+Editing.
+Training-based
+approaches
+learn instruction-conditioned image transformations from
+editing data. InstructPix2Pix trains a diffusion model on
+synthetic editing examples to follow natural-language
+editing instructions (Brooks, Holynski, and Efros 2023).
+Emu Edit broadens the range of supported editing operations
+through multi-task training (Sheynin et al. 2024), and
+OmniEdit trains a generalist editor under the supervision of
+multiple specialist models (Wei et al. 2025). More recently,
+FLUX.1 Kontext unifies image generation and editing within
+a flow-matching framework jointly conditioned on a source
+image and text (Black Forest Labs et al. 2025). Their editing
+capabilities require editing-specific data and model training.
+Training-Free
+Editing.
+Training-free
+editing
+directly
+leverages pretrained generative models by constructing or
+modifying their inference trajectories. Early diffusion-based
+approaches obtain editable representations of the source by
+altering the sampling initialization or improving the inver-
+sion process. SDEdit performs target-conditioned sampling
+from a partially noised source image (Meng et al. 2022), and
+Null-text Inversion optimizes unconditional text embeddings
+to improve real-image inversion and reconstruction (Mokady
+et al. 2023). For rectified-flow models, FTEdit, RF-Inversion,
+RF-Edit, and FireFlow improve inversion through fixed-point
+refinement, stochastic inversion, and specialized numerical
+solvers (Xu et al. 2025; Rout et al. 2025; Wang et al. 2025;
+Deng et al. 2025). Another family of methods improves
+source preservation through representation reuse or trajec-
+tory alignment. Stable Flow selectively injects attention fea-
+tures from structure-preserving layers (Avrahami et al. 2025);
+ReFlex extracts intermediate source features and adapts at-
+tention during editing (Kim et al. 2025); DNAEdit aligns
+the underlying noise (Xie et al. 2025); and DirectEdit estab-
+lishes step-level alignment between reconstruction and inver-
+
+
+Constrained Edit Fields (CEF)
+Source Prompt  “a pug holding a red heart”
+Target Prompt  “a pug holding a pink heart”
+Evidence Visible
+Evidence Absent
+Source
+Source
+Free Proposal
+CLIPSeg
+Source Evidence
+Proposal Evidence
+−
+−
+−
+−
+prompt-induced
+trajectory-induced
+edited result
+Flow Interpretation
+source / target velocity
+base edit field
+prompt-induced change
+trajectory-induced change
+constrained edit field
+component aligned with
+ 
+Figure 3: Overview of Constrained Edit Fields. Source or proposal evidence localizes the content involved in the edit and yields
+a continuous edit responsibility. At each step, the base edit field is exactly decomposed into prompt-induced and trajectory-
+induced changes. CEF uses the prompt-induced direction to form prompt-aligned and residual trajectory components, applying
+responsibility more strongly to the residual to construct the constrained edit field.
+sion paths (Yang and Ye 2026). Recent inversion-free meth-
+ods construct editing trajectories without explicit inversion.
+FlowEdit combines source- and target-conditioned velocity
+fields (Kulikov et al. 2025); SplitFlow composes prompt-
+specific sub-flows (Yoon et al. 2025); FIA-Edit introduces
+frequency-interactive attention (Yang et al. 2026); FlowAlign
+regularizes the editing trajectory (Kim et al. 2026); and
+ChordEdit constructs a temporally averaged low-energy con-
+trol field for one-step editing (Lu et al. 2026). These advances
+improve reconstruction accuracy, trajectory consistency, and
+source preservation. But, the spatial extent of the resulting
+updates remains a separate concern.
+Spatially Constrained Editing.
+Spatially constrained
+methods determine which image regions are affected by an
+edit. Blended Diffusion incorporates a user-provided mask
+into the denoising process (Avrahami, Lischinski, and Fried
+2022), and DiffEdit estimates semantic edit regions by con-
+trasting predictions conditioned on the source and target
+prompts (Couairon et al. 2023). KV-Edit preserves back-
+ground key–value tokens outside user-specified regions (Zhu
+et al. 2025), and ReFlex uses attention-derived regions for
+latent blending (Kim et al. 2025). Recent approaches further
+derive spatial cues from the generation process. Follow-Your-
+Shape constructs a Trajectory Divergence Map from token-
+wise velocity differences between inversion and editing tra-
+jectories to control key–value injection (Long et al. 2026).
+UniEdit-Flow constructs edit regions from per-step veloc-
+ity differences (Jiao et al. 2026). DirectEdit uses MLLM
+localization and Segment Anything masks for noise blend-
+ing, together with attention feature injection (Kirillov et al.
+2023; Yang and Ye 2026). SAM-Flow combines responses
+from the source and a scout image to construct dynamic edit-
+ing support and perform source-anchored projection (Cui
+et al. 2026). Across these methods, spatial signals determine
+where editing updates are applied, with source preservation
+enforced through blending, feature injection, or trajectory
+correction. CEF represents visual relevance as continuous
+edit responsibility and uses it within the base edit field to
+regulate prompt-induced and trajectory-induced changes.
+Method
+Given a source image xsrc and source and target prompts
+csrc and ctar, let zsrc
+t
+and zedit
+t
+denote the source and edit-
+ing trajectories. At each editing step, the difference between
+the velocity predicted on the editing trajectory under the tar-
+get prompt and that predicted on the source trajectory under
+the source prompt forms the base edit field. CEF associates
+each spatial location with a continuous edit responsibility
+estimated from visual evidence. CEF then exactly decom-
+poses the base edit field into prompt-induced and trajectory-
+induced changes at each step, and uses edit responsibility
+to regulate their contributions to the constrained edit field.
+Figure 3 summarizes the complete process.
+Edit Responsibility from Visual Evidence
+Preserving source content unrelated to the desired edit re-
+quires identifying the image locations involved in the edit.
+The editing instruction specifies the desired semantic change,
+and visual evidence localizes the corresponding content in
+the image. CEF represents each location’s relevance to the
+desired edit as continuous edit responsibility. This responsi-
+bility determines the contribution of the local update to the
+constrained edit field. Locations with larger responsibility re-
+tain more of the edit-induced update. Locations with smaller
+responsibility are more strongly constrained.
+The evidence used to estimate responsibility depends on
+
+
+21
+22
+23
+Edited-region CLIP ↑
+22
+24
+26
+28
+30
+32
+34
+Background PSNR ↑
+15
+22
+33
+15
+22
+33
+CEF
+FlowEdit
+FTEdit
+FlowAlign
+DNAEdit
+DirectEdit
+Figure 4: CLIP and PSNR on SD3.5. FlowEdit and CEF are
+evaluated with nmax ∈{15, 22, 33}.
+whether the relevant content is observable in the source im-
+age. Observable content can be localized directly from the
+source, which provides source evidence. Content absent from
+the source provides no corresponding visual evidence. In
+this case, CEF first generates an unconstrained proposal ex
+in which the target content has been realized and uses it as
+visual evidence for estimating responsibility.
+Given an evidence image x and a query q describing the
+content involved in the desired edit, CLIPSeg (Lüddecke and
+Ecker 2022) gϕ produces a spatial response. CEF converts
+this response into the edit responsibility
+r = R(gϕ(x, q)) ,
+(1)
+where R converts the CLIPSeg response into a continuous
+responsibility field at the spatial resolution of the edit field.
+We use x = xsrc for source evidence and x = ex for proposal
+evidence. CEF estimates r once from the selected evidence
+and keeps it fixed throughout the editing trajectory. For pro-
+posal evidence, let Ωdenote the sampled noise sequence
+used to generate exΩ, from which CEF estimates rΩ. Since
+a different sequence may place the target content elsewhere,
+CEF reuses Ωduring the constrained edit. The proposal and
+constrained edit therefore share the sampled noise sequence
+while following different latent trajectories.
+Decomposing the Edit Field
+Let vt(z, c) denote the guided velocity predicted at step t for
+latent z under prompt c. The base edit field compares predic-
+tions that differ in tworespects:the targetvelocityisevaluated
+on the editing trajectory under the target prompt, whereas the
+source velocity is evaluated on the source trajectory under
+the source prompt. Following the differential formulation of
+training-free flow editing (Kulikov et al. 2025), the base edit
+field is
+At = vt
+ zedit
+t
+, ctar
+
+−vt(zsrc
+t , csrc) .
+(2)
+The field therefore combines the effect of changing the
+prompt with the effect of moving from the source trajec-
+tory to the editing trajectory. Therefore, treating it as a single
+quantity does not distinguish the contributions arising from
+these two sources. To solve this, CEF proposes to separate
+the two effects without changing the base edit field.
+The four relevant velocity predictions pair the source and
+editing states with the source and target prompts. Holding
+the latent state fixed while changing the prompt isolates a
+prompt-induced velocity change. For a fixed state z, we write
+∆prompt
+t
+(z) = vt(z, ctar) −vt(z, csrc).
+(3)
+The prompt-induced velocity change depends on the state at
+which it is evaluated. CEF evaluates it on both trajectories
+and averages the results to obtain the prompt-induced change,
+Pt = 1
+2
+
+∆prompt
+t
+(zsrc
+t ) + ∆prompt
+t
+(zedit
+t
+)
+
+.
+(4)
+Conversely, holding the prompt fixed while moving from
+the source state to the editing state isolates a trajectory-
+induced velocity change,
+∆traj
+t
+(c) = vt(zedit
+t
+, c) −vt(zsrc
+t , c).
+(5)
+This change depends on the prompt under which the two
+states are compared. CEF evaluates it under both prompts and
+averages the results to obtain the trajectory-induced change,
+St = 1
+2
+h
+∆traj
+t
+(csrc) + ∆traj
+t
+(ctar)
+i
+.
+(6)
+By construction, the two terms form an exact additive
+decomposition of the base edit field,
+At = Pt + St.
+(7)
+Consequently, the decomposition preserves the update pre-
+scribed by the base editor while explicitly seperating the
+prompt-induced and trajectory-induced changes.
+The Constrained Edit Field
+Decomposing the base field allows CEF to distinguish the
+part of the trajectory-induced change that follows the prompt-
+induced direction. At each spatial location, CEF uses Pt as a
+local directional reference and extracts the positively aligned
+component of St,
+S+
+t =
+ ⟨St, Pt⟩
+∥Pt∥2
+2 + ϵ
+
++
+Pt,
+(8)
+where the inner product and norm act over the channel di-
+mension at each spatial location, [a]+ = max(a, 0), and ϵ
+provides numerical stability. The positive projection S+
+t fol-
+lows the local direction of Pt. We refer to Pt + S+
+t as the
+prompt-aligned component and to St −S+
+t as the residual
+trajectory component.
+CEF uses edit responsibility to regulate these two compo-
+nents differently. It applies r to the prompt-aligned compo-
+nent Pt + S+
+t and r2 to the residual trajectory component.
+The constrained edit field can be formulated as
+eAt = r ⊙
+ Pt + S+
+t
+
++ r2 ⊙
+ St −S+
+t
+
+,
+(9)
+where ⊙denotes the Hadamard product, with r and r2
+broadcast across the channel dimension. At any location
+
+
+Method
+Model
+Structure
+Background Preservation
+CLIP Similarity
+Dist.↓
+PSNR↑
+LPIPS↓
+MSE↓
+SSIM↑
+Whole↑
+Edited↑
+IP2P
+SD1.5
+58.13
+20.95
+159.20
+230.87
+76.39
+23.61
+21.77
+P2P
+SD1.5
+15.44
+27.52
+59.69
+34.20
+84.41
+24.75
+21.01
+RF-Inversion
+FLUX
+41.17
+20.86
+187.01
+120.12
+71.21
+25.08
+22.39
+RFEdit
+FLUX
+25.15
+24.33
+121.59
+56.98
+82.84
+25.57
+22.54
+FireFlow
+FLUX
+27.40
+23.11
+128.46
+70.75
+81.30
+26.13
+22.87
+FlowEdit
+FLUX
+27.83
+21.96
+112.15
+94.94
+83.40
+25.26
+22.60
+DNAEdit
+FLUX
+16.81
+25.20
+86.68
+48.35
+87.21
+24.81
+22.12
+DirectEdit (w/o mask)
+FLUX
+21.93
+24.70
+102.92
+56.76
+85.76
+25.89
+22.74
+DirectEdit
+FLUX
+17.94
+32.63
+35.45
+25.05
+93.49
+25.39
+22.45
+CEF
+FLUX
+11.72
+31.22
+29.22
+16.21
+93.60
+24.48
+21.84
+FTEdit
+SD3.5
+21.06
+23.49
+90.25
+61.78
+86.23
+25.21
+21.78
+FlowEdit
+SD3.5
+23.13
+23.29
+92.81
+69.09
+85.22
+26.71
+23.59
+FlowAlign
+SD3.5
+33.49
+24.06
+68.91
+54.29
+86.33
+25.64
+22.40
+DNAEdit
+SD3.5
+11.03
+27.71
+60.51
+26.28
+90.13
+25.20
+22.25
+DirectEdit (w/o mask)
+SD3.5
+15.23
+26.18
+67.28
+34.00
+88.75
+26.13
+22.50
+DirectEdit
+SD3.5
+14.65
+31.82
+31.36
+21.64
+92.28
+25.64
+22.67
+SAM-Flow
+SD3.5
+12.20
+27.82
+46.24
+30.25
+90.66
+26.15
+23.12
+CEF
+SD3.5
+9.91
+32.72
+24.72
+11.26
+92.98
+25.52
+22.91
+Table 1: Quantitative comparisons on PIE-Bench. Baseline aggregates except SAM-Flow are reproduced from Table 1 of
+DirectEdit (Yang and Ye 2026); the SAM-Flow and CEF rows are evaluated by us. Structure distance and LPIPS are reported
+at 103 scale, MSE at 104 scale, and SSIM at 102 scale. Bold indicates the best result within each backbone.
+with r > 0, the ratio between the coefficients applied to the
+residual trajectory component and the prompt-aligned com-
+ponent is r. As edit responsibility decreases, the residual
+trajectory component is therefore attenuated more rapidly,
+changing both the magnitude and composition of the local
+update rather than uniformly scaling the base edit field.
+The construction preserves the two endpoints of edit re-
+sponsibility. At a location with r = 1, the two terms re-
+combine as Pt + St = At; at a location with r = 0, the
+constrained update vanishes.
+CEF then directly uses the constrained edit field to update
+the editing trajectory,
+zedit
+t−1 = zedit
+t
++ ηt eAt,
+(10)
+where ηt is the signed interval between consecutive sampling
+times in the base editor.
+Experiments
+Experimental Setup
+Evaluation Datasets and Metrics.
+We evaluate CEF on
+all 700 examples in PIE-Bench (Ju et al. 2024). We mea-
+sure alignment with the target prompt using CLIP simi-
+larity (Radford et al. 2021) between the prompt and ei-
+ther the complete edited image (CLIP-W) or the annotated
+edit region (CLIP-E). Source preservation is evaluated using
+DINO-based Structure Distance (Ju et al. 2024; Caron et al.
+2021) over the complete image, together with PSNR, MSE,
+LPIPS (Zhang et al. 2018), and SSIM (Wang et al. 2004)
+over the region outside the edit. Benchmark masks define the
+edited region and the remaining image only for evaluation
+and are not accessed by CEF.
+Implementation Details.
+We implement CEF using Sta-
+ble Diffusion 3.5 Medium (Esser et al. 2024; Stability AI
+2024) and FLUX (Black Forest Labs 2024) as the back-
+bone models, while keeping all generative models frozen.
+For direct comparison, we use the sampling configurations
+of FlowEdit (Kulikov et al. 2025): (T, nmax) = (50, 33) for
+SD3.5 and (T, nmax) = (28, 24) for FLUX, with navg = 1
+for both. The classifier-free guidance scales (Ho and Sali-
+mans 2022) for the source and target are 3.5 and 13.5 for
+SD3.5, and 1.5 and 5.5 for FLUX. The source prompt, target
+prompt, and editing instruction determine the evidence used
+by CEF and the content queried by CLIPSeg. For multiple
+grounding phrases, CEF takes a pixel-wise maximum over
+their CLIPSeg responses, bilinearly resizes the combined re-
+sponse to image resolution, and applies per-image min–max
+normalization to obtain s ∈[0, 1], in this order. CEF then
+maps s to image-space responsibility using clip(αsγ, 0, 1),
+where α is the responsibility gain and γ is the response expo-
+nent. The resulting responsibility map is resized to the spatial
+resolution of the edit field. SD3.5 uses (α, γ) = (2.3, 1.5) for
+source evidence and (1.0, 1.0) for proposal evidence; FLUX
+uses (4.0, 1.0) for both. For global edits, we set r ≡1 over
+the spatial grid, so eAt = At and CEF reduces to the base
+editor. Benchmark categories and masks are not used. Ex-
+periments are conducted in a Linux container on NVIDIA
+A800-SXM4 GPUs with 80 GB of memory, using Python
+3.11 and PyTorch 2.11 with CUDA 12.8. Responsibility con-
+struction and processing details are provided in Appendix A.
+Runtime and memory analyses are provided in Appendix B.
+Comparison Methods.
+For quantitative comparison, we
+use the published PIE-Bench aggregates reported by Di-
+rectEdit (Yang and Ye 2026). They cover diffusion-based
+
+
+A round cake on a wooden plate  →  A square cake on a wooden plate
+A panda bear with its mouth closed  →  A panda bear with its mouth open
+A dog sitting on a beach  →  A wolf sitting on a beach
+A red apple on a wooden table  →  A red apple and a bird on a wooden table
+SD3.5 Medium
+FLUX
+Source
+FlowEdit
+FlowAlign
+DirectEdit
+SAM-Flow
+CEF
+FlowEdit
+DNAEdit
+DirectEdit
+CEF
+Figure 5: Qualitative comparison on PIE-Bench. The same edits are compared under fixed configurations on SD3.5 Medium
+and FLUX. CEF preserves source appearance while realizing shape changes, attribute edits, object replacements, and object
+additions across both backbones. Red circles mark incomplete target edits or unintended changes in regions outside the edit.
+Config.
+Struct.
+Background
+CLIP
+Dist.↓PSNR↑LPIPS↓MSE↓SSIM↑Whole↑Edit↑
+w/o r
+10.98
+32.08
+26.63 13.51
+92.75
+25.66 23.10
+w/o prop.
+12.49
+31.66
+32.22 18.11
+92.09
+25.76 23.14
+CEF (Ours)
+9.91
+32.72
+24.72 11.26
+92.98
+25.52 22.91
+Table 2: Component ablation on PIE-Bench with SD3.5
+Medium. Each ablation independently removes one com-
+ponent from CEF.
+editors InstructPix2Pix (Brooks, Holynski, and Efros 2023)
+and Prompt-to-Prompt (Hertz et al. 2023), together with
+the rectified-flow methods FTEdit (Xu et al. 2025), RF-
+Inversion (Rout et al. 2025), RFEdit (Wang et al. 2025),
+FireFlow (Deng et al. 2025), FlowEdit (Kulikov et al. 2025),
+FlowAlign (Kim et al. 2026), and DNAEdit (Xie et al. 2025).
+DirectEdit and its mask-free variant are taken from the same
+report. We run SAM-Flow (Cui et al. 2026) on all 700 exam-
+ples using the authors’ implementation and evaluate it with
+the same protocol.
+Main Results
+Table 1 reports results on all 700 PIE-Bench examples. CEF
+achieves the best Structure Distance and all four metrics mea-
+sured outside the edited region on SD3.5. Compared with
+DNAEdit, the previous best Structure Distance result, CEF
+reduces it from 11.03 to 9.91. Compared with DirectEdit, the
+previous strongest baseline on the background metrics, CEF
+reduces LPIPS from 31.36 to 24.72 and MSE from 21.64 to
+11.26, while attaining a higher CLIP-E. FlowEdit obtains the
+highest CLIP scores but performs substantially worse on the
+preservation metrics. Figure 4 compares CLIP-E and back-
+ground PSNR for three values of nmax. Across these settings,
+CEF achieves higher PSNR than FlowEdit at similar CLIP-
+E. The main CEF configuration also has higher PSNR than
+all SD3.5 baselines in the table. Complete frontier metrics
+are provided in Appendix D. On FLUX, CEF also achieves
+the best Structure Distance, background LPIPS, MSE, and
+SSIM while retaining competitive CLIP-E, confirming con-
+sistent preservation gains across both backbones.
+Qualitative comparison.
+Figure 5 compares four local ed-
+its across the two backbones. FlowEdit often completes the
+requested edit but may also change nearby content or the
+appearance of the source object, as shown by the cake and
+bird examples. FlowAlign and DNAEdit sometimes leave
+the requested edit incomplete or change the pose and scale
+of the edited object. DirectEdit and SAM-Flow localize the
+edit more accurately but can still alter the source appearance
+or introduce local artifacts. Across both backbones, CEF
+changes the cake geometry while retaining its frosting and
+surroundings, opens the panda’s mouth without altering its
+facial appearance, transforms the dog while preserving its
+pose and background, and adds the bird without changing
+the apple or table. Additional qualitative results are provided
+in Appendix E; failure cases and limitations are discussed in
+Appendix F.
+
+
+Proposal evidence
+Add flowers to the dog's mouth
+Without replay
+With replay
+Add a glass of water
+Figure 6: Effect of replay. Both final constrained edits are run
+with the same realization Ω. With replay, responsibility rΩ
+is estimated from the proposal generated with Ω, as shown
+by the red mask in the first column.
+Ablation Studies
+Ablation.
+Table 2 evaluates the two components indepen-
+dently. Replacing continuous responsibility with a binary
+decision increases structure change and background error.
+Removing proposal evidence causes a larger loss of preser-
+vation when the target content is absent from the source
+image. CLIP-E changes only slightly in both cases. Contin-
+uous responsibility and proposal evidence therefore improve
+preservation while keeping CLIP-E similar.
+Decomposition improves preservation.
+To isolate the ef-
+fect of decomposition, we apply a single fixed coefficient
+to St across all locations and active editing steps. Since
+At = Pt + St, a coefficient of 1 on St exactly recovers
+the original FlowEdit field. We set the coefficient to 0.5 as a
+simple non-adaptive control; this coefficient is not selected
+as an optimum. The resulting field Pt + 0.5St retains all 24
+active steps. We then shorten FlowEdit to 20 active steps to
+match its editing strength. The two settings produce nearly
+identical CLIP-E values of 20.90 and 20.91. As shown in
+Figure 7, the decomposed field reduces Structure Distance
+from 8.99 to 6.54, LPIPS from 53.02 to 43.41, and MSE from
+29.07 to 22.68. Separately attenuating St therefore provides
+better source preservation than reducing the number of active
+FlowEdit steps with nearly identical CLIP-E.
+Effect of replay.
+We evaluate replay on all 80 PIE-Bench
+edits that add an object. For the controlled comparison, both
+final constrained edits use the same fixed realization Ω. With
+replay, responsibility rΩis estimated from the proposal gen-
+erated with Ω; without replay, responsibility rΩ′ is estimated
+from an independently generated proposal with Ω′. This iso-
+lates the effect of realization-matched proposal evidence.
+Figure 6 shows that replay makes the final edit more closely
+retain the location and extent of the added content in the
+proposal. Across all 80 edits, the overlap between the added-
+object regions in the proposal and final result increases from
+FlowEdit   ·   CLIP-E 22.42
+shorten trajectory
+decompose field
+Shortened FlowEdit
+CLIP-E  20.91
+Decomposed field
+CLIP-E  20.90
+Preservation metrics  (lower is better)
+Dist.
+8.99
+6.54
+LPIPS
+53.02
+43.41
+MSE
+29.07
+22.68
+Figure 7: Effect of decomposition. The decomposed field
+gives lower Structure Distance, LPIPS, and MSE.
+α
+γ
+Dist.↓
+LPIPS↓
+CLIP-E↑
+3.5
+1.0
+7.69
+24.35
+20.37
+4.0†
+1.0†
+7.98
+25.06
+20.34
+4.5
+1.0
+8.19
+25.85
+20.32
+4.0
+0.8
+8.76
+27.81
+20.32
+4.0
+1.2
+7.31
+23.57
+20.23
+Table 3: Sensitivity to α and γ on FLUX. Each row changes
+one parameter from the setting used in the main experiments,
+using the same 50-example subset. Blue shading marks the
+main setting, and bold indicates the best result in each col-
+umn. The main setting was not selected using this subset and
+is not best in any column.
+0.708 to 0.794. The paired 95% bootstrap confidence interval
+indicates an increase of 4.6 to 12.8 percentage points.
+Hyperparameter sensitivity.
+Table 3 varies α and γ one at
+a time around the values used in the main FLUX experiments.
+Across the evaluated values, CLIP-E changes by only 0.14,
+while Structure Distance and LPIPS change gradually. Larger
+values of γ reduce both preservation errors while CLIP-
+E remains similar. The main setting, (α, γ) = (4.0, 1.0),
+was not selected using this subset and is not best in any
+reported metric. Complete sensitivity results are provided in
+Appendix C.
+Conclusion
+We propose CEF, a training-free method, to address unin-
+tended source changes caused by edit responses accumu-
+lating outside the requested region along editing trajecto-
+ries. CEF estimates continuous edit responsibility from vi-
+sual evidence, decomposes the base edit field into prompt-
+induced and trajectory-induced components, and spatially
+constrains their contributions at each editing step. This design
+suppresses unrelated changes without uniformly weakening
+the editing trajectory. Across all 700 PIE-Bench examples,
+CEF achieves state-of-the-art source preservation with SD3.5
+Medium and FLUX while maintaining edit alignment.
+
+
+References
+Avrahami, O.; Lischinski, D.; and Fried, O. 2022. Blended
+Diffusion for Text-Driven Editing of Natural Images. In Pro-
+ceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, 18208–18218.
+Avrahami, O.; Patashnik, O.; Fried, O.; Nemchinov, E.; Aber-
+man, K.; Lischinski, D.; and Cohen-Or, D. 2025. Stable Flow:
+Vital Layers for Training-Free Image Editing. In Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, 7877–7888.
+Black Forest Labs. 2024.
+FLUX.1 [dev].
+Hugging Face
+model card.
+Black Forest Labs; Batifol, S.; Blattmann, A.; Boesel, F.;
+Consul, S.; Diagne, C.; Dockhorn, T.; English, J.; English,
+Z.; Esser, P.; Kulal, S.; Lacey, K.; Levi, Y.; Li, C.; Lorenz,
+D.; Müller, J.; Podell, D.; Rombach, R.; Saini, H.; Sauer, A.;
+and Smith, L. 2025. FLUX.1 Kontext: Flow Matching for
+In-Context Image Generation and Editing in Latent Space.
+arXiv preprint arXiv:2506.15742.
+Brooks, T.; Holynski, A.; and Efros, A. A. 2023. Instruct-
+Pix2Pix: Learning to Follow Image Editing Instructions. In
+Proceedings of the IEEE/CVF Conference on Computer Vi-
+sion and Pattern Recognition, 18392–18402.
+Cao, M.; Wang, X.; Qi, Z.; Shan, Y.; Qie, X.; and Zheng, Y.
+2023. MasaCtrl: Tuning-Free Mutual Self-Attention Control
+for Consistent Image Synthesis and Editing. In Proceedings
+of the IEEE/CVF International Conference on Computer Vi-
+sion, 22560–22570.
+Caron, M.; Touvron, H.; Misra, I.; Jégou, H.; Mairal, J.;
+Bojanowski, P.; and Joulin, A. 2021. Emerging Properties in
+Self-Supervised Vision Transformers. In Proceedings of the
+IEEE/CVF International Conference on Computer Vision,
+9650–9660.
+Couairon, G.; Verbeek, J.; Schwenk, H.; and Cord, M.
+2023. DiffEdit: Diffusion-Based Semantic Image Editing
+with Mask Guidance. In International Conference on Learn-
+ing Representations.
+Cui, H.; Chen, R.; Luo, T.; Guo, T.; Qin, Z.; and Wang,
+J. 2026.
+SAM-Flow: Source-Anchored Masked Flow for
+Training-Free Image Editing. arXiv:2606.06228.
+Deng, Y.; He, X.; Mei, C.; Wang, P.; and Tang, F. 2025. Fire-
+Flow: Fast Inversion of Rectified Flow for Image Semantic
+Editing. In Proceedings of the 42nd International Confer-
+ence on Machine Learning, volume 267 of Proceedings of
+Machine Learning Research, 13110–13128. PMLR.
+Esser, P.; Kulal, S.; Blattmann, A.; Entezari, R.; Müller,
+J.; Saini, H.; Levi, Y.; Lorenz, D.; Sauer, A.; Boesel, F.;
+Podell, D.; Dockhorn, T.; English, Z.; Lacey, K.; Goodwin,
+A.; Marek, Y.; and Rombach, R. 2024. Scaling Rectified Flow
+Transformers for High-Resolution Image Synthesis. arXiv
+preprint arXiv:2403.03206.
+Hertz, A.; Mokady, R.; Tenenbaum, J.; Aberman, K.; Pritch,
+Y.; and Cohen-Or, D. 2023. Prompt-to-Prompt Image Editing
+with Cross Attention Control. In International Conference
+on Learning Representations.
+Ho, J.; and Salimans, T. 2022.
+Classifier-Free Diffusion
+Guidance. arXiv preprint arXiv:2207.12598.
+Jiao, G.; Huang, B.; Wang, K.-C.; and Liao, R. 2026.
+UniEdit-Flow: Unleashing Inversion and Editing in the Era
+of Flow Models. In International Conference on Learning
+Representations.
+Ju, X.; Zeng, A.; Bian, Y.; Liu, S.; and Xu, Q. 2024. PnP
+Inversion: Boosting Diffusion-Based Editing with 3 Lines of
+Code. In International Conference on Learning Representa-
+tions.
+Kim, J.; Hong, Y.; Park, J.; and Ye, J. C. 2026. FlowAlign:
+Trajectory-Regularized, Inversion-Free Flow-Based Image
+Editing. In International Conference on Learning Repre-
+sentations.
+Kim, J.; Park, J.; Song, Y.; Kwak, N.; and Rhee, W. 2025. Re-
+Flex: Text-Guided Editing of Real Images in Rectified Flow
+via Mid-Step Feature Extraction and Attention Adaptation.
+In Proceedings of the IEEE/CVF International Conference
+on Computer Vision, 15939–15948.
+Kirillov, A.; Mintun, E.; Ravi, N.; Mao, H.; Rolland, C.;
+Gustafson, L.; Xiao, T.; Whitehead, S.; Berg, A. C.; Lo, W.-
+Y.; Dollár, P.; and Girshick, R. 2023. Segment Anything. In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision, 4015–4026.
+Kulikov, V.; Kleiner, M.; Huberman-Spiegelglas, I.; and
+Michaeli, T. 2025.
+FlowEdit: Inversion-Free Text-Based
+Editing Using Pre-Trained Flow Models. In Proceedings
+of the IEEE/CVF International Conference on Computer Vi-
+sion, 19721–19730.
+Lipman, Y.; Chen, R. T. Q.; Ben-Hamu, H.; Nickel, M.; and
+Le, M. 2023. Flow Matching for Generative Modeling. In
+International Conference on Learning Representations.
+Liu, X.; Gong, C.; and Liu, Q. 2023. Flow Straight and Fast:
+Learning to Generate and Transfer Data with Rectified Flow.
+In International Conference on Learning Representations.
+Long, Z.; Zheng, M.; Feng, K.; Zhang, X.; Liu, H.; Yang,
+H.; Zhang, L.; Chen, Q.; and Ma, Y. 2026. Follow-Your-
+Shape: Shape-Aware Image Editing via Trajectory-Guided
+Region Control. In International Conference on Learning
+Representations.
+Lu, L.; Chen, X.; Guo, M.; Li, S.; Wang, J.; and Shi, Y.
+2026. ChordEdit: One-Step Low-Energy Transport for Image
+Editing. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, 14398–14407.
+Lüddecke, T.; and Ecker, A. S. 2022.
+Image Segmenta-
+tion Using Text and Image Prompts.
+In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 7086–7096.
+Meng, C.; He, Y.; Song, Y.; Song, J.; Wu, J.; Zhu, J.-Y.; and
+Ermon, S. 2022. SDEdit: Guided Image Synthesis and Edit-
+ing with Stochastic Differential Equations. In International
+Conference on Learning Representations.
+Mokady, R.; Hertz, A.; Aberman, K.; Pritch, Y.; and Cohen-
+Or, D. 2023.
+Null-Text Inversion for Editing Real Im-
+ages Using Guided Diffusion Models. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, 6038–6047.
+
+
+Radford, A.; Kim, J. W.; Hallacy, C.; Ramesh, A.; Goh, G.;
+Agarwal, S.; Sastry, G.; Askell, A.; Mishkin, P.; Clark, J.;
+Krueger, G.; and Sutskever, I. 2021. Learning Transferable
+Visual Models From Natural Language Supervision. In In-
+ternational Conference on Machine Learning, 8748–8763.
+Rout, L.; Chen, Y.; Ruiz, N.; Caramanis, C.; Shakkottai,
+S.; and Chu, W.-S. 2025. Semantic Image Inversion and
+Editing Using Rectified Stochastic Differential Equations. In
+International Conference on Learning Representations.
+Sheynin, S.; Polyak, A.; Singer, U.; Kirstain, Y.; Zohar, A.;
+Ashual, O.; Parikh, D.; and Taigman, Y. 2024. Emu Edit:
+Precise Image Editing via Recognition and Generation Tasks.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, 8871–8879.
+Stability AI. 2024. Stable Diffusion 3.5 Medium. Hugging
+Face model card.
+Tumanyan, N.; Geyer, M.; Bagon, S.; and Dekel, T. 2023.
+Plug-and-Play Diffusion Features for Text-Driven Image-to-
+Image Translation. In Proceedings of the IEEE/CVF Con-
+ference on Computer Vision and Pattern Recognition, 1921–
+1930.
+Wang, J.; Pu, J.; Qi, Z.; Guo, J.; Ma, Y.; Huang, N.; Chen,
+Y.; Li, X.; and Shan, Y. 2025. Taming Rectified Flow for
+Inversion and Editing. In Proceedings of the 42nd Inter-
+national Conference on Machine Learning, volume 267 of
+Proceedings of Machine Learning Research, 64044–64058.
+PMLR.
+Wang, Z.; Bovik, A. C.; Sheikh, H. R.; and Simoncelli, E. P.
+2004. Image Quality Assessment: From Error Visibility to
+Structural Similarity. IEEE Transactions on Image Process-
+ing, 13(4): 600–612.
+Wei, C.; Xiong, Z.; Ren, W.; Du, X.; Zhang, G.; and Chen, W.
+2025. OmniEdit: Building Image Editing Generalist Models
+Through Specialist Supervision. In International Conference
+on Learning Representations.
+Xie, C.; Li, M.; Li, S.; Wu, Y.; Yi, Q.; and Zhang, L. 2025.
+DNAEdit: Direct Noise Alignment for Text-Guided Rectified
+Flow Editing. In Advances in Neural Information Process-
+ing Systems, volume 38, 124456–124474. Curran Associates,
+Inc.
+Xu, P.; Jiang, B.; Hu, X.; Luo, D.; He, Q.; Zhang, J.; Wang, C.;
+Wu, Y.; Ling, C.; and Wang, B. 2025. Unveil Inversion and
+Invariance in Flow Transformer for Versatile Image Editing.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, 28479–28489.
+Yang, D.; and Ye, M. 2026. DirectEdit: Step-Level Accurate
+Inversion for Flow-Based Image Editing. In International
+Conference on Machine Learning.
+Yang, K.; Shen, B.; Li, X.; Dai, Y.; Luo, Y.; Ma, Y.; Fang, W.;
+Li, Q.; and Wang, Z. 2026. FIA-Edit: Frequency-Interactive
+Attention for Efficient and High-Fidelity Inversion-Free Text-
+Guided Image Editing. In Proceedings of the AAAI Confer-
+ence on Artificial Intelligence, volume 40, 11613–11621.
+Yoon, S.-H.; Li, M.; Beaudouin, G.; Wen, C.; Azhar, M. R.;
+and Wang, M. 2025. SplitFlow: Flow Decomposition for
+Inversion-Free Text-to-Image Editing. In Advances in Neu-
+ral Information Processing Systems, volume 38, 153207–
+153225.
+Zhang, R.; Isola, P.; Efros, A. A.; Shechtman, E.; and Wang,
+O. 2018. The Unreasonable Effectiveness of Deep Features as
+a Perceptual Metric. In Proceedings of the IEEE Conference
+on Computer Vision and Pattern Recognition, 586–595.
+Zhu, T.; Zhang, S.; Shao, J.; and Tang, Y. 2025. KV-Edit:
+Training-Free Image Editing for Precise Background Preser-
+vation. In Proceedings of the IEEE/CVF International Con-
+ference on Computer Vision, 16607–16617.
+
+
+A
+Responsibility Construction and Processing Details
+Visual evidence selection.
+CEF derives grounding phrases and selects the visual evidence source from the source description,
+target description, and editing instruction. When the edit-related content is observable in the source image, CEF estimates edit
+responsibility from the source image. When the requested target content is generated by the edit, CEF first runs the base editor to
+produce a proposal and estimates responsibility from the realized target content. For global edits, CEF sets r ≡1. The evidence
+source and grounding phrases are determined before constrained generation begins.
+Responsibility construction.
+For each grounding phrase, the frozen CLIPSeg model (Lüddecke and Ecker 2022) produces an
+image-space semantic response. CEF combines responses from multiple phrases by a pixel-wise maximum, bilinearly resizes
+the combined response to image resolution, and applies per-image min–max normalization to obtain s ∈[0, 1]. It maps the
+semantic response to edit responsibility as
+r = clip(αsγ, 0, 1).
+(11)
+CEF then resizes the responsibility to the spatial resolution of the latent edit field using area interpolation. The responsibility is
+computed once and held fixed over all active editing steps. SD3.5 (Esser et al. 2024; Stability AI 2024) uses (α, γ) = (2.3, 1.5)
+for source evidence and (1.0, 1.0) for proposal evidence. FLUX (Black Forest Labs 2024) uses (4.0, 1.0) for both evidence
+sources.
+Proposal evidence and stochastic replay.
+For edits using proposal evidence, CEF first runs the base editor to produce an
+unconstrained proposal and evaluates the target grounding phrase on the realized proposal. During constrained editing, CEF
+replays the noise sequence sampled for proposal generation. The proposal and constrained edit share the same noise realization
+and evolve along their respective latent trajectories. The resulting responsibility corresponds to the target content realized under
+that noise sequence.
+Sampling configurations.
+SD3.5 uses 50 sampling steps, nmax = 33, navg = 1, and source and target guidance scales of
+3.5 and 13.5. FLUX uses 28 sampling steps, nmax = 24, navg = 1, and source and target guidance scales of 1.5 and 5.5. The
+parameters of the generative models and visual encoder remain frozen throughout the experiments.
+B
+Runtime and Memory Analysis
+We measure the runtime and peak allocated memory of FlowEdit (Kulikov et al. 2025) and CEF with SD3.5 Medium on a
+single NVIDIA A800-SXM4-80GB GPU at 512 × 512 resolution with one sample per run. The model and VAE use FP16, with
+T = 50, nmax = 33, and navg = 1. Timing begins with source-image VAE encoding and covers text encoding, the complete
+editing trajectory, and final VAE decoding. CEF receives a precomputed edit responsibility at the beginning of each timed run.
+Each method is measured in two runs. Each run contains five warm-up samples followed by 55 timed samples, giving 110
+measurements per method. Table A1 reports the mean and standard deviation of runtime and the peak allocated memory recorded
+by PyTorch.
+Method
+Runtime (s) ↓
+Peak memory (GiB) ↓
+FlowEdit
+3.5736 ± 0.0023
+26.13
+CEF
+5.1050 ± 0.0040
+26.23
+Table A1: Editor runtime and peak allocated memory on SD3.5. Each timed run covers source and prompt encoding, the editing
+trajectory, and decoding, with a precomputed edit responsibility provided to CEF.
+Under this configuration, CEF takes 1.4285× the FlowEdit runtime and adds approximately 0.11 GiB of peak allocated
+memory.
+C
+Complete Hyperparameter Sensitivity
+After fixing the main experimental configurations, we evaluate sensitivity to α and γ on the fixed 50-example PIE-Bench (Ju
+et al. 2024) subset used in Table 3. Each row reports the aggregate over the complete subset, and the two backbones use the
+same sample identifiers. We vary one mapping parameter at a time while keeping all other parameters fixed.
+These results show that CEF is robust to moderate variations in α and γ across both backbones. CLIP-E varies by at most
+0.25 on SD3.5 and 0.14 on FLUX, while the preservation metrics remain stable across the evaluated settings.
+D
+Complete Results across Preservation and Editing Settings
+Table A3 provides the metrics underlying the SD3.5 tradeoff plot in Figure 4.
+
+
+Backbone
+αs/αp
+γs/γp
+Dist.↓
+PSNR↑
+LPIPS↓
+MSE↓
+SSIM↑
+CLIP-W↑
+CLIP-E↑
+SD3.5 (n = 50)
+1.8 / 0.8
+1.5 / 1.0
+6.951
+34.670
+22.181
+7.657
+93.631
+25.211
+20.833
+SD3.5 (n = 50)
+2.3† / 1.0†
+1.5† / 1.0†
+7.538
+34.155
+23.223
+8.640
+93.525
+25.511
+21.067
+SD3.5 (n = 50)
+2.8 / 1.2
+1.5 / 1.0
+8.214
+33.787
+24.014
+9.396
+93.452
+25.612
+21.085
+SD3.5 (n = 50)
+2.3 / 1.0
+1.2 / 0.8
+7.940
+33.653
+24.378
+9.405
+93.422
+25.589
+21.144
+SD3.5 (n = 50)
+2.3 / 1.0
+1.8 / 1.2
+7.214
+34.498
+22.591
+8.138
+93.586
+25.270
+20.919
+FLUX (n = 50)
+3.5
+1.0
+7.693
+33.399
+24.347
+11.239
+94.746
+24.347
+20.369
+FLUX (n = 50)
+4.0†
+1.0†
+7.985
+33.096
+25.057
+11.890
+94.652
+24.367
+20.344
+FLUX (n = 50)
+4.5
+1.0
+8.187
+32.836
+25.848
+12.439
+94.569
+24.278
+20.316
+FLUX (n = 50)
+4.0
+0.8
+8.761
+32.041
+27.812
+14.029
+94.306
+24.343
+20.319
+FLUX (n = 50)
+4.0
+1.2
+7.309
+33.806
+23.570
+10.450
+94.856
+24.219
+20.228
+Table A2: Sensitivity to α and γ on the same 50-example subset used in Table 3. Every row aggregates all 50 examples. Daggers
+mark the configurations used in the main experiments. Structure and LPIPS are reported at 103 scale, MSE at 104 scale, and
+SSIM at 102 scale.
+Method
+nmax
+Dist.↓
+PSNR↑
+LPIPS↓
+MSE↓
+SSIM↑
+CLIP-W↑
+CLIP-E↑
+FlowEdit
+15
+3.71
+31.49
+31.53
+12.41
+92.13
+24.23
+21.33
+FlowEdit
+22
+7.60
+28.59
+46.14
+22.59
+90.37
+25.33
+22.22
+FlowEdit
+33
+23.48
+23.25
+93.41
+69.19
+85.14
+26.78
+23.56
+CEF
+15
+2.00
+34.39
+20.28
+7.09
+93.49
+23.70
+21.06
+CEF
+22
+3.86
+33.81
+21.58
+8.03
+93.33
+24.52
+21.75
+CEF
+33
+9.91
+32.72
+24.72
+11.26
+92.98
+25.52
+22.91
+Table A3: Results for FlowEdit and CEF on all 700 PIE-Bench examples at nmax ∈{15, 22, 33}. Structure and LPIPS are
+reported at 103 scale, MSE at 104 scale, and SSIM at 102 scale.
+E
+Additional Qualitative Results
+Figure A1 provides additional fixed-configuration comparisons beyond the four cases in Figure 5.
+
+
+A plate with fruits  →  A plate with pizza
+A stream in a lush green forest  →  A road in a lush green forest
+A rusty car  →  A shiny car
+Santa with a laughing face  →  Santa with an angry face
+An arctic sky  →  A castle in the arctic sky
+A woman with flowers in her hair  →  A woman with snakes in her hair
+A crescent moon in the night sky  →  A golden crescent moon in the night sky
+A dog looking at the camera  →  A dog with a red collar looking at the camera
+A woman in a red cloak in the woods with a bat  →  A woman in a red cloak in the woods
+A cat with a chef hat and a pie  →  A cat with a chef hat
+SD3.5 Medium
+FLUX
+Source
+FlowEdit
+FlowAlign
+DirectEdit
+SAM-Flow
+CEF
+FlowEdit
+DNAEdit
+DirectEdit
+CEF
+Figure A1: Additional qualitative comparisons on PIE-Bench. The same edits are compared under the fixed SD3.5 Medium and
+FLUX configurations used in the main experiments.
+
+
+F
+Failure Cases and Limitations
+Figure A2 shows two representative failures with their post-hoc field diagnostics. In the example involving a spatial relation,
+the grounding phrase cups places responsibility on the surrounding cups rather than the central clock hands identified by the
+benchmark edit region. Although the raw field contains a response around the clock hands, the constrained field attenuates it;
+the hands remain near their source pose while the cups are altered. This illustrates that noun-grounded responsibility can miss
+the visual carrier of a relational change.
+In the deletion example, responsibility overlaps the cat and the constrained field is localized to that region. The cat is removed,
+but the vacated region is completed with painting tools instead of a clean continuation of the scene. This is a scene-completion
+ambiguity rather than a localization failure: spatial responsibility determines where the model may edit, but it does not uniquely
+determine content that was occluded by the removed object.
+Source
+CEF
+GT region
+Responsibility
+Raw field
+Constrained field
+(a) Relational pose  Change the number of coffee cups to indicate 6 o'clock
+(b) Object deletion  Remove the cat
+Figure A2: Two representative CEF failures on SD3.5. The ground-truth (GT) edit regions are included solely as post-hoc
+diagnostic references. Responsibility is shown in red; raw and constrained edit-field path lengths are shown in orange with a
+shared scale within each example.

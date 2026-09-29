@@ -1,0 +1,230 @@
+Title: RefCompose: Multi-Reference Image Generation via LoRA-Conditioned Diffusion
+
+URL Source: https://arxiv.org/pdf/2609.32389v1
+
+Published Time: Tue, 29 Sep 2026 01:06:30 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# RefCompose: Multi-Reference Image Generation via LoRA-Conditioned Diffusion 
+
+Sai Sri Teja Kuppa 1, Parth Shinde 1,2, Priyadharsan Balaji S 1,2, Jinka Harshavardhan 1, and Sriprabha Ramanarayanan 1 
+
+> 1
+
+Eros Innovation, India  
+
+> 2
+
+Indian Institute of Technology Madras, India 
+
+Abstract. Filmmakers and visual artists routinely need to compose multiple references, actors, locations, props, cultural elements, into a single coherent shot, but existing tools either fail to scale past a handful of references or destroy fine grained subject identity in the process, since per reference tokenization scales memory linearly with reference count 
+
+N and generated content often departs from the given references rather than reproducing them. We propose RefCompose , a pixel space com-positional conditioning framework that decouples where things go from 
+
+what they look like, via a single fixed resolution reference canvas that keeps conditioning size constant regardless of reference count. Spatial lay-out is induced at inference time from a frozen diffusion transformer and extracted via Grounding DINO, requiring no LLM or dedicated layout model, while dual stream LoRA adapters inject a layout derived depth map and the encoded canvas through separate low rank streams, disen-tangling geometric scaffolding from localized appearance. On the Dense Layout protocol, RefCompose consistently outperforms layout based and state of the art multi reference baselines on color, texture, shape, spatial accuracy, and identity/content preservation at higher reference counts, all with constant inference memory, making it a practical building block for multi subject cinematic composition at production scale. 
+
+Keywords: Diffusion Models · Image Generation · LoRA arXiv:2609.32389v1 [cs.CV] 26 Sep 2026 2 S. S. T. Kuppa et al.  
+
+> Fig. 1: Existing approaches suffer from memory overhead scaling linearly with reference count and inability to preserve subject appearance without bounding-box supervision. RefCompose resolves these via a fixed-resolution reference canvas encoding arbitrary references at constant token cost, and layout induced directly from a structured text prompt via dense visual cues.
+
+## 1 Introduction 
+
+Controllable image synthesis has emerged as a central challenge in modern generative modelling, with applications spanning advertising, cinematic pre-visualisation, and synthetic data production. In the context of movie concept generation using text-to-image (T2I) diffusion models, a single composite frame serves as the critical blueprint across various stages of production, bridging ab-stract concepts and final visual execution. This visual reference must faithfully reproduce the appearance of specific actors, real-world locations, cultural aes-thetics, and narrative objects [5, 25–27]. Existing T2I methods face significant limitations when textual prompts are the sole control signal. Text prompts often require iterative refinement to en-code texture, identity, and style simultaneously across multiple subjects; yet arriving at a prompt that reliably captures all these attributes under heteroge-neous data conditions remains a non-trivial challenge. Furthermore, pretrained models underrepresent certain concepts (e.g., cultural), leaving gaps in the com-mon vocabulary due to inherent bias in the training data distribution. This gap undermines the composite image generation through text alone and limits the broader applicability of controllable image generation. Layout-to-Image genera-tive models [7, 13, 15, 22, 29, 34] use bounding-box layouts to pair spatial coordi-nates with localized prompts alongside a global prompt. However, these sparse region-level descriptions still fail to reconstruct intended appearances under com-plex occlusion scenarios faithfully. These challenges highlight that dense visual instance cues provide reliable multimodal content, ensuring subject alignment, positioning, and preserving semantic attributes in composite image generation. Recent reference-based generation methods scale to multiple subjects, ad-dressing cultural and ethnic fidelity gaps left by text-only approaches [8, 14, 24, 26, 27, 30], but encoding references as independently concatenated token se-quences causes token budget to grow linearly, becoming prohibitive beyond four to six images, especially at high resolution [5, 26, 27, 30, 31]. Attention-based al-ternatives like QKV injection avoid this but remain spatially imprecise, with appearance leaking across object boundaries and inversion-based reconstruction deviating from the reference even at conservative noise levels [9, 19, 23]. We ob-serve that token-scaling stems from the representation, not multi-reference gen-eration itself: RefCompose instead compresses any number of reference images onto a single fixed-resolution canvas in pixel space, keeping token count constant (Figure 1). A coarse prompt-induced layout from the frozen diffusion transformer yields a monocular depth map for geometric guidance without extra supervision; the canvas and depth map, encoding appearance and structure respectively, are RefCompose 3
+
+injected via a LoRA-based conditioning framework for parameter-efficient adap-tation. Our contributions: 1. RefCompose , a multimodal framework combining spatial compositional conditioning and textual prompts for multi-reference generation, via a canvas-based multi-reference representation that eliminates token explosion at constant memory cost. 2. A decoupled structure-appearance conditioning scheme where a depth map controls global geometry and the reference canvas injects localized appearance, both aligned to the same spatial layout. 3. A prompt-induced layout , where a generic composition prompt in-duces a coarse multi-subject layout from a frozen diffusion transformer with no bounding-box supervision or dedicated layout model, and a depth map derived from it provides geometric guidance throughout denoising. 
+
+## 2 Related Work 
+
+Reference-guided image synthesis. Conditioning generation on reference images has a long history in diffusion literature [5, 8, 12, 21, 22, 29, 32]. IP-Adapter [31] couples image and text conditioning via cross-attention, enabling subject-driven generation from a single reference, and follow-up methods share a common struc-ture of encoding each reference independently and injecting it as an additional token sequence [12, 14, 21, 24], so token cost grows with reference count, an issue made explicit by architectures that concatenate multiple VAE encodings, which overflow GPU memory beyond a small number of references [5, 25–27, 30, 31]. Our canvas-based representation avoids this by keeping token count constant regardless of reference count. 
+
+Layout-conditioned generation. Spatial control has been pursued via layout pri-ors of various kinds [7, 13, 15, 22, 29, 32, 34]: LayoutGPT [7] uses an LLM to generate bounding boxes for conditioning, LayoutDiffusion [34] models spatial arrangement distributions directly, and GLIGEN [13] injects grounding tokens at specified locations via gated self-attention for object-level placement. These add pipeline complexity; we find an explicit layout component unnecessary, since state-of-the-art DiTs can use a generic composition prompt for coarse layout suf-ficient for canvas placement and depth extraction; a comparison against special-ized layout generators on COCO-GR is provided in the supplementary material. 
+
+Depth, structural, and LoRA-based conditioning. ControlNet [32] showed pre-computed spatial signals (depth, canny edges, pose) provide strong structural guidance for UNet-based diffusion via a trainable parallel encoder, though adapt-ing this to DiTs is non-trivial given the architectural shift from UNet. EasyCon-trol [33] bridges this gap with a lightweight Condition Injection LoRA integrating spatial conditioning into DiT attention via causal attention and KV caching, achieving plug-and-play control without retraining; we build on EasyControl as the conditioning backbone, using depth maps from layout-induced genera-tions for geometric guidance while leaving base weights intact. More broadly, 4 S. S. T. Kuppa et al. 
+
+LoRA [10] is the standard mechanism for efficient fine-tuning, injecting style, identity, and appearance features without modifying base parameters, and offers more stable transfer than attention manipulation strategies like QKV injection or self-attention swapping, which are sensitive to target object footprint and inconsistent for small subjects [9, 19, 23]. We also find inversion-based pipelines fragile: above 0.5 noise strength, structural distortion and fidelity loss become severe. EasyControl’s Condition Injection LoRA avoids both failure modes via rank-decomposed weight updates rather than activation manipulation. 
+
+Multi-condition generation. Handling multiple conditioning signals is non-trivial since signals may conflict in attention layers. Most closely related is Canvas-to-Image [6], which performs compositional generation from a multimodal canvas but lacks explicit orientation control and degrades in densely cluttered scenes; Mixture-of-Experts adapters [28] and composable diffusion [17] address multi-signal conditioning via routing or score composition, typically at the cost of inference complexity or per-condition fidelity. We instead adopt a disentangled design: EasyControl [33] separates spatial and subject signals via position-aware training and KV caching, without mutual interference, and our method exploits this to jointly inject depth (structure) and canvas (appearance) within a single forward pass. 
+
+## 3 Methodology 
+
+Multi-reference image generation must preserve each reference’s identity while keeping conditioning cost fixed regardless of reference count. Token-concatenation approaches fail here, since each added reference appends a new encoding se-quence, causing linear growth in attention complexity and cross-reference inter-ference. We decompose controllable generation into two orthogonal sub-problems: 
+
+where each object appears (structure) and what it looks like (appearance). Struc-ture is encoded via a layout-derived geometric scaffold; appearance is grounded locally via a fixed-resolution reference canvas. Both signals are injected into a frozen diffusion transformer via decoupled LoRA streams, keeping token com-plexity constant regardless of reference cardinality. 
+
+Notation. Let R = {I1, . . . , I N } be N RGB references, p an object-centric prompt with positional language, and ( H, W ) the output resolution. Fθ is the frozen diffusion transformer under T =40 flow-matching steps; E, E−1 the VAE encoder/decoder; and r the LoRA rank (distinct from the reference set R). 
+
+3.1 Prompt-Induced Layout Generation 
+
+Rather than invoking an external layout model or LLM, we derive spatial struc-ture from the frozen diffusion transformer Fθ itself. We restrict p to compo-sitional and relational language (scene type, camera framing, and inter-subject RefCompose 5 
+
+> Fig. 2: Overview of RefCompose: prompt-induced layout generation, correspondence-guided canvas construction, and decoupled structure-appearance conditioning via dual LoRA streams in the MMDiT blocks, preserving full-resolution identity at constant token complexity.
+
+placement; e.g. , “a person on the left, a product on the right”) and delegate pho-tometric identity to the reference canvas (Section 3.2). This splits conditioning into orthogonal channels: p specifies where subjects belong; the canvas specifies 
+
+what they look like. Text-conditioned flow-matching over T =40 denoising steps yields a coarse layout image: 
+
+L = Fθ (p) ∈ RH×W ×3. (1) Open-vocabulary detector G (Grounding DINO [18]) localises each reference in 
+
+L, producing boxes that tie references to output regions: 
+
+B = G(L) = {b1, . . . , b N }, bk = ( xk, y k, w k, h k), (2) where bk is the region assigned to reference Ik. Because depth Ds = Ψ (L) (Sec-tion 3.3) and canvas assembly (Section 3.2) both read from the same L and B,6 S. S. T. Kuppa et al. 
+
+geometric and appearance conditioning share one spatial frame, avoiding mis-alignment that would arise if layout, boxes, and depth were computed indepen-dently. 
+
+3.2 Reference Canvas Representation 
+
+Sequential encoding (independently tokenising and concatenating each reference) scales linearly with N and forces incompatible token streams at every attention layer. We instead use a reference canvas C ∈ RH×W ×3: a fixed-resolution image in which each reference occupies its expected output region, built in pixel space to preserve texture and identity. Each reference is resized and placed at its box: 
+
+ϕ(Ik, b k) = Resize( Ik, h k × wk) placed at bk. (3) When boxes overlap, the nearer reference (by depth, Section 3.3) overwrites the farther one. C is encoded once by the VAE: 
+
+zC = E(C) ∈ R(H/f )×(W/f )×c, (4) with f the VAE downsampling factor ( f = 8 typically) and c the latent channel dimension. Thus |zC | = const for all N , versus sequential schemes costing N ·
+
+(H/f )( W/f )c, capping GPU memory independent of reference count. 
+
+3.3 Geometric Scaffolding via Depth Estimation 
+
+Compositing alone lacks depth ordering, surface orientation, and occlusion cues needed for 3D plausibility. We estimate a monocular depth map from the layout image: 
+
+Ds = Ψ (L) ∈ RH×W , (5) using Depth Anything 3 [16]. Deriving Ds from L (rather than the references) ensures L, B, and Ds share an exact spatial frame. Since Ψ runs on generated layouts, not real photos, we treat its output as a relative geometric prior, not metric ground truth. For each reference k, we compute mean depth ¯dk = mean( Ds | bk) and sort far-to-near as permutation π. The canvas is assembled by sequential overwrite compositing: 
+
+C = Paste (ϕ(Iπ(1) , b π(1) ), . . . , ϕ (Iπ(N ), b π(N ))) , (6) overwriting overlaps with the nearer reference, a practical ordering signal, not an infallible occlusion oracle. 
+
+Ds is VAE-encoded for compatibility with latent denoising: 
+
+zDs = E(Ds) ∈ R(H/f )×(W/f )×c, (7) carrying occlusion order, surface orientation, and spatial extent in a form com-mensurate with zC .RefCompose 7
+
+3.4 Decoupled Structure-Appearance (DSA) LoRA 
+
+Naively concatenating zDs and zC lets depth features leak into appearance and vice versa. We instead route each through a dedicated low-rank module. For frozen projection W ∈ Rdout ×din in the double-stream attention blocks, each LoRA branch learns: 
+
+∆W m = BmAm, Am ∈ Rr×din , Bm ∈ Rdout ×r , m ∈ { s, a }, (8) with rank r, s the structure branch ( zDs ), and a the appearance branch ( zC ). Effective projection: W + ∆W s + ∆W a, base W frozen. Starting from terminal latent zT , flow-matching sampling yields 
+
+ˆz0 = Fθ
+
+(p, z T , z C , z Ds ; ∆W s + ∆W a
+
+), T =40 , (9) where p provides semantic grounding, zDs the geometric scaffold, and zC lo-calised appearance, and 
+
+vθ
+
+(zt, t, p, z C , z Ds ; ∆W s + ∆W a
+
+) (10) denotes the learned velocity at step t. Output via VAE decoding: 
+
+ˆI = E−1(ˆ z0) ∈ RH×W ×3. (11) For training, let I denote the ground-truth target image and z0 = E(I) its latent encoding. We sample noise z1 ∼ N (0 , I ), timestep t ∼ U [0 , 1], and form the interpolated latent zt = (1 − t)z0 + tz 1. The LoRA adapters are trained by regressing vθ onto the constant rectified-flow velocity z1 − z0, i.e. by minimising the conditional flow-matching objective 
+
+LFM = Et, z 0, z 1
+
+[∥∥vθ
+
+(zt, t, p, z C , z Ds ; ∆W s + ∆W a
+
+) − (z1 − z0)∥∥22
+
+]
+
+, (12) where only ∆W s + ∆W a is updated while Fθ remains frozen. At inference, sam-pling starts from zT ∼ N (0 , I ) and integrates vθ over T =40 steps to obtain ˆ z0
+
+and decoded output ˆI.
+
+## 4 Experiments 
+
+4.1 Dataset Preparation Dataset Construction. We train on ultra high resolution cinematic imagery at 1280 × 720 resolution, drawn from a private dataset sourced from movies, where most object references are canonicalized to a neutral pose. We comple-ment this with a synthetic dataset generated using FLUX.2 [2], providing diverse object positions and orientations so the model learns pose variation while the real dataset supplies richer textures; further details are provided in the supple-mentary material. Our pipeline proceeds in five stages. First, each movie shot is passed through Qwen3-VL [1] to enumerate all objects present in the scene 8 S. S. T. Kuppa et al. 
+
+(actors, props, and landmarks). Second, Grounding DINO [18] takes these object descriptions as text prompts to detect corresponding bounding boxes, retaining only shots yielding more than four detections to ensure compositional density. Third, each detected crop is fed to FLUX.2 Dev [3] to synthesize a neutral-pose, neutral-lighting canonicalization, removing scene-specific pose and illumination variation. Fourth, we filter canonicalized outputs against their original crops us-ing DINO [4] cosine similarity, retaining a sample only if similarity exceeds 0 .90. Finally, retained shots are annotated again with Qwen3-VL, producing both scene-level and crop-level descriptions (Figure 3). This pipeline yields approxi-mately 50 ,000 samples drawn from 1 ,000 distinct films, together with additional synthetic samples. The final training corpus is evenly split between private cin-ematic and synthetic samples (50%/50%).  
+
+> Fig. 3: Overview of the dataset preparation pipeline. Objects are identified using Qwen3-VL, localized with Grounding DINO, canonicalized to a neutral pose and light-ing using FLUX.2 Dev [3], filtered via DINO [4] similarity, and finally annotated by Qwen3-VL.
+
+4.2 Inference Prompt Template 
+
+We instantiate the layout pipeline of Section 3.1 at 1280 × 720 with FLUX.2 Dev [3] as Fθ . For fair comparison, RefCompose and all baselines share one fixed template; bracketed slots are populated automatically from Qwen3-VL [1] scene and crop descriptions during benchmark evaluation (Section 4.4): 
+
+> A [shot type] of a [scene/environment] featuring [primary objects] arranged around [central subject], alongside [secondary objects/details] placed naturally throughout the scene. Captured from a [camera perspective] using a [lens type], with [lighting condition], [mood/style descriptors], and [photorealistic/cinematic rendering style].
+
+Because box sizes in L are prompt-driven, relative subject prominence can be steered through shot type and scale descriptors in the template. When N is large, each bk covers a smaller canvas fraction, so ϕ(Ik, b k) downsamples references into tighter patches and within-canvas identity detail degrades even though |zC | stays fixed; we assign larger relational scale to priority subjects in p so they receive proportionally larger boxes in L.
+
+4.3 RefCompose LoRA Training 
+
+We extend EasyControl [33]’s Condition Injection LoRA to inject depth (struc-ture) and a reference-canvas latent zC (appearance) into a frozen FLUX.2 Dev diffusion transformer [3] via separate low-rank updates ∆W = BA with rank RefCompose 9
+
+r=32 in the double-stream attention blocks; causal attention and KV caching keep the two streams disentangled, with the subject LoRA loaded before the depth LoRA at inference. Training runs for 50 ,000 iterations at 1280 × 720 in three stages while base weights remain frozen: (1) 10 ,000 iterations on depth with a black canvas, initial-ising the structure branch before appearance cues are introduced; without this warm-up the model tends to use the canvas stream to compensate for geometry, reducing depth/appearance separation; (2) 20 ,000 iterations with crops placed at Grounding DINO [18] boxes on the ground-truth image, teaching appearance grounding under clean placements; (3) the remaining iterations add photometric jitter and mild spatial perturbations (affine warps, small translations) to crop placement, improving robustness to noisier boxes from the inference-time lay-out pipeline. Because both branches condition on a single encoded canvas rather than per-reference token streams, GPU memory at inference stays approximately constant with reference count. 
+
+4.4 Quantitative Analysis 
+
+Benchmark. We evaluate on the Dense Layout test split of InstanceAssem-ble [29]: 5 ,000 held-out composites ( ∼8.3 annotated objects/image across people, props, environments, and product-like assets) with ground-truth boxes and per-instance text descriptions. All metrics in Tables 1 and 2 are computed on this split unless stated otherwise. 
+
+Evaluation protocol and GPU memory. All methods run on a single NVIDIA H100 at  1280 × 720  using the prompt template from Section 4.2. For each image, we select five object crops from the largest ground-truth boxes by area and canon-icalize them via FLUX.2 Dev to a neutral pose, viewpoint, and lighting, consis-tent with the training data construction procedure (Section 4.1); identity must therefore be reconstructed from this re-rendered appearance rather than copied from the original target pixels. Scene prompts are generated with Qwen3-VL [1], so that all methods receive identical textual and visual information. CreatiLay-out and InstanceAssemble [29] receive only Dense Layout boxes and text, while UNO [27], XVerse [5], and RefCompose additionally receive the canonicalized reference crops. Among all baselines, UNO and XVerse are the most architec-turally compatible with RefCompose and achieve the strongest reference-image performance, so we benchmark primarily against them. Region-wise metrics use object localizations from Grounding DINO [18]. As Table 1 shows, token-based methods scale in memory with reference count and go out-of-memory at  N = 6 , whereas RefCompose remains approximately constant via canvas compression. Baselines are therefore reported at  N =5 , while Table 2 additionally reports RefCompose at  N > 5 to demonstrate scalability without added memory cost. In this  N > 5 setting, the reference count follows the per-image annotation count from Dense Layout (capped at  N = 15 ); Table 2 thus averages over image-varying  N for RefCompose, whereas baseline rows use a uniform cap of  N =5 .10 S. S. T. Kuppa et al. 
+
+Table 1: Peak GPU memory (GB) at inference for varying reference count N (batch size 1; single H100; 1280 × 720). UNO [27] and XVerse [5] scale with reference count and fail at N =6; RefCompose stays constant via canvas compression. OOM = out-of-memory. 
+
+Method N =2 N =4 N =6 CreatiLayout [22] 34.7 34.8 34.9 InstanceAssemble [29] 35.2 35.3 35.4 UNO [27] 60.1 74.8 OOM XVerse [5] 59.6 75.3 OOM 
+
+RefCompose 69.0 69.0 69.0 Table 2: Quantitative comparison on the Dense Layout test set [29] (5 ,000 images; mean 8 .3 objects/image). Baselines use five references (UNO/XVerse cannot run be-yond this on one H100); the N > 5 RefCompose row uses additional references. Higher is better. Bold = best overall; improvement row compares RefCompose ( N > 5) against the strongest reference-image baseline per metric.                                                                             
+
+> Method Region-wise Quality Global-wise Quality Spatial ↑Color ↑Texture ↑Shape ↑PICK ↑DINO ↑DINO refs ↑CLIP-I ↑CLIP-T ↑
+> Layout-only baselines
+> CreatiLayout [22] 0.726 0.487 0.518 0.501 0.222 0.696 0.482 0.727 0.335
+> InstanceAssemble [29] 0.790 0.590 0.620 0.610 0.221 0.686 0.457 0.703 0.330
+> Reference-image baselines
+> UNO [27] 0.750 0.500 0.530 0.520 0.225 0.821 0.548 0.742 0.329 XVerse [5] 0.665 0.421 0.442 0.428 0.218 0.686 0.506 0.731 0.302
+> RefCompose (N=5) 0.908 0.826 0.854 0.849 0.229 0.959 0.613 0.766 0.327
+> vs. best reference baseline +0.172 +0.338 +0.336 +0.341 +0.006 +0.150 +0.077 +0.036 0.000
+> RefCompose (N > 5) 0.922 0.838 0.866 0.861 0.231 0.971 0.625 0.778 0.329
+
+Following LayoutSAM-Eval [29], we report region-wise quality (Spatial, Color, Texture, Shape: placement accuracy and appearance/structure fidelity) and global-wise quality (PICK [11], CLIP-T [20] for image-text alignment; DINO [4] for composition similarity; DINO refs for reference consistency; CLIP-I [20] for image-level similarity). Higher is better throughout. Layout-conditioned baselines (CreatiLayout, InstanceAssemble) receive no visual reference, so photometric metrics mainly reflect the value of reference conditioning; UNO [27] and XVerse [5] are the more architecturally matched comparisons. 
+
+Comparison to token-based reference methods. RefCompose outperforms token-based methods UNO [27] and XVerse [5], with higher spatial accuracy (0.908 vs. 0.750), colour fidelity (0.826 vs. 0.500), and reference alignment (DINO refs : 0.613 vs. 0.548). Canvas conditioning also holds memory roughly constant, whereas token concatenation scales linearly with reference count, underscoring the benefit of decoupling appearance and layout cues in multi-object generation. 
+
+Comparison to layout-conditioned methods. CreatiLayout and InstanceAssem-ble score well on text alignment, with CreatiLayout achieving the top CLIP-T (0 .335) and InstanceAssemble the higher spatial score (0 .790), showing that ex-plicit box supervision aids placement even without reference pixels. Their much RefCompose 11  
+
+> Fig. 4: Qualitative comparison of RefCompose against CreatiLayout, InstanceAssem-ble, UNO, and XVerse across seven multi-subject scenes (ground truth leftmost). Layout-conditioned baselines hallucinate appearance; token-based methods show sub-ject drift and detail loss under multi-object composition. RefCompose reproduces both spatial arrangement and photometric identity most faithfully.
+
+lower colour, texture, and shape scores reflect the absence of reference pixels rather than an architectural limitation, since appearance must be derived from text alone. RefCompose’s photometric and DINO refs gains are thus best judged against UNO and XVerse, which share the same memory-bounded regime and reference crops. 
+
+Global preference and text alignment. PICK scores are tight (0.218 for XVerse to 0.229 for RefCompose), making the larger spatial, photometric, and DINO refs 
+
+gaps more informative. RefCompose’s CLIP-T (0 .327) is slightly below UNO (0 .329) and the layout-only baselines, suggesting text-only alignment is com-plementary to, not the primary indicator of, reference-grounded composition quality. 
+
+4.5 Qualitative Analysis 
+
+Figure 4 corroborates the quantitative trends across seven multi-subject scenes. CreatiLayout and InstanceAssemble place objects coherently from boxes and text but hallucinate colour, texture, and identity, especially for distinctive ma-terials where language is a poor substitute for pixels. UNO [27] and XVerse [5] 12 S. S. T. Kuppa et al. 
+
+transfer some reference appearance yet show subject drift and softened fine detail under multi-object layouts in our qualitative examples. RefCompose composites references at full resolution on a shared canvas and conditions denoising with an aligned depth map, yielding subjects at correct locations with faithful photomet-ric detail; overlapping instances are best separated where depth discontinuities match canvas boundaries and the dual LoRA streams limit cross-region leakage. We do not include Canvas-to-Image [6] in this comparison because its source code is not publicly available and it lacks disentangled dual-LoRA control over structure and appearance. Our ablation confirms that neither modality alone suf-fices, and that merging depth and canvas through a single LoRA stream causes cross-signal overwriting that degrades either geometric placement or textural fi-delity. The lower CLIP-T score relative to layout-conditioned baselines reflects an expected tradeoff: canvas conditioning can shift generation toward reference fidelity at a minor cost to global text alignment, so spatial and DINO refs met-rics are more diagnostic for reference-grounded composition. Residual failures appear when prompt-induced layouts imply ambiguous occlusion or implausible depth, which bounds geometric plausibility even though the depth prior corrects most floating and interpenetration artefacts relative to layout-only baselines. 
+
+Multi-reference flexibility. Figure 5 evaluates two distinct reference sets for the same scene configuration. A FLUX.2 [2]-generated layout image defines where each subject should appear, while the estimated depth map supplies additional geometric cues for relative orientation and placement. By conditioning jointly on the reference canvas and depth prior, RefCompose synthesises coherent out-puts for both reference sets, preserving the intended spatial arrangement while transferring the appearance of each supplied subject. RefCompose 13 
+
+Fig. 5: Qualitative example with two different reference sets for the same scene layout. The prompt-induced canvas and aligned depth map provide shared structural priors, while the reference images specify subject appearance. RefCompose generates seman-tically consistent composites for both reference configurations. 
+
+Depth-controlled orientation. Figure 6 further isolates the role of the depth prior by holding the reference assets fixed and varying only the depth map. In the first example, the depth map describes a conventional arrangement in which objects are naturally placed around a sweet shop. In the second, the depth map is edited to depict a dynamic scene with floating debris, airborne bricks, and scattered objects. Despite identical reference inputs, the generated results follow the geometry and orientation encoded by each depth map, demonstrating that RefCompose can control scene dynamics and spatial arrangement while preserving reference identity. 
+
+Fig. 6: Depth-controlled generation with identical reference assets. Changing only the depth map alters object orientation and scene dynamics, from a static sweet-shop arrangement to a chaotic environment with floating debris, while reference appearance remains stable. 
+
+4.6 Ablation Study 
+
+Fig. 7: Ablation study on an indoor multi-object scene. Removing either the reference canvas or depth prior degrades identity preservation or geometric consistency, while the full model preserves object appearance and spatial layout by leveraging both con-ditioning signals. 14 S. S. T. Kuppa et al. 
+
+Figure 7 ablates the reference canvas and depth prior (reference crops shown above). Removing the canvas yields plausible layouts but hallucinated colours, textures, and identities; removing depth retains partial appearance yet degrades placement and occlusion (e.g., the bat and bed remain recognizable but are ar-ranged implausibly). The full model preserves both appearance and geometry via decoupled LoRA streams; quantitative metrics are reported in the supple-mentary material. 
+
+## 5 Conclusion 
+
+This work addresses multi-reference image generation under a fixed memory cost, where token concatenation and QKV injection approaches struggle to pre-serve appearance fidelity and spatial precision, and text-only conditioning fails to maintain cultural and ethnic fidelity as the number of references and scene heterogeneity grow. RefCompose introduces a pixel-space compositional condi-tioning framework that encodes an arbitrary number of reference images onto a single fixed-resolution canvas, decoupling token complexity from reference cardi-nality. Spatial layout is induced from a structured text prompt through a frozen diffusion transformer, with Grounding DINO used to extract boxes from the generated layout rather than relying on annotated training boxes or a dedicated layout-generation model. A dual-stream LoRA injects depth and appearance sig-nals through disentangled low-rank adaptation paths, enforcing geometric consis-tency and subject identity simultaneously. Quantitative evaluation demonstrates that RefCompose consistently outperforms reference-image baselines across ap-pearance fidelity and spatial accuracy metrics, while maintaining constant infer-ence memory regardless of reference count. 
+
+## 6 Limitations 
+
+RefCompose depends on a chain of upstream components, including prompt-induced layout L, Grounding DINO localisation, and a Depth Anything 3 map, whose errors compound when the structured template (Section 4.2) is ambigu-ous, when detections are missed or misaligned on generated images, or when monocular depth mis-orders overlapping regions on synthetic layouts. Although canvas encoding avoids linear token growth with N , each reference is still resized to a fixed H × W patch, so large object counts or small assigned boxes atten-uate fine-grained identity before encoding, and viewpoint mismatch between L
+
+and the reference crops (e.g., bird’s-eye depth with lateral portraits) can yield contradictory depth and appearance cues. Our quantitative study caps previous methods at five references for fair comparison with memory-limited baselines, while reporting an additional RefCompose-only N > 5 setting. 
+
+## References 
+
+> 1. Bai, S., Cai, Y., Chen, R., Chen, K., Chen, X., Cheng, Z., Deng, L., Ding, W., Gao, C., Ge, C., Ge, W., Guo, Z., Huang, Q., Huang, J., Huang, F., Hui, B., Jiang, S.,
+
+RefCompose 15 Li, Z., Li, M., Li, M., Li, K., Lin, Z., Lin, J., Liu, X., Liu, J., Liu, C., Liu, Y., Liu, D., Liu, S., Lu, D., Luo, R., Lv, C., Men, R., Meng, L., Ren, X., Ren, X., Song, S., Sun, Y., Tang, J., Tu, J., Wan, J., Wang, P., Wang, P., Wang, Q., Wang, Y., Xie, T., Xu, Y., Xu, H., Xu, J., Yang, Z., Yang, M., Yang, J., Yang, A., Yu, B., Zhang, F., Zhang, H., Zhang, X., Zheng, B., Zhong, H., Zhou, J., Zhou, F., Zhou, J., Zhu, Y., Zhu, K.: Qwen3-VL technical report. arXiv preprint arXiv:2511.21631 (2025) 2. Black Forest Labs: FLUX.2: Frontier visual intelligence (2025), https://bfl.ai/ blog/flux-2 
+
+3. Black Forest Labs: FLUX.2 [dev] (2026), https://huggingface.co/black-forest-labs/FLUX.2-dev 
+
+4. Caron, M., Touvron, H., Misra, I., Jégou, H., Mairal, J., Bojanowski, P., Joulin, A.: Emerging properties in self-supervised vision transformers. arXiv preprint arXiv:2104.14294 (2021) 5. Chen, B., Zhao, M., Sun, H., Chen, L., Wang, X., Du, K., Wu, X.: XVerse: Consis-tent multi-subject control of identity and semantic attributes via DiT modulation. arXiv preprint arXiv:2506.21416 (2025) 6. Dalva, Y., Qian, G.G., Goldenberg, M., Chen, T.S., Aberman, K., Tulyakov, S., Yanardag, P., Wang, K.C.J.: Canvas-to-image: Compositional image generation with multimodal controls (2025), https://arxiv.org/abs/2511.21691 
+
+7. Feng, W., Zhu, W., Fu, T.j., Jampani, V., Akula, A., He, X., Basu, S., Wang, X.E., Wang, W.Y.: LayoutGPT: Compositional visual planning and generation with large language models. arXiv preprint arXiv:2305.15393 (2023) 8. He, Y., et al.: DreamO: Unified image customization with conditions orthogonal-ization. arXiv preprint arXiv:2504.16395 (2025) 9. Hertz, A., Mokady, R., Tenenbaum, J., Aberman, K., Pritch, Y., Cohen-Or, D.: Prompt-to-prompt image editing with cross attention control. In: International Conference on Learning Representations (2023) 10. Hu, E.J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., Chen, W.: LoRA: Low-rank adaptation of large language models. International Conference on Learning Representations (2022) 11. Kirstain, Y., Polyak, A., Singer, U., Matiana, S., Penna, J., Levy, O.: Pick-a-pic: An open dataset of user preferences for text-to-image generation. In: Advances in Neural Information Processing Systems (2023) 12. Kumari, N., Zhang, B., Zhang, R., Shechtman, E., Zhu, J.Y.: Multi-concept cus-tomization of text-to-image diffusion. In: Proceedings of the IEEE/CVF Confer-ence on Computer Vision and Pattern Recognition. pp. 1931–1941 (2023) 13. Li, Y., Liu, H., Wu, Q., Mu, F., Yang, J., Gao, J., Li, C., Lee, Y.J.: GLIGEN: Open-set grounded text-to-image generation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 22511–22521 (2023) 14. Li, Z., Cao, M., Wang, X., Qi, Z., Cheng, M.M., Shan, Y.: PhotoMaker: Customizing realistic human photos via stacked id embedding. arXiv preprint arXiv:2312.04461 (2024) 15. Lian, L., Li, B., Yala, A., Darrell, T.: Llm-grounded diffusion: Enhancing prompt understanding of text-to-image diffusion models with large language models. arXiv preprint arXiv:2305.13655 (2023) 16. Lin, H., Chen, S., Liew, J.H., Chen, D.Y., Li, Z., Shi, G., Feng, J., Kang, B.: Depth anything 3: Recovering the visual space from any views. arXiv preprint arXiv:2511.10647 (2025) 17. Liu, N., Li, S., Du, Y., Torralba, A., Tenenbaum, J.B.: Compositional visual gen-eration with composable diffusion models. In: European Conference on Computer Vision. pp. 423–439 (2022) 16 S. S. T. Kuppa et al. 18. Liu, S., Zeng, Z., Ren, T., Li, F., Zhang, H., Yang, J., Li, C., Yang, J., Su, H., Zhu, J., et al.: Grounding DINO: Marrying DINO with grounded pre-training for open-set object detection. arXiv preprint arXiv:2303.05499 (2023) 19. Mokady, R., Hertz, A., Aberman, K., Pritch, Y., Cohen-Or, D.: Null-text inver-sion for editing real images using guided diffusion models. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 6228– 6238 (2023) 20. Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G., Askell, A., Mishkin, P., Clark, J., Krueger, G., Sutskever, I.: Learning transferable visual models from natural language supervision. In: International Conference on Machine Learning (2021) 21. Ruiz, N., Li, Y., Jampani, V., Pritch, Y., Rubinstein, M., Aberman, K.: Dream-Booth: Fine tuning text-to-image diffusion models for subject-driven generation. Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recog-nition pp. 22500–22510 (2023) 22. Tang, H., et al.: CreatiLayout: Siamese multimodal diffusion transformer for cre-ative layout-to-image generation. arXiv preprint arXiv:2412.03859 (2024) 23. Tumanyan, N., Geyer, M., Bagon, S., Dekel, T.: Plug-and-play diffusion features for text-driven image-to-image translation. In: Proceedings of the IEEE/CVF Con-ference on Computer Vision and Pattern Recognition. pp. 1921–1930 (2023) 24. Wang, Q., Bai, X., Wang, H., Qin, Z., Chen, A.: InstantID: Zero-shot identity-preserving generation in seconds. arXiv preprint arXiv:2401.07519 (2024) 25. Wang, X., et al.: MS-Diffusion: Multi-subject zero-shot image personalization with layout guidance. arXiv preprint arXiv:2406.07209 (2024) 26. Wu, C., Zheng, P., Yan, R., Xiao, S., Luo, X., Wang, Y., Li, W., Jiang, X., Liu, Y., Zhou, J., Liu, Z., Xia, Z., Li, C., Deng, H., Wang, J., Luo, K., Zhang, B., Lian, D., Wang, X., Wang, Z., Huang, T., Liu, Z.: OmniGen2: Exploration to advanced multimodal generation. arXiv preprint arXiv:2506.18871 (2025) 27. Wu, S., Huang, M., Wu, W., Cheng, Y., Ding, F., He, Q.: Less-to-more generaliza-tion: Unlocking more controllability by in-context generation. In: Proceedings of the IEEE/CVF International Conference on Computer Vision (2025) 28. Wu, X., Huang, S., Wei, F.: Mixture of LoRA experts. In: International Conference on Learning Representations (2024) 29. Xiang, Q., Sun, S., Li, B., Song, D., Li, H., Chen, N., Tang, X., Hu, Y., Zhang, J.: InstanceAssemble: Layout-aware image generation via instance assembling atten-tion. arXiv preprint arXiv:2509.16691 (2025) 30. Xiao, S., Wang, Y., Zhou, J., Yuan, H., Xing, X., Yan, R., Wang, S., Huang, T., Liu, Z.: OmniGen: Unified image generation. arXiv preprint arXiv:2409.11340 (2024) 31. Ye, H., Zhang, J., Liu, S., Han, X., Yang, W.: IP-Adapter: Text compatible im-age prompt adapter for text-to-image diffusion models. In: Advances in Neural Information Processing Systems (2023) 32. Zhang, L., Rao, A., Agrawala, M.: Adding conditional control to text-to-image diffusion models. In: Proceedings of the IEEE/CVF International Conference on Computer Vision. pp. 3836–3847 (2023) 33. Zhang, Y., Yuan, Y., Song, Y., Wang, H., Liu, J.: EasyControl: Adding efficient and flexible control for diffusion transformer. In: Proceedings of the IEEE/CVF International Conference on Computer Vision (2025) 34. Zheng, G., Zhou, X., Li, X., Qi, Z., Shan, Y., Li, X.: LayoutDiffusion: Controllable diffusion model for layout-to-image generation. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 22490–22499 (2023)
