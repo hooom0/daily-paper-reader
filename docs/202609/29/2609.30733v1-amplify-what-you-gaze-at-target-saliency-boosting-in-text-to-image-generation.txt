@@ -1,0 +1,255 @@
+Title: Amplify What You Gaze At: Target Saliency Boosting in Text-to-Image Generation
+
+URL Source: https://arxiv.org/pdf/2609.30733v1
+
+Published Time: Mon, 28 Sep 2026 00:28:59 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+Preprint. 
+
+# AMPLIFY WHAT YOU GAZE AT: T ARGET SALIENCY 
+
+# BOOSTING IN TEXT -TO -I MAGE GENERATION 
+
+Shengqi Dang 1,2, Zhengxi Yu 1,2, Feilin Han 1,2, Xingyu Lan 2,3, Nan Cao 1,2∗
+
+> 1
+
+Tongji University 
+
+> 2
+
+Shanghai Innovation Institute 
+
+> 3
+
+Fudan University 
+
+## ABSTRACT 
+
+Text-to-image generation has advanced in controlling what, where, and how ob-jects appear, yet how visual attention is distributed among objects remains largely unexplored. In this paper, we introduce Target Saliency Boosting , a new task aimed at boosting the visual saliency of a specific object during text-to-image gen-eration without requiring any visual priors. Our key insight is that visual saliency is inherently relative: boosting the saliency of a target object also depends on the global saliency distribution across all objects in the scene. Based on this in-sight, we propose GazeME, a lightweight framework that uses saliency-marked prompts, inserting learnable marker tokens around object descriptions to indicate which objects to visually emphasize or suppress. To learn these markers, we con-struct a saliency-semantics dataset that associates objects in image–prompt pairs with object-level saliency scores, and propose Saliency Prior Marker Activation (SPMA), a saliency-aware stochastic marker activation strategy that exploits rel-ative saliency relationships for robust training. During inference, GazeME auto-matically inserts appropriate markers into the prompt, thereby directly enhancing the visual saliency of the target object. Extensive experiments demonstrate that GazeME effectively boosts target saliency while preserving both semantic align-ment and image quality. 
+
+## 1 INTRODUCTION 
+
+Text-to-image generation models have achieved remarkable success in synthesizing high-fidelity im-ages from text prompts, empowering creative workflows across design, advertising, and the visual arts. Yet semantic fidelity marks only the beginning of effective visual communication. For de-signers, the decisive question is not simply what appears in the frame, but what seizes the viewer’s attention first (Sutcliffe & Namoune, 2008). An advertisement must make its product stand out, and a story illustration must direct focus to its protagonist. This shifts the challenge beyond semantics to the dynamics of visual attention: semantics dictates what to generate, whereas attention orchestrates where the eye is drawn, which is important for memory retention (Santangelo, 2015), cognitive comprehension (Jamet et al., 2008), and emotional resonance (Subramanian et al., 2014). Visual saliency provides a standard approach for modeling human visual attention, using a saliency map to quantify the spatial distribution of human attention over an image (Kumain et al., 2025). While prior work has largely focused on predicting fixations from given images (Zhao et al., 2026; Kümmerer et al., 2016; Kroner et al., 2020), the inverse problem, generating images in which specified targets become visually salient, remains largely unexplored. A recent method, GazeFu-sion (Zhang et al., 2024), conditions text-to-image diffusion models on explicit saliency map inputs, aiming to generate images whose saliency distribution is consistent with the provided maps. How-ever, requiring users to manually specify meaningful saliency maps before image generation places a burden on them. This calls for more intuitive interaction paradigms that allow users to achieve saliency-driven generation with minimal explicit input. To address this, we introduce a task named Target Saliency Boosting in text-to-image generation, which offers an intuitive way to interact and control visual attention without explicit visual priors. 
+
+> ∗
+
+corresponding author 
+
+1arXiv:2609.30733v1 [cs.CV] 25 Sep 2026 Preprint. Given a text prompt in which a target object is explicitly described, the objective is to generate an image where the target-object region exhibits high visual saliency. However, achieving this goal presents several challenges. (1) Visual attention is complex, entangled across low-level contrast, global composition, and high-level semantics. Thus, traditional control methods are often biased, lacking precision for effective modulation. (2) Saliency is relative and context-dependent. Boosting a target may suppress other elements and distort composition, breaking scene coherence. (3) A generalizable dataset that provides text prompts and corresponding object-level saliency scores is currently unavailable, which precludes effective supervision for our task. In this work, we propose GazeME, a lightweight framework for this task. Our key insight is that visual saliency is inherently relative: boosting the prominence of a target object depends on the attention distribution across non-target entities. Based on this insight, we introduce the concept of saliency-marked prompts, where learnable marker tokens are inserted around object descriptions to explicitly indicate which objects should be visually emphasized or suppressed. To learn these marker embeddings, we construct an automatic saliency-semantics dataset that maps individual ob-jects within image–prompt pairs to their relative visual saliency scores. We further propose saliency prior marker activation (SPMA), a saliency-aware stochastic marker activation strategy that exploits the relative saliency relationships among objects to construct diverse training samples. Only the marker embeddings are optimized, and this approach is lightweight and preserves the generaliza-tion of the pretrained model. During inference, given a source prompt and a target object, GazeME automatically inserts the appropriate markers into the prompt, enabling direct manipulation of the relative visual prominence of objects without modifying their underlying semantic content. Additionally, we conduct extensive experiments to evaluate the effectiveness of GazeME. Quan-titative and qualitative comparisons, shortcut analyses, and ablation studies demonstrate that our method can effectively enhance target saliency while avoiding trivial solutions such as blurring the background. Subjective evaluations from user studies further validate the empirical advantages of GazeME, demonstrating alignment with human perceptual preferences. In summary, our contributions are threefold: • We introduce Target Saliency Boosting , a novel task formulation that enables users to con-trol visual saliency in text-to-image generation through natural language, without requiring any explicit saliency maps. This defines a new interaction paradigm where the model di-rectly translates linguistic intent into visual saliency. • We propose GazeME, a lightweight framework that introduces learnable marker tokens to encode the intent of enhancing or suppressing visual saliency. The framework integrates saliency-aware data construction, embedding learning, and marker-guided generation, with saliency prior marker activation (SPMA) enabling robust training and the saliency-guided generation strategy reinforcing the desired visual saliency during inference. • We construct a language-grounded multi-object saliency dataset, where objects described in a prompt are associated with their visual saliency rankings and scores. We also develop an automatic annotation pipeline that derives object-level saliency supervision from image– prompt pairs, enabling scalable learning of saliency-aware marker embeddings. 
+
+## 2 RELATED WORK 
+
+In this section, we review related works in visual saliency and controllable text-to-image generation. 2.1 VISUAL SALIENCY 
+
+Visual saliency, originally conceptualized in cognitive psychology, refers to the visual property that makes certain regions stand out from their surroundings and naturally draw human attention (Itti, 2007). We review it from three aspects: prediction methods, datasets, and applications. 
+
+Saliency Prediction. Saliency prediction aims to model where humans tend to look in a scene. This target is usually represented as a saliency map (e.g., a heatmap where pixel values encode the likelihood of attracting fixations), with brighter regions indicating higher visual priority (Koch & Ullman, 1985). To this end, early computational models rely on hand-crafted features, such as 2Preprint. multi-scale center-surround contrast (Itti et al., 1998) and spectral residuals (Hou & Zhang, 2007). Deep learning methods then adopt convolutional neural networks (Kümmerer et al., 2016) and Trans-formers (Lou et al., 2022) to learn hierarchical representations, significantly improving prediction accuracy. Recently, unified foundation models like Attend-to-Anything Model (AAM) (Zhao et al., 2026) consolidate multiple saliency tasks into a single framework. These advances provide reliable tools for estimating visual attention and lay the foundation for downstream applications. 
+
+Saliency Datasets. Existing saliency datasets are typically collected by presenting visual stimuli to multiple observers under free-viewing conditions and recording their gaze trajectories with eye trackers. Representative datasets include MIT1003 (Judd et al., 2009), U-EYE (Jiang et al., 2023), CAT2000 (Borji & Itti, 2015), SalECI (Jiang et al., 2022), SALICON (Jiang et al., 2015), and OSIE (Xu et al., 2014), covering natural images, web pages, and e-commerce content. However, existing datasets lack prompt-level grounding and sufficient scene diversity; although some provide annotations for salient regions or the most salient objects, they still offer insufficient supervision for low-saliency objects as negative samples. 
+
+Saliency-Guided Applications. Saliency information has been widely exploited in downstream vision tasks and practical applications. In salient object detection and salient object segmentation, saliency cues help identify and localize visually prominent objects (Borji et al., 2019). Saliency has also been used for image cropping (Xu et al., 2021), and image retrieval (Wei et al., 2019), as well as region-of-interest (ROI) coding for perceptually efficient video compression (Zhu & Xu, 2018). Recent methods such as GazeFusion further incorporate saliency information to guide image generation (Zhang et al., 2024). Despite these advances, creating images with user-specified saliency remains challenging, both in terms of interaction difficulty and the ability of generative models to understand and faithfully translate saliency intent. 2.2 CONTROLLABLE TEXT -TO -I MAGE GENERATION 
+
+Controllable text-to-image generation extends standard text-to-image models with additional mech-anisms that allow users to specify and refine desired properties of the generated images. We review it from two aspects: control modalities and control mechanisms. 
+
+Control Modalities. Controllable text-to-image generation extends natural language prompts with additional conditions to constrain the generated content. Common modalities include semantic seg-mentation masks, edge maps, depth maps, human poses, color palettes, and layout sketches, provid-ing explicit spatial or structural guidance (Mou et al., 2024; Zhang et al., 2023; Huang et al., 2023). These conditions are typically encoded by dedicated modules and injected into pre-trained diffusion models. For example, AnyControl (Sun et al., 2024) supports multiple spatial conditions within a unified framework; GLIGEN (Li et al., 2023) grounds textual descriptions to specified spatial re-gions through bounding boxes; and SpaText (Avrahami et al., 2023) constructs spatially aligned semantic embeddings to enforce object-level layout constraints. Such modalities enable users to explicitly control properties, but using them generally requires semantic or spatial intent. 
+
+Control Mechanisms. Controllable generation can be achieved through different intervention mechanisms, including condition injection, embedding adaptation, attention manipulation, feature modulation, and denoising-process control. Condition-based methods such as ControlNet (Zhang et al., 2023) and T2I-Adapter (Mou et al., 2024) introduce auxiliary modules for external signals, while Textual Inversion (Gal et al., 2023) learns token embeddings to encode new concepts and LoRA (Hu et al., 2022) enables parameter-efficient adaptation. Attention- and feature-based meth-ods directly modify cross-attention maps or intermediate representations for semantic and appear-ance control (Hertz et al., 2023). Alternatively, recent methods intervene in the denoising process itself, such as NoiseCtrl (Dai et al., 2025) and CogBlender (Dang et al., 2026), which manipulate sampling or velocity trajectories during generation. Despite these diverse mechanisms, existing methods primarily control what appears, where it appears, or how it looks, while leaving how visual attention is distributed among objects largely unexplored. Overall, existing saliency prediction models and controllable text-to-image methods are insufficient to support our task. Saliency models mainly predict attention from existing images without semantic grounding, while controllable text-to-image methods focus on semantic, spatial, or appearance con-trol, with limited support for saliency-aware generation. To bridge this gap, we introduce GazeME, enabling users to boost the visual saliency of a target object through natural language prompting. 3Preprint. Original Prompt Marked Prompt Marker Meaning 
+
+> a photo of a dog and a cat. a photo of <focus> a dog </focus> and <unfocus> a cat </unfocus>. increase saliency of the dog, and suppress saliency of the cat a picture of a woman, a man and a child. a picture of <focus> a woman </focus>, a man and <unfocus> a child </unfocus>. increase saliency of the woman, suppress saliency of the child, leave the man unconstrained
+
+Figure 1: Examples of marked prompts, where <focus></focus> wraps the target object whose saliency should be boosted, while <unfocus></unfocus> wraps the object whose saliency should be suppressed. (a) Saliency-Semantics Data Annotation (b) Marker Embedding Efficient Learning (c) Marker-Guided Image Generation            
+
+> saliency-activated marked prompt 𝑃’
+> generation model 𝒢 𝐿
+> marker embedding (trainable)
+> LLM other objects
+> 𝒪 !"#$% target-enhanced marked prompt 𝑃 ∗
+> 𝒢
+> marker embedding (finetuned)
+> (a.1) Synthetic data generation (a.2) Object-level saliency scoring
+> generation segmentation filtering saliency map estimation object-level scoring
+> image 𝐼
+> prompt 𝑃
+> object-saliency list
+> { 𝑜 ', 𝑠 '}'() *
+> input prompt 𝑃 '+
+> target object 𝑜 "
+> output image 𝐼 !,"
+
+user inputs 
+
+> saliency prior marker activation (SPMA)
+
+Figure 2: Overview of GazeME, which consists of three stages: (a) saliency-semantics data annota-tion, (b) marker embedding efficient learning, and (c) marker-guided image generation. 
+
+## 3 METHODOLOGY 
+
+In this section, we present GazeME for Target Saliency Boosting , centered on the concept of 
+
+saliency-marked prompts . As shown in Figure 1, we introduce two pairs of bidirectional marker tokens, <focus> /</focus> and <unfocus> /</unfocus> , which are inserted around object descriptions to indicate whether an object should be visually emphasized or suppressed. GazeME learns saliency knowledge in these marker embeddings and uses them to guide image generation. As illustrated in Figure 2, our framework consists of three stages: (a) saliency-semantics data annota-tion , which automatically infers object-level relative saliency from image–prompt pairs; (b) marker embedding efficient learning , which optimizes only the marker embeddings to encode saliency knowledge; and (c) marker-guided image generation , which inserts the learned markers into a user prompt P in according to a target object ot and generates the output image Iout . We detail each stage below. 3.1 SALIENCY -S EMANTICS DATA ANNOTATION 
+
+We construct a dataset of 1,637 image–prompt pairs annotated with object-level saliency scores to train saliency-aware marker embeddings. Each sample is a tuple {I, P, {(oi, s i)}Ni=1 }, where I is an image, P is the corresponding prompt, and si is the saliency score of the object oi mentioned in P ,quantifying the average saliency within the object region relative to the global distribution. As shown in Figure 2, the data construction consists of two stages: (a.1) synthetic data generation , which produces diverse image–prompt pairs with object masks; and (a.2) object-level saliency scoring ,which assigns a saliency score to each annotated object. 
+
+Synthetic data generation. We obtain the data through three steps: data generation, segmentation, and filtering. (1) Generation. We first prompt a Large Language Model (LLM, e.g., DeepSeek-V4-Flash in our implementation) to generate a diverse set of prompts, with each prompt P accompanied by a list of noun phrases {o1, o 2, . . . , o N } denoting the objects in the scene. We then synthesize the corresponding image I using a text-to-image generation model (e.g., FLUX.1-dev in our imple-4Preprint. mentation). (2) Segmentation. Given I, we obtain a binary object mask Mi for each object oi using Segment Anything Model 3 (SAM3) (Carion et al., 2025), a state-of-the-art segmentation model ca-pable of segmenting objects specified by natural-language concepts. (3) Filtering. To ensure reliable object-level annotations, we remove samples with repeated object categories in the prompt, which may cause ambiguity in automatic object segmentation and matching. We also discard samples in which the queried object cannot be detected by SAM3. 
+
+Object-level saliency scoring. We compute object-level saliency scores in two steps. (1) Saliency map estimation. Given the synthesized image I, we compute a pixel-level saliency map S using the Attend-to-Anything Model (AAM) (Zhao et al., 2026), a state-of-the-art foundation model for visual saliency prediction. (2) Object-level scoring. Given the saliency map S and the object mask 
+
+Mi, we compute an object-level saliency score for each object by adapting the formulation of the normalized scanpath saliency (NSS) (Bylinskii et al., 2019), defined as 
+
+si = 1
+
+σS
+
+ P  
+
+> p
+
+S(p)Mi(p)
+
+|Mi| − μS
+
+
+
+, (1) where S(p) denotes the saliency value at pixel p, and Mi(p) ∈ { 0, 1} indicates whether pixel p
+
+belongs to the object mask Mi, μS and σS denote the mean and the population standard deviation of 
+
+S over the whole image, respectively, and |Mi| denotes the area of mask Mi in pixels. The higher the value of si, the more salient the object region is; conversely, a lower value indicates lower saliency. 3.2 MARKER EMBEDDING EFFICIENT LEARNING 
+
+With the constructed dataset, we train the saliency-aware marker embeddings to instill saliency awareness into the text-to-image model. To enhance robustness, generalization, and discriminative power along both positive and negative saliency directions, we propose saliency prior marker activation (SPMA), a lightweight, saliency score-conditioned mechanism that dynamically inserts markers into prompts during training. Moreover, instead of fine-tuning the full model, we freeze all backbone parameters and optimize only the newly introduced marker token embeddings. We next describe SPMA and the training procedure for learning the marker embeddings. 
+
+Saliency prior marker activation (SPMA). SPMA takes a prompt P as input and dynamically out-puts a saliency-activated marked prompt P ′ based on the saliency scores {si} among objects {oi},forming diverse marker configurations that serve as an implicit ensemble over different saliency di-rections and object combinations. It encourages the marker embeddings to capture saliency relation-ships rather than memorize a fixed pattern. Specifically, SPMA consists of three steps: (1) saliency-based grouping , which divides objects into high- and low-saliency groups; (2) stochastic marker activation , which probabilistically selects objects to apply markers; and (3) saliency-consistent trun-cation , which applies a truncation operation to correct the activation values while preserving the relative saliency ordering among objects. (1) Saliency-based grouping. Given the saliency score si of each object oi, we first divide the objects into high- and low-saliency groups using a threshold γ:
+
+yi =
+
+1, si ≥ γ, 
+
+0, si < γ, (2) where yi = 1 and yi = 0 indicate high- and low-saliency objects, respectively. We set γ as the per-sample mean saliency score to separate objects with positive and negative saliency score values. (2) Stochastic marker activation. We introduce a binary activation variable zi ∈ { 0, 1} for each object oi to indicate whether a marker is inserted around its description in the prompt, where zi = 1 
+
+means that the object is selected and wrapped by its corresponding marker, and zi = 0 means that no marker is inserted around it. The marker type is determined by the grouping label yi. Objects with yi = 1 are wrapped by <focus> /</focus> , corresponding to high saliency, while objects with yi = 0 are wrapped by <unfocus> /</unfocus> , corresponding to low saliency. For each object, we sample zi from a Bernoulli distribution with saliency-dependent probability pi.Specifically, we consider the following four cases. For high-saliency objects ( yi = 1 ): the most salient object, i.e., the one with maximum si, is always activated with pi = 1 . For each remaining 5Preprint. high-saliency object, its activation probability is defined by: 
+
+pi = si − γsup  
+
+> i
+
+− γ , (3) where sup  
+
+> i
+
+= min sj >s i sj denotes the nearest higher saliency score. For low-saliency objects ( yi =0): the least salient object, i.e., the one with minimum si, is always activated with pi = 1 . For each remaining low-saliency object, its activation probability is defined by: 
+
+pi = γ − si
+
+γ − sdown 
+
+> i
+
+, (4) where sdown  
+
+> i
+
+= max sj <s i sj denotes the nearest lower saliency score. (3) Saliency-consistent truncation. Finally, we enforce saliency ordering consistency by truncating the sampled activation pattern {zi}. Specifically, for the high-saliency group, an object can remain activated only if all objects with higher saliency scores are also activated; otherwise, it is deactivated. Conversely, for the low-saliency group, an object can remain activated only if all objects with lower saliency scores are also activated; otherwise, it is deactivated. This design has three key effects. Objects with a saliency score closer to γ are more likely to be deactivated, while objects farther from γ are more likely to be activated. Moreover, objects with similar saliency scores tend to be activated together. Additionally, the truncation rule preserves their relative saliency ordering, preventing contradictory activation patterns. 
+
+Training procedure. We adopt a lightweight training strategy. With all other model param-eters frozen, we optimize θ (the embeddings of four marker tokens: <focus> , </focus> ,
+
+<unfocus> , and </unfocus> ) using the flow matching objective: 
+
+L = Et,ϵ 
+
+h
+
+∥vθ (xt, t, P ′) − u∥22
+
+i
+
+(5) where xt denotes the latent representation of the original image I after adding Gaussian noise (pa-rameterized by ϵ) at timestep t, u denotes the target velocity, and vθ (xt, t, P ′) denotes the velocity predicted by the generative model conditioned on the saliency-activated marked prompt P ′.3.3 MARKER -G UIDED IMAGE GENERATION 
+
+Based on the learned marker embeddings, we employ a saliency-enhanced generation strategy to explicitly enforce object-level saliency guidance during image generation. Given an input prompt 
+
+P in and a target object ot, we first employ an LLM to identify the other objects Oother mentioned in P in . We then construct a saliency-enhanced marked prompt P ∗ by assigning the <focus> 
+
+marker to the target object and the <unfocus> marker to the remaining objects. The resulting prompt explicitly represents ot as the focus object and the objects in Oother as unfocus objects. The constructed prompt P ∗ is then fed into the text-to-image generative model with the learned marker embeddings to synthesize the final image Iout , thereby enhancing the visual saliency of the target object while suppressing the saliency of competing objects. 
+
+Implementation details. We adopted FLUX.1-dev as the base text-to-image model. The model pa-rameters were optimized using the AdamW optimizer with a learning rate of 3×10 −4.Training was performed for 2,000 steps with a batch size of 2 on a single NVIDIA H200 GPU, taking approxi-mately two hours. At inference, images were generated at 512 × 512 resolution with 30 sampling steps. We set the random seed to 42 for all experiments. 
+
+## 4 EXPERIMENTS 
+
+In this section, we first describe the experimental setup, then present the main comparison against baselines with shortcut analysis, followed by ablation studies. Additionally, we conduct a user study to validate the effectiveness of GazeME. 4.1 EXPERIMENTAL SETUP 
+
+In this section, we briefly introduce the experimental setup, including testset construction, baseline and metric selection. 6Preprint. Base model Prompt Engineering Prompt Rewriting LoRA (full) LoRA (text) FLUX-Editing GazeME 
+
+(a) (b) 
+
+> A dynamic studio shot of a frost-covered cobalt-blue energy drink can, its surface beaded with condensation, as angular ice shards cascade around it. A polished walnut wood tray holds a chipped ceramic mug filled with dark espresso, while a clear glass carafe of water and a rumpled linen napkin rest nearby. A single sprig of fresh mint lies on the tray's edge, catching a cool rim light against the dark backdrop.
+> A thick mist rolls over the wooden platform as the morning light catches the steel cables overhead. Near the front edge, a folded yellow rain jacket sits on a bench, while a dented metal thermos rests beside it, and a tattered red flag flaps from a pole anchored behind the railing. In the background, the boxy green cable car cabin emerges from the fog, its windows streaked with moisture, and a worn wooden sign reading 'Summit' hangs askew from the support beam to the right.
+
+Figure 3: Qualitative results. We show the generated images and the corresponding saliency maps. The target object regions are outlined in cyan on the saliency maps. 
+
+Testset. We construct a target-saliency testset containing 432 challenging target saliency boosting tasks and each takes a prompt–target object pair as input. To build each pair, we generate diverse prompts, render images with the frozen base model, and select as the target an object that the un-trained base model places in the bottom half of its own saliency score distribution (i.e., an object that is not salient by default). We will release the testset to ensure reproducibility. 
+
+Baselines. We compare GazeME with five representative methods: (1) Prompt Engineering , which directly injects the target-saliency intent into the text-to-image prompt; (2) Prompt Rewriting , which queries an LLM to rewrite the input prompt into a more descriptive caption that emphasizes the target object; (3) LoRA (full) (Hu et al., 2022), which adopts low-rank adaptation to finetune the base model for target saliency enhancement, adapting all attention and feed-forward layers; (4) 
+
+LoRA (text) , a capacity-localized LoRA variant that restricts adaptation to the text-side attention layers; (5) FLUX-Editing , which first generates an image and then edits it with an instruction to improve target saliency. 
+
+Metrics. We evaluate all methods along three dimensions. (1) Saliency alignment. We report Target-NSS, the saliency score of the target object, computed by Equation 1. Higher values indicate that the target object is more visually salient. (2) Semantic alignment. We report CLIPScore (Hessel et al., 2021), the semantic similarity between the generated image and the input prompt. Higher values indicate better prompt fidelity. (3) Image quality. We report CLIPIQA (Wang et al., 2023), a no-reference perceptual quality metric. Higher values indicate better perceived image quality. 4.2 BASELINE COMPARISON 
+
+We compare GazeME with the baselines from both quantitative and qualitative aspects. In addition, we perform a shortcut analysis with baselines on low-level factors that may act as saliency shortcuts. 
+
+Quantitative Comparison. Table 1 compares all methods on the testset. In terms of saliency alignment (Target-NSS), GazeME achieves the highest score and clearly outperforms prompt-level, training-based, and editing-based baselines. For semantic alignment (CLIPScore), GazeME remains competitive with the baselines and stays within a similar range, lying between Prompt Rewriting and 7Preprint. Table 1: Quantitative comparison.                         
+
+> Method Target-NSS ↑CLIPScore ↑CLIPIQA ↑
+> Base Model 0.1791 0.2890 0.9463 Prompt Engineering 0.2340 0.2846 0.9523 Prompt Rewriting 0.2378 0.2774 0.9485 LoRA (full) 0.2521 0.2872 0.9429 LoRA (text) 0.2313 0.2896 0.9458 FLUX-Editing 0.2554 0.2899 0.9426
+> GazeME 0.2761 0.2820 0.9516
+
+Table 2: Results of the ablation study.                                
+
+> Method Target-NSS ↑CLIPScore ↑CLIPIQA ↑
+> GazeME (γ=μsample )0.2761 0.2820 0.9516
+> γ=0 0.2724 0.2819 0.9508
+> γ=mdataset 0.2744 0.2821 0.9510
+> γ=μdataset 0.2720 0.2820 0.9515
+> γ=msample 0.2757 0.2814 0.9512 w/o SPMA 0.2276 0.2864 0.9508 w/o training 0.2192 0.2870 0.9503 w/o <unfocus> in P∗0.2521 0.2864 0.9501
+
+Figure 4: Shortcut analysis. Figure 5: User study results. Base Model, suggesting no substantial degradation in prompt fidelity. For visual quality (CLIPIQA), GazeME reaches the top level, matching the best baseline. Overall, these results demonstrate that GazeME is effective at enhancing target saliency while preserving semantic and perceptual quality, rather than merely optimizing a single metric. 
+
+Qualitative Comparison. Figure 3 qualitatively compares GazeME with the baselines. GazeME consistently makes the target object the primary visual focus, whereas other methods, although capable of partially enhancing the target’s saliency, often also amplify other objects or introduce unnatural artifacts, and thus fail to make the target stand out naturally. These examples are consistent with the quantitative results and further demonstrate that GazeME enhances target saliency in a natural and controllable manner. 
+
+Shortcut Analysis. Saliency is not a direct function of low-level pixel statistics, yet low-level factors can mimic it, allowing methods to appear to improve saliency by biasing these factors rather than redistributing attention. To examine this, we analyze eight low-level visual factors, as shown in Figure 4. The radar chart (log scale) shows the ratio of each method’s factor value to the base model’s value ( 1.0) on each axis, except for center offset, where we plot the inverse ratio. The axes cover target size, center offset, brightness, contrast, saturation, color difference, sharpness, and background blur. FLUX-Editing mainly blurs the background, while prompt-level methods tend to enlarge the target, shift it toward the center, and increase brightness and contrast. GazeME shows deviations in brightness, and contrast, far smaller than other baselines and are not concentrated on a single axis. Overall, GazeME keeps the factor distribution closest to the base model, confirming that it improves saliency mainly through saliency redistribution rather than low-level factor shortcuts. 4.3 ABLATION STUDY 
+
+We conduct ablation studies from two aspects of GazeME: the marker mechanism and the parameter selection. 
+
+Marker mechanism. We ablate three design choices of our marker mechanism: SPMA supervision, marker training, and the inclusion of the <unfocus> marker in P ∗ (Table 2). Removing SPMA (w/o SPMA , i.e., only the marker of the highest-saliency object is activated during training) drops Target-NSS from 0.2761 to 0.2276 , and w/o training , which keeps the marker embeddings fixed without optimization, drops it to 0.2192 , showing that both are essential for steering attention toward 8Preprint. the target. Removing <unfocus> in P ∗ reduces Target-NSS to 0.2521 , confirming that explicitly suppressing non-target objects further improves saliency control. 
+
+Parameter selection. We ablate the threshold γ that splits objects into high- and low-saliency groups for SPMA. We compare a fixed threshold ( 0), dataset-level statistics ( mdataset for the saliency score median and μdataset for the saliency score mean), and per-sample statistics ( msample and μsample ). As shown in Table 2, Target-NSS varies only slightly across all variants, while CLIPScore and CLIPIQA remain nearly constant. This indicates that GazeME is robust to the exact choice of γ. We adopt the per-sample mean setting ( μsample ), which gives the best Target-NSS and guarantees that every sample contains both high- and low-saliency groups for bidirectional supervision. 4.4 USER STUDY 
+
+We conducted a user study with 26 participants to compare GazeME with the strongest baseline, 
+
+FLUX-Editing . We randomly selected 17 prompt–target object pairs as evaluation tasks, and for each task we generated an image pair consisting of one image from GazeME and one from the baseline. Each participant evaluated these 17 image pairs. The order of the two images within each pair was randomized. For each pair, participants answered three two-alternative questions to evaluate (1) saliency alignment , (2) semantic alignment , and (3) visual quality .As shown in Figure 5, GazeME received 68.8% of the votes for saliency alignment, 64.7% for semantic alignment, and 65.6% for visual quality. We tested these participant-level majorities using two-sided exact binomial tests against a 50% chance level. All three results remain significant (p < 10 −3), indicating a consistent preference for GazeME across the three criteria. The user study confirms the perceptual advantage of GazeME against the strongest baseline. 
+
+## 5 DISCUSSION 
+
+Our results suggest that target saliency is best treated as a relative property. The bidirectional mark-ers provide a lightweight interface for controlling this relativity. SPMA encourages the marker embeddings to learn robust saliency knowledge. Our work complements existing control over what 
+
+objects appear or where they appear by targeting how attention is distributed among them. 
+
+Limitations and future work. Our approach has several limitations. First, we rely on automatic predictors for saliency estimation and object segmentation, which may introduce noise and bias into training. A promising solution is iterative refinement with human feedback, though this requires a careful annotation pipeline and a robust learning scheme for noisy or conflicting supervision. Sec-ond, while our markers encode relative saliency, we do not explicitly model spatial interactions or occlusion, which may limit performance in cluttered scenes. Extending the marker design to struc-tured or pairwise relations is non-trivial due to their combinatorial nature. Finally, our framework targets static images; extending it to video would require temporally coherent markers to maintain saliency intent across frames, which is beyond our current scope. 
+
+## 6 CONCLUSION 
+
+In this paper, we introduce Target Saliency Boosting , a new task for controlling visual attention in text-to-image generation without explicit visual priors. We propose GazeME, which encodes saliency knowledge into bidirectional marker tokens and applies them to guide image generation. Extensive experiments demonstrate that GazeME effectively boosts target saliency while preserving semantic alignment and image quality. We will release the constructed dataset and the source code to facilitate future research. We hope our work can inspire further exploration of visual attention-aware controllable generation and broader applications in areas such as computational advertising, visual design, and educational content production. 
+
+## REFERENCES 
+
+Omri Avrahami, Thomas Hayes, Oran Gafni, Sonal Gupta, Yaniv Taigman, Devi Parikh, Dani Lischinski, Ohad Fried, and Xi Yin. Spatext: Spatio-textual representation for controllable image 9Preprint. generation. In Proceedings of IEEE/CVF Conference on Computer Vision and Pattern Recogni-tion , pp. 18370–18380, 2023. Ali Borji and Laurent Itti. CAT2000: A large scale fixation dataset for boosting saliency research. 
+
+CoRR , abs/1505.03581, 2015. Ali Borji, Ming-Ming Cheng, Qibin Hou, Huaizu Jiang, and Jia Li. Salient object detection: A survey. Computational Visual Media , 5(2):117–150, 2019. Zoya Bylinskii, Tilke Judd, Aude Oliva, Antonio Torralba, and Frédo Durand. What do different evaluation metrics tell us about saliency models? IEEE Transactions on Pattern Analysis and Machine Intelligence , 41(3):740–757, 2019. Nicolas Carion, Laura Gustafson, Yuan-Ting Hu, Shoubhik Debnath, Ronghang Hu, Didac Suris, Chaitanya Ryali, Kalyan Vasudev Alwala, Haitham Khedr, Andrew Huang, Jie Lei, Tengyu Ma, Baishan Guo, Arpit Kalla, Markus Marks, Joseph Greer, Meng Wang, Peize Sun, Roman Rä-dle, Triantafyllos Afouras, Effrosyni Mavroudi, Katherine Xu, Tsung-Han Wu, Yu Zhou, Liliane Momeni, Rishi Hazra, Shuangrui Ding, Sagar Vaze, Francois Porcher, Feng Li, Siyuan Li, Aish-warya Kamath, Ho Kei Cheng, Piotr Dollár, Nikhila Ravi, Kate Saenko, Pengchuan Zhang, and Christoph Feichtenhofer. SAM 3: Segment anything with concepts. CoRR , abs/2511.16719, 2025. Longquan Dai, He Wang, and Jinhui Tang. Noisectrl: A sampling-algorithm-agnostic conditional generation method for diffusion models. In Proceedings of IEEE/CVF Conference on Computer Vision and Pattern Recognition , pp. 18093–18102, 2025. Shengqi Dang, Jiaying Lei, Yi He, Ziqing Qian, and Nan Cao. Cogblender: Towards continuous cognitive intervention in text-to-image generation. CoRR , abs/2603.09286, 2026. Rinon Gal, Yuval Alaluf, Yuval Atzmon, Or Patashnik, Amit Haim Bermano, Gal Chechik, and Daniel Cohen-Or. An image is worth one word: Personalizing text-to-image generation using textual inversion. In International Conference on Learning Representations , 2023. Amir Hertz, Ron Mokady, Jay Tenenbaum, Kfir Aberman, Yael Pritch, and Daniel Cohen-Or. Prompt-to-prompt image editing with cross-attention control. In International Conference on Learning Representations , 2023. Jack Hessel, Ari Holtzman, Maxwell Forbes, Ronan Le Bras, and Yejin Choi. CLIPScore: Areference-free evaluation metric for image captioning. In Proceedings of the Conference on Em-pirical Methods in Natural Language Processing , pp. 7514–7528, 2021. Xiaodi Hou and Liqing Zhang. Saliency detection: A spectral residual approach. In Proceedings of IEEE Conference on Computer Vision and Pattern Recognition , pp. 1–8, 2007. Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. Lora: Low-rank adaptation of large language models. In International Con-ference on Learning Representations , 2022. Lianghua Huang, Di Chen, Yu Liu, Yujun Shen, Deli Zhao, and Jingren Zhou. Composer: Creative and controllable image synthesis with composable conditions. In International Conference on Machine Learning , volume 202 of Proceedings of Machine Learning Research , pp. 13753–13773, 2023. L. Itti, C. Koch, and E. Niebur. A model of saliency-based visual attention for rapid scene analysis. 
+
+IEEE Transactions on Pattern Analysis and Machine Intelligence , 20(11):1254–1259, 1998. doi: 10.1109/34.730558. Laurent Itti. Visual salience. Scholarpedia , 2(9):3327, 2007. Eric Jamet, Monica Gavota, and Christophe Quaireau. Attention guiding in multimedia learning. 
+
+Learning and Instruction , 18(2):135–145, 2008. 10 Preprint. Lai Jiang, Yifei Li, Shengxi Li, Mai Xu, Se Lei, Yichen Guo, and Bo Huang. Does text attract attention on e-commerce images: A novel saliency prediction dataset and method. In Proceedings of IEEE/CVF Conference on Computer Vision and Pattern Recognition , pp. 2078–2087, 2022. Ming Jiang, Shengsheng Huang, Juanyong Duan, and Qi Zhao. Salicon: Saliency in context. In 
+
+Proceedings of IEEE Conference on Computer Vision and Pattern Recognition , pp. 1072–1080, 2015. Yue Jiang, Luis A. Leiva, Hamed Rezazadegan Tavakoli, Paul R. B. Houssel, Julia Kylmälä, and Antti Oulasvirta. Ueyes: Understanding visual saliency across user interface types. In Proceed-ings of the SIGCHI Conference on Human Factors in Computing Systems , 2023. Tilke Judd, Krista Ehinger, Frédo Durand, and Antonio Torralba. Learning to predict where humans look. In Proceedings of International Conference on Computer Vision , pp. 2106–2113, 2009. Christof Koch and Shimon Ullman. Shifts in selective visual attention: towards the underlying neural circuitry. Human neurobiology , 4(4):219–227, 1985. Alexander Kroner, Mario Senden, Kurt Driessens, and Rainer Goebel. Contextual encoder–decoder network for visual saliency prediction. Neural Networks , 129:261–270, 2020. Sandeep Chand Kumain, Maheep Singh, and Lalit Kumar Awasthi. Revisited visual saliency de-tection with deep learning: A review of recent advancements. ACM Computing Surveys , 58(6), December 2025. Matthias Kümmerer, Thomas S. A. Wallis, and Matthias Bethge. Deepgaze II: reading fixations from deep features trained on object recognition. CoRR , abs/1610.01563, 2016. Yuheng Li, Haotian Liu, Qingyang Wu, Fangzhou Mu, Jianwei Yang, Jianfeng Gao, Chunyuan Li, and Yong Jae Lee. GLIGEN: open-set grounded text-to-image generation. In Proceedings of IEEE/CVF Conference on Computer Vision and Pattern Recognition , pp. 22511–22521, 2023. Jianxun Lou, Hanhe Lin, David Marshall, Dietmar Saupe, and Hantao Liu. Transalnet: Towards perceptually relevant visual saliency prediction. Neurocomputing , 494:455–467, 2022. Chong Mou, Xintao Wang, Liangbin Xie, Yanze Wu, Jian Zhang, Zhongang Qi, and Ying Shan. T2i-adapter: Learning adapters to dig out more controllable ability for text-to-image diffusion models. In Proceedings of the AAAI conference on artificial intelligence , volume 38, pp. 4296– 4304, 2024. Valerio Santangelo. Forced to remember: When memory is biased by salient information. Be-havioural Brain Research , 283:1–10, 2015. Ramanathan Subramanian, Divya Shankar, Nicu Sebe, and David Melcher. Emotion modulates eye movement patterns and subsequent memory for the gist and details of movie scenes. Journal of Vision , 14(3):31–31, 03 2014. Yanan Sun, Yanchen Liu, Yinhao Tang, Wenjie Pei, and Kai Chen. Anycontrol: Create your artwork with versatile control on text-to-image generation. In Proceedings of European Conference on Computer Vision , volume 15069, pp. 92–109, 2024. Alistair Sutcliffe and Abdallah Namoune. Getting the message across: visual attention, aesthetic design and what users remember. In Proceedings of ACM Conference on Designing Interactive Systems , DIS ’08, pp. 11–20, 2008. Jianyi Wang, Kelvin CK Chan, and Chen Change Loy. Exploring clip for assessing the look and feel of images. In Proceedings of the AAAI conference on artificial intelligence , volume 37, pp. 2555–2563, 2023. Shikui Wei, Lixin Liao, Jia Li, Qinjie Zheng, Fei Yang, and Yao Zhao. Saliency inside: Learning attentive cnns for content-based image retrieval. IEEE Transactions on Image Processing , 28(9): 4580–4593, 2019. 11 Preprint. Juan Xu, Ming Jiang, Shuo Wang, Mohan S. Kankanhalli, and Qi Zhao. Predicting human gaze beyond pixels. Journal of Vision , 14(1):28–28, 01 2014. Yifei Xu, Wujiang Xu, Mian Wang, Li Li, Genan Sang, Pingping Wei, and Li Zhu. Saliency aware image cropping with latent region pair. Expert Systems with Applications , 171:114596, 2021. Lvmin Zhang, Anyi Rao, and Maneesh Agrawala. Adding conditional control to text-to-image diffusion models. In Proceedings of IEEE/CVF International Conference on Computer Vision ,pp. 3813–3824, 2023. Yunxiang Zhang, Nan Wu, Connor Z. Lin, Gordon Wetzstein, and Qi Sun. Gazefusion: Saliency-guided image generation. ACM Transactions on Applied Perception , 21(4), November 2024. Wenzhuo Zhao, Ronghao Xian, Keren Fu, and Qijun Zhao. Attend to anything: Foundation model for unified human attention modeling. CoRR , abs/2606.03540, 2026. Shiping Zhu and Ziyao Xu. Spatiotemporal visual saliency guided perceptual high efficiency video coding with neural network. Neurocomputing , 275:511–522, 2018. 12

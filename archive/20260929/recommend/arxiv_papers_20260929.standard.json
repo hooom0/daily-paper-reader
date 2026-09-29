@@ -1,0 +1,135 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-29T00:11:20.460605+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 1,
+    "deep_cap": 6,
+    "deep_selected": 1,
+    "quick_candidates": 2,
+    "quick_skim_target": 11,
+    "quick_selected": 2
+  },
+  "deep_dive": [
+    {
+      "id": "2609.30733v1",
+      "source": "arxiv",
+      "title": "Amplify What You Gaze At: Target Saliency Boosting in Text-to-Image Generation",
+      "abstract": "Text-to-image generation has advanced in controlling what, where, and how objects appear, yet how visual attention is distributed among objects remains largely unexplored. In this paper, we introduce Target Saliency Boosting, a new task aimed at boosting the visual saliency of a specific object during text-to-image generation without requiring any visual priors. Our key insight is that visual saliency is inherently relative: boosting the saliency of a target object also depends on the global saliency distribution across all objects in the scene. Based on this insight, we propose GazeME, a lightweight framework that uses saliency-marked prompts, inserting learnable marker tokens around object descriptions to indicate which objects to visually emphasize or suppress. To learn these markers, we construct a saliency-semantics dataset that associates objects in image--prompt pairs with object-level saliency scores, and propose Saliency Prior Marker Activation (SPMA), a saliency-aware stochastic marker activation strategy that exploits relative saliency relationships for robust training. During inference, GazeME automatically inserts appropriate markers into the prompt, thereby directly enhancing the visual saliency of the target object. Extensive experiments demonstrate that GazeME effectively boosts target saliency while preserving both semantic alignment and image quality.",
+      "authors": [
+        "Shengqi Dang",
+        "Zhengxi Yu",
+        "Feilin Han",
+        "Xingyu Lan",
+        "Nan Cao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-09-25T03:01:29+00:00",
+      "link": "https://arxiv.org/pdf/2609.30733v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "controllable text-to-image generation by boosting target saliency",
+      "llm_evidence_cn": "通过增强目标显著性实现可控文生图",
+      "llm_evidence": "通过增强目标显著性实现可控文生图",
+      "canonical_evidence": "通过增强目标显著性实现可控文生图",
+      "llm_tldr_en": "Text-to-image generation controls what and where objects appear, but not their visual saliency. GazeME uses saliency-marked prompts with learnable marker tokens to boost a target object's saliency without visual priors.",
+      "llm_tldr_cn": "现有文生图技术已能控制物体出现的位置与方式，但物体之间视觉显著性如何分配仍缺乏研究。本文提出目标显著性增强这一新任务，并设计轻量框架GazeME，利用带显著性标记的提示词与可学习标记令牌指示需增强的物体，且不依赖任何视觉先验。实验证明该方法能有效提升指定目标的视觉显著性，为可控图像生成提供了注意力层面的新调控手段。",
+      "llm_tldr": "现有文生图技术已能控制物体出现的位置与方式，但物体之间视觉显著性如何分配仍缺乏研究。本文提出目标显著性增强这一新任务，并设计轻量框架GazeME，利用带显著性标记的提示词与可学习标记令牌指示需增强的物体，且不依赖任何视觉先验。实验证明该方法能有效提升指定目标的视觉显著性，为可控图像生成提供了注意力层面的新调控手段。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.31154v1",
+      "source": "arxiv",
+      "title": "HyperErase: Scale-Calibrated Hypernetwork for Multi-Concept Erasure in Text-to-Image Models",
+      "abstract": "Recent advances in text-to-image (T2I) generation have substantially improved visual synthesis, but have also raised increasing safety concerns due to their potential to generate harmful or undesirable content. Existing concept erasure methods predominantly follow a static weight paradigm, producing a single frozen adapter that struggles to adapt to diverse prompt variations and suffers from parameter interference when scaling to multiple concepts. We propose \\textbf{HyperErase}, a framework for concept erasure based on hypernetwork-driven prompt-conditioned parameter synthesis. Our approach first reframes concept erasure as prompt-conditioned parameter amortization and trains a hypernetwork to map textual descriptions to prompt-specific LoRA updates, eliminating the need for per-prompt gradient optimization or manual LoRA merging. To further improve the stability and precision of synthesized adapters, we develop a decoupled rectification strategy, which disentangles LoRA tokens into pattern and scale subspaces, applies a square-root transform to curb multiplicative over-scaling, and leverages teacher-derived canonical priors for inference-time correction. Extensive experiments across major concept categories demonstrate that HyperErase consistently improves the trade-off between erasure effectiveness, image quality, and semantic alignment, achieving performance comparable to gold-standard single-concept baselines. Furthermore, the resulting models can provide specialized LoRAs for each input prompt variation in a single forward pass without requiring gradient updates during inference. These principled and flexible framework offers a new paradigm for concept erasure in T2I models.",
+      "authors": [
+        "Yi Sun",
+        "Xinhao Zhong",
+        "Zhiqi Zhang",
+        "Yimin Zhou",
+        "Junhao Li",
+        "Yuxia Qiao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.CR"
+      ],
+      "published": "2026-09-25T11:47:39+00:00",
+      "link": "https://arxiv.org/pdf/2609.31154v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "concept erasure for controllable text-to-image generation via hypernetwork",
+      "llm_evidence_cn": "通过超网络实现可控文本到图像生成的概念擦除",
+      "llm_evidence": "通过超网络实现可控文本到图像生成的概念擦除",
+      "canonical_evidence": "通过超网络实现可控文本到图像生成的概念擦除",
+      "llm_tldr_en": "HyperErase reframes concept erasure in text-to-image models as prompt-conditioned parameter amortization, training a hypernetwork to synthesize prompt-specific parameters that erase multiple concepts while adapting to diverse prompts.",
+      "llm_tldr_cn": "该文针对文本到图像生成中概念擦除方法多为静态权重、难以适应多样提示且多概念间存在参数干扰的问题，提出HyperErase框架。方法将概念擦除重构为提示条件化的参数摊销，训练超网络把文本描述映射为提示特定的参数，从而实现尺度校准的多概念擦除。实验表明该框架能更好适应提示变化并缓解参数干扰，为扩散模型的安全可控生成提供了更灵活的机制。",
+      "llm_tldr": "该文针对文本到图像生成中概念擦除方法多为静态权重、难以适应多样提示且多概念间存在参数干扰的问题，提出HyperErase框架。方法将概念擦除重构为提示条件化的参数摊销，训练超网络把文本描述映射为提示特定的参数，从而实现尺度校准的多概念擦除。实验表明该框架能更好适应提示变化并缓解参数干扰，为扩散模型的安全可控生成提供了更灵活的机制。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.30840v1",
+      "source": "arxiv",
+      "title": "Aligning One-Step Generative Models with Reward-Weighted Transport Distillation",
+      "abstract": "One-step generators enable high-quality visual generation with a single network evaluation, but their post-training is difficult: general implicit generators provide neither tractable likelihoods nor denoising trajectories, and many rewards are non-differentiable. We introduce Reward-Weighted Transport Distillation (RWTD), a post-training method that requires only generated samples and scalar reward evaluations. Rather than aligning solely to the conventional reward-tilted reference distribution, RWTD constructs an adaptive target that mixes separately tilted current and reference distributions. The current component incorporates improvements discovered during training, while the reference component anchors the target to the pretrained generator. RWTD realizes this target through feature-space optimal transport and fixed-point regression. Theoretical analysis shows that the fixed-point distributions of RWTD interpolate between off-policy reward tilting of the reference and on-policy tilting of the current model, providing a principled approach to balancing reward adaptation with retention of prior knowledge. Empirically, RWTD substantially improves the GenEval score of the one-step SANA Sprint 1.6B backbone from 0.73 to 0.80, while separate preference alignment experiments demonstrate strong cross-reward generalization that yields balanced improvements and preservation of compositional capabilities.",
+      "authors": [
+        "Austin Wang",
+        "Ziheng Cheng",
+        "Lexing Ying"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CV"
+      ],
+      "published": "2026-09-25T05:35:32+00:00",
+      "link": "https://arxiv.org/pdf/2609.30840v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "post-training method for one-step visual generative models",
+      "llm_evidence_cn": "面向一步视觉生成模型的后训练方法",
+      "llm_evidence": "面向一步视觉生成模型的后训练方法",
+      "canonical_evidence": "面向一步视觉生成模型的后训练方法",
+      "llm_tldr_en": "One-step generators produce high-quality visual samples but are hard to post-train. Reward-Weighted Transport Distillation aligns them using only samples and scalar rewards via an adaptive mixed target.",
+      "llm_tldr_cn": "一步生成器能以单次网络评估实现高质量视觉生成，但其后训练十分困难，因为通用隐式生成器既没有可计算的似然，也没有可用的去噪轨迹，且许多奖励不可微。作者提出奖励加权传输蒸馏（RWTD），只需生成样本与标量奖励评估，构造一个自适应目标，混合分别倾斜的当前分布与参考分布，其中当前分量吸收训练中发现的改进，参考分量锚定预训练生成器。该工作为一步视觉生成模型的后训练提供了通用而实用的对齐方法。",
+      "llm_tldr": "一步生成器能以单次网络评估实现高质量视觉生成，但其后训练十分困难，因为通用隐式生成器既没有可计算的似然，也没有可用的去噪轨迹，且许多奖励不可微。作者提出奖励加权传输蒸馏（RWTD），只需生成样本与标量奖励评估，构造一个自适应目标，混合分别倾斜的当前分布与参考分布，其中当前分量吸收训练中发现的改进，参考分量锚定预训练生成器。该工作为一步视觉生成模型的后训练提供了通用而实用的对齐方法。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

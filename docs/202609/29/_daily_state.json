@@ -1,0 +1,57 @@
+{
+  "date": "20260929",
+  "date_label": "",
+  "generated_at": "2026-09-29 00:12:19 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.30733v1",
+      "route": "202609/29/2609.30733v1-amplify-what-you-gaze-at-target-saliency-boosting-in-text-to-image-generation",
+      "title": "Amplify What You Gaze At: Target Saliency Boosting in Text-to-Image Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "通过增强目标显著性实现可控文生图",
+      "first_seen_at": "2026-09-29 00:12:19 UTC",
+      "updated_at": "2026-09-29 00:12:19 UTC"
+    },
+    {
+      "paper_id": "2609.31154v1",
+      "route": "202609/29/2609.31154v1-hypererase-scale-calibrated-hypernetwork-for-multi-concept-erasure-in-text-to-image-models",
+      "title": "HyperErase: Scale-Calibrated Hypernetwork for Multi-Concept Erasure in Text-to-Image Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "通过超网络实现可控文本到图像生成的概念擦除",
+      "first_seen_at": "2026-09-29 00:12:19 UTC",
+      "updated_at": "2026-09-29 00:12:19 UTC"
+    },
+    {
+      "paper_id": "2609.30840v1",
+      "route": "202609/29/2609.30840v1-aligning-one-step-generative-models-with-reward-weighted-transport-distillation",
+      "title": "Aligning One-Step Generative Models with Reward-Weighted Transport Distillation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向一步视觉生成模型的后训练方法",
+      "first_seen_at": "2026-09-29 00:12:19 UTC",
+      "updated_at": "2026-09-29 00:12:19 UTC"
+    }
+  ]
+}
