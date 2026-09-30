@@ -1,0 +1,3527 @@
+Preprint
+VERIFIABLE
+VISUAL
+REWARDS
+TRANSFER
+FROM
+SYNTHETIC SCENES TO NATURAL PROMPTS
+Shuyue Stella Li,
+Xiaochuang Han,
+Yulia Tsvetkov,
+Luke Zettlemoyer
+University of Washington
+stelli@cs.washington.edu
+https://github.com/stellalisy/VVRBench
+https://huggingface.co/datasets/stellalisy/VVRBench
+ABSTRACT
+Precise instruction following in image generation, such as satisfying object counts
+and spatial relations, remains an open challenge at least in part because it is learned
+using unreliable reward models such as object detectors and vision-language mod-
+els. We introduce Verifiable Visual Rewards (VVR), the first framework for pro-
+grammatically verifiable image rewards, and show that training on it generalizes
+to natural prompts. Each VVR task is a scene of geometric objects and relations
+among them, from which we derive both the prompt and a deterministic verifier,
+so tasks can be generated in any number and at any chosen complexity. We re-
+lease VVRBENCH, with 10,000 tasks over 32 constraint types, and VVRBENCH-
+Challenge, with 720 more complex tasks; the strongest model we evaluate—GPT-
+Image-2.5—solves 21.4% of VVRBENCH-Challenge. Using VVR scores as re-
+wards for reinforcement learning (RLVVR) raises the accuracy of Stable Diffusion
+3.5 Medium on VVRBENCH from 2.8% to 28.3% and demonstrates consistent
+easy-to-hard generalization. These gains extend to out-of-domain benchmarks,
+and mixing VVR into existing objectives further improves overall performance
+and human preference, motivating the adoption of VVR into standard image gen-
+eration post-training recipes.
+1
+INTRODUCTION
+Reinforcement learning with verifiable rewards has improved how precisely language models follow
+instructions: constraints such as use the word X at least three times are checked by code and used di-
+rectly as rewards (Zhou et al., 2023; Lambert et al., 2025; Pyatkin et al., 2025), but image generation
+has no equivalent reward. Text-to-image generators often fail to follow instructions precisely: given
+three red circles to the left of two blue squares, they draw the wrong counts, colors, or positions, and
+fail more often as a prompt combines more requirements (Ghosh et al., 2023; Huang et al., 2023;
+Kamath et al., 2025). Post-training rewards for instruction following come from learned evaluators:
+preference models (Kirstain et al., 2023; Xu et al., 2023), vision-language models (VLMs) that an-
+swer questions about the image (Hu et al., 2023; Cho et al., 2024a; Lin et al., 2024), and object
+detectors (Ghosh et al., 2023). These evaluators make errors on the judgments that instruction fol-
+lowing depends on (Saxon et al., 2024; Wiles et al., 2025; Kaji´c et al., 2024; Chen et al., 2025b;
+Kamath et al., 2025), and policies trained on them exploit these errors (Zhang et al., 2024; Kim
+et al., 2024; Hong et al., 2026).
+We introduce Verifiable Visual Rewards (VVR), the first framework for programmatically verifiable
+image rewards, in which the generated image is scored deterministically by verifiers: Python func-
+tions over pixels, with no learned detector, OCR system, embedding model, or VLM. VVR covers
+instructions with clear, objective requirements combining color, count, shape, and spatial relations
+(Figure 1). Unlike constraints in text instruction following, which govern mostly separate properties
+of the output (e.g., length, keyword, format) and can be excluded pair by pair (Pyatkin et al., 2025),
+visual constraints lead to more complicated compatibility conflicts. For example, in “A contains B, B
+contains C, and C contains A,” every pair of constraints can be satisfiable, but the three together are
+not. Therefore, we propose a generator that guarantees constraint satisfiability under compositions,
+and compose natural-language instructions from the valid constraint sets. With our generator and
+constraint taxonomy, new VVR tasks can be generated in any number and at any chosen complexity,
+1
+arXiv:2609.35641v1  [cs.AI]  28 Sep 2026
+
+
+Preprint
+complexity 3 | 1 object | 2 constraints
+C1
+Draw a blue circle. Keep the 
+background plain beige, with 
+no additional colored objects.
+complexity 23 | 5 objects | 16 constraints
+Place a red square in the bottom left 
+area. Place the pink circle between the 
+red square and the cyan square. Align 
+the red square and the pink circle in the 
+same row. Make the red square larger 
+than the cyan square. Add two orange 
+squares as well. Use a plain dark gray 
+background, with no additional objects.
+complexity 41 | 9 objects | 23 constraints
+Place a purple square in the top right area. 
+Align the purple square, a blue circle, and a 
+pink square in one column. Draw a green circle 
+touching the purple square. Make the purple 
+square larger than the pink square. Make the 
+green circle the largest colored object. Place 
+the blue circle closer to the green circle than 
+to the pink square. Also show five orange 
+circles in the left area. Use a plain white 
+background and no other colored objects.
+complexity 70 | 22 objects | 19 constraints
+Cardinality
+Grounding
+Draw five green circles, two red squares, nine 
+pink circles. Draw three times as many blue 
+squares as red squares. Place each red square 
+inside a different green circle. Make each blue 
+square contain a different pink circle. Make 
+every pink circle larger than every green 
+circle. Make sure the pink circles are not all 
+the same size. Place all the red squares to the 
+left of all the pink circles. Place all the red 
+squares in the top area. Make sure the green 
+circles are not all in the same row. Use a plain 
+light gray background and no other objects.
+C3
+C5
+Spatial
+Size
+Topology
+Cardinality
+Grounding
+Cardinality
+Grounding
+Spatial
+Size
+Topology
+Cardinality
+Grounding
+Spatial
+Size
+C*
+Figure 1: Example VVRBENCH tasks from different complexity ranges (C1–C5) and Challenge
+(C∗). Each panel shows the prompt, its complexity, the number of object instances, the number of
+constraints, the active constraint families, and a reference image that satisfies every constraint.
+for evaluation or for training. Program verifiers of each VVR constraint also enable fine-grained
+diagnosis of generator capability over different types of instructions.
+VVRBENCH.
+We instantiate VVR with colored geometric shapes and 46 constraint types over
+counts, attributes, and spatial relations and release VVRBENCH, with 10,000 tasks across five
+complexity ranges, and VVRBENCH-Challenge, with 720 more complex tasks to discriminate
+among frontier models (§3). The strongest open-weight model, FLUX.2-dev, achieves 19.2% accu-
+racy on VVRBENCH, and the strongest model overall, GPT-Image-2.5-Sunburst, solves 21.4% of
+VVRBENCH-Challenge. Failures concentrate in the
+Cardinality (e.g., “twice as many A as B”) and
+Topology (e.g., “each A is inside a different B”) constraint families. The benchmark can be updated
+with higher complexity as frontier models evolve.
+RLVVR.
+We use the verifiable VVR scores as rewards for reinforcement learning (RLVVR) to
+train image generators to follow instructions precisely. To study how training complexity affects gen-
+eralization, we procedurally generate two training corpora: VVR-Easy contains only low complex-
+ity tasks of at most one constraint family, and VVR-Matched matches the VVRBENCH distribution.
+We show that 1) training on easy distribution generalizes to harder tasks, 2) training on harder tasks
+teaches compositionality, 3) training on colored shapes transfer to out-of-domain natural prompts to
+improve position and counting, and, most importantly, 4) mixing VVR with existing post-training
+objectives (e.g., GenEval2, OCR, PickScore) improves general benchmark performance and human
+preference, motivating the adoption of VVR into standard image generation post-training recipes.
+Our contributions are:
+1. VVR, the first framework for programmatically verifiable image rewards, whose generator com-
+poses constraints on color, count, shape, and spatial relations into satisfiable instructions at any
+chosen complexity, each constraint checked by its own verifier (§2).
+2. VVRBENCH and VVRBENCH-Challenge, benchmark that reveals capability gap of image gen-
+erators to follow instructions, on which even frontier image generators fail most complex tasks,
+with failures tracable to specific constraint types (§3).
+3. RLVVR, reinforcement learning with VVR rewards, which improves precise instruction follow-
+ing on tasks harder than those seen in training, transfers from synthetic scenes to natural prompts,
+and, mixed with existing post-training objectives, improves general benchmark performance and
+human preference (§4).
+2
+VERIFIABLE VISUAL REWARDS
+2.1
+VVR TASK REPRESENTATION
+A VVR task specifies the requirements of a scene of colored shapes:
+s = (G, B, A, F, p).
+(1)
+2
+
+
+Preprint
+Table 1: Constraint library. VVR groups 46 constraint types into five families. Appendix A.1 lists all types
+and their supported values, and Appendix C.2 defines their verifiers.
+Family
+Visual property
+Example constraint types
+Grounding
+Object identity and attribute binding
+Color; shape; color–shape binding
+Cardinality
+Quantities and count comparisons
+Exact count; equal, greater, or fewer counts; count ratios (X times as many)
+Spatial
+Position and arrangement
+Image regions; relative order; alignment; grids; distance comparisons
+Size
+Relative visual extent
+Pairwise and groupwise size; within-group variation; extrema
+Topology
+Contact and enclosure
+Touching; separation; containment; distinct containment
+Here G is a set of object groups, B is a set of background constraints, A is a set of active constraints
+on the object groups, F is a set of forbidden-content constraints, and p is the natural-language
+instruction. In VVRBENCH, B and F are the same in every task: a plain background color and
+F = {no unrequested objects}, so we focus the rest of the section on the constraints in A.
+Each constraint in A is instantiated with a constraint type from the constraint library and one or more
+object groups. Each constraint type has a predefined number of object groups that it operates on, and
+a set of supported values (Table 1). For example, exact count(g1; 3) is a unary constraint that
+requires group g1 to contain three objects, and left of(g1,g2) requires group g1 to appear
+left of group g2. Every group has exactly one color constraint and one shape constraint; all other
+constraints are optional. Appendix A.2 shows a complete task.
+A valid task must satisfy three desiderata: 1) Well-formed: every constraint uses a defined type
+with supported parameter values, such as one of eight colors or three shapes, and refers to as many
+object groups in G as its type requires; 2) Jointly satisfiable: at least one placement and sizing
+of the specified objects satisfies all constraints in B, A, and F simultaneously; and 3) Faithfully
+expressed: p states every constraint in B, A, and F without any addition or omission.
+2.2
+TASK GENERATION
+We now walk through the stages of the VVR generator that produces well-formed, jointly satisfiable,
+and faithfully expressed tasks. Appendix B provides an example generation and validation details.
+1. It first creates a scene by sampling background constraints B and objects. It randomly assigns
+every object a color, shape, position, and size, forming object groups G, and samples forbidden-
+content constraints F that no object in the scene violates.
+2. For each constraint type in the library, it lists all object group tuples with size corresponding to
+the type’s arity. The constraint type and its input tuple form an instantiated constraint.
+3. All instantiated constraints that are true under the constructed scene, checked by program veri-
+fiers, form satisfiable constraint set A∗. From A∗, multiple valid active constraint sets A can be
+sampled such that A ⊆A∗.
+4. A template τ with phrasing variants transforms each task requirement into natural language,
+p = τ(G, B, A, F), forming s = (G, B, A, F, p).
+Every constraint instantiates a library type on a tuple of sampled groups whose length equals the
+type’s arity, so every task is well-formed by construction. The scene satisfies B, F, and every
+constraint in A∗, so it satisfies the task formed with any A ⊆A∗, making the task jointly satisfiable.
+Finally, in the template τ, every requirement of s has a fixed phrase in p, and every phrase in p comes
+from a requirement of s, guaranteeing expression faithfulness.
+Structural complexity estimates task difficulty.
+We define the structural complexity of a task as
+C(s) = P
+a∈A c(a; s), where c(a; s) is the complexity contribution of one constraint a in task s.
+c(a; s) follows a fixed rule for each constraint type and grows with the number of object instances
+that a evaluates in s. Appendix A.1 gives the complexity contribution of every constraint type. In the
+specific instantiation of tasks that produces datasets in Table 2, each task has one background-color
+constraint and one forbidden-content constraint, so the constraints in B and F are excluded.
+Datasets.
+Given a target distribution T over constraint families and structural complexity range,
+the generator can retain task candidates to fit T . Thus datasets can be built to evaluate or learn
+specific constraint types at specified difficulty. VVR datasets used by this paper and their complexity
+distribution are listed in Table 2.
+3
+
+
+Preprint
+2.3
+DETERMINISTIC, REFERENCE-FREE CONSTRAINT VERIFICATION
+VVR is an open-ended image generation task, where any image that satisfies all constraints receives
+full credit, so the verifier has to be reference-free. It takes in the generated RGB image x and the
+formal constraints (G, B, A, F) of the task and produces a correctness decision.
+Object extraction from pixels.
+VVR first extracts candidate objects from the generated image
+using deterministic pixel-level operations. 1) It produces a binary mask for each supported color,
+with fixed hue and contrast thresholds. 2) Connected-component analysis assigns the same label to
+foreground pixels connected by a path of edge- or corner-adjacent pixels; each labeled region is a
+candidate object. 3) Fixed contour measurements classify each candidate into one of the supported
+shapes (circle, square, or triangle) based on its aspect ratio, bounding-box coverage, and convexity.
+4) Candidates are then matched to object groups by the color and shape constraints of each group.
+Appendix C.1 visualizes the extraction pipeline, including the color map and shape classifier, as well
+as the handling of ambiguous colors, irregular contours, fragmented objects, and blurred boundaries.
+Constraint verifier library.
+The verifier library V contains one program verifier for each con-
+straint type: a Python function that applies the type’s requirement to the extracted objects. Verifier
+decisions use fixed comparisons of object counts, positions, extents, or boundary distances. For a
+constraint a ∈B ∪A ∪F, the verifier va returns a pass-or-fail decision da(x, s) ∈{0, 1} and a
+partial-credit score qa(x, s) ∈[0, 1].
+def left_of(g1, g2, m):
+g1x = np.mean([c.centroid[0] for c in g1])
+g2x = np.mean([c.centroid[0] for c in g2])
+delta = g2x - g1x
+partial = np.clip(delta / max(m, 1), 0, 1)
+return delta >= m, partial
+Consider the constraint a = left of(g1,g2),
+its program verifier computes δ, the mean horizon-
+tal centroid coordinate of g2 minus that of g1, and
+compares it with a separation margin m. It returns
+two values: 1) the decision da, which passes when
+g1 lies to the left of g2 by at least the margin; and
+2) the partial-credit score qa = min(1, max(0, δ/m)), the fraction of the required separation that
+the image achieves. The score is 0 when g1 is at or to the right of g2, rises linearly as g1 moves
+left, and reaches 1 at the margin, where the decision also passes. Appendix C.2 gives the verifier
+code for every constraint in an example task, Appendix C.3 provides verifier validation details.
+Scores.
+A generated image succeeds only if every constraint in B, A, and F passes:
+rexact(x, s) =
+Y
+a∈B∪A∪F
+da(x, s).
+(2)
+VVRBENCH accuracy is the mean of rexact across tasks. For training, we design a dense reward
+rdense ∈[0, 1] that gives partial credit through the verifier partial-credit scores:
+rdense(x, s) = ψ(x, s)
+X
+a∈B∪A∪F
+wa qa(x, s).
+(3)
+The weights wa are fixed by constraint type, and ψ(x, s) ∈[0, 1] is a multiplicative penalty fac-
+tor that prevents the model from exploiting any single easy-to-learn constraint while ignoring oth-
+ers (Zhang et al., 2024; Hong et al., 2026). Appendix C.4 provides more details on wa and ψ.
+3
+VVRBENCH
+Table 2: Training and evaluation datasets produced by the VVR
+task generator. Appendix B.5 provides details on target distribution.
+Dataset
+Use
+Size
+Complexity
+VVRBENCH
+evaluation
+10,000
+3–48
+VVRBENCH-Fast
+evaluation
+820
+3–44, 20 each
+VVRBENCH-Challenge
+evaluation
+720
+45–80, 20 each
+VVR-Easy
+training
+100,000
+≤20
+VVR-Matched
+training
+100,000
+∼VVRBENCH
+Benchmark splits.
+We evaluate
+on three benchmark splits (Table 2).
+1) VVRBENCH, the main bench-
+mark, contains 10,000 tasks of com-
+plexity 3 to 48, which we report in
+five ranges C1 to C5 of about 2,000
+tasks each.
+2) VVRBENCH-Fast
+is an 820-task subset covering the
+same range with 20 tasks at each in-
+teger complexity for evaluating image APIs at a twelfth of the generation cost. 3) VVRBENCH-
+Challenge contains 720 tasks of complexity 45 to 80 and adds 14 more difficult, group level con-
+straint types, above the VVRBENCH range, to separate the strongest generators.
+4
+
+
+Preprint
+Table 3: Accuracy (%) on the 10,000 VVRBENCH tasks, overall and by complexity range. C1 to C5 split the
+tasks by structural complexity C(s) into five ranges of about 2,000 tasks each: 3–16, 16–21, 21–26, 26–31,
+and 31–48. Accuracy generally falls with complexity. GPT-Image-2 drops from 97.65% in C1 to 65.72% in
+C5, and no open weight model exceeds 20% overall.
+Model
+Accuracy (%) ↑
+C1
+C2
+C3
+C4
+C5
+GPT-Image-2
+86.86±0.68 97.65±0.74 98.18±0.70 91.00±1.34 81.83±1.75 65.72±2.10
+GPT-Image-1-mini
+26.40±0.87 74.06±1.93 36.78±2.18 12.47±1.53
+4.70±1.02
+2.39±0.76
+FLUX.2-dev
+19.15±0.78 49.86±2.15 24.26±1.96 12.42±1.52
+5.91±1.12
+2.24±0.74
+HunyuanImage-2.1
+18.79±0.78 45.53±2.15 19.64±1.83 14.84±1.63
+8.61±1.31
+4.29±0.98
+Qwen-Image-2512
+5.79±0.47 19.16±1.75
+5.87±1.14
+2.11±0.73
+1.10±0.56
+0.15±0.29
+HiDream-I1-Full
+4.22±0.41 16.47±1.65
+3.06±0.87
+0.80±0.50
+0.20±0.31
+0.00±0.19
+FLUX.1-dev
+3.87±0.40 15.51±1.62
+2.18±0.75
+0.96±0.53
+0.15±0.29
+0.00±0.19
+FLUX.1-schnell
+2.88±0.35 11.96±1.46
+1.66±0.67
+0.25±0.34
+0.10±0.26
+0.00±0.19
+SD3.5 Medium
+2.81±0.34 12.01±1.47
+1.19±0.59
+0.35±0.37
+0.05±0.23
+0.00±0.19
+SD3.5 Large
+2.45±0.32 10.47±1.39
+1.14±0.58
+0.20±0.32
+0.05±0.23
+0.00±0.19
+SDXL 1.0
+0.02±0.05
+0.10±0.25
+0.00±0.20
+0.00±0.19
+0.00±0.19
+0.00±0.19
+Sana 1.6B
+0.00±0.04
+0.00±0.18
+0.00±0.20
+0.00±0.19
+0.00±0.19
+0.00±0.19
+GPT-
+Image-2.5
+Sunburst
+GPT-
+Image-2
+Gemini
+3.1 Flash
+Image
+Gemini
+2.5 Flash
+Image
+Gemini
+3.1 Flash
+Lite Image
+Gemini
+3 Pro
+Image
+GPT-
+Image-1-
+mini
+0
+20
+40
+60
+80
+Accuracy (%)
+84.51
+82.20
+47.20
+45.61
+42.07
+37.20
+32.44
+Figure 2: API models on VVRBENCH-Fast.
+Table 4: VVRBENCH-Challenge acc. (%). The best model
+solves 21.39% overall and 7.92% at complexity 69 to 80.
+Model
+Accuracy ↑
+45 to 56
+57 to 68
+69 to 80
+GPT-Image-2.5-Sunburst
+21.39±3.14 31.67±6.13 24.58±5.82 7.92±4.12
+GPT-Image-2
+10.28±2.43 17.50±5.31 10.83±4.57 2.50±2.85
+Gemini-3.1-Flash-Lite-Image
+7.36±2.14 10.00±4.45
+4.17±3.33 7.92±4.12
+Gemini-3-Pro-Image
+4.58±1.78
+7.08±3.97
+4.17±3.33 2.50±2.85
+Gemini-3.1-Flash-Image
+3.89±1.67
+3.33±3.11
+3.75±3.22 4.58±3.44
+Gemini-2.5-Flash-Image
+1.11±1.07
+2.50±2.85
+0.42±1.91 0.42±1.91
+GPT-Image-1-mini
+0.28±0.73
+0.83±2.15
+0.00±1.58 0.00±1.58
+Models.
+We evaluate ten open-weight models:
+FLUX.2-dev (Black Forest Labs, 2025),
+HunyuanImage-2.1 (Tencent Hunyuan Team, 2025), Qwen-Image-2512 (Wu et al., 2025; Qwen
+Team, 2025), HiDream-I1-Full (Cai et al., 2025), FLUX.1-dev and FLUX.1-schnell (Black For-
+est Labs, 2024), Stable Diffusion 3.5 Medium and Large (Esser et al., 2024; Stability AI,
+2024), SDXL (Podell et al., 2024), and Sana 1.6B (Xie et al., 2025), and seven API based
+models:
+GPT-Image-2.5-Sunburst (OpenAI, 2026b;c), GPT-Image-2 (OpenAI, 2026a), GPT-
+Image-1-mini (OpenAI, 2025), Gemini-3.1-Flash-Image (Google, 2026), Gemini-3.1-Flash-Lite-
+Image (Google DeepMind, 2026), Gemini-3-Pro-Image (Google DeepMind, 2025), and Gemini-
+2.5-Flash-Image (Google, 2025). Appendix D.1 gives the additional evaluation details.
+3.1
+PRECISE INSTRUCTION FOLLOWING IS FAR FROM SOLVED
+As shown in Table 3, the strongest open-weight model, FLUX.2-dev, solves 19.15% of VVRBENCH
+tasks, and only 2.24% in the high complexity bin C5. Every other open-weight model solves less
+than 19%. GPT-Image-2 solves 86.86% of all tasks, but its accuracy falls from 97.65% in C1 to
+65.72% in C5. On VVRBENCH-Fast (Figure 2), GPT-Image-2.5-Sunburst and GPT-Image-2 solve
+84.51% and 82.20% of the tasks, respectively, leading other API models by a large margin (exact
+scores in Appendix D.2).
+VVRBENCH-Challenge separates frontier models.
+With tasks in the complexity range of 3–
+44, VVRBENCH-Fast barely separates the strongest frontier models, GPT-Image-2.5-Sunburst and
+GPT-Image-2, with a 2.3-points margin. Therefore, we create VVRBENCH-Challenge by sampling
+tasks from the uniform complexity distribution of 45–80 over a wider range of constraints using
+the VVR generator (Appendix B.5). As shown in Table 4, VVRBENCH-Challenge discriminates
+among frontier models and exposes new failure modes. GPT-Image-2.5-Sunburst solves 21.39% of
+Challenge tasks, twice the 10.28% of GPT-Image-2, and its accuracy falls from 31.67% at com-
+plexity 45–56 to 24.58% at 57–68 and 7.92% at 69–80. Every other model solves at most 8% of
+VVRBENCH-Challenge, suggesting that there is still large room for improvement. Interestingly, we
+observe occasional abstention behaviors from all Gemini models, stating the instruction is unsatisfi-
+able, demonstrating failure in spatial reasoning (Appendix D.3).
+The uniform drop of model accuracy across increasing complexity bins validates the design of the
+structural complexity score as a model-independent heuristic to generate tasks with controlled diffi-
+culty. Appendix B.4 provides more details on complexity as a predictor of failure.
+5
+
+
+Preprint
+Topology
+n=1038
+Cardinality
+n=4236
+Size
+n=972
+Bkgd. &
+unreq.
+n=1440
+Spatial
+n=1579
+Grounding
+n=11382
+GPT-Image-2.5
+Sunburst
+GPT-Image-2
+Gemini 3.1
+Flash Lite
+Gemini 3 Pro
+Gemini 3.1
+Flash
+Gemini 2.5
+Flash
+GPT-Image-1
+-mini
+Avg
+57
+78
+86
+81
+92
+99
+52
+72
+72
+76
+89
+98
+72
+68
+67
+76
+85
+95
+67
+61
+63
+67
+85
+94
+61
+59
+64
+64
+83
+95
+40
+46
+50
+62
+74
+88
+44
+45
+58
+73
+72
+93
+56
+61
+66
+71
+83
+95
+(a) Difficulty by Constraint Family
+Same
+count
+n=266
+Times as
+many
+n=136
+Each
+contains
+n=581
+Unreq.
+objects
+n=720
+Shape
+n=3794
+Back-
+ground
+n=720
+Color
+n=3794
+Not
+touching
+n=259
+56
+58
+27
+62
+99
+100
+99
+100
+43
+44
+19
+51
+98
+100
+99
+100
+32
+39
+61
+56
+94
+96
+98
+99
+27
+35
+53
+40
+94
+94
+99
+100
+28
+34
+44
+35
+94
+93
+98
+99
+17
+16
+18
+30
+88
+93
+94
+89
+16
+7
+17
+46
+94
+99
+95
+97
+31
+33
+34
+46
+94
+96
+98
+98
+(b) Hardest and Easiest Constraint Types
+0
+20
+40
+60
+80
+100
+Constraint pass rate (%)
+Figure 3: Pass rates of individual constraint for API models on VVRBENCH-Challenge, by family (left) and
+for the four constraint types with the lowest and the four with the highest average pass rates among those with
+at least 100 checks per model (right).
+Finding 1. Open-weight generators fail most VVRBENCH tasks, and even the strongest API
+models lose accuracy sharply as complexity grows.
+3.2
+FAILURES CONCENTRATE IN COUNTING AND OBJECT MATCHING
+The binary pass-fail score (Eq. 2) is composed of individual verifier decisions from each of the
+active constraints in each task. Figure 3 presents the constraint-level pass rate of the API models on
+VVRBENCH-Challenge. Organized by constraint families (Table 1), 95% of Grounding constraints
+are satisfied, while only 56% of
+Topology constraints are rendered, averaged across models. The
+hardest constraint types concern counts or relations across object groups:
+same count passes in 31%
+of checks,
+times as many in 33%, and
+each contains , which requires each object of one group to
+contain a different object of another group, in 34%.
+Appendix D.4 gives the pass rate of every constraint type, Appendix D.5 correlates each family
+to accuracy across all models at matched complexity, and Appendix D.6 shows typical failures in
+which a model adds objects that the prompt excludes.
+Finding 2. Generators satisfy requirements on individual objects and pairs but fail requirements
+that constrain whole sets of objects.
+4
+RLVVR: VVR FOR DIFFUSION POST-TRAINING
+VVR scores images with program verifiers, avoiding error propagation from unreliable learned eval-
+uators, and is not limited to fixed prompt sets, so training can be scaled to any desired data size and
+difficulty distributions. These properties allow us to improve image generation instruction following
+by using VVR as a reward in reinforcement learning (RLVVR). In this section, we post-train image
+generators with RLVVR to answer the following research questions:
+RQ1. Does RLVVR teach precise instruction following, and how does the complexity of the train-
+ing tasks shape what is learned?
+RQ2. Do the skills learned from synthetic scenes transfer to natural prompts beyond VVR?
+RQ3. Is supervision from synthetic scenes complementary to existing post-training rewards?
+4.1
+EXPERIMENTAL SETUP
+Data.
+We generate two training corpora using the VVR generator (§2.2). VVR-Easy contains
+tasks that contain at most one constraint family and have complexity of at most 20, and VVR-
+Matched matches the VVRBENCH distribution (complexity 3–48). Each dataset contains 100K
+VVR tasks after decontamination from benchmark data (Table 2). For reward-mixture experiments,
+we train with GenEval2 (Kamath et al., 2025), OCR (Liu et al., 2025a), and a five-reward objective
+that combines GenEval (Ghosh et al., 2023), GenEval2, OCR, PickScore (Kirstain et al., 2023),
+and UnifiedReward (Wang et al., 2025). Each of these objectives is trained alone and mixed with
+VVR-Easy, with equal number of prompts per objective.
+6
+
+
+Preprint
+C1
+C2
+C3
+C4
+C5
+VVR-Bench complexity range
+0
+20
+40
+60
+Accuracy (%)
+Beyond VVR-Easy training support
+Pretrained (2.81%)
+VVR-Easy (28.27%)
+VVR-Matched (46.60%)
+Figure 4: VVRBENCH accuracy by complexity range.
+Shaded ranges lie above the complexity of every VVR-
+Easy training task, and VVR-Easy improves them. Train-
+ing on harder generated tasks (VVR-Matched) closes
+more of the gap.
+C3
+C4
+C5
+0
+20
+40
+60
+80
+100
+Gap closed by VVR-Easy (%)
+85
+79
+73
+73
+54
+28
+69
+66
+56
+62
+47
+30
+Counts, partial
+Relations, partial
+Counts, all
+Relations, all
+Figure 5: VVR-Easy closes the gap between pre-
+trained and VVR-Match more effectively on
+partial scores (individual constraint) than
+all-
+satisfy scores (compositionality) on both count
+and relation constraints.
+Training.
+We train Stable Diffusion 3.5 Medium (Esser et al., 2024; Stability AI, 2024) with Flow-
+GRPO (Liu et al., 2025a). Reward for each rollout is assigned by the scorer of the task objective that
+its prompt comes from. We use the VVR dense score rdense for VVR prompts (Eq. 3). We name
+each trained model after its training data. Appendix E reports training details.
+Evaluation.
+We evaluate trained models on VVRBENCH, GenEval, GenEval2, OCR, PickScore,
+HPSv2.1, CLIPScore, aesthetic score, ImageReward, HPSv3, and UnifiedReward (Appendix E.1).
+4.2
+RQ1: RLVVR TEACHES PRECISE INSTRUCTION FOLLOWING
+Training on VVR-Easy raises VVRBENCH accuracy from 2.81% to 28.27% (Figure 4). Every task
+in C3–C5 is more complex than any VVR-Easy task, and on these ranges accuracy still rises by
+17.16, 8.31, and 1.35 points. Training on data from the benchmark distribution with VVR-Matched
+raises accuracy to 46.60% overall and to 45.62%, 38.39%, and 21.82% on C3–C5 (Appendix F.1).
+We separate how reliably a model satisfies individual constraints from how well it satisfies compo-
+sitional requirements, using the two kinds of constraints that nearly every complex task contains:
+counts and relations. We compare the models’ partial scores qa(x, s) on these constraints with how
+often they satisfy every count or every relation (Appendix F.2). On tasks outside of its training
+complexity range, VVR-Easy closes 79% and 64% of the gap between the pretrained model and
+VVR-Matched in the partial scores of counts and relations, respectively, but only 55% and 46% in
+how often all counts or all relations in a task are satisfied (Figure 5). Easy tasks thus make individual
+constraints reliable, and satisfying many constraints in the same image is learned from large scenes.
+Finding 3. Training only on easy tasks makes individual constraints reliable, including on harder
+tasks, and training on large scenes teaches compositionality.
+4.3
+RQ2: SKILLS LEARNED FROM SYNTHETIC SCENES TRANSFER TO NATURAL PROMPTS
+Trained only on colored shapes, VVR-Easy improves over the pretrained reference on eight of ten
+non-VVR metrics, including GenEval by 0.113 and OCR by 0.111 (Table 5). Human annotators
+confirm the transfer: VVR-Easy is preferred by annotators over the pretrained SD3.5-M on their
+generations from 160 natural prompts outside VVR with a win rate of 71.6% with 83.8% pairwise
+agreement (Table 6). Appendix G reports annotation details.
+VVR-Easy also scores higher on 6 out of 9 natural prompt benchmarks than the model trained
+with the GenEval2 reward, whose training prompts name real objects—especially GenEval (0.729
+vs. 0.688) and OCR (0.587 vs. 0.501). Notably, the GenEval gain comes from position (+0.150),
+counting (+0.103), and color attribution (+0.025), all skills that VVR trains, while the single object,
+two object, and colors categories are comparable to the GenEval2-trained model.
+Finding 4. Skills learned from synthetic VVR scenes transfer to natural prompts, especially in
+position and counting.
+7
+
+
+Preprint
+Table 5: RLVVR with VVR-Easy and reward mixtures transfers to most benchmarks and metrics.
+Training reward
+VVR GenEval GenEval2
+OCR PickScore HPSv2.1 HPSv3 CLIPScore Aesthetic ImageReward UnifiedReward
+Pretrained
+0.028
+0.616
+0.237
+0.476
+0.841
+0.300
+7.689
+0.956
+5.517
+0.929
+0.636
++ VVR-Easy
+0.283
+0.729
+0.268
+0.587
+0.849
+0.294
+8.275
+0.979
+5.483
+1.114
+0.641
+∆
++0.255
++0.113
++0.031 +0.111
++0.008
+−0.006 +0.586
++0.023
+−0.034
++0.185
++0.005
+GenEval2
+0.039
+0.688
+0.454
+0.501
+0.848
+0.297
+8.289
+0.974
+5.523
+1.110
+0.635
++ VVR-Easy
+0.218
+0.718
+0.478
+0.532
+0.848
+0.302
+8.511
+0.976
+5.533
+1.155
+0.637
+∆
++0.180
++0.030
++0.025 +0.030
++0.0004
++0.005 +0.222
++0.002
++0.009
++0.045
++0.0019
++ VVR-Matched
+0.335
+0.712
+0.491
+0.510
+0.848
+0.301
+8.498
+0.972
+5.516
+1.148
+0.637
+∆
++0.296
++0.024
++0.038 +0.009
+−0.0002
++0.004 +0.209
+−0.001
+−0.007
++0.038
++0.0012
+OCR
+0.036
+0.625
+0.225
+0.962
+0.844
+0.290
+7.601
+0.960
+5.477
+0.994
+0.633
++ VVR-Easy
+0.247
+0.678
+0.252
+0.941
+0.846
+0.290
+7.765
+0.969
+5.488
+1.087
+0.636
+∆
++0.212
++0.053
++0.027 −0.021
++0.0018
+0.000 +0.164
++0.009
++0.012
++0.092
++0.0024
+Five-reward
+0.048
+0.739
+0.342
+0.856
+0.850
+0.294
+8.137
+0.974
+5.510
+1.125
+0.640
++ VVR-Easy
+0.158
+0.751
+0.383
+0.826
+0.848
+0.300
+8.444
+0.976
+5.541
+1.152
+0.640
+∆
++0.110
++0.012
++0.041 −0.030 −0.0024†
++0.006 +0.307
++0.002
++0.031
++0.027
++0.0003
+Table 6: Human preference win-rate (%) for the RLVVR-trained model over its baseline.
+VVR win rate vs. baseline
+VVR
+GenEval2
+GenEval
+OCR
+DrawBench
+Outside VVR
+VVR-Easy vs. pretrained
+93.3
+78.8
+62.9
+69.6
+75.0
+71.6
+[86.7, 98.3]
+[67.5, 88.8]
+[50.4, 75.0]
+[58.3, 80.4]
+[65.4, 84.2]
+[65.9, 77.1]
+GenEval2 + VVR-Easy vs. GenEval2
+89.2
+62.9
+57.5
+56.7
+57.5
+58.6
+[81.7, 95.4]
+[50.8, 74.6]
+[45.0, 69.6]
+[44.6, 68.8]
+[45.4, 69.2]
+[52.6, 64.6]
+4.4
+RQ3: SUPERVISION FROM SYNTHETIC SCENES COMPLEMENTS EXISTING REWARDS
+Mixed with GenEval2, VVR-Easy raises all ten non-VVR metrics in Table 5, including GenEval2
+itself (+0.025). The largest metric gains are in GenEval (+0.030), OCR (+0.030), HPSv3 (+0.222),
+and ImageReward (+0.045). Human annotators prefer the mixture to GenEval2 alone on the 160
+non-VVR natural prompts with a win rate of 58.6% (Table 6). Combining with VVR-Matched, the
+dataset with more complex tasks and diverse constraint combinations, further raises performance
+and generalization on most natural prompts.
+Mixed with OCR and with the five-reward objective, VVR-Easy raises eight of ten metrics each,
+with the largest gains in GenEval by 0.053 and ImageReward by 0.092 in the OCR mixture, and
+GenEval2 by 0.041 and HPSv3 by 0.307 in the five-reward mixture. In these two mixtures, native
+OCR accuracy falls by 0.021 and 0.030, and in the five-reward mixture PickScore falls by 0.002,
+since each mixture trains on fewer prompts from the original sources.
+Finding 5. Adding VVR tasks to existing post-training objectives improves human preference
+and most non-VVR metrics.
+5
+RELATED WORK
+Verifiable rewards. Verifiable rewards score language-model outputs with executable rules, such as
+exact-answer checks (Guo et al., 2025) and instruction-constraint checks (Zhou et al., 2023; Lambert
+et al., 2025), and procedural environments generate such tasks at controlled difficulty (Stojanovski
+et al., 2025; Liu et al., 2025b; Chen et al., 2025a). Johnson et al. (2017) derive visual questions and
+their answers from generated scenes; VVR derives image-generation prompts and their constraints
+the same way. For generated SVG and TikZ programs, rewards check the geometry of the rendered
+program (Li et al., 2026) or compare its rendering with a reference image (Rodriguez et al., 2025;
+Belouadi et al., 2024); VVR instead verifies generated pixels, with no program or reference image,
+and accepts any image that satisfies the constraints.
+Rewards for text-to-image post-training. Diffusion and flow models are post-trained with policy
+gradients (Black et al., 2024; Fan et al., 2023), differentiable rewards (Xu et al., 2023; Clark et al.,
+2024), preference optimization (Wallace et al., 2024), and online reinforcement learning for flow
+models (Liu et al., 2025a; Xue et al., 2025). Rewards that check the prompt rely on learned models:
+preference models (Kirstain et al., 2023; Xu et al., 2023; Wu et al., 2023; Wang et al., 2025), or rules
+applied to the outputs of learned detectors and vision-language models. Liu et al. (2025a) score
+8
+
+
+Preprint
+Pretrained SD3.5
+VVR-Easy (Ours)
+GenEval2
+GenEval2 +  
+VVR-Easy (Ours)
+VVRBench
+GenEval2
+OCR
+DrawBench
+four wooden dogs
+A neon sign above the diner entrance, 
+glowing brightly in the night, flashes 
+"Open 24 Hours" in vibrant red and blue, 
+casting a warm, inviting light over the 
+worn brick facade and the few cars 
+parked outside.
+A yellow book and a red vase.
+Place the green square above the red 
+square and the cyan circle. Make the 
+green square larger than the red square.  
+Make the green square the largest 
+colored object. Also include a yellow 
+square, an orange circle, and a purple 
+square. Set the objects against  a plain 
+pale pink background;   do not add other 
+colored objects.
+Figure 6: Example generations from the RLVVR and baseline models from the same prompts and initial seed.
+On the VVR prompt, the verifier accepts both RLVVR outputs and rejects both baselines. On the DrawBench
+prompt, VVR-Easy renders the vase as a flat shape without shading, consistent with its lower aesthetic and
+HPSv2.1 scores; adding GenEval2 to VVR-Easy recovers shading and improves aesthetic and HPSv2.1.
+GenEval detections (Ghosh et al., 2023) and OCR outputs, Zhou et al. (2026) combine detectors with
+a vision-language model, and Huang et al. (2026) answer decomposed questions with a multimodal
+model. Errors in these learned signals can be exploited during optimization (Zhang et al., 2024).
+The compressibility reward of Black et al. (2024) needs no learned model but does not depend on
+the prompt. RLVVR computes a prompt-specific reward from the generated pixels without a learned
+model, and it can be mixed with these objectives.
+Text-to-image evaluation. Text-to-image evaluation uses embedding and question-answering met-
+rics (Hessel et al., 2021; Hu et al., 2023; Cho et al., 2024a; Lin et al., 2024) and prompt-alignment
+and compositional benchmarks (Saharia et al., 2022; Yu et al., 2022; Ghosh et al., 2023; Huang
+et al., 2023; Hu et al., 2024), all of which score images with learned models. Kamath et al. (2025)
+replace the GenEval detector with a vision-language judge because detector scores diverged from
+human judgments on stronger generators. Wu et al. (2024) and Cho et al. (2024b) use synthetic vi-
+sual concepts in their prompts but score the outputs with a detector or a VLM. VVRBENCH scores
+every constraint exactly, with the same program verifiers that provide the RLVVR reward.
+6
+CONCLUSION
+In this paper, we introduce Verifiable Visual Rewards (VVR), where open-ended image gener-
+ation can be scored by deterministic program verifiers to provide both evaluation feedback and
+post-training signals. VVR tasks can be generated procedurally given any target distribution over
+constraint types and complexity levels. We release VVRBENCH, 10K verifiable image generation
+tasks where the model is asked to draw geometric objects with specified color, shape, count, and
+spatial relations, and show that models struggle with visual instruction following. A VVRBENCH-
+Challenge set where the strongest frontier image generation model, GPT-Image-2.5-Sunburst, solves
+only 21.4% of the tasks. We then train image generators with VVR scores as an RL reward (RLVVR)
+significantly improves instruction following both on VVR tasks and on natural prompts unseen
+during training. Mixing VVR with existing post-training objectives for image generation, such as
+GenEval2, leads to further gains on a broad evaluation suite and human preference, motivating its
+adoption into standard post-training recipes.
+9
+
+
+Preprint
+LIMITATIONS AND FUTURE DIRECTIONS
+VVRBENCH uses eight colors, three shapes, and plain backgrounds; future work can add more
+shapes, textures, and object types as new program verifiers. VVR currently covers 2D geometric
+objects, and future work can extend it to 3D renderings or 2D projections of 3D objects.
+VVR is constrained to text-to-image generation; the same constraints could be applied to image
+editing. New constraints such as motion, velocity, acceleration, are also convertible to program
+verifiers and can be applied to video generation. VVR outputs with their verifier decisions could be
+used to evaluate or train learned reward models and VLM judges.
+We post-train SD3.5-M with Flow-GRPO; applying RLVVR to other image generators and RL al-
+gorithms is left to future work. RLVVR is an RL-Zero recipe: we apply Flow-GRPO directly to the
+pretrained SD3.5-M. Mid-training on VVR data with supervised fine-tuning or DPO before the RL
+stage, with different data mixtures, could further improve instruction following in image generation.
+RLVVR uses the combined dense reward rdense, but the program verifiers also report which con-
+straints fail. This feedback allows a range of reward designs, for example weighting constraint fam-
+ilies differently according to the desired model behavior. The complexity-controlled task generator
+also allows adaptive curricula for RLVVR.
+Several API models incorrectly decline some VVR tasks as contradictory, although every task is
+satisfiable. Our analysis is constrained to case studies due to the small number of abstentions, but
+VVR tasks can be used to evaluate, and further train for, correct abstention decisions in image
+generators, VLM, and even LLMs to improve spatial reasoning.
+AI USE STATEMENT
+Generative AI tools were used to assist with code navigation, debugging, analysis scripting, and
+manuscript polishing. The authors take responsibility for the final content.
+ETHICS STATEMENT
+The annotation in this paper labels generated images of synthetic scenes and public benchmark
+prompts and involves no personal or sensitive data.
+REPRODUCIBILITY STATEMENT
+We release all three benchmark splits, the two training corpora, the verifier, the task generator, and
+the scripts that build every table and figure, together with evaluation prompts, training configura-
+tions, and model checkpoints. The appendix records reward formulas, full results tables, and dataset
+statistics.
+ACKNOWLEDGMENT
+This research was developed in part with funding from the Defense Advanced Research Projects
+Agency’s (DARPA) SciFy program (Agreement No. HR00112520300). The views expressed are
+those of the author and do not reflect the official policy or position of the Department of Defense or
+the U.S. Government. This material is based in part upon work supported by the Defense Advanced
+Research Projects Agency and the Air Force Research Laboratory, contract number(s): FA8650-23-
+C-7316. Any opinions, findings and conclusions, or recommendations expressed in this material are
+those of the author(s) and do not necessarily reflect the views of AFRL or DARPA. This research
+was supported by Coefficient Giving, the University of Washington Population Health Initiative,
+Amazon Health, the UW+Amazon Science Hub, and the Meta AIM program.
+REFERENCES
+Jonas Belouadi, Simone Paolo Ponzetto, and Steffen Eger. DeTikZify: Synthesizing Graphics Pro-
+grams for Scientific Figures and Sketches with TikZ. In Advances in Neural Information Process-
+ing Systems (NeurIPS), 2024. URL https://arxiv.org/abs/2405.15306.
+10
+
+
+Preprint
+Kevin Black, Michael Janner, Yilun Du, Ilya Kostrikov, and Sergey Levine. Training diffusion
+models with reinforcement learning. In International Conference on Learning Representations
+(ICLR), 2024. URL https://arxiv.org/abs/2305.13301.
+Black Forest Labs. FLUX. Black Forest Labs GitHub repository, 2024. URL https://github.
+com/black-forest-labs/flux.
+FLUX.1 [dev] and [schnell]; citation as given in the
+official repository.
+Black Forest Labs.
+FLUX.2: Frontier visual intelligence.
+Black Forest Labs blog post, 2025.
+URL https://bfl.ai/blog/flux-2. Blog post, November 25, 2025; citation as given in
+github.com/black-forest-labs/flux2.
+Qi Cai, Jingwen Chen, Yang Chen, Yehao Li, Fuchen Long, Yingwei Pan, Zhaofan Qiu, Yiheng
+Zhang, Fengbin Gao, Peihan Xu, Yimeng Wang, Kai Yu, Wenxuan Chen, Ziwei Feng, Zi-
+jian Gong, Jianzhuang Pan, Yi Peng, Rui Tian, Siyu Wang, Bo Zhao, Ting Yao, and Tao Mei.
+HiDream-I1: A high-efficient image generative foundation model with sparse diffusion trans-
+former, 2025. URL https://arxiv.org/abs/2505.22705.
+Jiangjie Chen, Qianyu He, Siyu Yuan, Aili Chen, Zhicheng Cai, Weinan Dai, Hongli Yu, Qiying Yu,
+Xuefeng Li, Jiaze Chen, Hao Zhou, and Mingxuan Wang. Enigmata: Scaling logical reasoning
+in large language models with synthetic verifiable puzzles. In Advances in Neural Information
+Processing Systems (NeurIPS), 2025a.
+URL https://arxiv.org/abs/2505.19914.
+arXiv:2505.19914.
+Zhaorun Chen, Yichao Du, Zichen Wen, Yiyang Zhou, Chenhang Cui, Zhenzhen Weng, Haoqin Tu,
+Chaoqi Wang, Zhengwei Tong, Qinglan Huang, Canyu Chen, Qinghao Ye, Zhihong Zhu, Yuqing
+Zhang, Jiawei Zhou, Zhuokai Zhao, Rafael Rafailov, Chelsea Finn, and Huaxiu Yao. MJ-Bench:
+Is your multimodal reward model really a good judge for text-to-image generation? In Advances
+in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track, 2025b.
+URL https://arxiv.org/abs/2407.04842.
+Jaemin Cho, Yushi Hu, Roopal Garg, Peter Anderson, Ranjay Krishna, Jason Baldridge, Mohit
+Bansal, Jordi Pont-Tuset, and Su Wang. Davidsonian scene graph: Improving reliability in fine-
+grained evaluation for text-to-image generation. In International Conference on Learning Repre-
+sentations (ICLR), 2024a. URL https://arxiv.org/abs/2310.18235.
+Jaemin Cho, Linjie Li, Zhengyuan Yang, Zhe Gan, Lijuan Wang, and Mohit Bansal. Diagnos-
+tic benchmark and iterative inpainting for layout-guided image generation. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW),
+2024b. URL https://arxiv.org/abs/2304.06671.
+Kevin Clark, Paul Vicol, Kevin Swersky, and David J. Fleet. Directly fine-tuning diffusion models on
+differentiable rewards. In International Conference on Learning Representations (ICLR), 2024.
+URL https://arxiv.org/abs/2309.17400.
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas M¨uller, Harry Saini, Yam
+Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, Dustin Podell, Tim Dockhorn, Zion English,
+Kyle Lacey, Alex Goodwin, Yannik Marek, and Robin Rombach. Scaling rectified flow trans-
+formers for high-resolution image synthesis. In Proceedings of the 41st International Conference
+on Machine Learning (ICML), volume 235 of Proceedings of Machine Learning Research, 2024.
+URL https://arxiv.org/abs/2403.03206.
+Ying Fan, Olivia Watkins, Yuqing Du, Hao Liu, Moonkyung Ryu, Craig Boutilier, Pieter Abbeel,
+Mohammad Ghavamzadeh, Kangwook Lee, and Kimin Lee. DPOK: Reinforcement learning
+for fine-tuning text-to-image diffusion models. In Advances in Neural Information Processing
+Systems (NeurIPS), 2023. URL https://arxiv.org/abs/2305.16381.
+Dhruba Ghosh, Hanna Hajishirzi, and Ludwig Schmidt. GenEval: An object-focused framework
+for evaluating text-to-image alignment. In Advances in Neural Information Processing Systems
+(NeurIPS), Datasets and Benchmarks Track, 2023. URL https://arxiv.org/abs/2310.
+11513.
+11
+
+
+Preprint
+Google.
+Introducing Gemini 2.5 Flash Image, our state-of-the-art image model.
+Google
+Developers
+Blog,
+2025.
+URL
+https://developers.googleblog.com/en/
+introducing-gemini-2-5-flash-image/.
+Google
+Developers
+Blog,
+August
+26,
+2025 (“Nano Banana”);
+model card:
+https://storage.googleapis.com/
+deepmind-media/Model-Cards/Gemini-2-5-Flash-Model-Card.pdf.
+Google.
+Nano Banana 2:
+Google’s latest AI image generation model.
+Google blog
+post, 2026. URL https://blog.google/innovation-and-ai/technology/ai/
+nano-banana-2/.
+Gemini 3.1 Flash Image, launched February 26, 2026; model page
+https://deepmind.google/models/gemini-image/flash/.
+Google DeepMind.
+Gemini 3 Pro Image model card.
+Google DeepMind model card, 2025.
+URL
+https://storage.googleapis.com/deepmind-media/Model-Cards/
+Gemini-3-Pro-Image-Model-Card.pdf.
+“Nano Banana Pro”; published November
+2025.
+Google DeepMind.
+Gemini 3.1 Flash-Lite Image (Nano Banana 2 Lite).
+Google Deep-
+Mind model page, 2026. URL https://deepmind.google/models/gemini-image/
+flash-lite/.
+Model ID gemini-3.1-flash-lite-image, released June 30, 2026
+(Gemini API release notes); https://ai.google.dev/gemini-api/docs/models/
+gemini-3.1-flash-lite-image.
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu
+Zhang, Shirong Ma, Xiao Bi, et al. DeepSeek-R1 incentivizes reasoning in LLMs through re-
+inforcement learning. Nature, 645:633–638, 2025. doi: 10.1038/s41586-025-09422-z. URL
+https://doi.org/10.1038/s41586-025-09422-z. arXiv:2501.12948 (“DeepSeek-
+R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning”).
+Jack Hessel, Ari Holtzman, Maxwell Forbes, Ronan Le Bras, and Yejin Choi.
+CLIPScore: A
+reference-free evaluation metric for image captioning.
+In Proceedings of the 2021 Confer-
+ence on Empirical Methods in Natural Language Processing (EMNLP), 2021. URL https:
+//arxiv.org/abs/2104.08718.
+Yunqi Hong, Kuei-Chun Kao, Hengguang Zhou, and Cho-Jui Hsieh. Understanding Reward Hack-
+ing in Text-to-Image Reinforcement Learning. arXiv preprint arXiv:2601.03468, 2026. URL
+https://arxiv.org/abs/2601.03468.
+Xiwei Hu, Rui Wang, Yixiao Fang, Bin Fu, Pei Cheng, and Gang Yu. ELLA: Equip diffusion
+models with LLM for enhanced semantic alignment. arXiv preprint arXiv:2403.05135, 2024.
+URL https://arxiv.org/abs/2403.05135.
+Yushi Hu, Benlin Liu, Jungo Kasai, Yizhong Wang, Mari Ostendorf, Ranjay Krishna, and Noah A.
+Smith. TIFA: Accurate and interpretable text-to-image faithfulness evaluation with question an-
+swering. In Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV),
+2023. URL https://arxiv.org/abs/2303.11897.
+Kaiyi Huang, Kaiyue Sun, Enze Xie, Zhenguo Li, and Xihui Liu. T2I-CompBench: A compre-
+hensive benchmark for open-world compositional text-to-image generation. In Advances in Neu-
+ral Information Processing Systems (NeurIPS), Datasets and Benchmarks Track, 2023. URL
+https://arxiv.org/abs/2307.06350v2. arXiv:2307.06350v2.
+Runhui Huang, Jie Wu, Rui Yang, Zhe Liu, and Hengshuang Zhao. AlphaGRPO: Unlocking self-
+reflective multimodal generation in UMMs via decompositional verifiable reward. In Interna-
+tional Conference on Machine Learning (ICML), 2026. URL https://arxiv.org/abs/
+2605.12495.
+Justin Johnson, Bharath Hariharan, Laurens van der Maaten, Li Fei-Fei, C. Lawrence Zitnick, and
+Ross Girshick. CLEVR: A diagnostic dataset for compositional language and elementary visual
+reasoning. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition
+(CVPR), 2017. URL https://arxiv.org/abs/1612.06890.
+12
+
+
+Preprint
+Ivana Kaji´c, Olivia Wiles, Isabela Albuquerque, Matthias Bauer, Su Wang, Jordi Pont-Tuset, and
+Aida Nematzadeh. Evaluating numerical reasoning in text-to-image models. In Advances in
+Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track, 2024. URL
+https://arxiv.org/abs/2406.14774.
+Amita Kamath, Kai-Wei Chang, Ranjay Krishna, Luke Zettlemoyer, Yushi Hu, and Marjan
+Ghazvininejad.
+GenEval 2: Addressing benchmark drift in text-to-image evaluation.
+arXiv
+preprint arXiv:2512.16853, 2025. URL https://arxiv.org/abs/2512.16853.
+Kyuyoung Kim, Jongheon Jeong, Minyong An, Mohammad Ghavamzadeh, Krishnamurthy Dvi-
+jotham, Jinwoo Shin, and Kimin Lee.
+Confidence-aware reward optimization for fine-tuning
+text-to-image models. In International Conference on Learning Representations (ICLR), 2024.
+URL https://arxiv.org/abs/2404.01863.
+Yuval Kirstain, Adam Polyak, Uriel Singer, Shahbuland Matiana, Joe Penna, and Omer Levy. Pick-
+a-pic: An open dataset of user preferences for text-to-image generation. In Advances in Neural
+Information Processing Systems (NeurIPS), 2023. URL https://arxiv.org/abs/2305.
+01569.
+Nathan Lambert, Jacob Morrison, Valentina Pyatkin, Shengyi Huang, Hamish Ivison, Faeze Brah-
+man, Lester James V. Miranda, Alisa Liu, Nouha Dziri, Shane Lyu, Yuling Gu, Saumya Malik,
+Victoria Graf, Jena D. Hwang, Jiangjiang Yang, Ronan Le Bras, Oyvind Tafjord, Chris Wilhelm,
+Luca Soldaini, Noah A. Smith, Yizhong Wang, Pradeep Dasigi, and Hannaneh Hajishirzi. T¨ulu
+3: Pushing frontiers in open language model post-training. In Conference on Language Modeling
+(COLM), 2025. URL https://arxiv.org/abs/2411.15124. arXiv:2411.15124.
+Sifan Li, Yujun Cai, Hongkai Chen, and Yiwei Wang.
+GeoSVG-RL: Geometry-Aware Rein-
+forcement Learning for Layout-Constrained Text-to-SVG Diagram Generation. arXiv preprint
+arXiv:2605.25447, 2026. URL https://arxiv.org/abs/2605.25447.
+Zhiqiu Lin, Deepak Pathak, Baiqi Li, Jiayao Li, Xide Xia, Graham Neubig, Pengchuan Zhang, and
+Deva Ramanan. Evaluating text-to-visual generation with image-to-text generation. In European
+Conference on Computer Vision (ECCV), 2024. URL https://arxiv.org/abs/2404.
+01291.
+Jie Liu, Gongye Liu, Jiajun Liang, Yangguang Li, Jiaheng Liu, Xintao Wang, Pengfei Wan,
+Di Zhang, and Wanli Ouyang.
+Flow-GRPO: Training flow matching models via online RL.
+In Advances in Neural Information Processing Systems (NeurIPS), 2025a.
+URL https:
+//arxiv.org/abs/2505.05470.
+Junteng Liu, Yuanxiang Fan, Zhuo Jiang, Han Ding, Yongyi Hu, Chi Zhang, Yiqi Shi, Shitong Weng,
+Aili Chen, Shiqi Chen, Yunan Huang, Mozhi Zhang, Pengyu Zhao, Junjie Yan, and Junxian
+He.
+SynLogic: Synthesizing verifiable reasoning data at scale for learning logical reasoning
+and beyond. In Advances in Neural Information Processing Systems (NeurIPS), 2025b. URL
+https://arxiv.org/abs/2505.19641. arXiv:2505.19641.
+Yuhang Ma, Yunhao Shui, Xiaoshi Wu, Keqiang Sun, and Hongsheng Li. HPSv3: Towards wide-
+spectrum human preference score. In Proceedings of the IEEE/CVF International Conference on
+Computer Vision (ICCV), 2025. URL https://arxiv.org/abs/2508.03789.
+OpenAI.
+GPT-Image-1 Mini.
+OpenAI API model documentation, 2025.
+URL https://
+developers.openai.com/api/docs/models/gpt-image-1-mini. OpenAI API
+model documentation. Model ID gpt-image-1-mini, released October 6, 2025 (OpenAI API
+changelog).
+OpenAI.
+GPT-Image-2.
+OpenAI API model documentation, 2026a.
+URL https://
+developers.openai.com/api/docs/models/gpt-image-2.
+OpenAI API model
+documentation. Model ID gpt-image-2, snapshot gpt-image-2-2026-04-21.
+OpenAI. GPT Image 2.5 Sunburst. OpenAI API model documentation, 2026b. URL https://
+developers.openai.com/api/docs/models/gpt-image-2.5-sunburst. Ope-
+nAI
+API
+model
+documentation.
+Model
+ID
+gpt-image-2.5-sunburst,
+snapshot
+gpt-image-2.5-sunburst-2026-09-08; released September 8, 2026 together with
+gpt-image-2.5-flare.
+13
+
+
+Preprint
+OpenAI.
+ChatGPT Images 2.5 system card.
+OpenAI Deployment Safety Hub, 2026c.
+URL
+https://deploymentsafety.openai.com/chatgpt-images-2-5.
+OpenAI De-
+ployment Safety Hub, published September 8, 2026.
+Dustin Podell, Zion English, Kyle Lacey, Andreas Blattmann, Tim Dockhorn, Jonas M¨uller, Joe
+Penna, and Robin Rombach. SDXL: Improving latent diffusion models for high-resolution image
+synthesis. In International Conference on Learning Representations (ICLR), 2024. URL https:
+//arxiv.org/abs/2307.01952.
+Valentina Pyatkin, Saumya Malik, Victoria Graf, Hamish Ivison, Shengyi Huang, Pradeep Dasigi,
+Nathan Lambert, and Hannaneh Hajishirzi.
+Generalizing verifiable instruction following.
+In
+Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track,
+2025. URL https://arxiv.org/abs/2507.02833. arXiv:2507.02833.
+Qwen Team.
+Qwen-Image-2512: Finer details, greater realism.
+Qwen blog post, 2025.
+URL
+https://qwen.ai/blog?id=qwen-image-2512. Blog post, December 2025; model:
+https://huggingface.co/Qwen/Qwen-Image-2512.
+Juan A. Rodriguez, Haotian Zhang, Abhay Puri, Aarash Feizi, Rishav Pramanik, Pascal Wichmann,
+Arnab Mondal, Mohammad Reza Samsami, Rabiul Awal, Perouz Taslakian, Spandana Gella, Sai
+Rajeswar, David Vazquez, Christopher Pal, and Marco Pedersoli. Rendering-Aware Reinforce-
+ment Learning for Vector Graphics Generation. In Advances in Neural Information Processing
+Systems (NeurIPS), 2025. URL https://arxiv.org/abs/2505.20793.
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kam-
+yar Seyed Ghasemipour, Burcu Karagol Ayan, S. Sara Mahdavi, Rapha Gontijo Lopes, Tim Sal-
+imans, Jonathan Ho, David J Fleet, and Mohammad Norouzi. Photorealistic text-to-image diffu-
+sion models with deep language understanding. In Advances in Neural Information Processing
+Systems (NeurIPS), 2022. URL https://arxiv.org/abs/2205.11487.
+Michael Saxon, Fatima Jahara, Mahsa Khoshnoodi, Yujie Lu, Aditya Sharma, and William Yang
+Wang.
+Who evaluates the evaluations?
+objectively scoring text-to-image prompt coherence
+metrics with T2IScoreScore (TS2).
+In Advances in Neural Information Processing Systems
+(NeurIPS), 2024. URL https://arxiv.org/abs/2404.04251.
+Christoph
+Schuhmann.
+LAION-aesthetics
+predictor
+(improved-aesthetic-predictor).
+GitHub repository,
+2022.
+URL https://github.com/christophschuhmann/
+improved-aesthetic-predictor.
+See
+also
+https://laion.ai/blog/
+laion-aesthetics/.
+Stability AI.
+Introducing Stable Diffusion 3.5.
+Stability AI blog post, 2024.
+URL https:
+//stability.ai/news-updates/introducing-stable-diffusion-3-5. Blog
+post, October 22, 2024 (SD3.5 Large, Large Turbo, Medium).
+Zafir Stojanovski, Oliver Stanley, Joe Sharratt, Richard Jones, Abdulhakeem Adefioye, Jean Kad-
+dour, and Andreas K¨opf. Reasoning gym: Reasoning environments for reinforcement learning
+with verifiable rewards. In Advances in Neural Information Processing Systems (NeurIPS), 2025.
+URL https://arxiv.org/abs/2505.24760. Spotlight. arXiv:2505.24760.
+Tencent Hunyuan Team. HunyuanImage 2.1: An efficient diffusion model for high-resolution (2K)
+text-to-image generation. Tencent Hunyuan GitHub repository, 2025. URL https://github.
+com/Tencent-Hunyuan/HunyuanImage-2.1. Citation as given in the official repository;
+no technical report.
+Bram Wallace, Meihua Dang, Rafael Rafailov, Linqi Zhou, Aaron Lou, Senthil Purushwalkam,
+Stefano Ermon, Caiming Xiong, Shafiq Joty, and Nikhil Naik. Diffusion model alignment using
+direct preference optimization. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), 2024. URL https://arxiv.org/abs/2311.12908.
+Yibin Wang, Yuhang Zang, Hao Li, Cheng Jin, and Jiaqi Wang. Unified reward model for mul-
+timodal understanding and generation. arXiv preprint arXiv:2503.05236, 2025. URL https:
+//arxiv.org/abs/2503.05236.
+14
+
+
+Preprint
+Olivia Wiles, Chuhan Zhang, Isabela Albuquerque, Ivana Kaji´c, Su Wang, Emanuele Bugliarello,
+Yasumasa Onoe, Pinelopi Papalampidi, Ira Ktena, Chris Knutsen, Cyrus Rashtchian, Anant
+Nawalgaria, Jordi Pont-Tuset, and Aida Nematzadeh. Revisiting text-to-image evaluation with
+Gecko: On metrics, prompts, and human ratings. In International Conference on Learning Rep-
+resentations (ICLR), 2025. URL https://arxiv.org/abs/2404.16820.
+Chenfei Wu, Jiahao Li, Jingren Zhou, Junyang Lin, Kaiyuan Gao, Kun Yan, Sheng-ming Yin, Shuai
+Bai, Xiao Xu, Yilei Chen, Yuxiang Chen, Zecheng Tang, Zekai Zhang, Zhengyi Wang, An Yang,
+Bowen Yu, Chen Cheng, Dayiheng Liu, Deqing Li, Hang Zhang, Hao Meng, Hu Wei, Jingyuan
+Ni, Kai Chen, Kuan Cao, Liang Peng, Lin Qu, Minggang Wu, Peng Wang, Shuting Yu, Tingkun
+Wen, Wensen Feng, Xiaoxiao Xu, Yi Wang, Yichang Zhang, Yongqiang Zhu, Yujia Wu, Yuxuan
+Cai, and Zenan Liu. Qwen-Image technical report, 2025. URL https://arxiv.org/abs/
+2508.02324.
+Xiaoshi Wu, Yiming Hao, Keqiang Sun, Yixiong Chen, Feng Zhu, Rui Zhao, and Hongsheng Li.
+Human preference score v2: A solid benchmark for evaluating human preferences of text-to-
+image synthesis. arXiv preprint arXiv:2306.09341, 2023. URL https://arxiv.org/abs/
+2306.09341.
+Xindi Wu, Dingli Yu, Yangsibo Huang, Olga Russakovsky, and Sanjeev Arora. ConceptMix: A
+compositional image generation benchmark with controllable difficulty. In Advances in Neu-
+ral Information Processing Systems (NeurIPS), Datasets and Benchmarks Track, 2024. URL
+https://arxiv.org/abs/2408.14339.
+Enze Xie, Junsong Chen, Junyu Chen, Han Cai, Haotian Tang, Yujun Lin, Zhekai Zhang, Muyang
+Li, Ligeng Zhu, Yao Lu, and Song Han. SANA: Efficient high-resolution image synthesis with
+linear diffusion transformers. In International Conference on Learning Representations (ICLR),
+2025. URL https://arxiv.org/abs/2410.10629.
+Jiazheng Xu, Xiao Liu, Yuchen Wu, Yuxuan Tong, Qinkai Li, Ming Ding, Jie Tang, and Yuxiao
+Dong. ImageReward: Learning and evaluating human preferences for text-to-image generation. In
+Advances in Neural Information Processing Systems (NeurIPS), 2023. URL https://arxiv.
+org/abs/2304.05977.
+Zeyue Xue, Jie Wu, Yu Gao, Fangyuan Kong, Lingting Zhu, Mengzhao Chen, Zhiheng Liu, Wei
+Liu, Qiushan Guo, Weilin Huang, and Ping Luo. DanceGRPO: Unleashing GRPO on visual gen-
+eration. arXiv preprint arXiv:2505.07818, 2025. URL https://arxiv.org/abs/2505.
+07818.
+Jiahui Yu, Yuanzhong Xu, Jing Yu Koh, Thang Luong, Gunjan Baid, Zirui Wang, Vijay Vasudevan,
+Alexander Ku, Yinfei Yang, Burcu Karagol Ayan, Ben Hutchinson, Wei Han, Zarana Parekh, Xin
+Li, Han Zhang, Jason Baldridge, and Yonghui Wu. Scaling autoregressive models for content-
+rich text-to-image generation. Transactions on Machine Learning Research (TMLR), 2022. URL
+https://arxiv.org/abs/2206.10789.
+Ziyi Zhang, Sen Zhang, Yibing Zhan, Yong Luo, Yonggang Wen, and Dacheng Tao. Confronting
+reward overoptimization for diffusion models: A perspective of inductive and primacy biases. In
+International Conference on Machine Learning (ICML), pp. 60396–60413, 2024. URL https:
+//arxiv.org/abs/2402.08552.
+Jeffrey Zhou, Tianjian Lu, Swaroop Mishra, Siddhartha Brahma, Sujoy Basu, Yi Luan, Denny
+Zhou, and Le Hou. Instruction-following evaluation for large language models. arXiv preprint
+arXiv:2311.07911, 2023. URL https://arxiv.org/abs/2311.07911.
+Sashuai Zhou, Qiang Zhou, Junpeng Ma, Yue Cao, Ruofan Hu, Ziang Zhang, Xiaoda Yang,
+Zhibin Wang, Jun Song, Cheng Yu, Bo Zheng, and Zhou Zhao.
+SpatialReward: Verifiable
+Spatial Reward Modeling for Fine-Grained Spatial Consistency in Text-to-Image Generation.
+In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2026. URL
+https://arxiv.org/abs/2603.22228.
+15
+
+
+Preprint
+A
+TASK REPRESENTATION
+This section lists the constraint library of §2.1 and gives a complete example task.
+A.1
+CONSTRAINT LIBRARY
+Table 7 lists all 46 constraint types and their contributions to structural complexity. Let L(n) =
+1 + log2 n; ni is the number of visible instances in object group i, Nl is the number of objects
+checked by layout constraint l, Nr is the total number of visible instances in the distinct groups
+referenced by relation r, and mr is the number of required one-to-one matches.
+Family
+Exact constraint types & their supported values
+Contribution to C(s)
+Grounding
+color attribute: red, orange, yellow, green, cyan, blue, purple, pink
+L(ni) for the referenced group
+shape attribute: circle, square, triangle
+L(ni) for the referenced group
+color shape binding
+No additional term; the bound
+group’s color and shape terms
+already account for it
+Cardinality
+exact count: 1–10
+L(ni) for the referenced group
+same count; more than count; fewer than count
+L(Nr)
+times as many: factor k ∈{2, 3, 4, 5}
+L(Nr) + log2 k,
+k ∈{2, 3, 4, 5}
+Spatial
+absolute region: top left, top, top right, left, center, right, bottom left,
+bottom, bottom right
+L(Nl)
+grid occupancy: cells of a 2 × 2, 2 × 3, or 3 × 3 grid (3 × 4 in
+VVRBENCH-Challenge)
+L(Nl)
+left of; right of; above; below; all left of†;
+all right of†; all above†; all below†; leftmost; rightmost;
+topmost; bottommost; between; same row; same column;
+all same row†; all same column†; not all same row†;
+not all same column†; closer than; farther than
+L(Nr)
+Size
+larger than; smaller than; same size; all larger than†;
+all smaller than†; all same size†; largest; smallest
+L(Nr)
+not all same size†
+2 log2 Nr
+Topology
+touching; not touching; inside; contains
+L(Nr)
+each inside†; each contains†
+mr
+Table 7: The exact 46 constraint types, their supported values, and their contributions to structural
+complexity. † marks types that appear only in VVRBENCH-Challenge. Types with the same cost
+rule share a row, and types without listed values take only object groups as arguments. The back-
+ground constraint supports white, black, light gray, dark gray, beige, pale pink, and pale cyan. The
+background and forbidden-content constraints in B and F apply to every task and do not contribute
+to C(s).
+A.2
+EXAMPLE TASK
+This example gives one task in the representation of §2.1 and its prompt; Appendix C.2 gives the
+verifier code for each of its constraints.
+Task.
+The task contains two object groups and seven constraints:
+G = {g1, g2},
+A = {color attribute(g1; purple), shape attribute(g1; circle), exact count(g1; 1),
+= {color attribute(g2; yellow), shape attribute(g2; square), exact count(g2; 1),
+below(g1,g2)}.
+The background constraints are B = {background color(pale pink)}, and the forbidden-
+content constraints are F = {no unrequested objects}. For compactness, the implementa-
+tion stores the color, shape, and count constraints of each group within the group’s record, stores
+the background constraint as the background color, and applies no unrequested objects to
+every task, so its forbidden list holds only additional forbidden-content constraints:
+16
+
+
+Preprint
+{
+"background": {"color": "pale pink"},
+"objects": [
+{"id": "g1", "color": "purple", "shape": "circle", "count": 1},
+{"id": "g2", "color": "yellow", "shape": "square", "count": 1}
+],
+"relations": [{"type": "below", "subject": "g1", "object": "g2"}],
+"forbidden": []
+}
+A group with "count mode":
+"relative" has no exact count constraint; its count is
+constrained only by relations such as times as many.
+Prompt.
+The templates produce “Place the purple circle below the yellow square. Set the objects
+against a plain pale pink background; do not add other colored objects.” Each constraint refers to
+groups by identifier, so the binding of each attribute to its object is unambiguous.
+B
+TASK GENERATION
+This section gives the complete generation procedure of §2.2, its validation steps, a worked example,
+and the construction of each dataset.
+B.1
+PROCEDURE
+Algorithm 1 gives the procedure for one dataset. Its first steps implement steps 1–5 of §2.2, and the
+remaining steps are the validation checks of Appendix B.2.
+Algorithm 1 Task generation and validation for one dataset.
+1: initialize an empty task pool Q
+2: for each constructor index do
+3:
+sample background constraints B, object groups G with colors, shapes, and counts, and
+forbidden-content constraints F
+4:
+assign each object instance a center and a size to obtain the scene z
+5:
+A∗←the instantiated constraints whose requirements hold in z
+6:
+for each active constraint set A ⊆A∗selected within the target complexity range do
+7:
+render the prompt p from (G, B, A, F) and form s = (G, B, A, F, p)
+8:
+render the reference image x⋆of z on the background specified by B
+9:
+if p or the canonical form of s occurs in Q or in an excluded split then
+10:
+continue
+11:
+end if
+12:
+if rexact(x⋆, s) = 0 then
+13:
+continue
+14:
+end if
+15:
+change one constraint of s to obtain a counterfactual task ˜s
+16:
+if the changed constraint passes on x⋆under ˜s then
+17:
+continue
+18:
+end if
+19:
+add (s, x⋆) to Q
+20:
+end for
+21: end for
+22: select tasks from Q to match the target distribution of the dataset (Appendix B.5)
+Scene construction.
+The frozen constructors represent each object instance by its group identifier,
+integer center (u, v), and radius ρ on a 512 × 512 canvas. The default layout divides the canvas into
+six boxes arranged in three columns and two rows. For a group of n repeated objects, the con-
+structor uses min(5, ⌈√n⌉) columns and fills ⌈n/ min(5, ⌈√n⌉)⌉rows at evenly spaced coordinates
+17
+
+
+Preprint
+within its box. Relation-specific templates replace these default placements with fixed construc-
+tions for rows, columns, grids, contact, containment, order, proximity, extrema, and relative size.
+Seeded sampling selects counts, attributes, and template variants. The constructor then enumerates
+additional constraints that are true of the stored positions and sizes.
+B.2
+VALIDATION
+Every retained task passes three checks.
+Reference image.
+The generator renders the scene and requires the released verifier to accept it,
+which confirms that the pixel rendering preserves every constraint that holds in the scene.
+Counterfactual.
+The generator changes one constraint while holding the reference image fixed
+and requires the verifier to reject the image under the changed task. For VVRBENCH, the changed
+constraint is evaluated on its own; for Challenge and the scene-first training candidates, the generator
+inverts one constraint and removes the other relation and layout constraints that could conflict with
+the inversion.
+Deduplication.
+Deduplication uses normalized prompts and canonical tasks formed by renaming
+object identifiers in a fixed order, and it is applied jointly across each dataset and all excluded training
+and evaluation splits.
+For each of the 10,000 VVRBENCH and 720 Challenge tasks, the verifier accepts the reference
+image and rejects the counterfactual.
+B.3
+WORKED EXAMPLE
+This example traces one scene through the five steps of §2.2. It is the output of the scene-first
+generator for enumeration index 53 with the default seed; every value below is produced by the
+code.
+Step 1: scene.
+The generator samples B = {background color(white)} and three object
+groups with seven objects in total on a 512 × 512 canvas; F = {no unrequested objects}.
+Group
+Color
+Shape
+Count
+Centers (radius 9 px)
+g0
+cyan
+circle
+3
+(28, 34), (148, 34), (28, 214)
+g1
+yellow
+square
+2
+(196, 34), (316, 34)
+g2
+pink
+triangle
+2
+(364, 34), (484, 34)
+Steps 2 and 3: satisfiable constraint set.
+The generator instantiates each constraint type on the
+group tuples of its arity and keeps the instantiated constraints that hold in the scene. The resulting set
+A∗contains the nine unary color, shape, and count constraints of the three groups and the following
+fifteen constraints:
+• count
+comparisons:
+more than count(g0,g1),
+more than count(g0,g2),
+same count(g1,g2);
+• order: all left of(g0,g1), all left of(g0,g2), all left of(g1,g2);
+• alignment:
+not all same row(g0),
+not all same column(g0),
+all same row(g1),
+not all same column(g1),
+all same row(g2),
+not all same column(g2);
+• regions:
+absolute region(g0; top),
+absolute region(g1; top),
+absolute region(g2; top).
+For each pair of groups, the generator adds the one count comparison that holds and a direction only
+when the groups are separated by at least 16 px along that axis, a margin wider than the verifier’s 12
+px.
+18
+
+
+Preprint
+Step 4: active constraints.
+The generator adds at most four constraints from A∗to the unary
+ones, visiting constraint types in a fixed rotated order and skipping any constraint that would ex-
+ceed the target complexity range. Every prefix of this sequence whose complexity lies in the target
+range is a task, so this scene yields four nested tasks. The largest adds all same row(g2),
+not all same row(g0), not all same column(g2), and same count(g1,g2). Be-
+cause same count fixes the number of yellow squares relative to the pink triangles, g1 loses its
+exact count constraint, so A contains twelve constraints: color and shape for all three groups,
+exact count(g0; 3), exact count(g2; 2), and the four added constraints. Its structural
+complexity is
+C(s) = 3L(3)
+| {z }
+g0
++ 2L(2)
+| {z }
+g1
++ 3L(2)
+| {z }
+g2
++ L(2) + L(3) + L(2) + L(4)
+|
+{z
+}
+added constraints
+= 27.34,
+with L(n) = 1 + log2 n.
+Step 5: prompt.
+The templates render the four nested tasks with different sentence frames:
+• “The image should contain three cyan circles, two yellow squares, and two pink triangles. Ar-
+range all the pink triangles in one row. Use a plain white background and no other colored
+objects.”
+• “Show three cyan circles, two yellow squares, and two pink triangles. Arrange all the pink
+triangles in one row. Arrange all the cyan circles so they are not all in the same row. Keep the
+background plain white, with no additional colored objects.”
+• “Create an image with three cyan circles, two yellow squares, and two pink triangles. Arrange
+all the pink triangles in one row. Arrange all the cyan circles so they are not all in the same row.
+Arrange all the pink triangles so they are not all in the same column. Set the objects against a
+plain white background; do not add other colored objects.”
+• “Draw three cyan circles and two pink triangles. Use the same number of yellow squares and
+pink triangles. Arrange all the pink triangles in one row. Arrange all the cyan circles so they are
+not all in the same row. Arrange all the pink triangles so they are not all in the same column.
+Use a plain white background and no other colored objects.”
+Figure 7:
+Reference
+image of the example
+scene.
+The last prompt states no count for the yellow squares, matching the re-
+moval of their exact count constraint.
+Validation.
+The generator renders the scene as the reference image
+in Figure 7, and the released verifier accepts it for all four tasks.
+The counterfactual of each task replaces all same row(g2) with
+not all same row(g2) and removes the other added constraints; the
+verifier rejects the same image under every counterfactual.
+B.4
+STRUCTURAL COMPLEXITY
+With L(n) = 1 + log2 n, the complexity of a task is
+C(s) =
+X
+a∈A
+c(a; s),
+(4)
+where the cost c(a; s) of each constraint type is given in Table 7. Color, shape, and exact count cost
+L(n) for a group of n objects; most relations and layouts cost L(N) for the N objects they compare;
+a count ratio by factor k adds log2 k; one-to-one containment costs the number of required matches;
+and within-group size variation costs 2 log2 N. Every task has one background-color constraint and
+the forbidden-content constraint no unrequested objects, so the constraints in B and F are
+excluded.
+Complexity as a predictor of failure.
+For each model we compute the AUC with which a single
+task feature separates unsolved from solved VVRBENCH tasks, and the McFadden R2 of a logistic
+regression of exact success on that feature. The features are C(s), the number of color, shape,
+relation, and layout constraints, and the numbers of object instances, object groups, and relations.
+19
+
+
+Preprint
+The 19 models are the ten models of Table 3 other than Sana and SDXL, which solve fewer than
+three tasks, and the nine post-trained SD3.5-M models of Table 14. C(s) has the highest AUC and
+R2 for 18 models, with median AUC 0.857 and R2 0.283; the number of color, shape, relation, and
+layout constraints follows with 0.829 and 0.232, and the number of object instances with 0.820 and
+0.227.
+B.5
+DATASETS
+Each dataset is built by generating a pool of validated candidates with Algorithm 1 and selecting
+tasks from the pool to match a target distribution (Table 8). All datasets use eight foreground colors,
+three shapes, counts from one through ten, and seven backgrounds, with reference images on a 512×
+512 canvas, and no selection step uses model outputs. Candidates are organized into nine generation
+strata: quantity, binding, location, direction and order, between, proximity, size, structured layout,
+and topology.
+Table 8: Candidate pool and target distribution of each dataset.
+Dataset
+Size
+Candidates
+Target distribution
+VVRBENCH
+10,000
+Single strata and compositions
+of two to six strata at five
+scene-size settings
+Complexity 3–48, capped at each
+integer complexity
+VVRBENCH-Fast
+820
+VVRBENCH
+20 tasks at each attainable integer
+complexity from 3 to 44
+VVRBENCH-Challenge
+720
+Scenes seeded by each of the
+46 constraint types, with up to
+six added relation or layout
+constraints
+20 tasks at each integer complexity
+from 45 to 80, and at least 20 tasks
+per non-grounding constraint type
+VVR-Easy
+100,000
+One constraint type from one
+stratum
+Complexity at most 20, equal
+quotas over the nine strata
+VVR-Matched
+100,000
+The VVRBENCH and
+VVRBENCH-Challenge
+generators
+The strata and complexity
+distribution of VVRBENCH
+VVRBENCH.
+The generator crosses each stratum and each composition of two, three, and four
+to six strata with five scene-size settings, which control the number of object groups and instances.
+Each single stratum receives 50 candidates per setting, and each composition order receives 600
+candidates per setting, divided evenly over stratum combinations, for 11,250 candidates. Selection
+caps the number of tasks at each integer complexity by removing candidates from the most populated
+complexities, and adds single-object tasks at complexities the generator does not otherwise reach.
+VVRBENCH uses 32 of the 46 constraint types; the remaining 14 appear only in VVRBENCH-
+Challenge (Table 7).
+VVRBENCH-Challenge.
+The first constraint of each candidate cycles through all 46 constraint
+types, and its reference image is constructed to satisfy it. The generator then adds at most one
+constraint of each type, skipping duplicate relations and combinations that cannot hold together, and
+every prefix of the added constraints is a candidate. Besides the targets in Table 8, selection allows
+at most two thirds of a task’s complexity to come from color, shape, and exact count constraints, and
+balances complexity across families and constraint types within each family.
+VVR-Easy.
+Each task adds one constraint type to the color, shape, and count constraints of its
+object groups, so it exercises at most one constraint family beyond them. Constraint types within
+each stratum receive fixed quotas.
+VVR-Matched.
+Tasks are allocated to strata in proportion to VVRBENCH, and family and
+constraint-type frequencies are equalized within each stratum. The corpus is accepted only if a
+Kolmogorov–Smirnov test finds its complexity distribution matched to that of VVRBENCH.
+20
+
+
+Preprint
+C
+VERIFIER
+This section describes the verifier of §2.3: object extraction, the program verifiers, the scores and
+training reward, and its validation.
+C.1
+PIXEL-TO-OBJECT EXTRACTION
+The verifier estimates the background as the median color along the image boundary and uses vari-
+ation among those boundary pixels to set a background-relative foreground threshold. It converts
+the image to HSV and assigns sufficiently saturated foreground pixels to fixed, nonoverlapping hue
+ranges for the eight supported colors. Low-confidence and background-like pixels are excluded. On
+each binary color mask, erosion followed by dilation removes isolated foreground pixels, and dila-
+tion followed by erosion fills small holes and narrow breaks. The implementation scans the cleaned
+mask and uses flood fill from each unlabeled foreground pixel, traversing horizontal, vertical, and
+diagonal neighbors. Every maximal set reached by one traversal becomes a candidate object.
+Each component is described by its area, centroid, bounding box, boundary, aspect ratio, bounding-
+box occupancy, convexity, convex-hull vertex count, number of holes, and offset between its cen-
+troid and bounding-box center. A fixed geometric classifier converts these measurements into circle,
+square, and triangle scores. Circle scores favor approximately equal width and height, high convex-
+ity, and rounded contours; square scores cover both filled axis-aligned boxes and centered, convex
+rotated squares; triangle scores use their characteristic bounding-box occupancy and off-center cen-
+troid. A single hole provides additional evidence for an outlined circle or square. Components that
+are too small, narrow, or weakly supported by the requested color and shape are removed. If several
+requested groups have the same color but different shapes, each component is assigned exclusively
+to the shape receiving its highest score. Figure 8 shows the color masks, components, and shape
+scores for three API model outputs, and Figure 9 shows the same steps on distorted open-weight
+generations with ambiguous colors, irregular contours, and blurred boundaries.
+The frozen rules include three safeguards for imperfect generations. First, background-adaptive
+contrast and calibrated hue boundaries handle shading and colors near category boundaries. Ex-
+plicit boundary rules separate pale, low-saturation red from pink and muted blue-violet from bright
+blue. Second, morphological cleanup and a shape-conditioned fallback mask recover objects with
+fragmented or blurred color regions without allowing one component to satisfy two color groups.
+Third, robust extents use the 5th and 95th percentiles of component coordinates, reducing sensitiv-
+ity to stray boundary pixels. The exact thresholds are fixed in the released verifier. Appendix C.3
+reports calibration and held-out tests covering ambiguous colors, irregular contours, compression,
+blur, touching objects, and threshold-adjacent cases.
+C.2
+PROGRAM VERIFIERS
+The listings below are excerpts from the released vvr bench/verifier.py for the four con-
+straint types in the example task of Appendix A.2. Helper functions are named but not shown. The
+extraction step of §2.3 provides each group’s matched objects as components with a centroid and a
+score for each shape; estimate repeated group count counts the objects of a group and
+counts a connected region whose area is close to an integer multiple of one object’s area as that
+many touching objects.
+For exact count and color attribute, the verifier compares the estimated count with the
+target and requires at least one object of the group’s color:
+count_pred = _estimate_repeated_group_count(count_components, shape)
+if count_is_exact: # exact_count
+count_error, count_score = _score_exact_count(count_pred, target_count)
+else: # count_mode == "relative": presence only
+count_error = 0.0 if count_pred >= 1 else 1.0
+count_score = 1.0 if count_pred >= 1 else 0.0
+color_presence_score = min(1.0, float(count_pred)) # color_attribute
+color_presence_strict = count_pred >= 1
+if (len(spec.get("objects", [])) > 1 and not color_presence_strict
+and any(_component_identity_compatible(c, shape, image.shape[:2])
+for c in fallback_components)):
+color_presence_score = 1.0
+21
+
+
+Preprint
+Gemini-3-Pro-Image
+(a) Generated image
+yellow mask
+(b) Mask of one color
+square 1.00
+triangle 0.92
+circle 0.86
+circle 0.87
+(c) Components and shape scores
+GPT-Image-2
+yellow mask
+circle 1.00
+square 1.00
+triangle 0.93
+circle 1.00
+square 1.00
+square 1.00
+Gemini-3-Pro-Image
+orange mask
+circle 1.00
+square 1.00
+triangle 0.87
+Figure 8: Object extraction on three VVRBENCH-Fast outputs of API models. (a) The generated
+image. (b) The cleaned mask of one requested color over the grayed-out image. (c) The connected
+components of all requested colors, each labeled with the shape that receives its highest score.
+The bottom image is a textured crayon drawing under uneven light: the orange mask still covers
+the whole triangle, and the lit background adds small orange fragments (dashed boxes) that are
+too small to count as objects. The verifier accepts all three images. Prompts: (top) “Place the red
+triangle inside the yellow square. Add a purple circle and a cyan circle as well. Keep the background
+plain white, with no additional colored objects.” (middle) “Show a cyan circle, a red square, a green
+triangle, an orange circle, and two yellow squares. Use a plain pale pink background and no other
+colored objects.” (bottom) “The image should contain a pink circle, a green square, and an orange
+triangle. Set the objects against a plain white background; do not add other colored objects.”
+color_presence_strict = True
+def _score_exact_count(observed_count, target_count):
+error = abs(observed_count - target_count)
+score = max(0.0, 1.0 - error / max(target_count, 1))
+return error, float(score)
+The exact count constraint passes when count error is zero, and color attribute
+passes when color presence strict holds.
+22
+
+
+Preprint
+SD3.5-M GenEval2
+(a) Generated image
+purple mask
+(b) Mask of one color
+triangle 0.62
+(c) Components of that color
+SD3.5-M GenEval2 + VVR-Easy
+green mask
+circle 0.69
+FLUX.1-dev
+purple mask
+square 1.00
+Figure 9: Object extraction on distorted generations of open-weight models. Panels as in Figure 8,
+except that (c) shows only the components of the highlighted color. (Top, ambiguous color) The
+circle requested as purple shades from purple into pink; the purple mask covers only its upper part,
+whose highest shape score is triangle 0.62. (Middle, irregular contour) The green circle grows a tail
+that reaches into the orange square; its circle score drops to 0.69, compared with 0.89 to 0.99 for
+the undistorted circles in the same image. (Bottom, blurred boundaries) The purple mask covers the
+whole blurred square, which scores 1.00 as a square; the image still fails because the prompt asks
+for two cyan triangles and two purple squares and the image shows one of each. The verifier rejects
+all three images.
+For shape attribute, the verifier averages the requested shape’s score over the group’s objects
+and compares it with a shape-specific threshold:
+shape_score = _score_shape_attribute(shape, selected, allow_occluded_triangle=True)
+shape_strict = shape_score >= _shape_presence_threshold(shape)
+def _score_shape_attribute(shape, components, *, allow_occluded_triangle=False):
+if not components:
+return 0.0
+return float(np.mean([
+_effective_shape_score(component, shape) if allow_occluded_triangle
+else component.shape_scores.get(shape, 0.0)
+for component in components
+23
+
+
+Preprint
+]))
+def _shape_presence_threshold(shape):
+return 0.20 if shape == "triangle" else 0.40
+For below, the verifier first rejects nested referents, where one group’s object lies inside the other’s,
+and then compares the mean vertical centroids with a margin; image coordinates increase downward:
+nested = any(
+_bbox_intersection_fraction(first, second) >= 0.98
+and math.dist(first.centroid, second.centroid)
+<= 0.80 * min(_component_extent(first), _component_extent(second))
+and max(first.shape_scores.values(), default=0.0) >= 0.40
+and max(second.shape_scores.values(), default=0.0) >= 0.40
+for first in subject
+for second in obj
+)
+if nested:
+return 0.0, {**result, "strict_pass": False, "nested_referents": True}
+subj_y = float(np.mean([comp.centroid[1] for comp in subject]))
+obj_y = float(np.mean([comp.centroid[1] for comp in obj]))
+margin = float(relation.get("margin_px", 24.0))
+delta = subj_y - obj_y
+score = min(1.0, max(0.0, delta / max(margin, 1.0)))
+strict_pass = delta >= margin
+The verifier also reports a color–shape binding score for each group, computed from its color and
+shape scores; binding adds no structural complexity (Table 7). The image passes this task when all
+seven constraints in A and the constraints in B and F pass (§2.3).
+Constraint measurements.
+The verifier assigns a fixed geometric meaning to each relational
+phrase in the prompt templates. Let h be the shorter image side and e the largest visible extent
+among the objects compared.
+• Same row (column):
+the vertical (horizontal) spread of the object centroids is at most
+max(0.04h, 0.55e).
+• Between: let t be the position of the subject’s centroid projected onto the segment joining the two
+reference centroids, and d its distance from that segment. The relation holds when max(0, 1 −
+d/0.25ℓ)·1[0.15 ≤t ≤0.85] ≥0.70, where ℓis the segment length and the indicator is replaced
+by a linear decay outside the interval for partial credit.
+• Closer than: distance is the minimum Euclidean distance between component boundaries, which
+reflects the visible gap between objects of different sizes. The nearer distance must be at most
+0.90 of the farther distance and at least 4 pixels smaller.
+• Largest (smallest) colored object: the subject’s visual extent, defined below, is compared with
+that of every visible colored component in the image, including components that match no re-
+quested group.
+Relative size uses visual extent, the geometric mean of a component’s width and height measured
+between the 5th and 95th percentiles of its pixel coordinates. The benchmark compares sizes only
+relative to other objects, because calibration found no stable human decision boundary for absolute
+size.
+Objects and unmatched components.
+Requested objects are matched by color and shape to con-
+nected visual components. Count compares the number of matched components with the requested
+cardinality. Any remaining visible colored component is unmatched, so an extra copy of a requested
+object lowers both the count score and the unmatched-component score.
+C.3
+VERIFIER VALIDATION
+The verifier passes 290 historical edge cases, 360 direct checks, 14,788 metamorphic checks, a
+320-case matrix of single constraints, 200 constructed cases at decision thresholds, and geometry
+tests for repeated-group size, containment, contact, and relation inverses. These tests cover blur,
+compression, low contrast, irregular contours, touching and merged components, missing objects,
+24
+
+
+Preprint
+and reversed relations. During development, 3,947 human decisions set the decision boundary of
+each perceptual predicate: the hue range of every color name, the margin at which two objects touch,
+the contour tolerances that separate circles, squares, and triangles, and the ratio at which one object
+counts as larger than another.
+Two human audits test the verifier on generated images. Each audit image tests one constraint,
+labeled by one annotator without seeing the verifier’s decision. The larger audit contains 512 images
+of 128 prompts generated by pretrained SD3.5-M, FLUX.1-dev, and two SD3.5-M models trained
+with earlier VVR rewards. The verifier version frozen before this audit agrees with 454 of 508
+decisive labels (89.4%, Cohen’s κ = 0.78), and an earlier audit of 528 images agrees on 421 of 452
+(93.1%, κ = 0.86). After calibration that used the larger audit, the released verifier, which scores
+every result in this paper, agrees with 481 of its 508 labels (94.7%, κ = 0.89).
+C.4
+SCORES AND TRAINING REWARD
+The dense reward rdense of Eq. 3 combines the partial-credit scores qa in two levels. Each requested
+object group i receives
+ri = 0.45rcount,i + 0.20rshape,i + 0.20rlayout,i + 0.15rsize,i,
+(5)
+where each term is the partial-credit score of that group’s constraints of the given kind, and robj
+is the mean across groups. Let rrel be the mean partial-credit score of the relations, Irel indicate
+whether the task has a relation, and rforbid, rextra, and rbg be the scores of the forbidden-content,
+unmatched-component, and background constraints. The weighted sum in Eq. 3 is
+X
+a
+waqa = 0.55robj + 0.15Irelrrel + 0.15rforbid + 0.10rextra + 0.05rbg
+0.85 + 0.15Irel
+,
+(6)
+and the penalty factor is
+ψ = gcountgrelgextragforbid,
+(7)
+with
+gcount = 0.10 + 0.90rcount,
+grel =
+1,
+Irel = 0,
+0.25 + 0.75rrel,
+Irel = 1,
+gextra = max
+
+0, 1 −
+nextra
+max(Ntarget, 1)
+
+,
+gforbid = rforbid.
+(8)
+Here rcount is the mean group-level count score, nextra is the number of unmatched components,
+and Ntarget is the requested object count.
+D
+BENCHMARK EVALUATION DETAILS
+D.1
+EVALUATION DETAILS
+Models generate at their native resolution. We score VVRBENCH images at 512 × 512 and Chal-
+lenge images at 1024 × 1024, which preserves boundaries and small objects in dense scenes. API
+models receive one request per prompt; transient errors are retried, and completed responses are
+never resampled. Appendix D.3 reports how often each API model returned no image.
+Generation settings.
+Table 9 lists the settings of every model. Open-weight models generate at
+1024 × 1024, except HunyuanImage-2.1 at 2048 × 2048, and all post-trained SD3.5-M models use
+the SD3.5-M settings. The seed of each prompt is the first 32 bits of the SHA-256 hash of a fixed
+base seed and the prompt identifier, so every open-weight model receives the same seed for the same
+prompt. The OpenAI image API has no temperature parameter, and Gemini models are called with
+a 1:1 aspect ratio and default values for temperature and all other sampling parameters.
+25
+
+
+Preprint
+Table 9: Generation settings. Guidance is the classifier-free guidance scale.
+Open-weight model
+Steps
+Guidance
+API model
+Settings
+FLUX.2-dev
+50
+4.0
+GPT-Image-2.5-Sunburst (2026-09-08)
+medium quality, 1024 × 1024
+HunyuanImage-2.1
+50
+3.5
+GPT-Image-2 (2026-04-21)
+medium quality, 1024 × 1024
+Qwen-Image-2512
+50
+4.0
+GPT-Image-1-mini
+medium quality, 1024 × 1024
+HiDream-I1-Full
+50
+5.0
+Gemini-3-Pro-Image
+1K
+FLUX.1-dev
+28
+3.5
+Gemini-3.1-Flash-Image
+1K
+FLUX.1-schnell
+4
+0.0
+Gemini-3.1-Flash-Lite-Image
+1K
+SD3.5 Medium
+40
+4.5
+Gemini-2.5-Flash-Image
+model default (1K)
+SD3.5 Large
+40
+4.5
+SDXL 1.0
+40
+5.0
+Sana 1.6B
+20
+4.5
+D.2
+COMPLETE VVRBENCH-FAST RESULTS
+Table 10 reports the complete complexity breakdown underlying Figure 2.
+Table 10: Accuracy (%) of API models on VVRBENCH-Fast, an 820 task subset of VVRBENCH
+with 20 tasks at each attainable integer complexity from 3 to 44. The GPT-Image-2 models exceed
+80% overall but fall to 51% to 57% in C5. Gemini models reach 37% to 47%. Subscripts are 95%
+confidence margins.
+Model
+Accuracy (%) ↑
+3 to 10
+11 to 18
+19 to 26
+27 to 35
+36 to 44
+GPT-Image-2.5-Sunburst
+84.51±2.64 100.00±2.67 98.75±3.19 96.25±4.19 77.22±6.66 56.67±7.30
+GPT-Image-2
+82.20±2.77
+98.57±3.63 98.75±3.19 95.62±4.38 74.44±6.84 50.56±7.24
+Gemini-3.1-Flash-Image
+47.20±3.42
+85.71±6.75 60.00±7.74 51.25±7.68 30.56±7.08 18.89±6.35
+Gemini-2.5-Flash-Image
+45.61±3.42
+76.43±7.68 65.62±7.65 51.25±7.68 31.11±7.10 13.33±5.74
+Gemini-3.1-Flash-Lite-Image
+42.07±3.41
+85.71±6.75 56.25±7.74 40.00±7.74 25.00±6.80 14.44±5.88
+Gemini-3-Pro-Image
+37.20±3.36
+62.14±8.26 52.50±7.71 38.75±7.73 26.67±6.90 13.33±5.74
+GPT-Image-1-mini
+32.44±3.28
+92.86±5.51 60.00±7.74 16.88±6.56
+4.44±4.08
+2.78±3.56
+D.3
+RESPONSES WITHOUT AN IMAGE
+Some API models return text instead of an image, typically stating that the prompt is contradictory
+or too complex. These abstentions are incorrect: every task is satisfiable, because its reference image
+passes the verifier. On Challenge, Gemini-2.5-Flash-Image returned no image for 39 of 720 prompts,
+Gemini-3.1-Flash-Image for 3, Gemini-3.1-Flash-Lite-Image for 2, and Gemini-3-Pro-Image for 1;
+on VVRBENCH-Fast, Gemini-2.5-Flash-Image did so for 14 of 820 prompts and Gemini-3-Pro-
+Image for 3. The GPT models always returned an image. Each such response scores zero, and the
+result files keep its text. Of the 62 responses without an image, 48 contain text and 14 are empty.
+Three examples follow, with the instructions and responses verbatim.
+Gemini-2.5-Flash-Image on VVRBENCH-Challenge
+Instruction. “Draw nine red squares and three blue squares. Use more orange squares than red squares.
+Arrange all the red squares so they are not all in the same row. Arrange all the red squares in one column.
+Arrange all the blue squares so they are not all in the same row. Arrange all the blue squares so they are not
+all in the same column. Make every red square the same size as every blue square. Set the objects against
+a plain beige background; do not add other colored objects.”
+Model response. “I cannot fulfill your request. You have provided contradictory instructions regarding
+the arrangement of the red squares. You asked that ‘all the red squares so they are not all in the same
+row’ and also that ‘all the red squares in one column.’ These two statements cannot both be true
+simultaneously.”
+Why it is wrong. The two requirements are compatible: nine red squares stacked in one column share
+a column and, because they are stacked vertically, are not all in the same row.
+26
+
+
+Preprint
+Gemini-3-Pro-Image on VVRBENCH-Challenge
+Instruction. “Show nine orange squares and two pink triangles. Use more cyan squares than orange
+squares. Arrange all the pink triangles in one row. Arrange all the cyan squares so they are not all in the
+same row. Arrange all the cyan squares so they are not all in the same column. Make every cyan square the
+same size as every orange square. Arrange all the cyan squares in row 1, column 1, row 1, column 2, row
+1, column 3, row 1, column 4, row 2, column 2, row 2, column 3, row 2, column 4, row 3, column 1, row
+3, column 2, and row 3, column 3 of a 3-by-4 grid. Set the objects against a plain pale cyan background;
+do not add other colored objects.”
+Model response. “I cannot generate the image because the constraints are contradictory. The prompt
+asks for a total of 19 squares (nine orange and ten cyan, as their specific positions are listed) to be
+arranged within a 3-by-4 grid, which has only 12 available spots.” (Markdown emphasis removed.)
+Why it is wrong. Only the ten cyan squares are assigned to grid cells, and ten cells are listed. The nine
+orange squares have no grid position and can be placed anywhere outside the grid.
+Gemini-2.5-Flash-Image on VVRBENCH-Challenge
+Instruction. “Show one pink square, one green circle, nine cyan circles, two yellow circles, and one purple
+square. Use four times as many cyan squares as yellow circles. Make the pink square contain the green
+circle. Place all the yellow circles above all the cyan squares. Place the purple square to the left of all the
+cyan squares. Place all the yellow circles to the right of the purple square. Place all the cyan squares in the
+right area. Keep the background plain black, with no additional colored objects.”
+Model response. “I’m sorry, I cannot fulfill that request. I am unable to keep track of that many rules
+for generating an image.”
+Why it is wrong. The task is long but satisfiable: its reference image passes the verifier, and Gemini-
+3.1-Flash-Image generated an image that satisfies every constraint of the same task.
+D.4
+PER-CONSTRAINT PASS RATES OF API MODELS
+We score all 5,040 outputs of the seven API models on VVRBENCH-Challenge and record the pass-
+or-fail decision of every constraint check. The pass rate of a constraint type pools all of its checks,
+and responses without an image count as failures. Table 11 gives the pass rate of every constraint
+type.
+D.5
+COMPLEXITY-MATCHED FAMILY ANALYSIS
+Table 12 tests whether a model loses accuracy on tasks that contain a constraint family, beyond what
+the tasks’ complexity explains. For each model and family, it reports VVRBENCH accuracy on
+the tasks that contain the family and, in parentheses, the difference from tasks without the family
+at matched complexity. The largest negative differences identify family-specific weaknesses: GPT-
+Image-1-mini loses 9.7 points on tasks with Spatial constraints, HunyuanImage-2.1 loses 10.7 points
+with
+Size constraints, and FLUX.2-dev loses 4.0 points with
+Cardinality constraints. Models that
+solve few tasks show differences near zero.
+To match complexity, we stratify VVRBENCH prompts by floored integer complexity and, within
+every stratum that contains tasks with and without family f, weight the accuracy of tasks without f
+by the number of tasks with f. The difference for model m is
+∆m,f =
+X
+c
+wf,c [Accm(f, c) −Accm(¬f, c)] ,
+(9)
+where wf,c is the family present complexity distribution. The matched supports are 3,077 Ground-
+ing prompts (96% coverage), 3,297 Cardinality (98%), 6,713 Spatial (79%), 3,182 Size (100%), and
+3,027 Topology (100%). Here “present” means that the benchmark sampled an explicit constraint
+from that family; ordinary object realization still appears throughout the benchmark. The back-
+ground and forbidden-content constraints apply to every task, so they have no tasks without them to
+compare against.
+27
+
+
+Preprint
+Table 11: Pass rates (%) of API models for every constraint type on VVRBENCH-Challenge. n
+is the number of checks of each type per model, and Avg is the unweighted mean over the seven
+models. Responses without an image count as failures. Within each family, types are sorted by Avg.
+Cell shading is proportional to the pass rate.
+Constraint type
+n
+GPT-Image-
+2.5-Sunburst
+GPT-
+Image-2
+Gemini-3.1-
+Flash-Lite
+Gemini-
+3-Pro
+Gemini-
+3.1-Flash
+Gemini-
+2.5-Flash
+GPT-Image-
+1-mini
+Avg
+Grounding
+color shape binding
+3794
+99
+98
+91
+89
+92
+84
+92
+92
+shape attribute
+3794
+99
+98
+94
+94
+94
+88
+94
+94
+color attribute
+3794
+99
+99
+98
+99
+98
+94
+95
+98
+Cardinality
+same count
+266
+56
+43
+32
+27
+28
+17
+16
+31
+times as many
+136
+58
+44
+39
+35
+34
+16
+7
+33
+fewer than count
+20
+55
+55
+45
+55
+40
+65
+30
+49
+more than count
+20
+60
+70
+50
+65
+70
+40
+40
+56
+exact count
+3794
+81
+75
+72
+64
+62
+49
+49
+64
+Spatial
+grid occupancy
+20
+10
+10
+20
+10
+0
+0
+0
+7
+rightmost
+20
+40
+30
+55
+50
+60
+20
+30
+41
+leftmost
+20
+15
+55
+55
+75
+55
+30
+40
+46
+bottommost
+20
+75
+75
+55
+40
+55
+40
+40
+54
+between
+20
+85
+60
+45
+55
+60
+50
+30
+55
+topmost
+20
+80
+85
+55
+65
+50
+45
+45
+61
+all same column
+20
+100
+95
+80
+50
+60
+50
+60
+71
+all right of
+122
+86
+78
+78
+82
+74
+69
+55
+74
+all left of
+281
+88
+79
+78
+83
+75
+72
+57
+76
+closer than
+40
+92
+98
+85
+88
+70
+68
+57
+80
+farther than
+20
+95
+90
+85
+80
+80
+60
+80
+81
+right of
+20
+100
+95
+90
+85
+85
+70
+70
+85
+all same row
+32
+97
+94
+84
+78
+94
+88
+78
+88
+absolute region
+384
+98
+97
+91
+92
+90
+77
+80
+89
+all below
+57
+98
+96
+89
+91
+88
+82
+81
+89
+all above
+102
+100
+99
+91
+93
+91
+82
+82
+91
+same column
+20
+100
+95
+95
+95
+100
+90
+65
+91
+not all same row
+136
+98
+96
+96
+90
+94
+85
+91
+93
+same row
+20
+100
+100
+100
+95
+90
+90
+80
+94
+not all same column
+145
+99
+98
+97
+91
+95
+85
+90
+94
+below
+20
+95
+95
+100
+95
+100
+75
+100
+94
+left of
+20
+100
+100
+95
+95
+85
+95
+95
+95
+above
+20
+100
+100
+95
+100
+100
+75
+95
+95
+Size
+smallest
+20
+75
+80
+5
+10
+15
+20
+5
+30
+all same size
+487
+74
+50
+50
+44
+48
+31
+32
+47
+same size
+88
+98
+91
+89
+85
+80
+68
+70
+83
+all larger than
+264
+99
+96
+88
+83
+80
+70
+92
+87
+all smaller than
+20
+100
+100
+95
+75
+85
+80
+80
+88
+smaller than
+20
+100
+100
+85
+90
+95
+75
+90
+91
+largest
+20
+100
+100
+85
+100
+90
+75
+90
+91
+larger than
+33
+97
+97
+94
+94
+94
+70
+97
+92
+not all same size
+20
+100
+100
+95
+100
+90
+80
+80
+92
+Topology
+each contains
+581
+27
+19
+61
+53
+44
+18
+17
+34
+touching
+20
+50
+70
+60
+50
+70
+20
+0
+46
+each inside
+138
+92
+83
+62
+60
+54
+38
+47
+62
+contains
+20
+100
+100
+95
+95
+90
+60
+100
+91
+inside
+20
+95
+100
+100
+100
+85
+70
+95
+92
+not touching
+259
+100
+100
+99
+100
+99
+89
+97
+98
+Background and forbidden content
+no unrequested objects
+720
+62
+51
+56
+40
+35
+30
+46
+46
+background color
+720
+100
+100
+96
+94
+93
+93
+99
+96
+Family tags can co-occur. As a sensitivity check, a linear probability model with all five family
+indicators and integer complexity fixed effects preserves the largest negative profiles. GPT-Image-
+1-mini Spatial changes from −9.7 to −14.6 points, FLUX.2-dev Cardinality from −4.0 to −5.9,
+and HunyuanImage-2.1 Size from −10.7 to −12.6. Positive associations for GPT-Image-2 are less
+stable under this adjustment.
+28
+
+
+Preprint
+Table 12: VVRBENCH accuracy (%) on prompts that contain each constraint family. In parentheses
+is the difference from prompts without that family at matched complexity. Models show distinct
+weaknesses: Spatial for GPT-Image-1-mini (−9.7), Size for HunyuanImage 2.1 (−10.7), and Car-
+dinality for FLUX.2 dev (−4.0).
+Model
+Overall
+Grounding
+Cardinality
+Spatial
+Size
+Topology
+GPT-Image-2
+86.9
+86.8 (+0.5)
+80.0 (+8.0)
+85.4 (−4.8)
+87.6 (+10.0)
+85.6 (+7.7)
+GPT-Image-1-mini
+26.4
+26.6 (+0.5)
+14.2 (+1.8)
+20.7 (−9.7)
+19.2 (+2.5)
+10.7 (−3.3)
+FLUX.2-dev
+19.1
+19.0 (−0.5)
+8.5 (−4.0)
+16.3 (+0.3)
+11.7 (−1.4)
+9.1 (−1.2)
+HunyuanImage-2.1
+18.8
+19.0 (+0.6)
+10.3 (+0.0)
+16.5 (−0.4)
+6.5 (−10.7)
+11.5 (−0.7)
+Qwen-Image-2512
+5.8
+6.7 (+1.0)
+2.2 (−0.7)
+4.4 (+0.2)
+2.4 (−1.3)
+3.3 (+1.1)
+HiDream-I1-Full
+4.2
+5.3 (+0.1)
+2.0 (+0.1)
+2.6 (−1.8)
+1.6 (−0.5)
+1.5 (+0.0)
+FLUX.1-dev
+3.9
+5.2 (+0.4)
+1.8 (+0.2)
+2.6 (−0.0)
+1.1 (−0.9)
+1.8 (+0.6)
+FLUX.1-schnell
+2.9
+3.8 (−0.1)
+1.4 (+0.3)
+1.8 (−0.1)
+0.4 (−1.0)
+1.0 (+0.3)
+SD3.5 Medium
+2.8
+4.1 (−0.0)
+1.3 (+0.0)
+1.5 (−0.9)
+0.9 (−0.1)
+0.9 (+0.1)
+SD3.5 Large
+2.5
+3.5 (+0.3)
+1.7 (+0.4)
+1.3 (−0.7)
+0.5 (−0.5)
+1.0 (+0.4)
+SDXL 1.0
+0.0
+0.1 (+0.0)
+0.0 (+0.0)
+0.0 (+0.0)
+0.0 (+0.0)
+0.0 (+0.0)
+Sana 1.6B
+0.0
+0.0 (+0.0)
+0.0 (+0.0)
+0.0 (+0.0)
+0.0 (+0.0)
+0.0 (+0.0)
+D.6
+FAILURE EXAMPLES
+Figure 10 shows three failed VVRBENCH-Fast outputs of API models that add content the prompt
+excludes: vases, a bowl, and an apple; a lemon and a mug; and additional squares and shapes around
+the grid.
+(a)
+(b)
+(c)
+Figure 10: Failed API model outputs on VVRBENCH-Fast. Prompts: (a) “Place an orange circle in
+the top area. Set the objects against a plain pale pink background; do not add other colored objects.”
+(b) “Place a yellow square in the top area. Set the objects against a plain pale pink background; do
+not add other colored objects.” (c) “Arrange three purple squares in these cells of a 3-by-3 grid: top
+center, top right, and middle right. Set the objects against a plain black background; do not add other
+colored objects.”
+E
+TRAINING SETUP
+Table 13 reports the settings that define the optimization and reward distribution. The released
+resolved configurations and data manifests retain the remaining implementation metadata.
+29
+
+
+Preprint
+Table 13: Reproducible configuration for the final SD3.5 Medium post-training experiments. Re-
+ward proportions are fractions of prompt groups in each update; every rollout is scored only by the
+reward attached to its prompt.
+Setting
+Value
+Trainable parameters
+LoRA on the eight attention projections add k, add q, add v, add out,
+k, q, v, and out; rank 32 and α = 64.
+Generation
+512×512 pixels; 25 denoising steps; classifier-free guidance 4.5; Gaussian
+sampling noise with level 0.7.
+Rollout batch
+32 prompt groups per update, 24 rollouts per prompt, and 768 generated im-
+ages per update.
+Flow GRPO
+One inner epoch; advantages centered within each prompt group and divided
+by the standard deviation over the complete rollout batch; advantages clipped
+to [−5, 5]; policy-ratio clip 10−4; KL coefficient 0.04. The first 24 of the 25
+sampled transitions contribute to the update.
+Optimization
+AdamW; learning rate 3×10−4; β1 = 0.9, β2 = 0.999; ϵ = 10−8; weight
+decay 10−4; maximum gradient norm 1.0; FP16 mixed precision with TF32
+enabled; exponential moving average.
+Training duration
+3,000 optimizer updates, corresponding to 96,000 prompt groups and
+2,304,000 generated images.
+VVR objective
+Weights (0.55, 0.15, 0.15, 0.10, 0.05) for object fidelity, relations, forbidden
+content, unmatched components, and background, respectively, multiplied by
+the penalty factor ψ in Eq. 7.
+VVR
+complexity
+and
+data
+Complexity follows Eq. 4. VVR-Easy contains 100,000 unique tasks with
+C ≤20, each drawn from one generation stratum and containing at most
+one relation. VVR-Matched contains 100,000 unique tasks matched to the
+benchmark distribution over constraint family, family count, and complexity.
+Training condition
+Prompt-group and reward allocation
+VVR
+tasks
+con-
+sumed
+VVR-Easy
+100% VVR-Easy
+96,000
+VVR-Matched
+100% VVR-Matched
+96,000
+GenEval2
+100% GenEval2
+0
+GenEval2 + VVR-Easy
+50% GenEval2, 50% VVR-Easy
+48,000
+GenEval2 + VVR-Matched
+50% GenEval2, 50% VVR-Matched
+48,000
+OCR
+100% OCR
+0
+OCR + VVR-Easy
+50% OCR, 50% VVR-Easy
+48,000
+Five-reward
+20% each: GenEval, GenEval2, PickScore, OCR,
+UnifiedReward
+0
+Five-reward + VVR-Easy
+1/6 each: the five rewards at left and VVR-Easy
+16,000
+E.1
+POST-TRAINING EVALUATION
+Each model generates one image per prompt with a fixed seed, except on GenEval, which uses four
+images per prompt.
+Training-objective benchmarks.
+Each reward objective is evaluated on its own held-out bench-
+mark. VVRBENCH accuracy uses the 10,000 VVRBENCH tasks. GenEval (Ghosh et al., 2023) uses
+its 553 prompts with four images each, for 2,212 images. GenEval2 (Kamath et al., 2025) uses its
+fixed 80-prompt held-out split. OCR (Liu et al., 2025a) uses 1,018 held-out text-rendering prompts
+scored by normalized edit accuracy. Each benchmark is reported in its own units.
+Preference benchmarks.
+PickScore (Kirstain et al., 2023) is evaluated on the 500 unique prompts
+of the Pick-a-Pic v1 validation unique split. HPSv2.1 (Wu et al., 2023) is evaluated on the
+complete HPDv2 benchmark, 800 prompts in each of four domains (anime, concept art, paintings,
+and photo), and reported as the unweighted mean of the four domain means.
+30
+
+
+Preprint
+Cross-domain panel.
+The remaining metrics use a shared panel of four prompt sets: all 200 Draw-
+Bench (Saharia et al., 2022) prompts and fixed 1,000-prompt subsets of PartiPrompts (Yu et al.,
+2022), DPG-Bench (Hu et al., 2024), and T2I-CompBench (Huang et al., 2023). On this panel we
+report HPSv3 (Ma et al., 2025), which has no canonical prompt benchmark, CLIPScore (Hessel
+et al., 2021), LAION aesthetic score (Schuhmann, 2022), ImageReward (Xu et al., 2023), and Uni-
+fiedReward (Wang et al., 2025). Each metric is averaged within a prompt set and then across the four
+sets, so the larger sets do not dominate. Only the five-reward objective trains on one of these metrics
+(UnifiedReward); together they test transfer to prompt distributions outside the training tasks.
+F
+COMPLETE RLVVR RESULTS
+F.1
+VVRBENCH RESULTS BY COMPLEXITY
+Table 14 gives the VVRBENCH accuracy of every trained model by complexity range; Figure 4
+plots a subset.
+Table 14: VVRBENCH accuracy (%) of SD3.5 M after post-training. Training on VVR raises
+accuracy from 2.81% to 28.27% with Easy tasks and 46.60% with Matched tasks. Matched training
+gives the largest gains at high complexity. Adding VVR-Easy to GenEval2, OCR, or the five-reward
+objective raises accuracy by a factor of three to seven. Subscripts are 95% confidence margins.
+Training reward
+Accuracy (%) ↑
+C1
+C2
+C3
+C4
+C5
+SD3.5-M (pretrained)
+2.81±0.34 12.01±1.47
+1.19±0.59
+0.35±0.37
+0.05±0.23
+0.00±0.19
+GenEval2
+3.87±0.40 15.42±1.61
+2.39±0.78
+0.91±0.52
+0.05±0.23
+0.05±0.23
+GenEval2 + VVR-Easy
+21.82±0.82 54.51±2.15 32.05±2.12 14.08±1.60
+6.41±1.16
+1.10±0.56
+VVR-Easy
+28.27±0.89 67.72±2.04 45.45±2.23 17.51±1.73
+8.36±1.29
+1.35±0.60
+VVR-Matched
+46.60±0.98 67.68±2.04 59.17±2.21 45.62±2.20 38.39±2.15 21.82±1.86
+GenEval2 + VVR-Matched
+33.50±0.93 57.93±2.13 47.27±2.23 32.34±2.09 20.32±1.82
+9.22±1.34
+OCR
+3.58±0.38 15.37±1.61
+1.51±0.65
+0.40±0.39
+0.05±0.23
+0.00±0.19
+OCR + VVR-Easy
+24.74±0.86 57.97±2.13 36.73±2.18 18.41±1.76
+7.76±1.26
+1.94±0.70
+Five-reward
+4.83±0.44 19.16±1.75
+3.12±0.87
+0.91±0.52
+0.30±0.35
+0.00±0.19
+Five-reward + VVR-Easy
+15.81±0.73 45.05±2.14 21.71±1.90
+7.65±1.25
+2.95±0.84
+0.70±0.47
+F.2
+PARTIAL AND JOINT CONSTRAINT SATISFACTION
+For every VVRBENCH task, we compute the mean partial-credit score of its count constraints and
+of its relations. A count score is one minus the relative count error, averaged over groups, and a
+relation score is the mean graded score of the task’s relations. From these we report a partial score,
+the mean graded score, and the fraction of tasks in which every count or every relation is satisfied
+(Table 15). Relation columns use only the tasks with at least one relation. Figure 5 expresses
+VVR-Easy’s values as the share of the gap between the pretrained model and VVR-Matched that
+VVR-Easy closes. In every range from C3 to C5, VVR-Easy closes more of the gap in partial scores
+than in the fraction of tasks with every constraint of a kind satisfied, and the difference grows with
+complexity.
+31
+
+
+Preprint
+Table 15: Partial and joint constraint satisfaction on VVRBENCH by complexity range. Partial
+scores are the mean graded count and relation scores; “all” is the fraction of tasks in which every
+count or every relation is satisfied. Relation columns use only tasks with at least one relation.
+Counts
+Relations
+Range
+Model
+Partial
+All
+Partial
+All
+Accuracy (%)
+C1
+Pretrained
+0.76
+0.46
+0.29
+0.19
+12.01
+VVR-Easy
+0.98
+0.92
+0.80
+0.58
+67.72
+VVR-Matched
+0.98
+0.93
+0.80
+0.57
+67.68
+C2
+Pretrained
+0.70
+0.17
+0.25
+0.13
+1.19
+VVR-Easy
+0.96
+0.79
+0.75
+0.51
+45.45
+VVR-Matched
+0.97
+0.84
+0.80
+0.53
+59.17
+C3
+Pretrained
+0.69
+0.10
+0.20
+0.06
+0.35
+VVR-Easy
+0.94
+0.66
+0.59
+0.27
+17.51
+VVR-Matched
+0.98
+0.88
+0.77
+0.41
+45.62
+C4
+Pretrained
+0.66
+0.06
+0.21
+0.03
+0.05
+VVR-Easy
+0.91
+0.44
+0.61
+0.22
+8.36
+VVR-Matched
+0.98
+0.76
+0.82
+0.42
+38.39
+C5
+Pretrained
+0.61
+0.02
+0.21
+0.02
+0.00
+VVR-Easy
+0.87
+0.15
+0.57
+0.13
+1.35
+VVR-Matched
+0.97
+0.48
+0.85
+0.41
+21.82
+F.3
+EXTERNAL TASK, QUALITY, AND ALIGNMENT METRICS
+Table 16 extends Table 5 to all nine trained models.
+Table 16: Complete final evaluation of the pretrained model and nine post-training conditions.
+PickScore uses the Pick-a-Pic v1 validation benchmark and HPSv2.1 uses the official four-domain
+HPDv2 benchmark. HPSv3, CLIPScore, aesthetic score, ImageReward, and UnifiedReward are
+macro-averaged across the shared cross-domain panel. VVR accuracy, GenEval, GenEval2, and
+OCR retain their native units. Every HPSv3 value, including the pretrained one, is the mean over
+the four cross-domain prompt sets. Images of the pretrained model use sampling seed 42; images of
+trained models use seed 20260912, except for PickScore and HPSv2.1, which use seed 42 for every
+model.
+Training reward
+VVR GenEval GenEval2
+OCR PickScore HPSv2.1 HPSv3 CLIPScore Aesthetic ImageReward UnifiedReward
+Pretrained
+0.028
+0.616
+0.237
+0.476
+0.841
+0.300
+7.689
+0.956
+5.517
+0.929
+0.636
+GenEval2
+0.039
+0.688
+0.454
+0.501
+0.848
+0.297
+8.289
+0.974
+5.523
+1.110
+0.635
+GenEval2 + VVR-Easy
+0.218
+0.718
+0.478
+0.532
+0.848
+0.302
+8.511
+0.976
+5.533
+1.155
+0.637
+VVR-Easy
+0.283
+0.729
+0.268
+0.587
+0.849
+0.294
+8.275
+0.979
+5.483
+1.114
+0.641
+∆add VVR-Easy
++0.180
++0.030
++0.025
++0.030
++0.0004
++0.005 +0.222
++0.002
++0.009
++0.045
++0.002
+VVR-Matched
+0.466
+0.709
+0.360
+0.536
+0.847
+0.291
+7.997
+0.980
+5.472
+1.109
+0.636
+GenEval2 + VVR-Matched
+0.335
+0.712
+0.491
+0.510
+0.848
+0.301
+8.498
+0.972
+5.516
+1.148
+0.637
+∆add VVR-Matched
++0.296
++0.024
++0.038
++0.009 −0.0002
++0.004 +0.209
+−0.001
+−0.007
++0.038
++0.001
+OCR
+0.036
+0.625
+0.225
+0.962
+0.844
+0.290
+7.601
+0.960
+5.477
+0.994
+0.633
+OCR + VVR-Easy
+0.247
+0.678
+0.252
+0.941
+0.846
+0.290
+7.765
+0.969
+5.488
+1.087
+0.636
+∆add VVR-Easy
++0.212
++0.053
++0.027 −0.021
++0.002
+0.000 +0.164
++0.009
++0.012
++0.092
++0.002
+Five-reward
+0.048
+0.739
+0.342
+0.856
+0.850
+0.294
+8.137
+0.974
+5.510
+1.125
+0.640
+Five-reward + VVR-Easy
+0.158
+0.751
+0.383
+0.826
+0.848
+0.300
+8.444
+0.976
+5.541
+1.152
+0.640
+∆add VVR-Easy
++0.110
++0.012
++0.041 −0.030
+−0.002
++0.006 +0.307
++0.002
++0.031
++0.027
++0.0003
+Table 17 gives paired bootstrap intervals for the mixture comparisons. The pretrained model’s eval-
+uation retained only aggregate scores, so comparisons with it have no intervals.
+32
+
+
+Preprint
+Table 17: Effect of adding VVR to an existing reward, with paired bootstrap 95% intervals over
+prompts (10,000 resamples; stratified by prompt set for macro-averaged metrics and by domain for
+HPSv2.1). The GenEval, GenEval2, OCR, HPSv3, and UnifiedReward evaluations retained only
+aggregate scores, so they have no intervals.
+Contrast
+PickScore
+HPSv2.1
+CLIPScore
+Aesthetic
+ImageReward
+GenEval2 + VVR-Easy −GenEval2
++0.0004 [−0.0012, 0.0021]
++0.0047 [0.0042, 0.0052]
++0.0023 [−0.0014, 0.0058]
++0.009 [−0.003, 0.022]
++0.045 [0.025, 0.066]
+GenEval2 + VVR-Matched −GenEval2
+−0.0002 [−0.0019, 0.0015]
++0.0039 [0.0034, 0.0045]
+−0.0011 [−0.0044, 0.0021]
+−0.007 [−0.020, 0.006]
++0.038 [0.020, 0.057]
+OCR + VVR-Easy −OCR
++0.0018 [−0.0002, 0.0037]
+0.0000 [−0.0007, 0.0006]
++0.0086 [0.0054, 0.0118]
++0.012 [−0.001, 0.025]
++0.092 [0.071, 0.113]
+Five-reward + VVR-Easy −Five-reward
+−0.0024 [−0.0041, −0.0006]
++0.0060 [0.0054, 0.0066]
++0.0023 [−0.0009, 0.0055]
++0.031 [0.020, 0.042]
++0.027 [0.009, 0.046]
+Matched-complexity GenEval2 mixture.
+Replacing VVR-Easy with VVR-Matched in the
+GenEval2 mixture raises VVRBENCH accuracy from 21.82% to 33.50% and GenEval2 from 0.478
+to 0.491; accuracy in C3, C4, and C5 rises from 14.08%, 6.41%, and 1.10% to 32.34%, 20.32%,
+and 9.22%. This mixture raises seven of ten non-VVR metrics over GenEval2 alone, with intervals
+excluding zero for HPSv2.1 (+0.004) and ImageReward (+0.038).
+G
+HUMAN PREFERENCE STUDY
+Three annotators each compare the same 400 image pairs and choose the image they prefer given the
+prompt, with a tie option. The study contains two comparisons, VVR-Easy against the pretrained
+model and GenEval2 mixed with VVR-Easy against GenEval2, and each of five prompt suites con-
+tributes 40 prompts to each comparison. The 400-prompt study uses 80 unique prompts from each of
+VVR, GenEval2, GenEval, OCR, and DrawBench. The VVR prompts were drawn, 16 from each of
+five complexity bins, from a candidate pool of 11,250 tasks that preceded the final benchmark; 74 of
+them are VVRBENCH tasks, and none appears in VVR-Easy or Challenge. The GenEval sample is
+balanced across its six task categories. Each prompt appears in one comparison, paired generations
+share a sampling seed, and model identity and left and right order are hidden during annotation.
+Each annotator sees the pairs in an independently randomized order and left-right assignment. Win
+rates average each prompt’s score over the annotators (win 1, tie 0.5, loss 0), and intervals are 95%
+bootstrap intervals over prompts. Each annotator separately favors the VVR-trained model in every
+suite of both comparisons. On pairs where both annotators chose an image, the mean pairwise agree-
+ment is 83.8% (84.9%, 81.9%, and 84.6% for the three annotator pairs), and Fleiss’ κ among the
+three annotators, with ties as a third label, is 0.49. Table 18 gives the agreement of each annotator
+pair.
+Table 18: Agreement between annotator pairs on the 400 preference pairs. Labels are decoded to
+the preferred model before comparison. “Both chose” uses only the pairs on which neither annotator
+chose a tie; “ties as a label” uses all 400 pairs with tie as a third label, which is also the label set of
+Cohen’s κ. Fleiss’ κ over the three annotators is 0.49.
+Annotator pair
+Agreement, both chose (%)
+Agreement, ties as a label (%)
+Cohen’s κ
+1 vs. 2
+84.9 (298/351)
+76.0 (304/400)
+0.50
+1 vs. 3
+81.9 (276/337)
+72.0 (288/400)
+0.44
+2 vs. 3
+84.6 (312/369)
+78.8 (315/400)
+0.53
+Mean
+83.8
+75.6
+0.49
+33

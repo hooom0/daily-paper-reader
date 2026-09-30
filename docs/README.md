@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-29</span>
+      <span class="dpr-home-dashboard-kicker">2026-09-30</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 14 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 11 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
-    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>2 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>12</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-29 22:42:29 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-09-30 22:57:07 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今天筛完14篇文生图与扩散模型论文，精读2篇、速读12篇，重点落在生成可控性与场景建模。最值得看的是9.0分的《Amplify What You Gaze At》和8.0分的《Panoptic Scene Program Diffusion Transformer》，分别关注目标显著性增强与全景场景生成。普通读者可先读这两篇精读，再顺带看速读里的多概念擦除和少步生成，把握“可控”与“高效”两条线。</p>
+<p>2026-09-30 日报速读11篇：视觉奖励从合成场景迁移到自然提示获7.0分领跑，3D医学图像合成与稀疏视角新视角合成各得6.0分。</p>
+<p>最值得看的是合成到真实的视觉奖励迁移，以及潜空间非平坦结构对3D医学图像生成的影响。</p>
+<p>普通读者可优先浏览那篇7.0分论文的摘要与实验设置，其余两篇按需选读。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -78,12 +80,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Amplify What You Gaze At: Target Saliency Boosting in Text-to-Image Generation">Amplify What You Gaze At: Target Saliency Boosting in Text-to-Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Panoptic Scene Program Diffusion Transformer">Panoptic Scene Program Diffusion Transformer</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -91,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="HyperErase: Scale-Calibrated Hypernetwork for Multi-Concept Erasure in Text-to-Image Models">HyperErase: Scale-Calibrated Hypernetwork for Multi-Concept Erasure in Text-to-Image Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Presence Is Not Faithfulness: Figurative Vehicle Intrusion in Text-to-Image Generation">Presence Is Not Faithfulness: Figurative Vehicle Intrusion in Text-to-Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="An End-to-End Latent-Rollout Approach for Pushing Few-Step ImageNet-$256$ Generation to FID $1.11$ without Fréchet Losses">An End-to-End Latent-Rollout Approach for Pushing Few-Step ImageNet-$256$ Generation to FID $1.11$ without Fréchet Losses</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Verifiable Visual Rewards Transfer from Synthetic Scenes to Natural Prompts">Verifiable Visual Rewards Transfer from Synthetic Scenes to Natural Prompts</span></li><li><span class="dpr-home-dashboard-paper-title" title="Latent Space Is Not Flat: Rethinking Latent Structure for 3D Medical Image Synthesis">Latent Space Is Not Flat: Rethinking Latent Structure for 3D Medical Image Synthesis</span></li><li><span class="dpr-home-dashboard-paper-title" title="VGGT-Diff: Visual Geometry Meets Diffusion for Sparse-View Novel View Synthesis">VGGT-Diff: Visual Geometry Meets Diffusion for Sparse-View Novel View Synthesis</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>12</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
 </section>
 </div>
 

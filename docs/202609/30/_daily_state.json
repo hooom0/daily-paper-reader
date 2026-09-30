@@ -1,0 +1,185 @@
+{
+  "date": "20260930",
+  "date_label": "",
+  "generated_at": "2026-09-30 22:57:07 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.35641v1",
+      "route": "202609/30/2609.35641v1-verifiable-visual-rewards-transfer-from-synthetic-scenes-to-natural-prompts",
+      "title": "Verifiable Visual Rewards Transfer from Synthetic Scenes to Natural Prompts",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向图像生成精确指令遵循的可验证奖励",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.32794v1",
+      "route": "202609/30/2609.32794v1-latent-space-is-not-flat-rethinking-latent-structure-for-3d-medical-image-synthesis",
+      "title": "Latent Space Is Not Flat: Rethinking Latent Structure for 3D Medical Image Synthesis",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向3D医学图像合成的潜生成模型",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.33253v1",
+      "route": "202609/30/2609.33253v1-vggt-diff-visual-geometry-meets-diffusion-for-sparse-view-novel-view-synthesis",
+      "title": "VGGT-Diff: Visual Geometry Meets Diffusion for Sparse-View Novel View Synthesis",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用于新视角图像合成的多视角扩散模型",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.33582v1",
+      "route": "202609/30/2609.33582v1-fill2sr-repurposing-inpainting-diffusion-transformers-for-real-world-super-resolution",
+      "title": "Fill2SR: Repurposing Inpainting Diffusion Transformers for Real-World Super-Resolution",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过修复接口实现无ControlNet的可控条件扩散超分",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.33895v1",
+      "route": "202609/30/2609.33895v1-residual-stream-burden-shapes-representation-learning-in-diffusion-transformers",
+      "title": "Residual-Stream Burden Shapes Representation Learning in Diffusion Transformers",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散Transformer的扩散生成预测目标分析",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.34406v1",
+      "route": "202609/30/2609.34406v1-unlocking-few-step-diffusion-for-faithful-previews",
+      "title": "Unlocking Few-Step Diffusion for Faithful Previews",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用于图像生成预览的少步扩散采样",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.34651v1",
+      "route": "202609/30/2609.34651v1-directuv-image-conditioned-uv-texture-generation-with-surface-aware-positional-encoding",
+      "title": "DirectUV: Image-Conditioned UV Texture Generation with Surface-Aware Positional Encoding",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "在潜UV空间进行图像条件扩散生成纹理",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.35269v1",
+      "route": "202609/30/2609.35269v1-eval-unlearn-benchmarking-unlearning-in-text-to-image-diffusion-models",
+      "title": "eval-unlearn: Benchmarking unlearning in Text-to-Image Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向文本到图像扩散模型的概念遗忘基准",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.35377v1",
+      "route": "202609/30/2609.35377v1-first-learn-then-memorize-the-spectral-bias-of-diffusion-models",
+      "title": "First Learn, Then Memorize: The Spectral Bias of Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散模型训练动力学与泛化的理论分析",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.35673v1",
+      "route": "202609/30/2609.35673v1-flowtool-controlling-tool-parameter-in-image-retouching-via-flow-matching",
+      "title": "FlowTool: Controlling Tool Parameter in Image Retouching via Flow Matching",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于条件整流流的可控图像编辑",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    },
+    {
+      "paper_id": "2609.35763v1",
+      "route": "202609/30/2609.35763v1-unifying-distributional-training-for-one-step-visual-generation",
+      "title": "Unifying Distributional Training for One-Step Visual Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过分布训练与特征匹配实现一步视觉生成",
+      "first_seen_at": "2026-09-30 22:57:07 UTC",
+      "updated_at": "2026-09-30 22:57:07 UTC"
+    }
+  ]
+}
