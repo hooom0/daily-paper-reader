@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-30</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-01</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 11 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-09-30 22:57:07 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-01 23:01:46 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-09-30 日报速读11篇：视觉奖励从合成场景迁移到自然提示获7.0分领跑，3D医学图像合成与稀疏视角新视角合成各得6.0分。</p>
-<p>最值得看的是合成到真实的视觉奖励迁移，以及潜空间非平坦结构对3D医学图像生成的影响。</p>
-<p>普通读者可优先浏览那篇7.0分论文的摘要与实验设置，其余两篇按需选读。</p>
+<p>2026-10-01 日报速览：3 篇速读、0 篇精读，聚焦超分辨率、视频生成加速与视频预测生成三个方向。最值得看的是 PhoenixSR 用生成式异构蒸馏提升真实场景超分效率（6.0/10），以及 Carnator 用跨请求复用加速文本到视频生成（6.0/10）。普通读者可优先从这两篇入手，关注“效率提升”如何落地到实际生成任务。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -93,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Verifiable Visual Rewards Transfer from Synthetic Scenes to Natural Prompts">Verifiable Visual Rewards Transfer from Synthetic Scenes to Natural Prompts</span></li><li><span class="dpr-home-dashboard-paper-title" title="Latent Space Is Not Flat: Rethinking Latent Structure for 3D Medical Image Synthesis">Latent Space Is Not Flat: Rethinking Latent Structure for 3D Medical Image Synthesis</span></li><li><span class="dpr-home-dashboard-paper-title" title="VGGT-Diff: Visual Geometry Meets Diffusion for Sparse-View Novel View Synthesis">VGGT-Diff: Visual Geometry Meets Diffusion for Sparse-View Novel View Synthesis</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="PhoenixSR: Generative Heterogeneous Distillation Unleashes Efficient Models for Real-World Super-Resolution">PhoenixSR: Generative Heterogeneous Distillation Unleashes Efficient Models for Real-World Super-Resolution</span></li><li><span class="dpr-home-dashboard-paper-title" title="Carnator: Fast Text-to-Video Generation with Generation-Native Compatibility-Guided Cross-Request Reuse">Carnator: Fast Text-to-Video Generation with Generation-Native Compatibility-Guided Cross-Request Reuse</span></li><li><span class="dpr-home-dashboard-paper-title" title="Lagrangian--Hamiltonian Flows for Video Prediction and Image Generation: A Symplectic Perspective">Lagrangian--Hamiltonian Flows for Video Prediction and Image Generation: A Symplectic Perspective</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>3</strong></span></div>
 </section>
 </div>
 

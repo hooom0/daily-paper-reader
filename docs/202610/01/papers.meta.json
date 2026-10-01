@@ -1,0 +1,54 @@
+{
+  "label": "2026-10-01",
+  "date": "2026-10-01",
+  "generated_at": "2026-10-01T23:01:47",
+  "count": 3,
+  "papers": [
+    {
+      "paper_id": "202610/01/2609.30988v1-phoenixsr-generative-heterogeneous-distillation-unleashes-efficient-models-for-real-world-super-resolution",
+      "section": "quick",
+      "title_en": "PhoenixSR: Generative Heterogeneous Distillation Unleashes Efficient Models for Real-World Super-Resolution",
+      "authors": "Xin Di, Mingyu Shi, Yuanfei Bao, Long Peng, Yue Zhao, Jiaming Guo, Renjing Pei, Xueyang Fu, Yang Cao, Zheng-Jun Zha",
+      "date": "2026-09-25",
+      "pdf": "https://arxiv.org/pdf/2609.30988v1",
+      "score": "6.0",
+      "evidence": "蒸馏扩散先验用于高分辨率图像超分",
+      "tldr": "真实世界超分需兼顾感知真实与内容忠实，扩散先验强但推理开销大，前馈网络高效却难恢复高频细节。PhoenixSR 提出生成式异构蒸馏，以预训练扩散模型作分布级监督，通过异构分布自适应与方向可靠性加权，将扩散先验迁移到无扩散前馈 SR 网络。训练后移除扩散组件，推理架构与成本不变。在三个基准和六个骨干（SwinIR、HAT、Real-ESRGAN、SeeMoRe）上感知质量一致提升，重建保真基本保持。",
+      "tags": "query:image-gen",
+      "abstract_en": "Real-world image super-resolution (SR) requires recovering perceptually realistic high-resolution images from complex low-resolution observations while preserving faithful content. Diffusion-based SR benefits from strong generative priors but incurs substantial computational overhead, whereas feed-forward CNN and Transformer SR models are efficient yet often struggle to recover realistic high-frequency details. This motivates a natural question: can diffusion priors be transferred to existing diffusion-free SR networks without introducing diffusion components at inference time? To this end, we propose PhoenixSR, a generative heterogeneous distillation framework that transfers diffusion priors to independently designed feed-forward SR networks through score-based distribution matching. Rather than aligning heterogeneous features or imitating sampled diffusion outputs, PhoenixSR uses the pretrained diffusion model as distribution-level supervision, while paired SR supervision preserves reconstruction fidelity. To make distribution matching effective for fidelity-sensitive SR, we introduce Heterogeneous Distribution Adaptation, which adapts the target score to the SR domain, improves tracking of the evolving student distribution, and anchors training with paired supervision. We further employ Directional Reliability Weighting, a lightweight residual-consistency-based reweighting strategy that reduces unstable distributional guidance. All diffusion-related components are removed after training, leaving the original student architecture and inference cost unchanged. Experiments on three SR benchmarks and six feed-forward backbones, including SwinIR, HAT, Real-ESRGAN, and SeeMoRe, show consistent perceptual improvements with largely preserved reconstruction fidelity.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202610/01/2609.32420v1-carnator-fast-text-to-video-generation-with-generation-native-compatibility-guided-cross-request-reuse",
+      "section": "quick",
+      "title_en": "Carnator: Fast Text-to-Video Generation with Generation-Native Compatibility-Guided Cross-Request Reuse",
+      "authors": "Xingkun Yin, Xuebin Tang, Mingkun Xu, Hongyang Du",
+      "date": "2026-09-26",
+      "pdf": "https://arxiv.org/pdf/2609.32420v1",
+      "score": "6.0",
+      "evidence": "基于视频扩散Transformer与跨请求复用的快速文本到视频生成",
+      "tldr": "视频扩散Transformer逐帧去噪延迟高，现有加速多局限于单请求轨迹内冗余，跨请求复用又常依赖粗粒度语义相似度，易混淆语义相关与生成计算兼容。Carnator从模型演化内部状态提取生成原生兼容证据，通过早期探针构建Early Signature，并做风险感知复用决策，同时定位目标特定计算以联合复用历史潜轨迹与稀疏注意力连接。在三个文本到视频骨干上，其缓存命中端到端加速优于跨请求基线，最高达2.17倍，且生成质量具竞争力。该工作表明，以生成兼容性而非语义相似性驱动跨请求复用，可更有效释放加速潜力。",
+      "tags": "query:image-gen",
+      "abstract_en": "Video diffusion transformers produce high-quality videos, yet iterative denoising incurs substantial inference latency, limiting interactive and large-scale serving. Most existing acceleration methods focus on individual requests, thereby restricting efficiency gains to redundancy within a single generation trajectory. Recent cross-request reuse offers an additional source of savings, but existing approaches often infer reusability from coarse semantic similarity. This conflates semantic relatedness with generation-level computational compatibility, so aggressive reuse may accept incompatible historical computation while conservative reuse leaves substantial acceleration unrealized. We present \\emph{Carnator}, a cross-request acceleration framework that addresses this challenge by extracting and using generation-native compatibility evidence directly from the model's evolving internal states. Specifically, \\emph{Carnator} performs a lightweight early probe to construct an Early Signature from internal diffusion states, assessing reuse validity through risk-aware compatibility decisions. The same evidence characterizes reuse scope by localizing target-specific computation and guiding joint reuse of historical latent trajectories and sparse attention connectivity. Across three text-to-video backbones, Carnator consistently achieves higher cache-hit end-to-end acceleration than the evaluated cross-request baselines despite more selective cache acceptance, reaching up to 2.17$\\times$ speedup while maintaining competitive generation quality.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202610/01/2609.35710v1-lagrangian--hamiltonian-flows-for-video-prediction-and-image-generation-a-symplectic-perspective",
+      "section": "quick",
+      "title_en": "Lagrangian--Hamiltonian Flows for Video Prediction and Image Generation: A Symplectic Perspective",
+      "authors": "Jiawei Hu",
+      "date": "2026-09-28",
+      "pdf": "https://arxiv.org/pdf/2609.35710v1",
+      "score": "6.0",
+      "evidence": "用于图像生成的流匹配框架",
+      "tldr": "视频预测与图像生成需要高效刻画图像动态。作者提出LHFM，用辛几何把每张图像表示为精确拉格朗日图，并通过图像相关哈密顿流建模演化，得到图像速度的输运—源参数化。视频模型LHFM-V递归积分预测的输运与源场推进帧，在相近精度下取得对比递归模型中最少FLOPs。图像模型LHFM-I与流匹配兼容，在匹配实验中FID低于流匹配基线。",
+      "tags": "query:image-gen",
+      "abstract_en": "We introduce LHFM, a geometric framework for learning image dynamics. Drawing on structures central to classical mechanics, symplectic geometry, and geometric quantization, LHFM represents each image as an exact Lagrangian graph and models its evolution through image-dependent Hamiltonian flows, which yield a transport--source parameterization of image velocities. Our primary application is deterministic video prediction: LHFM-V is a recurrent model that advances frames by integrating predicted transport and source fields, and achieves the lowest reported FLOP count among the compared recurrent models with similar prediction accuracy. The image variant, LHFM-I, shows that the same construction is compatible with flow matching: in a matched experiment, it attains a lower FID than the flow-matching baseline.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

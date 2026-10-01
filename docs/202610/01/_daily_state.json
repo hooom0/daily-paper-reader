@@ -1,0 +1,57 @@
+{
+  "date": "20261001",
+  "date_label": "",
+  "generated_at": "2026-10-01 23:01:46 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.30988v1",
+      "route": "202610/01/2609.30988v1-phoenixsr-generative-heterogeneous-distillation-unleashes-efficient-models-for-real-world-super-resolution",
+      "title": "PhoenixSR: Generative Heterogeneous Distillation Unleashes Efficient Models for Real-World Super-Resolution",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "蒸馏扩散先验用于高分辨率图像超分",
+      "first_seen_at": "2026-10-01 23:01:46 UTC",
+      "updated_at": "2026-10-01 23:01:46 UTC"
+    },
+    {
+      "paper_id": "2609.32420v1",
+      "route": "202610/01/2609.32420v1-carnator-fast-text-to-video-generation-with-generation-native-compatibility-guided-cross-request-reuse",
+      "title": "Carnator: Fast Text-to-Video Generation with Generation-Native Compatibility-Guided Cross-Request Reuse",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于视频扩散Transformer与跨请求复用的快速文本到视频生成",
+      "first_seen_at": "2026-10-01 23:01:46 UTC",
+      "updated_at": "2026-10-01 23:01:46 UTC"
+    },
+    {
+      "paper_id": "2609.35710v1",
+      "route": "202610/01/2609.35710v1-lagrangian--hamiltonian-flows-for-video-prediction-and-image-generation-a-symplectic-perspective",
+      "title": "Lagrangian--Hamiltonian Flows for Video Prediction and Image Generation: A Symplectic Perspective",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用于图像生成的流匹配框架",
+      "first_seen_at": "2026-10-01 23:01:46 UTC",
+      "updated_at": "2026-10-01 23:01:46 UTC"
+    }
+  ]
+}
