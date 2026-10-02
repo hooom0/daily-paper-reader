@@ -1,0 +1,1525 @@
+Diffusion Editing with Soft Mask: Pixel Level Redo of
+Image and Video with Adjustable Strength
+Candi Zheng1,*,†
+Yuan Lan2,*
+Abstract
+Diffusion models with prompt and reference image-guided editing have seen rapid
+progress, yet they remain too coarse for pixel-level control. One promising direc-
+tion is to incorporate a soft mask that specifies spatially varying edit strengths—but
+training such fine-grained control demands expensive pixel-wise annotations, while
+existing zero-shot methods often yield unsatisfactory results. We introduce Soft-
+Paint, a new zero-shot sampling method that leverages soft masks to enable a
+continuous spectrum of edits, from fully preserving the original content to com-
+pletely re-synthesizing the masked region. Going beyond zero-shot inpainting
+methods, we design a Langevin-iteration-based sampler that respects per-pixel soft
+mask strengths, which applies universally to image and video diffusion models, en-
+abling tasks such as video editing. The method is gradient-free, memory-efficient,
+and achieves smooth, pixel-level edits across multiple image and video backbones.
+Reference Image
+Editing mask (opacity ∝redo)
+Output
+Figure 1: Soft Image editing example. SoftPaint takes a reference image x0 (left) and a continuous-
+opacity editing mask (middle), where the mask opacity encodes redo strength: more opaque pixels
+correspond to stronger redo (weaker reference tether), while more transparent pixels keep the sample
+closer to x0 (stronger tether). This yields spatially graded edits within a single generation (right).
+Text prompt: “Chinese female with thick wavy black hair, white shirt, night city skyline behind,
+cinematic close-up.”
+1
+Introduction
+Denoising Diffusion Probabilistic Models (DDPMs) [1–6] have emerged as powerful generative
+frameworks that produce high-quality outputs through iterative denoising. Subsequent advances
+†Corresponding author: czhengac@connect.ust.hk
+*Equal contribution
+1Department of Mathematics, Hong Kong University of Science and Technology
+2Independent Researcher
+Preprint.
+arXiv:2610.00359v1  [cs.GR]  30 Sep 2026
+
+
+in ODE-based deterministic samplers [7–9], as well as equivalent rectified flow models [10–12],
+have dramatically improved the efficiency of DDPMs, reducing the sampling steps from hundreds
+to dozens. Recent unified generation-and-editing models, such as FLUX.1 Kontext [13] and Qwen-
+Image/Qwen-Image-Edit [14], further demonstrate how these backbones now support high-quality
+instruction-based image editing in addition to image synthesis. Together, these innovations have
+broadened the scope and quality of generative visual art.
+Consider a digital artist or a casual user who wishes to edit an image or video. They often have
+a reference x0 and want to modify specific parts while preserving others. While text prompts can
+describe the desired change, they are often too coarse to precisely specify the exact region to be
+modified. Binary masks, as used in standard inpainting, improve spatial control, but they still enforce
+a hard decision between “preserve exactly” and “change completely.” In practice, however, user
+intent is rarely binary; they often desire a continuous control of redo strength—for example, slightly
+broadening an original smile, or turning the original sky into a dramatic sunset while preserving its
+rough layout. A natural way to express such intent is through a soft mask, whose values specify how
+strongly each spatial location should adhere to the reference image. Figure 1 shows how a single
+generation with such a continuous-opacity mask yields a spatially graded edit. Furthermore, with
+the rapid release of diverse open-source models (e.g., Stable Diffusion, FLUX, Qwen-Image) from
+various organizations, users need a universal editing tool that works out-of-the-box for any model,
+without waiting for model-specific fine-tuning or training specialized adapters.
+This practical need for universal, fine-grained control leads to a fundamental technical challenge:
+Since diffusion models are trained primarily for whole-image generation, their global denoising
+mechanism does not naturally support such spatially varying, soft redo. The key question is:
+Given a diffusion prior p(x), how to sample from a reference-guided distribution p(x | x0, r)?
+Here x0 is a given reference image and r ∈[0, 1]d is a continuous soft mask: r = 0 means no
+redo (reconstruct the reference), while r = 1 means full redo (ignore the reference and recover free
+generation). Figure 2 illustrates how a single scalar r shifts this balance between preservation and
+redo. This formulation represents a generalized inpainting problem, where binary inpainting is just a
+special case with r ∈{0, 1}.
+Current approaches to conditional sampling often face significant trade-offs. Training-based methods
+[15–17] are effective for binary inpainting, but extending them to soft redo is much more difficult:
+preparing supervision for continuous per-pixel redo strengths is expensive, typically requires enor-
+mous teams of expert human labelers. On the other hand, training-free methods often either rely
+on heavy gradient computations (backpropagating through the U-Net), leading to prohibitive GPU
+memory usage for large production models, or suffer from inferior performance.
+In this work, we propose SoftPaint, a pixel-level redo sampler that is model-agnostic and training-
+free, based on Langevin Dynamics Monte Carlo. SoftPaint supports flow models, as well as ODE-
+and SDE-based diffusion models. It introduces two core innovations: (1) the Unified Redo (UR) Score,
+a unified guided score for the entire image that combines the diffusion prior score with an analytic
+Gaussian tether to the reference; and (2) Diffusion-Damped Langevin (DDL), a diffusion-damped
+Langevin solver that improves stability under large step sizes while keeping the sampling algorithm
+simple. Experiments confirm that SoftPaint produces high-quality image and video inpainting, while
+enabling fine-grained redo control for general editing. By avoiding gradient computations, SoftPaint
+is memory-efficient and deployment-friendly, empowering users to perform soft redo on consumer
+hardware across diverse diffusion architectures.
+2
+From Binary Mask to Soft Mask
+Inpainting in diffusion models traditionally relies on binary masks to distinguish between known and
+unknown regions. However, practical editing scenarios often require finer control over the degree of
+preservation for each pixel. This motivates the transition from binary inpainting to soft inpainting,
+where a continuous soft mask controls the redo strength. In this section, we formalize both settings
+and highlight the non-trivial challenges that arise when extending binary masks to continuous ones.
+Vanilla Diffusion Inpainting with Binary Masks
+Given an original image x0 ∈RH×W ×3 and a
+binary mask m ∈{0, 1}H×W where mij = 1 indicates known pixels and mij = 0 indicates missing
+2
+
+
+Figure 2: Fine-grained editing control: r tunes the balance between preservation and redo.
+pixels, diffusion-based inpainting aims to sample from the conditional distribution p(x | x0 ⊙m). A
+vanilla approach [18, 19] uses a pre-trained unconditional diffusion model and modifies the reverse
+process by blending the model sample xmodel
+t
+with the noised reference xref
+t at each time step t, where
+xref
+t
+is obtained by forward-diffusing the reference image, i.e., xref
+t
+= √¯αtx0 + √1 −¯αtϵ with
+ϵ ∼N(0, I):
+ˆxreplace
+0
+= m ⊙xref
+0 + (1 −m) ⊙ˆxmodel
+0
+(xt).
+(1)
+This hard replacement ensures exact reconstruction of known pixels while freely generating missing
+regions. Although plausible for binary masks, this method does not naturally extend to continuous
+masks.
+The Challenge of Continuous Masks
+Extending binary masks to a continuous soft mask r ∈
+[0, 1]H×W , where rij controls the redo strength, is non-trivial. Naively generalizing Eq. (1) as
+ˆxnaive
+0
+= (1 −r) ⊙xref
+0 + r ⊙ˆxmodel
+0
+(xt),
+(2)
+Assume ˆxmodel
+0
+and xref
+0 are meaningfully different. Then their naive combination mixes inconsistent
+clean images, producing blur (low likelihood under the diffusion prior). To avoid this low-likelihood
+outcome, the model tends to reduce the mismatch and push ˆxmodel
+0
+≈xref
+0 . As a result, outputs stay
+too close to the reference, so intermediate r values fail to produce proportional redo.
+Instead of naive blending, transitioning to soft inpainting requires a more principled formulation of
+the target distribution and a corresponding sampling algorithm compatible with diffusion dynamics.
+Desired Properties of a Soft Inpainting Formulation
+To address this challenge, we define a well-
+behaved target distribution q(x | xref
+0 , r) parameterized by the continuous soft mask r ∈[0, 1]H×W ,
+which must satisfy the following properties:
+1. Well-defined distribution: q(x|xref
+0 , r) must be a valid probability density function.
+2. Boundary conditions: At extreme values, q must recover standard behaviors: r = 0
+yields perfect reconstruction q(x | xref
+0 , r = 0) = δ(x −xref
+0 ), while r = 1 reduces to free
+generation q(x | xref
+0 , r = 1) = p(x).
+3. Smooth interpolation: For intermediate r, q must continuously and smoothly blend between
+reconstruction and generation, with pixel-wise control.
+4. Samplability: q should be tractable to sample using a pre-trained unconditional diffusion
+model without retraining.
+3
+
+
+The transition from binary to soft inpainting is highly non-trivial because simple pixel-space
+interpolation does not yield a valid probability distribution. SoftPaint addresses this by introducing
+the Unified Redo (UR) Score, derived from a target distribution that satisfies above four properties
+and enables efficient sampling via a novel Langevin-based algorithm.
+3
+Methodology
+3.1
+Unified Redo (UR) Score
+Section 2 showed that a static blending weight r is too limited for continuous soft inpainting. We
+want the reference strength to change smoothly over time: early in sampling, the model should stay
+close to the reference to preserve coherence, while later it should gain more freedom to redo. We also
+allow the blending weight to extrapolate (exceed 1), so it can go beyond simple interpolation and
+actively strengthen the influence of the reference image. This extrapolation helps preserve structure
+and improve coherence.
+We propose to replace the static weight r with a time- and pixel-dependent reference blending weight
+γ(t, r) ∈[0, +∞)H×W . The desired clean-image estimate at time t then becomes
+ˆxtarget
+0
+(xt) = γ(t, r) ⊙xref
+0 +
+ 1 −γ(t, r)
+
+⊙ˆxmodel
+0
+(xt).
+(3)
+Our goal in this section is: (i) to translate this clean-image target into a tractable sampling distribution
+over xt, and (ii) to design the function γ(t, r) such that it smoothly interpolates between free
+generation (γ = 0) and exact reconstruction (γ is large) while providing intuitive control via the user
+soft mask r.
+Probabilistic Reformulation.
+In diffusion models, guiding the sample xt so that its predicted
+clean image follows (3) is equivalent to sampling xt from a distribution that balances two forces:
+one pulling toward the reference xref
+0 , and one pushing toward the model’s own prior. Because the
+guidance strength γ(i)
+t
+can differ across pixels in soft inpainting scenario, we express this balance at
+the per-pixel level. Concretely, the target distribution corresponding to (3) over xt is a product of
+pixel-wise geometric mixtures:
+π(xt) ∝
+Y
+i
+h
+p
+ x(i)
+t
+| x(i)
+0
+γ(i)
+t
+|
+{z
+}
+reference factor
+· pmodel x(i)
+t
+| x(−i)
+t
+1−γ(i)
+t
+|
+{z
+}
+model factor
+i
+,
+(4)
+where p(x(i)
+t
+| x(i)
+0 ) = N
+ x(i)
+t
+| √¯αtx(i)
+0 , 1 −¯αt
+
+is the forward diffusion kernel (identical across
+pixels), and pmodel(x(i)
+t
+| x(−i)
+t
+) denotes the pretrained model’s implicit conditional for the i-th pixel
+given all other pixels denoted by x(−i)
+t
+. The exponents γ(i)
+t
+and 1 −γ(i)
+t
+control the relative influence
+of the reference and the model at pixel i and time t.
+At the extremes, (4) recovers the desired boundary behaviors: when γ(i)
+t
+> 1, the i-th pixel is strongly
+tethered to the exact forward process from x(i)
+0 ; when γ(i)
+t
+≈0, the reference factor vanishes and the
+pixel relies entirely on the model. Intermediate values interpolate between these two regimes. The
+challenge now reduces to designing γ(i)
+t
+such that it faithfully reflects the user’s soft inpainting intent
+encoded in r.
+Design of the Reference Blending Weight γ(t, r).
+A naive choice would be to set γ(i)
+t
+= 1 −ri.
+As discussed in Section 2, this static weighting fails to interpolate smoothly. Probabilistically, the
+issue is that the probability mass of p(x(i)
+t
+| x(i)
+0 )1−ri is concentrated at x(i)
+0
+for any constant ri < 1
+when t = 0. To achieve genuine softness, we must allow the model to sample values near x(i)
+0
+when
+t = 0.
+Our key insight is that a truly soft constraint should allow the generated pixel to deviate from the
+exact reference in a controlled manner. We realize this by imagining that the reference pixel x(i)
+0
+is
+softened by Gaussian noise with variance Σ(i) before being diffused. In other words, we replace the
+sharp likelihood p(x(i)
+t
+| x(i)
+0 ) with a marginalized version:
+E˜x(i)
+0 ∼N (x(i)
+0 , Σ(i))
+h
+p(x(i)
+t
+| ˜x(i)
+0 )
+i
+.
+(5)
+4
+
+
+Figure 3: Reference blending weight γt(r) at
+λ = 4. Curves span r = 0 (top, exact reconstruc-
+tion) to r = 1 (bottom, free generation).
+Algorithm
+SoftPaint Sampling
+Require: Initial noise xT , reference image xref
+0 , soft mask r, diffu-
+sion schedule {¯αt}T
+t=1, inner Langevin steps K, step size ∆τ
+1: for t = T, . . . , 1 do
+2:
+// Compute reference blending weight γt via Eq. (8)
+3:
+γt(r) = (1 + λ)
+1−¯
+αt
+1−¯
+αt+ ¯
+αt Σ(r)
+4:
+xref
+t ←√¯αtxref
+0 + √1 −¯αtϵ
+5:
+// Redo-aware initialization
+6:
+m ←I[γt > 1]
+7:
+˜xt ←(1 −m) ⊙xt + m ⊙xref
+t
+8:
+for k = 1, . . . , K do
+9:
+// Compute UR score via Eq. (9)
+10:
+g(˜xt, t) = γt
+√¯
+αtxref
+0 −˜xt
+1−¯
+αt
++
+ 1 −γt
+
+sθ
+ ˜xt, t
+
+11:
+// Diffusion-damped Langevin step
+12:
+Update ˜xt via one OU step (11) with zτ = ˜xt
+13:
+end for
+14:
+xt ←˜xt
+15:
+xt−1 ←Denoise(xt, t) e.g., // DDIM step
+16: end for
+17: return x0
+When Σ(i) is large, this marginal density becomes broad, permitting large deviations; as Σ(i) →0, it
+collapses back to the exact constraint.
+A crucial algebraic simplification (derived in Appendix D) shows that this expectation is proportional
+to the original diffusion kernel raised to a power:
+EN(x(i)
+0 ,Σ(i))
+
+p(x(i)
+t
+| ˜x(i)
+0 )
+
+∝p(x(i)
+t
+| x(i)
+0 )β(i)
+t ,
+(6)
+where
+β(i)
+t
+=
+1 −¯αt
+1 −¯αt + ¯αt Σ(i) .
+(7)
+This expression suggests that β(i)
+t
+should serve as the base time-dependent weight for the reference
+term. To further extrapolate the reference strength, analogous to the guidance scale in classifier-free
+guidance [20], we multiply it by an additional factor (1 + λ) with λ ≥0, yielding the final exponent
+γ(i)
+t (r) = (1 + λ) β(i)
+t
+= (1 + λ)
+1 −¯αt
+1 −¯αt + ¯αt Σ(i)(r),
+(8)
+The redo strength is controlled by the Gaussian variance Σ, which we define as a customizable
+function of the soft mask r: Σ(r; η) = (1 + 2λ) 1−(1−r)η
+(1−r)η+ϵ , where η > 0 is a hyperparameter, the
+fraction and exponent are applied element-wise, and ϵ = 10−4. Based on the ablation in Appendix C.5
+(Figure 9), we use η = 2, which makes clipt approximately linear in r.
+Figure 3 shows how the blending weight γt varies with the noise level ¯αt for different mask values
+r. The dashed line γt = 1 separates the reference-dominated regime (γt > 1, less redo) from the
+model-dominated regime (γt < 1, more redo). Smaller r keeps γt larger across the trajectory, so the
+reference remains more influential, whereas larger r drives γt more quickly toward zero, allowing
+greater deviation from the reference.
+The Unified Redo Score.
+With γ(t, r) defined as above, we can convert the probabilistic mixture
+(4) into a practical sampling algorithm. Taking the gradient of its log-density yields the score function,
+we obtain the Unified Redo (UR) Score:
+g(x, t) = γt(r) ⊙
+√¯αtxref
+0 −x
+1 −¯αt
+|
+{z
+}
+Score of pt(x|xref
+0 )
++
+ 1 −γt(r)
+
+⊙
+sθ
+ x, t
+
+| {z }
+Score of pmodel
+t
+(x)
+.
+(9)
+This construction also applies to rectified flow models, since rectified flows and diffusion models are
+equivalent and convertible into each other.
+5
+
+
+The UR score g(x, t) and its underlying distribution π(xt) fulfill the four properties of Section 2.
+First, π(xt) is a proper product of probability densities, ensuring a well-defined target. Second, the
+boundary conditions are met: r = 0 gives Σ = 0, βt = 1, and γt = 1 + λ, which for λ = 0 enforces
+exact reconstruction; r = 1 yields Σ →∞, βt →0, and γt →0, reducing g to the unconditional
+model score. Third, intermediate r smoothly interpolates between these extremes because Σ(r)
+continuously modulates βt and hence γt. Finally, g(x, t) requires only the pretrained score smodel
+and an analytical reference term, making it readily samplable without retraining, as detailed in the
+next section.
+3.2
+Diffusion-Damped Langevin (DDL)
+The UR score g(x, t) derived in Section 3.1 defines the target distribution of the current noisy sample
+xt via Eq. (4). A standard reverse diffusion step, however, is designed to follow the model distribution
+pmodel rather than this new target. We therefore refine xt at each diffusion step t by running a short
+inner-loop sampler driven by g before taking the denoising step to t −1.
+We consider the overdamped Langevin dynamics (with drift g from Eq. 9):
+dzτ = g(zτ, t) dτ +
+√
+2 dWτ,
+(10)
+where τ is the inner-loop time, z0 ≡xt, and Wτ is standard Brownian motion. In practice, we
+perform only a few inner updates at each diffusion step t.
+A naive Euler discretization of Eq. (10) is unstable under strong guidance [21], so we use a damped
+exponential integrator. Let At be a damping coefficient and define the residual drift
+Ct(z) := g(z, t) + Atz.
+Then one DDL update is
+zτ+∆τ = e−At∆τzτ +
+ 1 −e−At∆τ
+A−1
+t Ct(zτ)
++
+s
+1 −e−2At∆τ
+At
+ξ,
+ξ ∼N(0, I).
+(11)
+where ∆τ is the inner-loop step size and ξ is Gaussian noise. This yields a simple and stable inner-
+loop sampler. The derivation of Eq. (11), the choice of At, and the stability analysis are deferred to
+Appendix B.
+Redo-aware initialization.
+As a practical acceleration, we optionally warm-start the inner Langevin
+chain from a redo-aware initialization that biases strongly tethered pixels toward the noised refer-
+ence. This heuristic does not change the stationary distribution and is described in Appendix C.3.
+Appendix C.4 compares the DDL inner loop with a RePaint-style inner loop under binary masks.
+4
+Experiments
+We evaluate SoftPaint on two soft-mask editing benchmarks: soft image editing on FlowEdit [22]
+(Qwen-Image [14]), and soft video editing on DAVIS-Edit [23] (CogVideoX-5B [24], Wan2.2 [25]).
+SoftPaint natively supports per-pixel soft masks r∈[0, 1]H×W . We use uniform r within the dataset-
+provided region for controlled edit-strength sweeps, then evaluate a spatially varying four-zone
+mask separately in Table 1. A binary-mask comparison isolating the inner-loop operator appears in
+Appendix C.4. Hyperparameters are ablated in Appendix C.
+Baselines.
+We compare against two zero-shot methods with continuous soft-mask support: (i)
+Differential Diffusion (DD) [26], the most relevant training-free per-pixel method; and (ii) Naive
+mixing (n=0), which disables SoftPaint’s inner Langevin loop, reducing it to per-step RePaint-style
+blending [19]. Where applicable we also report Qwen-Image’s instruction-tuned editor (Qwen-Image-
+Edit) as a single reference point.
+Metric anchoring.
+Soft-mask methods trade edit strength against reference preservation along
+a continuous curve; the same r corresponds to different effective edit strengths for DD and Soft-
+Paint (Fig.4 left panel). We therefore anchor all comparisons at matched CLIP-Text, a backbone-
+independent proxy for edit strength, and report other metrics at those anchors.
+6
+
+
+Figure 4: Image-editing controllability and quality on Qwen-Image (FlowEdit Benchmark).
+Left: soft-mask strength r vs. CLIP-Text—SoftPaint provides the widest editing range. Right three
+panels: quality metrics against CLIP-Text as r sweeps from 0.1 to 1.0. SoftPaint Pareto-dominates
+DD; Naive Mixing has near-zero controllability. Source (r=0, gray square) and Qwen-Image-Edit
+(purple triangle) are reference points.
+4.1
+Soft-Mask Image Editing
+This experiment asks two questions: (i) Does SoftPaint provide finer controllability as well as smooth
+edit strength? (ii) At matched controllability, does SoftPaint produce higher-quality edits? The
+FlowEdit benchmark [22] is well-suited here because its diverse object-centric masks and paired
+source/target prompts let us decouple “how much the edit was realized” (CLIP-Text) from “how clean
+the result looks” (LPIPS, PSNR, CLIP-IQA, FID).
+Setup.
+All three soft-mask methods (SoftPaint, DD, and Naive Mixing) use the same Qwen-Image
+backbone with 20 denoising steps on the FlowEdit benchmark [22]. SoftPaint uses n=2, s=0.2,
+guidance scale λ=5, where n is the number of inner iterations per diffusion step and s is the inner-
+loop step size. The soft-mask strength r ∈{0, 0.1, . . . , 1.0} is swept jointly across DD, Naive
+Mixing, and SoftPaint. We also report Qwen-Image-Edit once using its default inference setting.
+Metrics follow the standard FlowEdit protocol: LPIPSedit and PSNRedit for edit quality, PSNRkeep for
+background preservation, CLIP-Text for edit alignment, CLIP-IQA for no-reference quality, and FID
+for distributional realism.
+Edit controllability.
+Figure 4 (left panel) maps r to CLIP-Text for all three methods on Qwen-
+Image. SoftPaint shows the smoothest behavior, with CLIP-Text growing nearly linearly as r
+increases. DD is less sensitive at low mask strength, with CLIP-Text changing more slowly in the
+weak-edit regime. Naive Mixing remains pinned near the source level (CLIP-T ≈29.0) until r>0.8,
+then overshoots to 35.4 at r=1.0, indicating that it fails to provide smooth edit-strength control.
+The right three panels trace the quality trade-off: at matched CLIP-Text, SoftPaint achieves lower
+LPIPS, higher PSNR, and higher CLIP-IQA, with the gap widening at stronger edits, indicating
+finer controllability. Beyond training-free baselines, we also compare against Qwen-Image-Edit,
+a modern unified instruction-based editing model. This Qwen-Image-Edit baseline (CLIP-T 30.2,
+LPIPS 0.306) appears far from both soft-mask curves, indicating worse LPIPS and PSNR; that is,
+although it achieves the edit goal, it deviates substantially from the given reference image. More
+apples-to-apples comparison is in Appendix Table 4.
+Equal-NFE comparison.
+SoftPaint uses 20 outer steps and n=2 additional inner model evaluations
+per step, for 60 network function evaluations (NFE) in total. To test whether extra compute explains
+the Qwen-Image results, we also run DD for 60 outer steps. At the weak, medium, and strong
+matched-CLIP-T anchors, SoftPaint has lower LPIPSedit and higher PSNRedit than DD at the same
+60-NFE budget. Appendix Table 3 reports all five metrics alongside the original 20-NFE DD results.
+Spatially varying redo strengths.
+To test nonuniform soft masks directly, we divide each FlowEdit
+mask into four vertical zones with strengths r ∈{1, 0.75, 0.5, 0.25}. This piecewise-constant mask
+assigns neighboring regions different redo strengths within the same image. The resulting CLIP-Text
+scores fall in the medium-edit anchor range (33.0 ± 0.2). Table 1 shows that SoftPaint improves all
+four reported quality metrics over DD, including when DD is given the same 60-NFE budget.
+7
+
+
+Table 1: Spatially varying soft-mask editing on Qwen-Image (FlowEdit). Each image uses four
+vertical redo-strength zones, r ∈{1, 0.75, 0.5, 0.25}. All methods are evaluated at the medium
+CLIP-T anchor (33.0 ± 0.2); the 60-NFE rows compare equal model-evaluation budgets.
+Method
+NFE
+PSNRedit ↑
+LPIPSedit ↓
+FID↓
+CLIP-IQA↑
+DD
+20
+20.3053
+0.1343
+102.8441
+0.6088
+DD
+60
+20.2097
+0.1349
+103.4106
+0.6045
+SoftPaint
+60
+21.0159
+0.1293
+100.9059
+0.6226
+4.2
+Soft-Mask Video Editing
+Setup.
+We run CogVideoX-5B and Wan2.2 at their official default schedules on the DAVIS-Edit
+[23] benchmark. The exact denoising-step settings are reported in Appendix C. SoftPaint uses
+n=2, s=0.2 on Wan and CogVideoX. The soft mask strength r ∈{0.1, . . . , 1.0} is swept jointly
+across the three methods. We use the standard DAVIS-Edit protocol—per-frame PSNR/LPIPS and
+masked-region M-LPIPS—augmented with VFID for distributional video quality and DOVER for
+no-reference video aesthetics.
+Full-sweep comparison.
+Figure 6 plots the three methods across the full r sweep on both backbones.
+SoftPaint consistently achieves lower LPIPS, higher PSNR, and lower VFID than DD at matched
+CLIP-Text, with the gap widening at mid-to-strong edit strengths. Naive Mixing barely shifts CLIP-
+Text above the source level for r < 0.8, then overshoots dramatically at r=1.0 while quality metrics
+collapse. Table 2 (Appendix) provides more results compared to DD at matched CLIP-T anchors .
+4.3
+Qualitative Comparison
+Figure 5 shows representative SoftPaint outputs at r=0.8 across diverse FlowEdit prompts on Qwen-
+Image. The unmasked region is preserved verbatim while edits realize the requested semantic change
+inside the masked region.
+For video, Fig. 7 compares SoftPaint and DD on a “Model Train” →“Wooden Train” edit on
+CogVideoX as the soft-mask strength r increases. SoftPaint shows a clear coarse-to-fine progression:
+at r=0.4, the texture of the train head begins to change while the overall structure is still preserved;
+at r=0.8, the original shape is largely maintained but the carriage is already converted to wood; at
+r=1.0, the full train is transformed. This behavior is consistent with our design for soft redo strength.
+By contrast, DD already exhibits missing front-train structure at r=0.8, and at r=1.0 produces
+obvious seams against the surrounding regions, leading to severe artifacts. Additional examples are
+provided in Appendix E.
+5
+Related Works
+Diffusion Models and Image/Video Editing. Diffusion models [4] have become a dominant
+paradigm for high-quality image and video generation. Early work accelerated the stochastic DDPM
+sampling process via deterministic ODE flows, notably DDIM [27] and advanced ODE solvers,
+enabling fewer-step generation. Rectified flow [10, 11] further reparameterized the ODE-based
+diffusion with improved numerical properties, later scaling to large text-to-image and text-to-video
+models such as Stable Diffusion 3 [28] and FLUX [29].
+Beyond generation, diffusion models have been widely adopted for image and video editing, where
+an input image or video together with a text prompt specifies the desired edit. A large body of
+work has tackled this problem from different angles: instruction-based editing via fine-tuning on
+paired data [30], spatial conditioning through plug-in modules [15], image-prompt adaptation with
+decoupled cross-attention [31], and multi-task frameworks unifying diverse editing operations [32].
+More recently, large-scale proprietary models such as FLUX.2 Kontext [29] and Qwen-Image [14]
+have integrated reference-image conditioning directly into their training pipelines, supporting multi-
+reference and text-image-to-image editing with strong semantic preservation.
+Despite these advances, existing image and video editing models operate at the semantic level and
+provide limited fine-grained spatial control—users cannot specify how strongly each individual pixel
+8
+
+
+Figure 5: Qualitative SoftPaint image edits at
+r=0.8. Each row: source, soft mask, SoftPaint
+output, prompt. Backbone: Qwen-Image.
+Figure 6: Soft video editing on DAVIS-Edit.
+Top: Wan2.2. Bottom: CogVideoX. Each panel
+plots a quality metric against CLIP-Text as the
+soft-mask strength r is swept. SoftPaint (red)
+Pareto-dominates DD (blue).
+Naive Mixing
+(green circles) has near-zero controllability.
+Figure 7: Soft video editing: “Model Train” →“Wooden Train” at three soft-mask strengths r on
+CogVideoX. Top row: original DAVIS-Edit frames (r=0, no edit). Subsequent rows: SoftPaint and
+DD outputs at r=0.4, 0.8, 1.0.
+should be edited. This gap motivates our approach, which introduces a soft mask mechanism for
+continuous, pixel-level edit-strength control in a training-free manner.
+Training-Free Conditional Editing with Diffusion Models. A line of training-free methods tackles
+conditional editing by enforcing spatial constraints during the reverse diffusion process. Langevin-
+based approaches [33] such as RePaint [19] and LanPaint [34] perform iterative denoise–renoise under
+binary inpainting masks [35], while Sequential Monte Carlo methods [36, 37] and linear-inverse-
+based techniques [38–44] address similar hard-constraint settings. However, these methods share two
+key limitations: (i) they are designed for binary masks and do not support continuous-opacity soft
+masks, and (ii) many rely on gradient-based optimization or line search, incurring 2–4× higher GPU
+memory than standard inference.
+Differential Diffusion [26] is a notable exception that enables per-pixel edit-strength control, effec-
+tively supporting soft masks in a training-free manner. However, its underlying editing capability
+is limited: on binary masks it reduces to the naive replace method [19], which in turn constrains its
+soft-mask performance. Our proposed method, SoftPaint, addresses both gaps: it natively supports
+continuous soft masks with a memory-efficient, gradient-free sampler that is compatible with modern
+ODE-based diffusion backbones.
+9
+
+
+6
+Conclusion and Limitations
+We introduced SoftPaint, a training-free and model-agnostic sampler for continuous soft-mask image
+and video editing. By combining the Unified Redo score with Diffusion-Damped Langevin, SoftPaint
+enables pixel-level redo control while remaining gradient-free and memory-efficient. Experiments
+show improved edit controllability and a better quality-preservation trade-off.
+A practical consideration for SoftPaint is its inference speed. As a training-free method that requires
+no additional optimization or fine-tuning, SoftPaint can be directly applied to any pretrained diffusion
+backbone with the same memory footprint as standard generation. The trade-off is that each inner
+Langevin iteration introduces one extra network evaluation, making the overall generation roughly
+2×–5× slower than the backbone’s standard sampling. This latency can be a practical limitation
+for interactive editing and large-scale deployment. However,we believe the zero-training cost and
+universal compatibility offer a reasonable trade-off; further speed improvements are left to future
+work.
+Broader Impacts
+Our work can benefit creative workflows, content restoration, and research
+on controllable generative modeling by enabling finer image and video edits. However, the same
+capability could be misused to produce deceptive edits of real scenes or people.
+References
+[1] Jascha Narain Sohl-Dickstein, Eric A. Weiss, Niru Maheswaranathan, and Surya Ganguli. Deep
+unsupervised learning using nonequilibrium thermodynamics. ArXiv, abs/1503.03585, 2015.
+[2] Yang Song and Stefano Ermon. Generative modeling by estimating gradients of the data
+distribution. In Neural Information Processing Systems, 2019.
+[3] Yang Song, Jascha Narain Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Er-
+mon, and Ben Poole. Score-based generative modeling through stochastic differential equations.
+ArXiv, abs/2011.13456, 2020.
+[4] Jonathan Ho, Ajay Jain, and P. Abbeel. Denoising diffusion probabilistic models. ArXiv,
+abs/2006.11239, 2020.
+[5] Robin Rombach, A. Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-
+resolution image synthesis with latent diffusion models. 2022 IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), pages 10674–10685, 2021.
+[6] James Betker, Gabriel Goh, Li Jing, Tim Brooks, Jianfeng Wang, Linjie Li, Long Ouyang,
+Juntang Zhuang, Joyce Lee, Yufei Guo, et al. Improving image generation with better captions,
+2023.
+[7] Tero Karras, Miika Aittala, Timo Aila, and Samuli Laine. Elucidating the design space of
+diffusion-based generative models. ArXiv, abs/2206.00364, 2022.
+[8] Cheng Lu, Yuhao Zhou, Fan Bao, Jianfei Chen, Chongxuan Li, and Jun Zhu. Dpm-solver++:
+Fast solver for guided sampling of diffusion probabilistic models. ArXiv, abs/2211.01095, 2022.
+[9] Wenliang Zhao, Lujia Bai, Yongming Rao, Jie Zhou, and Jiwen Lu. Unipc: A unified predictor-
+corrector framework for fast sampling of diffusion models. ArXiv, abs/2302.04867, 2023.
+[10] Yaron Lipman, Ricky TQ Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. Flow
+matching for generative modeling. arXiv preprint arXiv:2210.02747, 2022.
+[11] Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate
+and transfer data with rectified flow. arXiv preprint arXiv:2209.03003, 2022.
+[12] Ruiqi Gao, Emiel Hoogeboom, Jonathan Heek, Valentin De Bortoli, Kevin Patrick Murphy, and
+Tim Salimans. Diffusion models and gaussian flow matching: Two sides of the same coin. In
+The Fourth Blogpost Track at ICLR 2025, 2025. URL https://openreview.net/forum?
+id=C8Yyg9wy0s.
+10
+
+
+[13] Black Forest Labs, Stephen Batifol, Andreas Blattmann, Frederic Boesel, Saksham Consul,
+Cyril Diagne, Tim Dockhorn, Jack English, Zion English, Patrick Esser, Sumith Kulal, Kyle
+Lacey, Yam Levi, Cheng Li, Dominik Lorenz, Jonas Müller, Dustin Podell, Robin Rombach,
+Harry Saini, Axel Sauer, and Luke Smith. Flux.1 kontext: Flow matching for in-context image
+generation and editing in latent space, 2025. URL https://arxiv.org/abs/2506.15742.
+[14] Chenfei Wu, Jiahao Li, Jingren Zhou, Junyang Lin, Kaiyuan Gao, Kun Yan, Sheng ming
+Yin, Shuai Bai, Xiao Xu, Yilei Chen, Yuxiang Chen, Zecheng Tang, Zekai Zhang, Zhengyi
+Wang, An Yang, Bowen Yu, Chen Cheng, Dayiheng Liu, Deqing Li, Hang Zhang, Hao Meng,
+Hu Wei, Jingyuan Ni, Kai Chen, Kuan Cao, Liang Peng, Lin Qu, Minggang Wu, Peng Wang,
+Shuting Yu, Tingkun Wen, Wensen Feng, Xiaoxiao Xu, Yi Wang, Yichang Zhang, Yongqiang
+Zhu, Yujia Wu, Yuxuan Cai, and Zenan Liu. Qwen-image technical report, 2025. URL
+https://arxiv.org/abs/2508.02324.
+[15] Lvmin Zhang, Anyi Rao, and Maneesh Agrawala. Adding conditional control to text-to-image
+diffusion models. In Proceedings of the IEEE/CVF International Conference on Computer
+Vision, pages 3836–3847, 2023.
+[16] Tsiry Mayet, Pourya Shamsolmoali, Simon Bernard, Eric Granger, Romain Hérault, and
+Clement Chatelain. Td-paint: Faster diffusion inpainting through time aware pixel conditioning.
+arXiv preprint arXiv:2410.09306, 2024.
+[17] Junhao Zhuang, Yanhong Zeng, Wenran Liu, Chun Yuan, and Kai Chen. A task is worth one
+word: Learning with task prompts for high-quality versatile image inpainting. In European
+Conference on Computer Vision, pages 195–211. Springer, 2024.
+[18] Yang Song and Stefano Ermon. Generative modeling by estimating gradients of the data
+distribution. Advances in neural information processing systems, 32, 2019.
+[19] Andreas Lugmayr, Martin Danelljan, Andres Romero, Fisher Yu, Radu Timofte, and Luc
+Van Gool. Repaint: Inpainting using denoising diffusion probabilistic models. In Proceedings
+of the IEEE/CVF conference on computer vision and pattern recognition, pages 11461–11471,
+2022.
+[20] Jonathan Ho and Tim Salimans. Classifier-free diffusion guidance. ArXiv, abs/2207.12598,
+2022.
+[21] Candi Zheng and Yuan Lan. Characteristic guidance: Non-linear correction for diffusion model
+at large guidance scale. In Forty-first International Conference on Machine Learning, 2024.
+URL https://openreview.net/forum?id=eOtjMYdGLt.
+[22] Vladimir Kulikov, Matan Kleiner, Inbar Huberman-Spiegelglas, and Tomer Michaeli. Flowedit:
+Inversion-free text-based editing using pre-trained flow models. In Proceedings of the IEEE/CVF
+International Conference on Computer Vision, pages 19721–19730, 2025.
+[23] Chang Liu, Rui Li, Kaidong Zhang, Yunwei Lan, and Dong Liu. Stablev2v: Stablizing shape
+consistency in video-to-video editing, 2024.
+[24] Zhuoyi Yang, Jiayan Teng, Wendi Zheng, Ming Ding, Shiyu Huang, Jiazheng Xu, Yuanming
+Yang, Wenyi Hong, Xiaohan Zhang, Guanyu Feng, et al. Cogvideox: Text-to-video diffusion
+models with an expert transformer. arXiv preprint arXiv:2408.06072, 2024.
+[25] Team Wan, Ang Wang, Baole Ai, Bin Wen, Chaojie Mao, Chen-Wei Xie, Di Chen, Feiwu Yu,
+Haiming Zhao, Jianxiao Yang, Jianyuan Zeng, Jiayu Wang, Jingfeng Zhang, Jingren Zhou,
+Jinkai Wang, Jixuan Chen, Kai Zhu, Kang Zhao, Keyu Yan, Lianghua Huang, Mengyang Feng,
+Ningyi Zhang, Pandeng Li, Pingyu Wu, Ruihang Chu, Ruili Feng, Shiwei Zhang, Siyang Sun,
+Tao Fang, Tianxing Wang, Tianyi Gui, Tingyu Weng, Tong Shen, Wei Lin, Wei Wang, Wei
+Wang, Wenmeng Zhou, Wente Wang, Wenting Shen, Wenyuan Yu, Xianzhong Shi, Xiaoming
+Huang, Xin Xu, Yan Kou, Yangyu Lv, Yifei Li, Yijing Liu, Yiming Wang, Yingya Zhang,
+Yitong Huang, Yong Li, You Wu, Yu Liu, Yulin Pan, Yun Zheng, Yuntao Hong, Yupeng Shi,
+Yutong Feng, Zeyinzi Jiang, Zhen Han, Zhi-Fan Wu, and Ziyu Liu. Wan: Open and advanced
+large-scale video generative models. arXiv preprint arXiv:2503.20314, 2025.
+11
+
+
+[26] Eran Levin and Ohad Fried. Differential diffusion: Giving each pixel its strength. In Computer
+Graphics Forum, page e70040. Wiley Online Library, 2025.
+[27] Jiaming Song, Chenlin Meng, and Stefano Ermon. Denoising diffusion implicit models. arXiv
+preprint arXiv:2010.02502, 2020.
+[28] Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas Müller, Harry Saini,
+Yam Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, et al. Scaling rectified flow trans-
+formers for high-resolution image synthesis. In Forty-first international conference on machine
+learning, 2024.
+[29] Black Forest Labs. FLUX.2: Towards interactive visual intelligence. https://bfl.ai/
+research, 2025. Technical report.
+[30] Tim Brooks, Aleksander Holynski, and Alexei A. Efros. InstructPix2Pix: Learning to follow
+image editing instructions. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition (CVPR), pages 18392–18402, 2023.
+[31] Hu Ye, Jun Zhang, Sibo Liu, Xiao Han, and Wei Yang. Ip-adapter: Text compatible image
+prompt adapter for text-to-image diffusion models. arXiv preprint arXiv:2308.06721, 2023.
+[32] Shelly Sheynin, Adam Polyak, Uriel Singer, Yuval Kirstain, Amit Zohar, Oron Ashual, Devi
+Parikh, and Yaniv Taigman. Emu edit: Precise image editing via recognition and generation
+tasks. arXiv preprint arXiv:2311.10089, 2023.
+[33] Candi Zheng and Yuan Lan. Rethinking the diffusion model from a langevin perspective.
+In ICLR Blogposts 2026, 2026. URL https://iclr-blogposts.github.io/2026/blog/
+2026/rethinking-diffusion-langevin/.
+[34] Candi Zheng, Yuan Lan, and Yang Wang. Lanpaint: Training-free diffusion inpainting with
+asymptotically exact and fast conditional sampling. Transactions on Machine Learning Re-
+search, 2025. ISSN 2835-8856. URL https://openreview.net/forum?id=JPC8JyOUSW.
+[35] Lewis Cornwall, Joshua Meyers, James Day, Lilly S Wollman, Neil Dalchau, and Aaron
+Sim. Training-free guidance of diffusion models for generalised inpainting, 2024. URL
+https://openreview.net/forum?id=AC1QLOJK7l.
+[36] Luhuan Wu, Brian Trippe, Christian Naesseth, David Blei, and John P Cunningham. Practi-
+cal and asymptotically exact conditional sampling in diffusion models. Advances in Neural
+Information Processing Systems, 36, 2024.
+[37] Brian L Trippe, Jason Yim, Doug Tischer, David Baker, Tamara Broderick, Regina Barzilay,
+and Tommi Jaakkola. Diffusion probabilistic modeling of protein backbones in 3d for the
+motif-scaffolding problem. arXiv preprint arXiv:2206.04119, 2022.
+[38] Hyungjin Chung, Byeongsu Sim, Dohoon Ryu, and Jong Chul Ye. Improving diffusion models
+for inverse problems using manifold constraints. Advances in Neural Information Processing
+Systems, 35:25683–25696, 2022.
+[39] Hyungjin Chung, Jeongsol Kim, Michael T Mccann, Marc L Klasky, and Jong Chul Ye. Diffu-
+sion posterior sampling for general noisy inverse problems. arXiv preprint arXiv:2209.14687,
+2022.
+[40] Asya Grechka, Guillaume Couairon, and Matthieu Cord. Gradpaint: Gradient-guided inpainting
+with diffusion models. Computer Vision and Image Understanding, 240:103928, 2024.
+[41] Yazid Janati, Badr Moufad, Alain Durmus, Eric Moulines, and Jimmy Olsson. Divide-and-
+conquer posterior sampling for denoising diffusion priors, 2024. URL https://arxiv.org/
+abs/2403.11407.
+[42] Bahjat Kawar, Michael Elad, Stefano Ermon, and Jiaming Song. Denoising diffusion restoration
+models. Advances in Neural Information Processing Systems, 35:23593–23606, 2022.
+[43] Guanhua Zhang, Jiabao Ji, Yang Zhang, Mo Yu, Tommi S Jaakkola, and Shiyu Chang. Towards
+coherent image inpainting using denoising diffusion implicit models. 2023.
+12
+
+
+[44] François Rozet, Gérôme Andry, François Lanusse, and Gilles Louppe. Learning diffusion priors
+from observations by expectation maximization. Advances in Neural Information Processing
+Systems, 37:87647–87682, 2024.
+[45] Prafulla Dhariwal and Alex Nichol. Diffusion models beat gans on image synthesis. ArXiv,
+abs/2105.05233, 2021.
+A
+Additional Tables
+This section provides the detailed matched-CLIP-T tables referenced in the main experiments.
+Table 2 complements Section 4.2 with anchor-based comparisons on DAVIS-Edit, and Tables 3 and 4
+complement Section 4.1 with equal-NFE and matched-CLIP-T results on FlowEdit.
+Table 2: Video-editing on DAVIS-Edit at matched CLIP-T. Anchors are SoftPaint at r ∈
+{0.2, 0.5, 1.0} (Wan2.2) and r ∈{0.2, 0.5, 0.9} (CogVideoX). For DD we select the nearest mea-
+sured r within ±0.5 of each anchor.
+Backbone
+Anchor
+Method
+r used LPIPS↓PSNR↑M-LPIPS↓VFID↓DOVER↑
+Wan2.2 V2V
+Weak Edit
+(CLIP-T: 19.7±0.5)
+DD
+0.1
+0.053
+27.34
+0.022
+0.109
+54.46
+SoftPaint
+0.2
+0.045
+29.36
+0.015
+0.080
+55.55
+Medium Edit
+(CLIP-T: 20.0±0.5)
+DD
+0.2
+0.062
+25.61
+0.029
+0.147
+54.39
+SoftPaint
+0.5
+0.051
+27.80
+0.020
+0.106
+55.63
+Strong Edit
+(CLIP-T: 24.2±0.5)
+DD
+0.8
+0.104
+20.07
+0.065
+0.275
+55.06
+SoftPaint
+1.0
+0.099
+21.51
+0.060
+0.245
+54.60
+CogVideoX
+Weak Edit
+(CLIP-T: 20.6±0.5)
+DD
+0.4
+0.046
+27.83
+0.022
+0.113
+56.59
+SoftPaint
+0.2
+0.043
+29.15
+0.019
+0.112
+56.39
+Medium Edit
+(CLIP-T: 22.4±0.5)
+DD
+0.6
+0.059
+25.15
+0.033
+0.171
+56.79
+SoftPaint
+0.5
+0.056
+26.59
+0.030
+0.171
+57.13
+Strong Edit
+(CLIP-T: 24.7±0.5)
+DD
+1.0
+0.101
+20.05
+0.066
+0.287
+52.54
+SoftPaint
+0.9
+0.089
+21.57
+0.058
+0.250
+54.53
+B
+Derivation of the DDL Update
+This section derives the damped exponential-integrator update used in the main text. Starting from
+the Langevin dynamics in Eq. (10), a naive Euler–Maruyama discretization requires very small step
+sizes because the UR score contains a stiff linear component. Expanding Eq. (9) and expressing the
+model score via Tweedie’s formula,
+smodel(z, t) =
+√¯αt ˆx0(z, t) −z
+1 −¯αt
+,
+gives
+g(z, t) = −
+1
+1 −¯αt
+z
+|
+{z
+}
+linear term
++
+√¯αt
+1 −¯αt
+
+γtxref
+0 + (1 −γt) ˆx0(z, t)
+
+|
+{z
+}
+nonlinear remainder
+,
+(12)
+where ˆx0 is the model’s denoised estimate. The coefficient (1 −¯αt)−1 becomes large when 1 −¯αt is
+small, which makes explicit Euler steps numerically fragile.
+To stabilise the inner-loop sampler, we split the drift into a linear damping term and a remainder:
+g(z, t) = −Atz + Ct(z),
+Ct(z) := g(z, t) + Atz.
+(13)
+In practice, we choose
+At = 1 + λβt(r)
+1 −¯αt
+,
+13
+
+
+Table 3: Image editing at matched NFE on Qwen-Image (FlowEdit). SoftPaint uses 20 outer steps
+and two additional inner evaluations per step (60 NFE); DD uses 20 or 60 outer steps. Rows within
+each block are selected at the same CLIP-T anchor. The DD 20-NFE and SoftPaint 60-NFE rows
+reproduce the corresponding values in Table 4.
+Anchor
+Method
+NFE
+LPIPSedit ↓
+PSNRedit ↑
+PSNRkeep ↑
+CLIP-IQA↑
+FID↓
+Weak Edit
+(CLIP-T: 30.1±0.2)
+DD
+20
+0.082
+25.34
+65.54
+0.626
+56.3
+DD
+60
+0.088
+25.19
+65.50
+0.620
+54.33
+SoftPaint
+60
+0.075
+26.36
+66.31
+0.626
+52.7
+Medium Edit
+(CLIP-T: 33.0±0.2)
+DD
+20
+0.131
+21.31
+65.34
+0.619
+102.2
+DD
+60
+0.134
+20.80
+65.25
+0.613
+106.4
+SoftPaint
+60
+0.121
+22.05
+66.29
+0.627
+99.9
+Strong Edit
+(CLIP-T: 35.5±0.2)
+DD
+20
+0.225
+16.10
+64.95
+0.584
+163.2
+DD
+60
+0.224
+15.88
+64.94
+0.581
+160.01
+SoftPaint
+60
+0.214
+16.28
+65.98
+0.597
+157.2
+Table 4: Image-editing on Qwen-Image at matched CLIP-T. Anchors are SoftPaint at r ∈
+{0.2, 0.6, 1.0}. For DD and Naive Mixing we select the nearest measured r within ±0.2 CLIP-T of
+each anchor. Source is listed for reference. Naive Mixing has no match at the medium anchor.
+Anchor
+Method
+r used
+LPIPSedit ↓
+PSNRedit ↑
+PSNRkeep ↑
+CLIP-IQA↑
+FID↓
+Reference Points
+NA
+Source
+0
+0.000
+80.00
+80.00
+0.650
+0.0
+NA
+QwenImage-Edit
+NA
+0.306
+16.19
+25.39
+0.667
+129.5
+Soft-Mask Methods
+Weak Edit
+(CLIP-T: 30.1±0.2)
+Naive Mixing
+0.8
+0.057
+28.92
+65.58
+0.595
+46.2
+DD
+0.4
+0.082
+25.34
+65.54
+0.626
+56.3
+SoftPaint
+0.2
+0.075
+26.36
+66.31
+0.626
+52.7
+Medium Edit
+(CLIP-T: 33.0±0.2)
+Naive Mixing
+—
+—
+—
+—
+—
+—
+DD
+0.7
+0.131
+21.31
+65.34
+0.619
+102.2
+SoftPaint
+0.6
+0.121
+22.05
+66.29
+0.627
+99.9
+Strong Edit
+(CLIP-T: 35.5±0.2)
+Naive Mixing
+1.0
+0.225
+16.09
+64.98
+0.580
+164.1
+DD
+1.0
+0.225
+16.10
+64.95
+0.584
+163.2
+SoftPaint
+1.0
+0.214
+16.28
+65.98
+0.597
+157.2
+so that the damping strength increases with the guidance factor λβt(r) and remains stable even when
+λ is large. This damping rule is a simplified variant of the damped Langevin dynamics introduced in
+LanPaint [34].
+If we treat Ct(z) as approximately constant over a short interval ∆τ, the SDE becomes an Ornstein–
+Uhlenbeck process with a closed-form transition, yielding Eq. (11). This update uses one score
+evaluation per step and remains stable for arbitrarily large ∆τ. In the limit ∆τ →∞, it relaxes to
+the stationary Gaussian
+N(A−1
+t Ct, A−1
+t I).
+The corresponding limiting variance is
+A−1
+t I =
+1 −¯αt
+1 + λβt(r)I ⪯(1 −¯αt)I,
+which is bounded above by the natural diffusion variance. Therefore, the sampling trajectory remains
+contained even under strong guidance, unlike standard Langevin updates with overly large explicit
+step sizes.
+C
+Ablation Studies
+For completeness, the main video experiments use the official default denoising schedules of each
+backbone: 50 steps for CogVideoX-5B and 40 steps for Wan2.2.
+14
+
+
+We ablate SoftPaint’s two inner-loop hyperparameters—Langevin step size s and number of in-
+ner updates n—on the Wan2.2 backbone over DAVIS-Edit, averaging all metrics across r ∈
+{0.2, 0.4, 0.6, 0.8, 1.0} to avoid cherry-picking a single operating point. We use these same de-
+faults (n=2, s=0.2) for image editing without any per-domain re-tuning.
+C.1
+Inner-loop hyperparameters
+Figure 8 reports PSNR, LPIPS, CLIP-Text, and VFID against n (top row, s=0.2 fixed) and s (bottom
+row, n=2 fixed). Increasing n from 0 to 2 improves PSNR by +1.05 and lowers LPIPS by 0.0053;
+n=3→5 adds only marginal gains (+0.43 PSNR) while raising the inner-loop cost 2.5×. Similarly,
+increasing s from 0.05 to 0.2 yields +0.65 PSNR with diminishing returns beyond s=0.2. The sweet
+spot n=2, s=0.2 balances quality and compute—a single Langevin step (n=1) is too noisy, while
+larger budgets bring negligible improvement.
+Figure 8: Ablation of n and s on soft video editing task(DAVIS-Edit) under backbone Wan2.2.
+Top: n varied with s=0.2 fixed. Bottom: s varied with n=2 fixed. All metrics averaged over
+r ∈{0.2, 0.4, 0.6, 0.8, 1.0}. n=2, s=0.2 are the default operating point, also used for image editing
+without re-tuning.
+C.2
+Runtime
+SoftPaint’s runtime is dominated by the inner-loop budget n, since each inner DDL update reuses
+the backbone denoiser. On Qwen-Image (roughly 20B MMDiT) at 1024 × 1024 with 20 diffusion
+steps on a single accelerator with approximately 65 TFLOPS of FP16 compute, measuring only
+the CUDA-synchronized denoising loop (excluding model loading, encoder passes, VAE decoding,
+and post-processing), DD averages 10.2 s/image while SoftPaint with n=2 averages 29.4 s/image.
+SoftPaint uses the same peak GPU memory as standard forward-only backbone inference, i.e., it does
+not introduce extra memory beyond ordinary inference.
+C.3
+Redo-aware warm start
+Before running the inner Langevin loop, we optionally initialise the chain from a redo-aware warm
+start instead of the raw model sample xt. Recall from Eq. (8) that γ(i)
+t
+> 1 corresponds to the
+extrapolation regime, where the reference constraint is amplified. For such pixels, it is beneficial to
+initialise directly from the noised reference
+xref
+t
+= √¯αtxref
+0 +
+√
+1 −¯αtϵ
+rather than from xt. Concretely, we define a binary mask
+m = I[γt(r) > 1]
+and set
+˜xt = (1 −m) ⊙xt + m ⊙xref
+t .
+15
+
+
+Table 5: Warm-start ablation for soft video editing at r = 0.8 on the CogVideoX backbone.
+Naive mixing has almost no editing ability at this mask strength. Adding the warm start restores
+editing, and SoftPaint further improves editability with the UR score and DDL Langevin inner loop
+while improving LPIPS and VFID relative to warm start alone. All rows use 50 denoising steps.
+Method
+PSNR↑
+LPIPS↓
+CLIP-T↑
+VFID↓
+Naive mix.
+32.46
+0.0333
+19.95
+almost no edit
+0.0668
+Naive mix. + warm start
+22.22
+0.0786
+24.10
+↑edit
+0.2410
+SoftPaint
+23.15
+0.0757
+24.32
+↑edit
+0.2305
+Note: Lower PSNR here mainly reflects larger deviation from the source under stronger edits, rather than worse
+perceptual quality.
+This warm start does not alter the stationary distribution of the inner Langevin chain; its sole purpose
+is to shorten burn-in. Without it, the chain initialises at a low-likelihood point of π(xt) and, at our
+small budget of n=2, leaves residual noise at mask boundaries.
+Table 5 isolates the r=0.8 case, where the difference between the three configurations is especially
+clear. Naive mixing stays highly similar to the source and has very low CLIP-T, indicating almost
+no editing ability at this mask strength. Adding the warm start substantially improves editability, as
+reflected by the large CLIP-T increase. SoftPaint further adds the UR score and the DDL Langevin
+inner loop, improving editability again while also improving LPIPS and VFID relative to the warm-
+start-only variant.
+C.4
+Binary-mask inpainting: isolating the inner-loop operator
+We also test whether the DDL update offers a benefit beyond repeated denoise–replace–renoise
+updates under binary masks. On the ImageNet binary-inpainting benchmark, we use 1,000 validation
+images at 256 × 256 resolution, an ADM diffusion model [45], 20 outer Euler steps, and box or
+checkerboard masks. The comparison holds the outer schedule and binary mask fixed. Replace [18]
+uses no inner loop; the RePaint-style [19] and SoftPaint variants use the same number of inner
+iterations and matched model-evaluation budgets at each n.
+Table 6 reports LPIPS and FID for n ∈{5, 10}. SoftPaint yields lower values than the RePaint-style
+inner loop on both masks at both budgets. The comparison isolates the gain from DDL in the
+binary-mask setting, where spatially varying soft-mask weights are absent. Replace is included as a
+20-step reference and does not have the same NFE as the two iterative variants.
+Table 6: Binary inpainting on ImageNet with ADM. LPIPS ↓/ FID ↓on 1,000 validation images
+at 256 × 256. All methods use 20 outer Euler steps. RePaint-style and SoftPaint have matched
+inner-loop budgets for each n; Replace has no inner loop.
+Mask
+Inner steps n
+Replace [18]
+RePaint-style [19]
+SoftPaint
+Box
+5
+0.229 / 75.7
+0.216 / 62.8
+0.174 / 48.1
+10
+0.215 / 61.0
+0.165 / 43.5
+Checkerboard
+5
+0.406 / 146.4
+0.137 / 31.4
+0.118 / 21.6
+10
+0.135 / 32.8
+0.110 / 19.9
+C.5
+Choice of exponent η in Σ(r; η)
+We also ablate the exponent η in Σ(r; η) = (1 + 2λ) 1−(1−r)η
+(1−r)η+ϵ . Figure 9 compares η = 2 and η = 4
+on the Flow Edit Benchmark with the Qwen-Image model. We choose η = 2 because it makes clipt
+approximately linear in r, yielding a more predictable mapping from mask value to redo strength.
+16
+
+
+Figure 9: Effect of the exponent η in Σ(r; η) on edit strength, measured on the Flow Edit Benchmark
+with the Qwen-Image model. The two curves correspond to η = 2 and η = 4, showing how the
+choice of exponent changes the effective redo strength for each mask value r, and hence clipt.
+D
+Derivation of the Expectation Form for the Reference Factor
+We start from the forward transition density
+p(x(i)
+t
+| x(i)
+0 ) = N
+ x(i)
+t
+| √¯αt x(i)
+0 , 1 −¯αt
+
+∝exp
+ 
+−(x(i)
+t
+−√¯αt x(i)
+0 )2
+2(1 −¯αt)
+!
+.
+(14)
+Raising this density to the power γ(i)
+t
+and absorbing constants into proportionality gives
+p(x(i)
+t
+| x(i)
+0 )γ(i)
+t
+∝exp
+ 
+−γ(i)
+t (x(i)
+t
+−√¯αt x(i)
+0 )2
+2(1 −¯αt)
+!
+.
+(15)
+We choose
+γ(i)
+t
+= (1 + λ) β(i)
+t (r),
+β(i)
+t (r) =
+1 −¯αt
+1 −¯αt + ¯αt Σ(i)(r).
+(16)
+Substituting γ(i)
+t
+into the exponent yields
+p(x(i)
+t
+| x(i)
+0 )γ(i)
+t
+∝exp
+ 
+−(1 + λ) β(i)
+t (r) (x(i)
+t
+−√¯αt x(i)
+0 )2
+2(1 −¯αt)
+!
+= exp
+ 
+−
+1 + λ
+2
+ 1 −¯αt + ¯αt Σ(i)(r)
+ x(i)
+t
+−√¯αt x(i)
+0
+2
+!
+.
+(17)
+Now consider the expectation under a Gaussian smoothing distribution ˜x(i)
+0
+∼N
+ x(i)
+0 , Σ(i)(r)
+
+:
+E˜x(i)
+0
+
+p(x(i)
+t
+| ˜x(i)
+0 )
+
+∝
+Z
+exp
+ 
+−(x(i)
+t
+−√¯αt ˜x(i)
+0 )2
+2(1 −¯αt)
+!
+exp
+ 
+−(˜x(i)
+0 −x(i)
+0 )2
+2Σ(i)(r)
+!
+d˜x(i)
+0 .
+(18)
+The integrand is a product of two Gaussian exponents. Completing the square in ˜x(i)
+0
+and integrating
+out the variable leaves an exponent that depends only on x(i)
+t
+and x(i)
+0 . The result (up to a constant
+factor) is
+E˜x(i)
+0
+
+p(x(i)
+t
+| ˜x(i)
+0 )
+
+∝exp
+ 
+−
+(x(i)
+t
+−√¯αt x(i)
+0 )2
+2
+ 1 −¯αt + ¯αt Σ(i)(r)
+
+!
+.
+(19)
+Raising this expectation to the power 1 + λ gives
+h
+E˜x(i)
+0 p(x(i)
+t
+| ˜x(i)
+0 )
+i1+λ
+∝exp
+ 
+−
+1 + λ
+2
+ 1 −¯αt + ¯αt Σ(i)(r)
+ x(i)
+t
+−√¯αt x(i)
+0
+2
+!
+.
+(20)
+17
+
+
+Comparing (17) and (20), we observe that the two expressions share exactly the same functional form
+in x(i)
+t . Since normalising constants do not affect the reverse sampling dynamics, we conclude
+p
+
+x(i)
+t
+| x(i)
+0
+γ(i)
+t
+∝
+h
+E˜x(i)
+0 ∼N (x(i)
+0 ,Σ(i)(r)) p(x(i)
+t
+| ˜x(i)
+0 )
+i1+λ
+,
+(21)
+which justifies the choice of γ(i)
+t
+stated in the main text.
+E
+Additional Qualitative Results
+Figure 10: Soft-mask image editing: “Dalmatian” →“Cheetah”. Source: “A Dalmatian dog
+sitting on a white background...” Target: “A cheetah sitting on a white background..., looking to
+the camera.” Top: Naive Mixing. Middle: DD. Bottom: SoftPaint (ours). r ∈{0.1, . . . , 1.0} left to
+right; mask inset at top-right.
+Figure 11: Soft-mask image editing: “Pink Flowers” →“Orange Flowers”. Source: “A vase
+filled with a beautiful bouquet of pink, red and white flowers.” Target: “. . . orange, yellow and white
+flowers.” Layout as in Fig. 10.
+18
+
+
+Figure 12: Soft-mask video editing: “Dog” →“Wolf” at three soft-mask strengths r on CogVideoX.
+Top row: original DAVIS-Edit frames (r=0, no edit). Subsequent rows: SoftPaint and DD outputs at
+r=0.4, 0.8, 1.0.
+19

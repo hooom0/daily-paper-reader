@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-01</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-02</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 16 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>5</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-01 23:01:46 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-02 23:18:37 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-10-01 日报速览：3 篇速读、0 篇精读，聚焦超分辨率、视频生成加速与视频预测生成三个方向。最值得看的是 PhoenixSR 用生成式异构蒸馏提升真实场景超分效率（6.0/10），以及 Carnator 用跨请求复用加速文本到视频生成（6.0/10）。普通读者可优先从这两篇入手，关注“效率提升”如何落地到实际生成任务。</p>
+<p>今日筛选16篇图像生成论文，精读5篇、速读11篇，最高分9.0。最值得关注的是LDM-is-AE（9.0分）提出将潜扩散模型本身作为自编码器实现端到端生成，以及NesTok（8.0分）的嵌套自对齐一维分词器方案。普通读者可先看这两篇的精读解读，再按需浏览速读中关于扩散潜空间搜索与奖励训练的三篇工作。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -78,12 +78,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="LDM-is-AE: Latent Diffusion Model is an Auto-Encoder for End-to-End Image Generation">LDM-is-AE: Latent Diffusion Model is an Auto-Encoder for End-to-End Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="NesTok: Nested Self-Aligned 1D Tokenizer for Autoregressive Image Generation">NesTok: Nested Self-Aligned 1D Tokenizer for Autoregressive Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="V-Engram: Trigger-Indexed External Memory for Modular Text-to-Image Personalization">V-Engram: Trigger-Indexed External Memory for Modular Text-to-Image Personalization</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>5</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -91,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">3 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="PhoenixSR: Generative Heterogeneous Distillation Unleashes Efficient Models for Real-World Super-Resolution">PhoenixSR: Generative Heterogeneous Distillation Unleashes Efficient Models for Real-World Super-Resolution</span></li><li><span class="dpr-home-dashboard-paper-title" title="Carnator: Fast Text-to-Video Generation with Generation-Native Compatibility-Guided Cross-Request Reuse">Carnator: Fast Text-to-Video Generation with Generation-Native Compatibility-Guided Cross-Request Reuse</span></li><li><span class="dpr-home-dashboard-paper-title" title="Lagrangian--Hamiltonian Flows for Video Prediction and Image Generation: A Symplectic Perspective">Lagrangian--Hamiltonian Flows for Video Prediction and Image Generation: A Symplectic Perspective</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="PreviewDiff: Multimodal Critic-Guided Search over Diffusion Latents">PreviewDiff: Multimodal Critic-Guided Search over Diffusion Latents</span></li><li><span class="dpr-home-dashboard-paper-title" title="DMA$^2$: Pixel-space Distribution Matching with Adversarial and Anchor Losses">DMA$^2$: Pixel-space Distribution Matching with Adversarial and Anchor Losses</span></li><li><span class="dpr-home-dashboard-paper-title" title="CAST: Causal Advantage-Structured Training with Spatially Grounded Compositional Rewards for Diffusion Models">CAST: Causal Advantage-Structured Training with Spatially Grounded Compositional Rewards for Diffusion Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>3</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
 </section>
 </div>
 

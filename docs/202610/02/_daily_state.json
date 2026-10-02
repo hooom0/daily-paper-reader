@@ -1,0 +1,265 @@
+{
+  "date": "20261002",
+  "date_label": "",
+  "generated_at": "2026-10-02 23:18:37 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.37080v1",
+      "route": "202610/02/2609.37080v1-ldm-is-ae-latent-diffusion-model-is-an-auto-encoder-for-end-to-end-image-generation",
+      "title": "LDM-is-AE: Latent Diffusion Model is an Auto-Encoder for End-to-End Image Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向图像生成的端到端单阶段潜扩散模型",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.36756v3",
+      "route": "202610/02/2609.36756v3-nestok-nested-self-aligned-1d-tokenizer-for-autoregressive-image-generation",
+      "title": "NesTok: Nested Self-Aligned 1D Tokenizer for Autoregressive Image Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "面向自回归图像生成的一维分词器",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.37198v1",
+      "route": "202610/02/2609.37198v1-v-engram-trigger-indexed-external-memory-for-modular-text-to-image-personalization",
+      "title": "V-Engram: Trigger-Indexed External Memory for Modular Text-to-Image Personalization",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "基于触发器索引外部记忆的文本到图像个性化方法",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.38170v1",
+      "route": "202610/02/2609.38170v1-adversarial-training-for-pixel-diffusion",
+      "title": "Adversarial Training for Pixel Diffusion",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "对抗后训练提升像素扩散模型的图像生成与提示对齐能力",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.40305v1",
+      "route": "202610/02/2609.40305v1-looped-diffusion-transformer",
+      "title": "Looped Diffusion Transformer",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "采用循环计算的文本到图像扩散Transformer",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.36199v1",
+      "route": "202610/02/2609.36199v1-previewdiff-multimodal-critic-guided-search-over-diffusion-latents",
+      "title": "PreviewDiff: Multimodal Critic-Guided Search over Diffusion Latents",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向忠实提示生成的扩散潜变量测试时搜索",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.38156v1",
+      "route": "202610/02/2609.38156v1-dma2-pixel-space-distribution-matching-with-adversarial-and-anchor-losses",
+      "title": "DMA$^2$: Pixel-space Distribution Matching with Adversarial and Anchor Losses",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "像素空间少步文本到图像扩散蒸馏",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.39441v1",
+      "route": "202610/02/2609.39441v1-cast-causal-advantage-structured-training-with-spatially-grounded-compositional-rewards-for-diffusion-models",
+      "title": "CAST: Causal Advantage-Structured Training with Spatially Grounded Compositional Rewards for Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向扩散模型图像生成的在线强化学习",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.39573v1",
+      "route": "202610/02/2609.39573v1-steering-fields-adaptive-vector-fields-for-safe-image-generation-and-beyond",
+      "title": "Steering Fields: Adaptive Vector Fields for Safe Image Generation and Beyond",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "用自适应向量场控制文本到图像流模型输出",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.39625v1",
+      "route": "202610/02/2609.39625v1-d-scope-decomposing-and-steering-diffusion-transformers-with-sparse-autoencoders",
+      "title": "D-Scope: Decomposing and Steering Diffusion Transformers with Sparse Autoencoders",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "利用稀疏自编码器分解并操控扩散Transformer以控制生成",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2610.00359v1",
+      "route": "202610/02/2610.00359v1-diffusion-editing-with-soft-mask-pixel-level-redo-of-image-and-video-with-adjustable-strength",
+      "title": "Diffusion Editing with Soft Mask: Pixel Level Redo of Image and Video with Adjustable Strength",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "基于软掩码的扩散编辑实现像素级可控生成",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.32761v1",
+      "route": "202610/02/2609.32761v1-from-feed-forward-to-flow-unifying-reconstruction-and-generation-is-easier-than-you-think",
+      "title": "From Feed-Forward to Flow: Unifying Reconstruction and Generation Is Easier Than You Think",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "统一重建与条件生成的流式建模框架",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.33834v1",
+      "route": "202610/02/2609.33834v1-climb-flow-coupled-linear-inverse-posterior-sampling-via-multiscale-based-flow",
+      "title": "CLIMB-flow: Coupled Linear Inverse posterior sampling via Multiscale-Based flow",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "潜在扩散模型作为先验在像素域生成图像",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.34807v1",
+      "route": "202610/02/2609.34807v1-controltrace-recovering-control-fields-for-hidden-content-recognition",
+      "title": "ControlTrace: Recovering Control Fields for Hidden-Content Recognition",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "恢复空间条件扩散模型的控制场",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.37147v1",
+      "route": "202610/02/2609.37147v1-improved-distributional-diffusion-models",
+      "title": "Improved Distributional Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "将分布扩散模型扩展到现代图像生成，结合DiT潜空间",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    },
+    {
+      "paper_id": "2609.37654v2",
+      "route": "202610/02/2609.37654v2-texture-space-material-diffusion",
+      "title": "Texture Space Material Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用视频扩散Transformer在纹理空间做文本引导材质生成",
+      "first_seen_at": "2026-10-02 23:18:37 UTC",
+      "updated_at": "2026-10-02 23:18:37 UTC"
+    }
+  ]
+}
