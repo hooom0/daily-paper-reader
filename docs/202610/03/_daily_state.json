@@ -1,0 +1,185 @@
+{
+  "date": "20261003",
+  "date_label": "",
+  "generated_at": "2026-10-03 22:25:44 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.01502v1",
+      "route": "202610/03/2610.01502v1-learned-end-to-end-guidance-schedules-for-diffusion-models",
+      "title": "Learned End-to-End Guidance Schedules for Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向可控扩散生成的引导调度",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2610.01723v1",
+      "route": "202610/03/2610.01723v1-rethinking-memorization-mitigation-in-diffusion-models-reinforcing-text-conditioning",
+      "title": "Rethinking Memorization Mitigation in Diffusion Models: Reinforcing Text Conditioning",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向文本到图像扩散的免训练交叉注意力重分配",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2610.01815v1",
+      "route": "202610/03/2610.01815v1-debias-anything-fairness-with-diversity-without-supervision-in-diffusion-models",
+      "title": "Debias Anything: Fairness with Diversity without Supervision in Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "通过公平性引导实现扩散模型的可控图像生成",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2610.02203v1",
+      "route": "202610/03/2610.02203v1-embedding-prediction-helps-image-generation",
+      "title": "Embedding Prediction Helps Image Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "下一嵌入预测自回归条件化DiT图像生成",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2609.36348v1",
+      "route": "202610/03/2609.36348v1-representation-by-design-in-generation-cross-view-class-token-alignment-in-diffusion-transformers",
+      "title": "Representation by Design in Generation: Cross-View Class-Token Alignment in Diffusion Transformers",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "强化扩散Transformer图像生成中的语义表示",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2609.38329v1",
+      "route": "202610/03/2609.38329v1-explorenet-learning-where-to-explore-in-diffusion-grpo",
+      "title": "ExploreNet: Learning Where to Explore in Diffusion GRPO",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向扩散图像生成器后训练的自适应探索",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2609.38597v1",
+      "route": "202610/03/2609.38597v1-pixelumm-encoder-free-unified-image-and-video-understanding-and-generation",
+      "title": "PixelUMM: Encoder-Free Unified Image and Video Understanding and Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "像素空间统一图像与视频生成",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2609.38680v1",
+      "route": "202610/03/2609.38680v1-regain-restoring-subject-fidelity-in-personalization-on-synthetic-images",
+      "title": "ReGain: Restoring Subject Fidelity in Personalization on Synthetic Images",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过DreamBooth在合成图像上实现文生图扩散个性化",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2609.38853v1",
+      "route": "202610/03/2609.38853v1-visualizing-distribution-coverage-in-generative-diffusion-models",
+      "title": "Visualizing Distribution Coverage in Generative Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "评估生成扩散模型的分布覆盖",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2609.39657v1",
+      "route": "202610/03/2609.39657v1-diffusable-latents-from-structure-agnostic-distillation",
+      "title": "Diffusable Latents from Structure-Agnostic Distillation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "蒸馏提升潜扩散性以加速扩散收敛",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    },
+    {
+      "paper_id": "2610.00383v1",
+      "route": "202610/03/2610.00383v1-evogen-harness-learning-where-and-how-to-evolve-image-generation-harnesses",
+      "title": "EvoGen-Harness: Learning Where and How to Evolve Image-Generation Harnesses",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "围绕冻结生成器演化图像生成外壳的框架",
+      "first_seen_at": "2026-10-03 22:25:44 UTC",
+      "updated_at": "2026-10-03 22:25:44 UTC"
+    }
+  ]
+}

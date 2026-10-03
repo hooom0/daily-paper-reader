@@ -1,0 +1,1861 @@
+Preprint
+EXPLORENET: LEARNING WHERE TO EXPLORE
+IN DIFFUSION GRPO
+Shuyue Stella Li,
+Xiaochuang Han,
+Yulia Tsvetkov,
+Luke Zettlemoyer
+University of Washington
+stelli@cs.washington.edu
+https://github.com/stellalisy/ExploreNet
+ABSTRACT
+Group-relative RL methods such as Flow-GRPO post-train image generators by
+exploring with isotropic Gaussian noise added at every denoising step. This noise
+decides which rollouts the model learns from, yet it perturbs every channel and
+spatial position of the latent equally. In this paper, we instead show that latent ele-
+ments differ in how much they change the generated image, so exploration should
+adapt to these differences. We introduce EXPLORENET to learn an adaptive explo-
+ration distribution. EXPLORENET is a policy that predicts a noise scale for every
+latent element from the current latent, the denoising step, and the prompt, before
+any reward is observed; it is trained on the reward spread of each rollout group and
+discarded after training, leaving inference unchanged. On Stable Diffusion 3.5
+Medium, EXPLORENET improves held-out GenEval2 by 14% over Flow-GRPO,
+transfers to two independent compositional benchmarks and five preference and
+image-quality models, and reaches a 67.2% human preference win-rate. Overall,
+across our group-relative diffusion RL experiments, we find that exploration is
+learnable, the shape of the exploration distribution outweighs its magnitude, and
+rollout quality is more effective than rollout quantity.
+1
+INTRODUCTION
+Reinforcement learning unleashes the potential of image generators for alignment (Black et al.,
+2023; Fan et al., 2023), from instruction following (Li et al., 2026b) and human preference (Xue
+et al., 2025), to personalization (Dang et al., 2025) and reasoning (Jiang et al., 2025). GRPO is
+a common online RL algorithm that samples a group of rollouts for each prompt and learns from
+the differences in their rewards (Shao et al., 2024). Flow-GRPO enables GRPO in flow-matching
+models by adding isotropic Gaussian noise at every otherwise deterministic denoising step (Liu et al.,
+2025a; Xue et al., 2025). This noise alone decides the rollouts and thereby provides the exploration
+that guides the reinforcement learning.
+One line of work targets the noise, showing that the isotropic noise injection of Flow-GRPO results
+in excessive or insufficient stochasticity, and proposing to adjust noise levels by denoising steps
+(Deng et al., 2026; Li et al., 2026a). Within each step, however, the same noise scale still applies to
+every channel and spatial position of the latent. Our key insight is that the latent is unevenly sensitive.
+Perturbing some latent channels restructures the scene, while perturbing others changes only details
+(Section 4.5). Exploration should therefore adapt to how sensitive each latent element is, yet
+isotropic noise allocates it equally over fine details and scene structure.
+Another line of work directly manipulates rollout groups for a better learning signal by oversampling
+rollouts, observing their rewards, and training on an informative subset (Ge et al., 2026; Yu et al.,
+2025). However, post-hoc rollout selection relies on knowing the reward before choosing which
+rollouts to train on, and each update pays for rollouts it discards. Instead, we frame learning the
+exploration distribution as a reinforcement learning problem. The noise drawn at each denoising
+step is an action, and its reward arrives when the image is scored after the last denoising step.
+More specifically, we propose EXPLORENET, a diffusion post-training method that learns an adap-
+tive noise scale for each latent element, sets it before each denoising step without observing any
+1
+arXiv:2609.38329v1  [cs.CV]  29 Sep 2026
+
+
+Preprint
+a
+b
+c
+Deterministic ﬂow matching
+Flow-GRPO
+ExploreNet
+Deterministic transitions; randomness only from the initial noise
+Fixed Gaussian noise creates stochastic transitions that enable GRPO
+Predicts elementwise noise scales from the prompt, denoising step, and current latent
+xp,i,t, t, cp
+Denoiser
+fθ
+xp,i,t−Δt
+⚠ No tractable GRPO update
+undeﬁned per-step policy ratio, 
+limited exploration
+ rollouts 
+differ only in initial noise
+G
+Gaussian 
+perturbation
+Denoiser
+fθ
+➡ GRPO
+ varied rollouts
+G
++
+ﬁxed isotropic scale
+ExploreNet
+gϕ
+learned elementwise 
+scale 
+Scale map
+sϕ
+Gaussian 
+perturbation
+μθ
+μθ
+ varied rollouts
+G
+ 
+¯σR = 1
+P
+P
+∑
+q=1
+σR,q,
+Bp =
+σR,p −¯σR
+stdq σR,q + δ
+Lϕ = −E[min(ρϕBp, clipεϕ(ρϕ)Bp)] + βϕKL
+reward spreads (
+) 
+update 
+ 
+σR,p
+gϕ
+Denoiser
+fθ
+Rewards
+Rp,1, …, Rp,G
+➡ GRPO
++
+μθ
+ 
+Ap,i = (Rp,i −¯Rp)/(σR,p + δ)
+Lθ = −E[min(ρθAp,i, clipεθ(ρθ)Ap,i)] + βθKL
+xp,i,t, t, cp
+xp,i,t, t, cp
+xp,i,t−Δt
+xp,i,t−Δt
+Rewards
+Rp,1, …, Rp,G
+ 
+Ap,i = (Rp,i −¯Rp)/(σR,p + δ)
+Lθ = −E[min(ρθAp,i, clipεθ(ρθ)Ap,i)] + βθKL
+Across prompts
+Within prompt
+deterministic sampling
+Rewards
+Rp,1, …, Rp,G
+relative rewards (
+) 
+update  
+Ap,i
+fθ
+relative rewards (
+) 
+update  
+Ap,i
+fθ
+Figure 1:
+Deterministic flow-matching sampling adds no randomness beyond the initial noise,
+which limits exploration and leaves the policy ratio without a tractable transition density.
+Flow-
+GRPO samples rollouts with isotropic Gaussian perturbations and updates the denoiser fθ with
+group-relative advantages Ap,i.
+EXPLORENET gϕ predicts the scale map sϕ before each denoising
+step. The denoiser keeps Lθ, and EXPLORENET optimizes Lϕ with the normalized reward spread
+Bp. Inference uses only the trained denoiser.
+reward, and keeps every rollout it samples for training. EXPLORENET is a separate transformer net-
+work that predicts noise scales from the current latent, the denoising step, and the prompt (Figure 1),
+and is trained jointly with the denoiser on the reward spread of each prompt group. It is removed
+after training, so the trained denoiser keeps its sampler and inference cost.
+On Stable Diffusion 3.5 Medium (Esser et al., 2024, SD3.5-M) trained with GenEval2 (Kamath
+et al., 2025), EXPLORENET outperforms Flow-GRPO across a broad image-generation evaluation
+suite. Learning the exploration distribution improves held-out GenEval2 by 14%, and the gain trans-
+fers to two independent compositional benchmarks and five preference and image-quality models.
+Human raters prefer EXPLORENET to Flow-GRPO and the pretrained checkpoint 67.2% of the
+time. Further ablations show that the gain comes from the shape of the exploration distribution.
+Noise raised uniformly to EXPLORENET’s average variance performs worse than Flow-GRPO,
+and EXPLORENET’s scales are largest in the latent channels whose perturbation changes the im-
+age most. Rollout quality is also more effective than rollout quantity. With 8 rollouts per prompt,
+EXPLORENET exceeds Flow-GRPO with 24, and with half as many rollouts, it matches privileged
+post-hoc selection, which observes every reward. Our contributions are as follows:
+• EXPLORENET, which learns a noise scale for every latent element at each denoising step, set
+from the current latent, the denoising step, and the prompt before any reward is observed, at
+unchanged inference cost.
+• Experiments on SD3.5-M showing that exploration is learnable, with gains over Flow-GRPO
+across a broad image-generation evaluation suite and in human preference.
+• Controlled comparisons showing that the shape of the exploration distribution outweighs its
+magnitude and that rollout quality is more effective than rollout quantity.
+2
+PRELIMINARIES: GROUP-RELATIVE RL FOR FLOW MODELS
+Following DDPO and Flow-GRPO, we treat denoising as a Markov decision process (Black et al.,
+2023; Liu et al., 2025a). At denoising step t, the state consists of the latent xt, the step t, and the
+prompt c; the action is the next latent xt−∆t; and the reward is zero at every step except the last,
+where the finished image receives R. Because a flow-matching transition is deterministic, Flow-
+2
+
+
+Preprint
+GRPO samples the action from a Gaussian centered on the deterministic update, which supplies
+exploration and a tractable transition density.
+As shown in Figure 1b, each training iteration samples P prompt groups. Prompt group p has text
+conditioning cp and G rollouts indexed by i. We write xp,i,t for the latent at denoising step t and
+Rp,i for its terminal reward. Let fθ denote the denoiser, a diffusion transformer, and µθ(xp,i,t, t, cp)
+the transition mean it induces. With the noise coefficient at = σt
+p
+|∆t|, where σt = λ
+p
+t/(1 −t)
+and λ is a fixed noise-level hyperparameter, Flow-GRPO samples
+xp,i,t−∆t = µθ(xp,i,t, t, cp) + atzp,i,t,
+zp,i,t ∼N(0, I).
+(1)
+The noise scale at a given denoising step is therefore the same for every prompt, latent, and latent
+element. Latent elements differ, however, in how much a perturbation changes the generated image
+(Section 4.5), and a shared scale cannot adapt exploration to these differences.
+Flow-GRPO normalizes terminal rewards within each prompt group:
+¯Rp = 1
+G
+G
+X
+i=1
+Rp,i,
+σR,p =
+ 
+1
+G
+G
+X
+i=1
+(Rp,i −¯Rp)2
+!1/2
+,
+Ap,i = Rp,i −¯Rp
+σR,p + δ ,
+(2)
+where σR,p is the standard deviation of the rewards in group p, which we call its reward spread, and
+δ provides numerical stability. The terminal advantage Ap,i is assigned to every transition in rollout
+i. Next, let pθ(xt−∆t | xt, t, c) = N(µθ, a2
+tI) denote the Gaussian transition density of Eq. 1. For
+data collected by θold, the Flow-GRPO denoising ratio and clipped loss are
+ρθ,p,i,t =
+pθ(xp,i,t−∆t | xp,i,t, t, cp)
+pθold(xp,i,t−∆t | xp,i,t, t, cp),
+(3)
+Lθ = −Ep,i,t
+
+min
+ ρθ,p,i,tAp,i, clipϵθ(ρθ,p,i,t)Ap,i
+
++ βθ Ep,i,t
+
+DKL(pθ ∥pref)
+
+,
+(4)
+where clipϵ(ρ) truncates the ratio to [1 −ϵ, 1 + ϵ] and pref is the transition density of the pretrained
+denoiser. EXPLORENET retains this denoising objective and learns the rollout noise.
+3
+EXPLORENET
+In the decision process of Section 2, each action xt−∆t = µθ + atz has two parts: the mean, set by
+the denoiser, and the noise. EXPLORENET is a second policy whose action is the noise: before the
+reward is known, it predicts a scale for each latent element from the current latent, the denoising step,
+and the prompt, and it is trained afterward from the reward spread of each rollout group. Figure 1c
+shows how the two policies interact during training.
+3.1
+PREDICTING ELEMENTWISE NOISE SCALES
+A separate scale for each latent element lets exploration selectively concentrate on different ele-
+ments, which the shared scale of Eq. 1 cannot do. Because the noise must be set before each step,
+each scale can depend only on the inputs the denoiser receives at that step, namely the current latent,
+the denoising step, and the prompt. A diffusion transformer takes exactly these inputs and returns
+one output per latent element, so we parameterize EXPLORENET as a second SD3.5-M transformer
+gϕ, initialized from the pretrained weights and trained through LoRA adapters. At each denoising
+step, it maps the current state to one score per latent element:
+hϕ,p,i,t = gϕ(xp,i,t, t, cp),
+(5)
+where hϕ,p,i,t,j is the score of latent element j, indexed over the channel and spatial dimensions of
+the latent. We standardize these scores within each latent and convert them to bounded log-scales:
+ehϕ,p,i,t,j = hϕ,p,i,t,j −meanj′ hϕ,p,i,t,j′
+max(stdj′ hϕ,p,i,t,j′, δh)
+,
+(6)
+ℓϕ,p,i,t,j = clip
+
+ehϕ,p,i,t,j, ℓmin, ℓmax
+
+,
+sϕ,p,i,t,j = exp(ℓϕ,p,i,t,j).
+(7)
+Standardization fixes the mean and standard deviation of each latent’s scores before clipping, so the
+policy cannot raise or lower all of a latent’s log-scales together, and a larger scale on some elements
+3
+
+
+Preprint
+comes with a smaller scale on others. Clipping then bounds every scale to [eℓmin, eℓmax]. The policy
+therefore sets the shape of the exploration distribution, how noise is allocated across latent elements.
+Its magnitude, the average noise variance meanj s2
+ϕ,p,i,t,j, has no separate control: it is determined
+by that shape and is at most e2ℓmax.
+Let sϕ,p,i,t denote the scale map, the vector of scales sϕ,p,i,t,j over all latent elements.
+EX-
+PLORENET samples
+zp,i,t ∼N(0, I),
+ηp,i,t = sϕ,p,i,t ⊙zp,i,t,
+qϕ(ηp,i,t | xp,i,t, t, cp) = N
+ 0, diag(s2
+ϕ,p,i,t)
+
+,
+xp,i,t−∆t = µθ(xp,i,t, t, cp) + atηp,i,t.
+(8)
+The denoiser sets the transition mean and EXPLORENET reshapes the noise around it, so rollouts
+come from an exploration distribution centered on the denoiser’s trajectories. The denoiser keeps
+the objective of Eq. 4, and its ratio ρθ (Eq. 3) evaluates each sampled transition under the isotropic
+density of Eq. 1 for both θ and θold. The transitions themselves come from EXPLORENET, so the
+score ∇µθ log pθ = (xp,i,t−∆t −µθ)/a2
+t = sϕ,p,i,t ⊙zp,i,t/at weights each latent element by its
+noise scale. EXPLORENET therefore shapes both which transitions the denoiser learns from and
+how strongly each latent element contributes to the denoiser’s update.
+3.2
+TRAINING FROM REWARD SPREAD
+0
+600
+1200
+1800
+Optimizer step
+0.20
+0.25
+0.30
+0.35
+0.40
+0.45
+0.50
+Held-out GenEval2
+Smallest spread
+Random
+Greatest spread
+Figure 2: With all else fixed, selecting high-
+spread groups yields the fastest learning.
+A noise action has no reward of its own: the reward
+arrives only for the finished image, and the denoiser
+learns from the reward differences among rollouts
+of the same prompt. A noise choice can therefore
+be credited only through the group it helps produce,
+and what a group offers the denoiser is its reward
+spread. A group whose rewards are equal gives ev-
+ery rollout zero advantage, and Flow-GRPO divides
+each group’s advantages by its reward spread σR,p
+(Eq. 2), so a group whose rewards are nearly equal
+yields advantages that amplify small, uninformative
+differences. To measure the effect of spread directly, we generate 16 rollouts per prompt and train
+on 8 selected to have the smallest reward spread, selected at random, or selected to have the greatest
+reward spread, with the rollout pool, update group size, and optimizer fixed. Greatest-spread selec-
+tion learns fastest and smallest-spread selection slowest (Figure 2), and the ordering holds on eight
+of nine evaluation metrics (Appendix A.3). We therefore take the reward spread σR,p of each group
+(Eq. 2) as the return of EXPLORENET and standardize it across the P prompt groups of an iteration,
+Bp = σR,p −meanq σR,q
+stdq σR,q + δ
+,
+(9)
+where q ranges over the P groups. Every sampled noise vector ηp,i,t in prompt group p receives
+the same advantage Bp, so training raises the probability of the noise vectors sampled in groups
+whose spread exceeds the average of the iteration. For a rollout sampled with ϕold, the ratio for
+EXPLORENET is
+ρϕ,p,i,t =
+qϕ(ηp,i,t | xp,i,t, t, cp)
+qϕold(ηp,i,t | xp,i,t, t, cp).
+(10)
+We optimize the clipped exploration objective
+Lϕ = −Ep,i,t
+h
+min
+
+ρϕ,p,i,tBp, clipϵϕ(ρϕ,p,i,t)Bp
+i
++ βϕ Ep,i,t
+
+DKL(qϕ ∥N(0, I))
+
+.
+(11)
+The KL term regularizes the predicted scales toward N(0, I), the unscaled transition noise of Flow-
+GRPO in Eq. 1.
+3.3
+JOINT TRAINING AND INFERENCE
+Each training iteration samples P prompts and G rollouts per prompt using the current denoiser and
+EXPLORENET, and the same rewards train both policies at two granularities. The rollout advantage
+4
+
+
+Preprint
+Ap,i measures each rollout’s reward relative to its prompt group and weights the policy gradient
+of the denoiser, and the group advantage Bp measures each group’s reward spread relative to the
+other groups in the iteration and weights the policy gradient of EXPLORENET. The two networks
+minimize Lθ and Lϕ with separate optimizers. At inference, we discard gϕ and sample the trained
+denoiser with the standard flow-matching sampler.
+4
+EXPERIMENTS
+4.1
+EXPERIMENTAL SETUP
+We test our central hypothesis: allocating rollout noise across latent elements improves group-
+relative diffusion RL. Our experiments address three questions: (1) Does EXPLORENET improve
+the trained denoiser? (2) Why does it work? (3) Where does it place the noise?
+Training. All training experiments fine-tune SD3.5-M (Esser et al., 2024) on the GenEval2 training
+split (Kamath et al., 2025) with the Flow-GRPO denoising objective (Liu et al., 2025a). Within each
+comparison, methods use the same training prompts, reward implementation, denoising schedule,
+rollout group size, optimizer settings for the denoiser, training duration, and checkpoint cadence.
+Appendix A.1 gives the complete training hyperparameters and computational cost.
+Baselines and controls. We compare EXPLORENET with Flow-GRPO and two controls:
+• Flow-GRPO uses the isotropic noise of Eq. 1 with the default noise level λ = 0.7 and 24 rollouts
+per prompt group, the same group size as EXPLORENET.
+• Matched isotropic control replaces EXPLORENET’s learned scale map with a single constant,
+1.41, for every latent element, which matches the average variance of EXPLORENET’s noise
+(Appendix A.4). It removes only the allocation to test whether the gain comes from the shape or
+the magnitude of EXPLORENET’s exploration.
+• Privileged post-hoc selection generates 48 rollouts per prompt, observes every reward, and
+trains on the 24 with the greatest reward spread. It uses twice the rollouts and reward evaluations
+of EXPLORENET, so it tests whether learned allocation, set before any reward is observed, can
+match or exceed selection after sampling.
+Automatic evaluation.
+On the held-out GenEval2 prompts, we score the trained models with
+the GenEval2 metric and with a VLM judge based on GPT-4o (OpenAI, 2024).
+To evaluate
+transfer performance, we use GenEval (Ghosh et al., 2023), VVRBench-Fast (Li et al., 2026b),
+PickScore (Kirstain et al., 2023), HPSv2.1 (Wu et al., 2023), HPSv3 (Ma et al., 2025), Aes-
+thetic (Schuhmann, 2022), and ImageReward (Xu et al., 2023). Appendix B.1 specifies the prompt
+sets, metric implementations, generation settings, and other evaluation details.
+Human evaluation. Three annotators each make 216 pairwise preference judgments (A, B, or Tie)
+over 72 unique prompts from pairs drawn from SD3.5-M, Flow-GRPO, and EXPLORENET. Win-
+rate is calculated as each model’s total score divided by the number of comparisons it appears in
+(win receives a score of 1, tie receives a score of 0.5). The prompts are sampled equally from
+DrawBench (Saharia et al., 2022), PartiPrompts (Yu et al., 2022), DPG-Bench (Hu et al., 2024),
+T2I-CompBench (Huang et al., 2023), the OCR prompt set from Flow-GRPO (Liu et al., 2025a),
+and VVRBench (Li et al., 2026b). Appendix B.2 gives the annotation protocol details.
+4.2
+EXPLORENET IMPROVES THE TRAINED DENOISER
+We begin by comparing EXPLORENET with Flow-GRPO, with the unmodified SD3.5-M as a pre-
+trained reference. Across three matched training seeds, EXPLORENET outperforms Flow-GRPO
+on every metric in the evaluation suite (Table 1). The GenEval2 gain persists across the final five
+checkpoints and under a paired bootstrap over evaluation prompts (Appendix C.2).
+The gains transfer beyond the training reward. EXPLORENET is trained only on GenEval2,
+a multi-constraint composition task scored by visual question answering. It also improves other
+benchmarks unseen during training, including GenEval, a template-based composition task scored
+by an object detector, and VVRBench-Fast, a spatial and topological layout task scored by a model-
+free verifier. On VVRBench-Fast, the gain is largest for grounding and spatial relations categories,
+which check the content and placement of objects (Appendix C.3). The gains extend to preference
+5
+
+
+Preprint
+Table 1: Final-checkpoint results, mean and sam-
+ple standard deviation over three training seeds. Ap-
+pendix C.1 reports each seed.
+Metric
+Pretrained
+Flow-GRPO
+EXPLORENET
+∆
+GenEval2
+0.2375 0.4957±0.0025 0.5661±0.0318 +0.0704
+VLM Judge
+4.0250 4.5083±0.0946 4.7292±0.0402 +0.2208
+GenEval
+0.6157 0.6955±0.0095 0.7350±0.0096 +0.0395
+VVR-Fast
+0.756 0.7646±0.0062 0.7902±0.0188 +0.0256
+PickScore
+0.8405 0.8448±0.0019 0.8512±0.0006 +0.0064
+HPSv2.1
+0.3001 0.2993±0.0023 0.3056±0.0040 +0.0063
+HPSv3
+7.6892 8.2112±0.1784 8.8043±0.1535 +0.5931
+Aesthetic
+5.5165 5.4960±0.0261 5.6638±0.0596 +0.1678
+ImageReward 0.9291 1.1137±0.0263 1.2774±0.0154 +0.1637
+Pretrained
+Flow-GRPO
+ExploreNet
+0
+20
+40
+60
+80
+Human preference rate (%)
+37.7%
+45.0%
+67.2%
+Figure 3: Human preference win-rate across
+three annotators on 216 comparisons; avg.
+pairwise agreement is 64.4%.
+Pretrained 
+SD3.5-M
+Flow-GRPO
+VVRBench
+T2I-CompBench
+OCR
+DrawBench
+One cat and two dogs 
+sitting on the grass.
+ExploreNet
+GenEval2
+a blue cup and a red 
+orange
+a white background 
+with 3 yellow circles
+A wizard holds a staff with 
+glowing runes, uttering the 
+spell "Lumos Maximus"
+five stone flamingos
+Figure 4: EXPLORENET satisfies the count, color, text, and material constraints that SD3.5-M and
+Flow-GRPO miss. All three annotators preferred EXPLORENET to Flow-GRPO on each prompt.
+and image-quality models. Relative to the pretrained model, Flow-GRPO leaves Aesthetic and
+HPSv2.1 essentially unchanged (−0.021 and −0.001), whereas EXPLORENET raises both (+0.147
+and +0.006). EXPLORENET also improves HPSv3, Aesthetic, and ImageReward on each of four
+prompt suites. Consistent gains on the full evaluation suite suggest that EXPLORENET improves the
+generated images themselves rather than exploiting the training reward.
+Human raters prefer EXPLORENET. Across its comparisons with both baselines, EXPLORENET
+reaches a 67.2% tie-adjusted preference rate, compared with 45.0% for Flow-GRPO and 37.7% for
+pretrained SD3.5-M (Figure 3). In a separate judgment task, annotators find that EXPLORENET
+changes scene content and composition more than Flow-GRPO relative to matched pretrained out-
+0
+600
+1200
+1800
+2400
+3000
+Optimizer step
+0.2
+0.3
+0.4
+0.5
+0.6
+Held-out GenEval2
+Flow-GRPO
+ExploreNet
+Figure 5: Held-out GenEval2 during
+training, avg. over three seeds.
+puts at a rate of 86.1% (Appendix B.2). Content and com-
+position match the two most-improved VVRBench-Fast
+families of grounding and spatial relations. The favorable
+human preference and the VVRBench category correlation
+together indicate that the human-perceived large divergence
+of EXPLORENET images is toward a positive direction.
+Figure 4 shows example generations from the three mod-
+els over five diverse prompt domains.
+The gain accumulates during training. Figure 5 shows
+how the gain develops.
+On held-out GenEval2, EX-
+PLORENET trails Flow-GRPO through step 600, leads at
+6
+
+
+Preprint
+Table 2: Controls and reduced-budget settings. The main setting uses 24 rollouts per prompt group
+and 25 denoising steps; the other settings change one of the two. Each row is a single training run;
+the main-setting Flow-GRPO and EXPLORENET rows are the first training seed of Table 1, so values
+differ from the three-seed means there.
+Setting
+Method
+GenEval2 VLM Judge GenEval VVR-Fast PickScore HPSv2.1 HPSv3 Aesthetic ImageReward
+Main
+Flow-GRPO
+0.4982
+4.5500
+0.6923
+0.7624
+0.8447
+0.3009
+8.3142
+5.5024
+1.1232
+Main
+Privileged selection
+0.5551
+4.7500
+0.7206
+0.7724
+0.8463
+0.2961
+8.1998
+5.4916
+1.1572
+Main
+Matched isotropic
+0.4372
+4.5000
+0.7351
+0.7791
+0.8485
+0.3034
+8.4229
+5.5104
+1.1884
+Main
+EXPLORENET
+0.5674
+4.7000
+0.7452
+0.8075
+0.8509
+0.3017
+8.6602
+5.5997
+1.2597
+Group size 8 Flow-GRPO
+0.4502
+4.1000
+0.6771
+0.7499
+0.8478
+0.3006
+8.2676
+5.5168
+1.0916
+Group size 8 EXPLORENET
+0.5389
+4.3500
+0.7422
+0.7952
+0.8499
+0.3100
+8.8990
+5.6228
+1.2806
+10 steps
+Flow-GRPO
+0.4153
+3.8875
+0.6597
+0.7380
+0.8371
+0.2804
+6.9931
+5.5365
+0.9521
+10 steps
+EXPLORENET
+0.4269
+3.8500
+0.7109
+0.7562
+0.8313
+0.2771
+7.1955
+5.5765
+1.1133
+every evaluation after, and its lead widens through the end of training. The gain therefore accu-
+mulates over training, consistent with EXPLORENET supplying more informative rollout groups at
+every update, and the widening lead indicates that longer training would not close the gap. Each
+EXPLORENET update takes 1.25× as long, and at equal wall-clock time EXPLORENET still leads:
+its GenEval2 at update 2400 (0.532) exceeds Flow-GRPO’s at update 3000 (0.496).
+Finding 1. Exploration in diffusion RL is learnable, and learning it improves the model itself.
+4.3
+DECOMPOSING MAGNITUDE AND SHAPE OF EXPLORATION
+EXPLORENET explores more than Flow-GRPO, with about twice its average noise variance, which
+follows from the shape of its scale maps (Section 3), and shapes its exploration by allocating noise
+unevenly across latent elements. We ask whether the gain comes from the magnitude or the shape
+of this exploration. To separate the two, we compare EXPLORENET with two alternatives from
+Section 4.1 that increase exploration without shaping it: the matched isotropic control raises its
+magnitude, and privileged post-hoc selection raises the number of rollouts.
+Magnitude without shape lowers performance. The matched isotropic control adds noise with
+the same average variance as EXPLORENET but spreads it uniformly across latent elements. On the
+same training seed, raising the noise uniformly lowers GenEval2 below Flow-GRPO (0.437 versus
+0.498), while allocating the same variance raises it to 0.567 (Table 2). EXPLORENET also exceeds
+the control on eight of nine metrics. Two alternative parameterizations let EXPLORENET shift the
+overall level of its noise, one clipping gϕ’s output without standardization and one applying a learned
+scale and bias after standardization, and both end training below EXPLORENET (Appendix A.2).
+EXPLORENET matches privileged post-hoc selection with half the rollouts and reward evalua-
+tions. Privileged selection samples 48 rollouts per prompt, observes every reward, and trains on the
+24 with the greatest reward spread. EXPLORENET instead sets its noise scales before any reward is
+observed. It matches this baseline on GenEval2 (0.567 versus 0.555) and exceeds it on VVRBench-
+Fast (0.808 versus 0.772), while generating half as many rollouts and requiring half as many reward
+evaluations; its added cost is one gϕ evaluation per denoising step.
+Finding 2. The shape of the exploration distribution outweighs its magnitude.
+4.4
+EXPLORENET REMAINS EFFECTIVE WITH FEWER ROLLOUTS AND STEPS
+We repeat the comparison with 8 rollouts per prompt instead of 24 and with 10 denoising steps
+instead of 25 (Table 2). With 8 rollouts per prompt, EXPLORENET leads on every metric, and its
+GenEval2 (0.539) exceeds that of Flow-GRPO with 8 (0.450) and with 24 (0.498). With 10 denois-
+ing steps, EXPLORENET leads on six of nine metrics, including all three compositional benchmarks.
+Finding 3. Rollout quality is more important than rollout quantity in diffusion RL.
+7
+
+
+Preprint
+0.4
+0.2
+0.0
+0.2
+0.4
+0.6
+Mean predicted log standard deviation
+0.05
+0.06
+0.07
+0.08
+0.09
+Mean RGB change
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+Pearson r = +0.598
+Figure 6: Predicted noise scale tracks channel
+sensitivity in pixel space. Each point averages
+one channel over 100 prompts.
+Pretrained
+Flow-GRPO
+ExploreNet
+0
+1
+2
+Human perceived change
+1.52
+2.23
+1.12
+1.31
+0.77
+1.25
+Smallest-scale quartile
+Largest-scale quartile
+Figure 7: Perturbing EXPLORENET’s largest-
+scale channels produces greater human-rated
+changes than perturbing its smallest-scale chan-
+nels, in each perturbed denoiser.
+4.5
+EXPLORENET CONCENTRATES NOISE ON VISUALLY INFLUENTIAL CHANNELS
+Section 4.3 shows that the gain comes from the shape of the exploration distribution, so we analyze
+the shape of EXPLORENET’s scale maps at the level of the 16 latent channels, to study how the
+predicted noise scales relate to each channel’s visual effect on the generated image (Appendix D).
+Perturbation setup. Given a denoiser and a prompt, we generate a reference image with the deter-
+ministic ODE sampler. For each latent channel, we resample twice more from the same initial seed
+while adding (or subtracting) a fixed Gaussian noise to only that channel at every denoising step with
+all other channels following the ODE update without added noise. Change is quantified 1) automati-
+cally as the mean absolute RGB difference from the reference, and 2) with humans rating how much
+each perturbed image differs from the reference, from 0 (no visible difference) to 4 (a very large
+difference). We compare the change with the noise scale EXPLORENET assigns to each channel,
+obtained by evaluating gϕ on the latents of the unperturbed reference trajectory and averaging the
+scale over spatial positions and denoising steps, giving one value per prompt and channel.
+EXPLORENET assigns larger scales to channels that change the image more. We perturb every
+channel of the trained EXPLORENET denoiser on 100 GenEval2 training prompts, giving 3,200
+perturbed images. Averaged over prompts, per-channel noise scale and RGB change correlate at
+r = +0.60 across the 16 channels (Figure 6). EXPLORENET thus concentrates exploration on the
+channels that most affect the generated image.
+Human raters see the same ranking in the pretrained model. For each of the pretrained SD3.5-
+M, Flow-GRPO, and EXPLORENET denoisers, we perturb every channel on six prompts, giving
+576 perturbed images. On SD3.5-M images, the mean rating rises from 1.52 for the channels in
+the bottom quartile of noise scales to 2.23 for those in the top quartile, a paired increase of +0.708
+(Figure 7). Pixel-space change on the pretrained denoiser shows the same pattern at the scale of
+the main analysis, with a rank correlation between each channel’s noise scale and RGB change that
+is positive in 99 of 100 prompts (mean ρ = +0.42). Channel sensitivity is therefore a property
+of the SD3.5-M latent space, and EXPLORENET’s noise scales identify the channels that carry it.
+The Flow-GRPO and EXPLORENET denoisers show the same ordering (Figure 7). The difference
+is visible in individual images. Figure 8 shows interventions on the two largest-scale and two
+smallest-scale channels of each prompt. Perturbing the largest-scale channels produces visibly larger
+changes.
+Finding 4. Generative latent spaces are unevenly sensitive, and exploration should follow that
+structure.
+5
+RELATED WORK
+Reward-based post-training of diffusion and flow models. Diffusion and flow models have been
+post-trained with reward-weighted likelihood (Lee et al., 2023), policy gradients (Black et al., 2023;
+Fan et al., 2023; Zhang et al., 2024), differentiable rewards (Clark et al., 2024; Prabhudesai et al.,
+2023), preference optimization (Wallace et al., 2024; Yang et al., 2024a;b), and KL- or entropy-
+8
+
+
+Preprint
+Reference
+Channels with largest
+EXPLORENET noise scales
+Channels with smallest
+EXPLORENET noise scales
+a green
+backpack and a
+pig
+Unperturbed
+noise ×2.02
+noise ×1.70
+noise ×0.56
+noise ×0.59
+a monkey
+behind a
+penguin
+Unperturbed
+noise ×1.97
+noise ×1.74
+noise ×0.54
+noise ×0.59
+a green sheep
+and a green toy
+Unperturbed
+noise ×1.95
+noise ×1.60
+noise ×0.54
+noise ×0.54
+Figure 8: Channels to which EXPLORENET assigns more noise change the image more. Perturbing
+the two channels with the largest EXPLORENET noise scales (middle) changes objects, layout, and
+background. Perturbing the two with the smallest (right) changes only fine details. Labels give the
+average noise multiplier EXPLORENET assigns to each channel.
+regularized stochastic control (Uehara et al., 2024; Domingo-Enrich et al., 2025). GRPO (Shao et al.,
+2024) was adapted to flow models by Flow-GRPO and DanceGRPO, which convert the deterministic
+sampler into a stochastic one (Liu et al., 2025a; Xue et al., 2025), and later methods learn the reward
+adversarially or optimize group preferences directly (Mao et al., 2026; Luo et al., 2026). Follow-
+up work changes which denoising steps explore, through sliding stochastic windows, branching,
+or high-entropy steps (Li et al., 2026a; 2025; Zhang et al., 2026), how much each step explores,
+as DenseGRPO does by calibrating a single noise level per step in a separate pass over sampled
+trajectories (Deng et al., 2026; Zheng et al., 2026), or how rewards are credited to steps (He et al.,
+2025; Tong et al., 2026; Savani et al., 2026; Yan et al., 2026; Deng et al., 2026). EXPLORENET
+instead learns the shape of the exploration distribution across latent elements from the current state;
+its scale map multiplies the per-step noise coefficient at, so a per-step schedule sets the level of the
+noise at each step and EXPLORENET sets its allocation within the step.
+Constructing informative rollouts. Post-hoc selection methods observe the rewards of additional
+rollouts, with ProGRPO keeping subsets of high reward spread and Smart-GRPO searching over
+candidate noise (Ge et al., 2026; Yu et al., 2025). DiffExp perturbs classifier-free guidance and
+prompt-phrase weights, and E2PO optimizes prompt embeddings for semantic spread (Chae et al.,
+2025; Hu et al., 2026). Initial-noise methods optimize the starting latent of a sample or learn prompt-
+conditioned initial-noise distributions (Guo et al., 2024; Eyring et al., 2024; Chen et al., 2024; Miao
+et al., 2025; Eyring et al., 2025). These approaches spend additional rollouts and reward evaluations,
+perturb the conditioning, or act before denoising begins. EXPLORENET sets the noise at every
+denoising step, before any reward is observed, and is trained jointly with the denoiser.
+Learned noise and exploration. Diffusion models have learned reverse variances and covariances
+(Nichol & Dhariwal, 2021; Ou et al., 2025), data-dependent forward processes (Sahoo et al., 2024),
+and spatially adaptive or reweighted noise (Lavda et al., 2026; Wu et al., 2026), and inference-
+time samplers add flow-orthogonal perturbations or learn noise schedules (Wu et al., 2025; Lim
+& Gandelsman, 2026); these methods shape noise to model the data or to improve samples. In
+flow-model RL, Coefficients-Preserving Sampling, related analyses, and Precise study how much
+stochasticity the sampler should inject, with the noise fixed by design (Wang & Yu, 2025; Sheng
+et al., 2025; Zou et al., 2026), and diversity-preserving objectives regularize what the model is
+trained toward (Liu et al., 2025b; Sorokin et al., 2025; Liu et al., 2026a;b; Chen et al., 2026). In
+deep RL, parameter noise and state-dependent exploration replace fixed action noise with structured
+perturbations (Plappert et al., 2018; Fortunato et al., 2018; Raffin et al., 2022). EXPLORENET brings
+state-dependent exploration to diffusion RL, learning the exploration distribution from the reward
+spread of each rollout group and discarding it at inference.
+9
+
+
+Preprint
+6
+CONCLUSION
+Group-relative diffusion RL learns only from the alternatives its sampler produces, yet the explo-
+ration distribution that produces them follows a fixed schedule that treats every latent element alike.
+Latent elements differ in how much they change the generated image, and EXPLORENET makes
+the exploration distribution trainable so that it can adapt to these differences. It predicts a noise
+scale for every latent element from the current state of generation, learns from the reward spread
+of each rollout group jointly with the denoiser, and is discarded after training, so the final model is
+sampled exactly as before. Across our experiments, exploration proves learnable, the shape of the
+exploration distribution outweighs its magnitude, and rollout quality is more effective than rollout
+quantity. Exploration is therefore a design axis of diffusion RL in its own right, alongside reward
+design and per-step noise schedules.
+LIMITATIONS
+The exploration distribution qϕ is a diagonal Gaussian; correlated noise across latent elements, such
+as low-rank or spatially structured covariances, could explore coherent changes such as moving an
+object as a whole. EXPLORENET learns only the transition noise, and the same framework could
+learn other sources of rollout variation, such as the guidance scale or the initial noise, jointly with it.
+EXPLORENET learns from the reward spread of each rollout group. Other group statistics, such as
+the spread of individual reward components or of verifier constraint families, could train separate
+exploration distributions for different objectives.
+Video latents add a temporal axis, and EXPLORENET can allocate exploration across frames as well
+as channels and spatial positions. Group-relative RL for autoregressive and discrete-diffusion gen-
+erators explores by sampling tokens at a fixed temperature, and a learned per-position temperature
+could play the role of EXPLORENET’s scale map.
+EXPLORENET is a second SD3.5-M transformer; a lightweight head on the denoiser could predict
+the same scale maps from its own features. Channel sensitivity is a property of the SD3.5-M latent
+space, so a trained EXPLORENET could be reused across rewards and fine-tuning runs of the same
+base model. The scale maps identify which latent channels control the content of a generated image,
+which could guide diverse sampling, localized editing, and the perturbations of best-of-N and other
+inference-time search methods.
+A theoretical account of when the shape of the exploration distribution outweighs its magnitude,
+relating latent sensitivity to the reward spread of rollout groups, remains open.
+ETHICS STATEMENT
+EXPLORENET improves reward-based fine-tuning of text-to-image models and inherits the risks of
+the models it fine-tunes, including the generation of misleading or harmful images. The human
+evaluation asked annotators to compare generated images and to rate visual changes; the annotators
+were graduate students who volunteered, and Appendix B.2 describes the protocol.
+REPRODUCIBILITY STATEMENT
+Section 3 and Appendix A.1 specify the objectives, architecture, and all training hyperparameters.
+Appendix B.1 specifies the prompt sets, metric implementations, generation settings, and aggrega-
+tion. All code is released.
+ACKNOWLEDGMENT
+This research was developed in part with funding from the Defense Advanced Research Projects
+Agency’s (DARPA) SciFy program (Agreement No. HR00112520300). The views expressed are
+those of the author and do not reflect the official policy or position of the Department of Defense or
+the U.S. Government. This material is based in part upon work supported by the Defense Advanced
+10
+
+
+Preprint
+Research Projects Agency and the Air Force Research Laboratory, contract number(s): FA8650-23-
+C-7316. Any opinions, findings and conclusions, or recommendations expressed in this material are
+those of the author(s) and do not necessarily reflect the views of AFRL or DARPA. This research
+was supported by Coefficient Giving, the University of Washington Population Health Initiative,
+Amazon Health, the UW+Amazon Science Hub, and the Meta AIM program.
+REFERENCES
+Kevin Black, Michael Janner, Yilun Du, Ilya Kostrikov, and Sergey Levine. Training diffusion
+models with reinforcement learning. arXiv preprint arXiv:2305.13301, 2023. URL https:
+//arxiv.org/abs/2305.13301.
+Daewon Chae, June Suk Choi, Jinkyu Kim, and Kimin Lee.
+DiffExp: Efficient exploration in
+reward fine-tuning for text-to-image diffusion models. In Proceedings of the AAAI Conference on
+Artificial Intelligence, 2025. URL https://doi.org/10.1609/aaai.v39i15.33723.
+Changgu Chen, Libing Yang, Xiaoyan Yang, Lianggangxu Chen, Gaoqi He, Changbo Wang, and
+Yang Li. FIND: Fine-tuning initial noise distribution with policy optimization for diffusion mod-
+els.
+In Proceedings of the 32nd ACM International Conference on Multimedia, 2024.
+doi:
+10.1145/3664647.3681047. URL https://arxiv.org/abs/2407.19453.
+Chubin Chen, Sujie Hu, Jiashu Zhu, Meiqi Wu, Jintao Chen, Yanxun Li, Nisha Huang,
+Chengyu Fang, Jiahong Wu, Xiangxiang Chu, and Xiu Li. Taming preference mode collapse
+via directional decoupling alignment in diffusion reinforcement learning.
+In Proceedings
+of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2026.
+URL
+https://openaccess.thecvf.com/content/CVPR2026/html/Chen_Taming_
+Preference_Mode_Collapse_via_Directional_Decoupling_Alignment_
+in_Diffusion_CVPR_2026_paper.html.
+Kevin Clark, Paul Vicol, Kevin Swersky, and David J. Fleet. Directly fine-tuning diffusion models
+on differentiable rewards. In The Twelfth International Conference on Learning Representations,
+2024. URL https://arxiv.org/abs/2309.17400.
+Meihua Dang, Anikait Singh, Linqi Zhou, Stefano Ermon, and Jiaming Song. Personalized prefer-
+ence fine-tuning of diffusion models. In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pp. 8020–8030, 2025. URL https://arxiv.org/abs/
+2501.06655.
+Haoyou Deng, Keyu Yan, Chaojie Mao, Xiang Wang, Yu Liu, Changxin Gao, and Nong Sang.
+DenseGRPO: From sparse to dense reward for flow matching model alignment. In The Fourteenth
+International Conference on Learning Representations, 2026. URL https://arxiv.org/
+abs/2601.20218.
+Carles Domingo-Enrich, Michal Drozdzal, Brian Karrer, and Ricky T. Q. Chen. Adjoint matching:
+Fine-tuning flow and diffusion generative models with memoryless stochastic optimal control.
+In The Thirteenth International Conference on Learning Representations, 2025. URL https:
+//openreview.net/forum?id=xQBRrtQM8u.
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas M¨uller, Harry Saini, Yam
+Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, Dustin Podell, Tim Dockhorn, Zion English,
+Kyle Lacey, Alex Goodwin, Yannik Marek, and Robin Rombach. Scaling rectified flow trans-
+formers for high-resolution image synthesis. In Proceedings of the 41st International Conference
+on Machine Learning, 2024. URL https://arxiv.org/abs/2403.03206.
+Luca Eyring, Shyamgopal Karthik, Karsten Roth, Alexey Dosovitskiy, and Zeynep Akata. ReNO:
+Enhancing one-step text-to-image models through reward-based noise optimization. In Advances
+in Neural Information Processing Systems, 2024. URL https://arxiv.org/abs/2406.
+04312.
+Luca Eyring, Shyamgopal Karthik, Alexey Dosovitskiy, Nataniel Ruiz, and Zeynep Akata. Noise
+hypernetworks: Amortizing test-time compute in diffusion models. In Advances in Neural Infor-
+mation Processing Systems, 2025. URL https://arxiv.org/abs/2508.09968.
+11
+
+
+Preprint
+Ying Fan, Olivia Watkins, Yuqing Du, Hao Liu, Moonkyung Ryu, Craig Boutilier, Pieter Abbeel,
+Mohammad Ghavamzadeh, Kangwook Lee, and Kimin Lee. DPOK: Reinforcement learning
+for fine-tuning text-to-image diffusion models. In Advances in Neural Information Processing
+Systems, 2023. URL https://arxiv.org/abs/2305.16381.
+Meire Fortunato, Mohammad Gheshlaghi Azar, Bilal Piot, Jacob Menick, Ian Osband, Alex Graves,
+Vlad Mnih, Remi Munos, Demis Hassabis, Olivier Pietquin, Charles Blundell, and Shane Legg.
+Noisy networks for exploration. In The Sixth International Conference on Learning Representa-
+tions, 2018. URL https://openreview.net/forum?id=rywHCPkAW.
+Shiran Ge, Chenyi Huang, Yuang Ai, Qihang Fan, Huaibo Huang, and Ran He.
+Expand and
+prune: Maximizing trajectory diversity for effective GRPO in generative models. In Proceedings
+of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2026.
+URL
+https://openaccess.thecvf.com/content/CVPR2026/html/Ge_Expand_
+and_Prune_Maximizing_Trajectory_Diversity_for_Effective_GRPO_in_
+CVPR_2026_paper.html.
+Dhruba Ghosh, Hannaneh Hajishirzi, and Ludwig Schmidt. GenEval: An object-focused framework
+for evaluating text-to-image alignment. In Advances in Neural Information Processing Systems,
+2023. URL https://arxiv.org/abs/2310.11513.
+Xiefan Guo, Jinlin Liu, Miaomiao Cui, Jiankai Li, Hongyu Yang, and Di Huang.
+InitNO:
+Boosting text-to-image diffusion models via initial noise optimization.
+In Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2024.
+URL
+https://openaccess.thecvf.com/content/CVPR2024/html/Guo_
+InitNO_Boosting_Text-to-Image_Diffusion_Models_via_Initial_
+Noise_Optimization_CVPR_2024_paper.html.
+Xiaoxuan He, Siming Fu, Yuke Zhao, Wanli Li, Jian Yang, Dacheng Yin, Fengyun Rao, and
+Bo Zhang. TempFlow-GRPO: When timing matters for GRPO in flow models. arXiv preprint
+arXiv:2508.04324, 2025. URL https://arxiv.org/abs/2508.04324.
+Sujie Hu, Chubin Chen, Jiashu Zhu, Jiahong Wu, Xiangxiang Chu, and Xiu Li.
+Embedding-
+perturbed exploration preference optimization for flow models. In Proceedings of the 43rd Inter-
+national Conference on Machine Learning, 2026. URL https://arxiv.org/abs/2605.
+15803.
+Xiwei Hu, Rui Wang, Yixiao Fang, Bin Fu, Pei Cheng, and Gang Yu. ELLA: Equip diffusion
+models with LLM for enhanced semantic alignment. arXiv preprint arXiv:2403.05135, 2024.
+URL https://arxiv.org/abs/2403.05135.
+Kaiyi Huang, Kaiyue Sun, Enze Xie, Zhenguo Li, and Xihui Liu.
+T2I-CompBench: A com-
+prehensive benchmark for open-world compositional text-to-image generation. In Advances in
+Neural Information Processing Systems, Datasets and Benchmarks Track, 2023. URL https:
+//arxiv.org/abs/2307.06350v2.
+Dongzhi Jiang, Ziyu Guo, Renrui Zhang, Zhuofan Zong, Hao Li, Le Zhuo, Shilin Yan, Pheng-Ann
+Heng, and Hongsheng Li. T2I-R1: Reinforcing image generation with collaborative semantic-
+level and token-level CoT. In Advances in Neural Information Processing Systems, 2025. URL
+https://arxiv.org/abs/2505.00703.
+Amita Kamath, Kai-Wei Chang, Ranjay Krishna, Luke Zettlemoyer, Yushi Hu, and Marjan
+Ghazvininejad.
+GenEval 2: Addressing benchmark drift in text-to-image evaluation.
+arXiv
+preprint arXiv:2512.16853, 2025. URL https://arxiv.org/abs/2512.16853.
+Yuval Kirstain, Adam Polyak, Uriel Singer, Shahbuland Matiana, Joe Penna, and Omer Levy. Pick-
+a-pic: An open dataset of user preferences for text-to-image generation. In Advances in Neural
+Information Processing Systems, 2023. URL https://arxiv.org/abs/2305.01569.
+Frantzeska Lavda, Maciej Falkiewicz, Van Khoa Nguyen, and Alexandros Kalousis. Spatially adap-
+tive noise injection. arXiv preprint arXiv:2609.18466, 2026. URL https://arxiv.org/
+abs/2609.18466.
+12
+
+
+Preprint
+Kimin Lee, Hao Liu, Moonkyung Ryu, Olivia Watkins, Yuqing Du, Craig Boutilier, Pieter Abbeel,
+Mohammad Ghavamzadeh, and Shixiang Shane Gu. Aligning text-to-image models using human
+feedback. arXiv preprint arXiv:2302.12192, 2023. URL https://arxiv.org/abs/2302.
+12192.
+Junzhe Li, Yutao Cui, Tao Huang, Weijie Kong, Yiming Cheng, Chuxuan Zeng, Yinping Ma, Chun
+Fan, Miles Yang, Zhao Zhong, and Liefeng Bo. MixGRPO: Unlocking flow-based GRPO ef-
+ficiency with mixed ODE-SDE. In European Conference on Computer Vision, 2026a. URL
+https://arxiv.org/abs/2507.21802.
+Shuyue Stella Li, Xiaochuang Han, Yulia Tsvetkov, and Luke Zettlemoyer. Verifiable visual rewards
+transfer from synthetic scenes to natural prompts, 2026b. URL https://arxiv.org/abs/
+2609.35641.
+Yuming Li, Yikai Wang, Yuying Zhu, Zhongyu Zhao, Ming Lu, Qi She, and Shanghang Zhang.
+BranchGRPO: Stable and efficient GRPO with structured branching in diffusion models. arXiv
+preprint arXiv:2509.06040, 2025. URL https://arxiv.org/abs/2509.06040.
+Arisrei Lim and Yossi Gandelsman. Learning sampling parameters for diffusion models. arXiv
+preprint arXiv:2607.23488, 2026. URL https://arxiv.org/abs/2607.23488.
+Henglin Liu, Huijuan Huang, Jing Wang, Chang Liu, Xiu Li, and Xiangyang Ji. DiverseGRPO:
+Mitigating mode collapse in image generation via diversity-aware GRPO.
+In Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2026a.
+URL
+https://openaccess.thecvf.com/content/CVPR2026/html/Liu_
+DiverseGRPO_Mitigating_Mode_Collapse_in_Image_Generation_via_
+Diversity-Aware_GRPO_CVPR_2026_paper.html.
+Jie Liu, Gongye Liu, Jiajun Liang, Yangguang Li, Jiaheng Liu, Xintao Wang, Pengfei Wan,
+Di Zhang, and Wanli Ouyang. Flow-GRPO: Training flow matching models via online RL. In
+Advances in Neural Information Processing Systems, 2025a. URL https://arxiv.org/
+abs/2505.05470.
+Jinmei Liu, Haoru Li, Zhenhong Sun, Chaofeng Chen, Yatao Bian, Bo Wang, Daoyi Dong, Chunlin
+Chen, and Zhi Wang. Beyond the dirac delta: Mitigating diversity collapse in reinforcement fine-
+tuning for versatile image generation. arXiv preprint arXiv:2601.12401, 2026b. URL https:
+//arxiv.org/abs/2601.12401.
+Zhen Liu, Tim Z. Xiao, Weiyang Liu, Yoshua Bengio, and Dinghuai Zhang. Efficient diversity-
+preserving diffusion alignment via gradient-informed GFlowNets. In The Thirteenth International
+Conference on Learning Representations, 2025b. URL https://arxiv.org/abs/2412.
+07775.
+Yihong Luo, Tianyang Hu, and Jing Tang. Reinforcing diffusion models by direct group prefer-
+ence optimization. In International Conference on Learning Representations, volume 2026, pp.
+21438–21454, 2026. URL https://arxiv.org/abs/2510.08425.
+Yuhang Ma, Xiaoshi Wu, Keqiang Sun, and Hongsheng Li. HPSv3: Towards wide-spectrum human
+preference score. In Proceedings of the IEEE/CVF International Conference on Computer Vision,
+2025.
+URL https://openaccess.thecvf.com/content/ICCV2025/html/Ma_
+HPSv3_Towards_Wide-Spectrum_Human_Preference_Score_ICCV_2025_
+paper.html.
+Weijia Mao, Hao Chen, Zhenheng Yang, and Mike Zheng Shou. The image as its own reward:
+Reinforcement learning with adversarial reward for image generation.
+In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 5999–6009, 2026. URL
+https://arxiv.org/abs/2511.20256.
+Yanting Miao, William Loh, Pascal Poupart, and Suraj Kothawade. A minimalist method for fine-
+tuning text-to-image diffusion models. arXiv preprint arXiv:2506.12036, 2025. URL https:
+//arxiv.org/abs/2506.12036.
+13
+
+
+Preprint
+Alexander Quinn Nichol and Prafulla Dhariwal. Improved denoising diffusion probabilistic models.
+In Proceedings of the 38th International Conference on Machine Learning, 2021. URL https:
+//proceedings.mlr.press/v139/nichol21a.html.
+OpenAI. Gpt-4o system card, 2024. URL https://arxiv.org/abs/2410.21276.
+Zijing Ou, Mingtian Zhang, Andi Zhang, Tim Z. Xiao, Yingzhen Li, and David Barber. Improving
+probabilistic diffusion models with optimal diagonal covariance matching. In The Thirteenth
+International Conference on Learning Representations, 2025. URL https://openreview.
+net/forum?id=PxTIG12RRHS.
+Matthias Plappert, Rein Houthooft, Prafulla Dhariwal, Szymon Sidor, Richard Y. Chen, Xi Chen,
+Tamim Asfour, Pieter Abbeel, and Marcin Andrychowicz. Parameter space noise for exploration.
+In The Sixth International Conference on Learning Representations, 2018. URL https://
+openreview.net/forum?id=ByBAl2eAZ.
+Mihir Prabhudesai, Anirudh Goyal, Deepak Pathak, and Katerina Fragkiadaki. Aligning text-to-
+image diffusion models with reward backpropagation. arXiv preprint arXiv:2310.03739, 2023.
+URL https://arxiv.org/abs/2310.03739.
+Antonin Raffin, Jens Kober, and Freek Stulp.
+Smooth exploration for robotic reinforcement
+learning.
+In Proceedings of the 5th Conference on Robot Learning, 2022.
+URL https:
+//proceedings.mlr.press/v164/raffin22a.html.
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily L. Denton, Kamyar
+Ghasemipour, Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Salimans, Jonathan Ho, David J.
+Fleet, and Mohammad Norouzi. Photorealistic text-to-image diffusion models with deep language
+understanding. In Advances in Neural Information Processing Systems, 2022. URL https:
+//arxiv.org/abs/2205.11487.
+Subham Sekhar Sahoo, Aaron Gokaslan, Christopher De Sa, and Volodymyr Kuleshov. Diffusion
+models with learned adaptive noise. In Advances in Neural Information Processing Systems,
+2024. URL https://arxiv.org/abs/2312.13236.
+Yash Savani, Branislav Kveton, Yuchen Liu, Yilin Wang, Jing Shi, Subhojyoti Mukherjee, Nikos
+Vlassis, and Krishna Kumar Singh. Stepwise credit assignment for GRPO on flow-matching
+models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recogni-
+tion, 2026. URL https://openaccess.thecvf.com/content/CVPR2026/html/
+Savani_Stepwise_Credit_Assignment_for_GRPO_on_Flow-Matching_
+Models_CVPR_2026_paper.html.
+Christoph
+Schuhmann.
+CLIP+MLP
+aesthetic
+score
+predictor.
+GitHub
+repos-
+itory,
+2022.
+URL
+https://github.com/christophschuhmann/
+improved-aesthetic-predictor.
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang,
+Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. DeepSeekMath: Pushing the limits of math-
+ematical reasoning in open language models.
+arXiv preprint arXiv:2402.03300, 2024.
+URL
+https://arxiv.org/abs/2402.03300.
+Jiayuan Sheng, Hanyang Zhao, Haoxian Chen, David D. Yao, and Wenpin Tang. Understanding
+sampler stochasticity in training diffusion models for RLHF. arXiv preprint arXiv:2510.10767,
+2025. URL https://arxiv.org/abs/2510.10767.
+Dmitrii Sorokin, Maksim Nakhodnov, Andrey Kuznetsov, and Aibek Alanov. ImageReFL: Balanc-
+ing quality and diversity in human-aligned diffusion models. arXiv preprint arXiv:2505.22569,
+2025. URL https://arxiv.org/abs/2505.22569.
+Yunze Tong, Mushui Liu, Canyu Zhao, Didi Zhu, Wanggui He, Shiyi Zhang, Hongwei Zhang, Peng
+Zhang, Jinlong Liu, and Hao Jiang. Alleviating sparse rewards by modeling step-wise and long-
+term sampling effects in flow-based GRPO. In Proceedings of the 43rd International Conference
+on Machine Learning, 2026. URL https://arxiv.org/abs/2602.06422.
+14
+
+
+Preprint
+Masatoshi Uehara, Yulai Zhao, Kevin Black, Ehsan Hajiramezanali, Gabriele Scalia, Nathaniel Lee
+Diamant, Alex M. Tseng, Tommaso Biancalani, and Sergey Levine. Fine-tuning of continuous-
+time diffusion models as entropy-regularized control. arXiv preprint arXiv:2402.15194, 2024.
+URL https://arxiv.org/abs/2402.15194.
+Bram Wallace, Meihua Dang, Rafael Rafailov, Linqi Zhou, Aaron Lou, Senthil Purushwalkam,
+Stefano Ermon, Caiming Xiong, Shafiq Joty, and Nikhil Naik. Diffusion model alignment using
+direct preference optimization. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, 2024. URL https://openaccess.thecvf.com/content/
+CVPR2024/html/Wallace_Diffusion_Model_Alignment_Using_Direct_
+Preference_Optimization_CVPR_2024_paper.html.
+Feng Wang and Zihao Yu. Coefficients-preserving sampling for reinforcement learning with flow
+matching. arXiv preprint arXiv:2509.05952, 2025. URL https://arxiv.org/abs/2509.
+05952.
+Fang Wu, Haokai Zhao, Da Xing, Hanqun Cao, Tinson Xu, Yanchao Li, Xiangru Tang, Zehong
+Wang, Aaron Tu, Kuan Pang, Hanchen Wang, Hongbin Lin, Zeqi Zhou, Yinxi Li, Peng Xia,
+Li Erran Li, Molei Tao, Jure Leskovec, Aditya Joshi, and Yejin Choi. NoiseRater: Meta-learned
+noise valuation for diffusion model training.
+arXiv preprint arXiv:2605.08144, 2026.
+URL
+https://arxiv.org/abs/2605.08144.
+Jingxuan Wu, Zhenglin Wan, Xingrui Yu, Yuzhe Yang, Bo An, Ivor Tsang, and Yang You. Let-
+ting trajectories spread: Quality-preserving control for diverse flow matching. arXiv preprint
+arXiv:2510.09060, 2025. URL https://arxiv.org/abs/2510.09060.
+Xiaoshi Wu, Yiming Hao, Keqiang Sun, Yixiong Chen, Feng Zhu, Rui Zhao, and Hongsheng Li.
+Human preference score v2: A solid benchmark for evaluating human preferences of text-to-
+image synthesis. arXiv preprint arXiv:2306.09341, 2023. URL https://arxiv.org/abs/
+2306.09341.
+Jiazheng Xu, Xiao Liu, Yuchen Wu, Yuxuan Tong, Qinkai Li, Ming Ding, Jie Tang, and Yuxiao
+Dong. ImageReward: Learning and evaluating human preferences for text-to-image generation.
+In Advances in Neural Information Processing Systems, 2023. URL https://arxiv.org/
+abs/2304.05977.
+Zeyue Xue, Jie Wu, Yu Gao, Fangyuan Kong, Lingting Zhu, Mengzhao Chen, Zhiheng Liu, Wei
+Liu, Qiushan Guo, Weilin Huang, and Ping Luo. DanceGRPO: Unleashing GRPO on visual gen-
+eration. arXiv preprint arXiv:2505.07818, 2025. URL https://arxiv.org/abs/2505.
+07818.
+Renye Yan, Jikang Cheng, You Wu, Wei Peng, Zongwei Wang, Ling Liang, and Yimao Cai. Ex-
+plore or converge?
+stage-guided per-step optimization for diffusion models.
+arXiv preprint
+arXiv:2608.06768, 2026. URL https://arxiv.org/abs/2608.06768.
+Kai Yang, Jian Tao, Jiafei Lyu, Chunjiang Ge, Jiaxin Chen, Weihan Shen, Xiaolong Zhu, and Xiu
+Li. Using human feedback to fine-tune diffusion models without any reward model. In Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2024a. URL
+https://openaccess.thecvf.com/content/CVPR2024/html/Yang_Using_
+Human_Feedback_to_Fine-tune_Diffusion_Models_without_Any_Reward_
+CVPR_2024_paper.html.
+Shentao Yang, Tianqi Chen, and Mingyuan Zhou. A dense reward view on aligning text-to-image
+diffusion with preference. In Proceedings of the 41st International Conference on Machine Learn-
+ing, 2024b. URL https://proceedings.mlr.press/v235/yang24e.html.
+Benjamin Yu, Jackie Liu, and Justin Cui. Smart-GRPO: Smartly sampling noise for efficient RL of
+flow-matching models. arXiv preprint arXiv:2510.02654, 2025. URL https://arxiv.org/
+abs/2510.02654.
+Jiahui Yu, Yuanzhong Xu, Jing Yu Koh, Thang Luong, Gunjan Baid, Zirui Wang, Vijay Vasudevan,
+Alexander Ku, Yinfei Yang, Burcu Karagol Ayan, Ben Hutchinson, Wei Han, Zarana Parekh, Xin
+15
+
+
+Preprint
+Li, Han Zhang, Jason Baldridge, and Yonghui Wu. Scaling autoregressive models for content-
+rich text-to-image generation. Transactions on Machine Learning Research, 2022. URL https:
+//arxiv.org/abs/2206.10789.
+Shengjun Zhang, Zhang Zhang, Chensheng Dai, and Yueqi Duan. E-GRPO: High entropy steps
+drive effective reinforcement learning for flow models. arXiv preprint arXiv:2601.00423, 2026.
+URL https://arxiv.org/abs/2601.00423.
+Yinan Zhang, Eric Tzeng, Yilun Du, and Dmitry Kislyuk. Large-scale reinforcement learning for
+diffusion models. In European Conference on Computer Vision, 2024. URL https://doi.
+org/10.1007/978-3-031-73036-8_1.
+Mingzhe Zheng, Weijie Kong, Yue Wu, Dengyang Jiang, Yue Ma, Xuanhua He, Bin Lin, Kaixiong
+Gong, Zhao Zhong, Liefeng Bo, Qifeng Chen, and Harry Yang. Manifold-aware exploration
+for reinforcement learning in video generation. arXiv preprint arXiv:2603.21872, 2026. URL
+https://arxiv.org/abs/2603.21872.
+Jade Zou, Tao Huang, Weijie Kong, Junzhe Li, Yue Wu, Qi Tian, Jiangfeng Xiong, Jianwei Zhang,
+Liefeng Bo, and Zhao Zhong. Precise: SDE-consistent stochastic sampling for RL post-training
+of flow-matching models. arXiv preprint arXiv:2605.23522, 2026. URL https://arxiv.
+org/abs/2605.23522.
+A
+TRAINING DETAILS
+A.1
+HYPERPARAMETERS AND COMPUTE
+The image experiments use SD3.5-M at 512 × 512 resolution with 25 sampling and evaluation
+denoising steps, classifier free guidance 4.5, Flow-GRPO noise level λ = 0.7, and 24 rollouts per
+prompt in the main setting. Training uses 64 H100 GPUs over eight nodes. Each rank samples
+microbatches of 3, with 8 sampling batches per epoch, one inner epoch, and gradient accumulation
+4. In the main setting, each training iteration therefore samples P = 64 prompts with G = 24
+rollouts each (1,536 images), and both policies take two optimizer updates on these rollouts. The
+update counts reported throughout the paper are optimizer updates. The group-size-8 runs keep this
+schedule and 1,536 images per iteration, so each iteration samples P = 192 prompts with G = 8
+rollouts each. Both the denoiser and EXPLORENET use rank 32 LoRA adapters with LoRA scale
+64 on the SD3.5-M attention projections. The denoising optimizer uses Adam with learning rate
+3 × 10−4, β1 = 0.9, β2 = 0.999, weight decay 10−4, and gradient norm clipping at 1.0.
+EXPLORENET initializes a separate SD3.5-M transformer from the pretrained model, freezes its
+base weights, and trains its rank 32 LoRA parameters in fp32. Its Adam optimizer uses learning rate
+10−4 and zero weight decay. The final parameterization normalizes the output per sample and clips
+log standard deviation directly to [−1, 1], with a standard-deviation floor of 10−6 during normal-
+ization. Reward normalization uses an additive constant of 10−4. Both clipped objectives use clip
+range ϵ = 10−4 and advantages clipped to [−5, 5]. The exploration objective applies a KL penalty
+of weight βϕ = 10−3 toward the unit Gaussian, and the denoising objective applies a KL penalty
+of weight βθ = 0.04 toward the pretrained denoiser, for both Flow-GRPO and EXPLORENET. The
+denoising and exploration policy optimizers are stepped after the same backward pass.
+The 48-to-24 privileged post-hoc selection baseline doubles rollout generation and GenEval2 reward
+calls relative to the 24 rollout runs, then keeps the 12 lowest- and 12 highest-reward samples, the
+subset of 24 with the greatest reward spread.
+Measured over steps 2160 through 2580, Flow-GRPO requires 151.7 seconds per optimizer update
+and EXPLORENET requires 189.4 seconds. EXPLORENET therefore takes 1.25× as long per up-
+date, corresponding to 161.8 versus 202.0 GPU hours per 60 updates, including periodic evaluation
+and checkpointing. During training, EXPLORENET holds a second 2.5-billion-parameter SD3.5-M
+transformer in memory, and both methods fit a per-rank microbatch of 3 on 80 GB H100 GPUs. At
+inference, both methods use 25 denoiser evaluations and EXPLORENET is not used.
+16
+
+
+Preprint
+Setting
+Rollouts
+Reward calls
+Denoising
+steps
+EXPLORENET
+evaluations
+Main Flow-GRPO training
+24
+24
+600
+0
+Main EXPLORENET training
+24
+24
+600
+600
+Privileged selection 48 to 24 training
+48
+48
+1200
+0
+Matched isotropic training
+24
+24
+600
+0
+Group size 8 training
+8
+8
+200
+200
+10 step training
+24
+24
+240
+240
+Flow-GRPO inference
+1
+0
+25
+0
+EXPLORENET inference
+1
+0
+25
+0
+Table 3: EXPLORENET adds gϕ evaluations during training while both trained denoisers retain the
+same inference cost. Counts describe the sampling passes for one training prompt group or one
+inference image.
+A.2
+NOISE-SCALE PARAMETERIZATION
+This ablation tests how the output of gϕ, hϕ, is converted into the elementwise log standard deviation
+ℓϕ. The normalized affine variant standardizes hϕ as in Eq. 6, applies a learned scalar scale and bias,
+and clips the result to [−1, 1]. The raw clipped variant uses the transformer output directly and clips
+it to the same range. The final EXPLORENET parameterization standardizes the output and clips it
+directly, without the learned scalar scale and bias, as in Eq. 7. In each case, exponentiating ℓϕ gives
+the standard deviation of the zero-mean Gaussian transition noise.
+All four rows use the same prompts, 25-step sampler, rollout group size, and microbatch-3 optimiza-
+tion schedule. Table 4 reports one 80-prompt GenEval2 evaluation at an intermediate checkpoint and
+at step 3060; each row is a single training run. We use normalized-and-clipped noise in the main
+experiments because it performs best at both checkpoints in this controlled comparison.
+Noise parameterization
+Step 1140
+Step 3060
+Flow-GRPO (isotropic)
+0.3825
+0.5146
+EXPLORENET, normalized affine
+0.4009
+0.5057
+EXPLORENET, raw clipped
+0.4080
+0.5358
+EXPLORENET, normalized and clipped
+0.4179
+0.5679
+Table 4: GenEval2 scores for Flow-GRPO and three mappings from the output of gϕ to log standard
+deviation.
+A.3
+REWARD-SPREAD SELECTION
+The selection experiment in Section 3 draws 16 rollouts per prompt and trains on 8, chosen by small-
+est reward spread, at random, or by greatest reward spread. Greatest-spread selection keeps the four
+lowest- and four highest-reward rollouts, which maximizes the reward spread of the kept rollouts;
+smallest-spread selection keeps the eight rollouts with consecutive rewards of lowest variance. The
+three conditions share the rollout pool, group size, optimizer schedule, and training length, with one
+training run each; this schedule is separate from the main experiments, so its values compare the
+selection rules with one another. Table 5 evaluates the three final models on the full benchmark suite
+with fixed prompts and generation seed.
+17
+
+
+Preprint
+Metric
+Smallest
+Random
+Greatest
+GenEval2
+0.2579
+0.3859
+0.4648
+VLM Judge
+3.8750
+4.4625
+4.5125
+GenEval
+0.6171
+0.6537
+0.6948
+VVR-Fast
+0.7210
+0.7380
+0.7614
+PickScore
+0.8414
+0.8433
+0.8456
+HPSv2.1
+0.3016
+0.3054
+0.3073
+HPSv3
+7.8131
+8.1597
+8.3543
+Aesthetic
+5.5201
+5.5228
+5.5122
+ImageReward
+0.9409
+1.0517
+1.1075
+Table 5: Benchmark results of the three selection rules. Greatest-spread selection is best on eight of
+nine metrics.
+A.4
+MATCHED ISOTROPIC CONTROL
+The control samples each transition with Eq. 8, setting sj = 1.410490688 for every latent ele-
+ment, so its noise covariance is 1.989483981 a2
+tI. This matches the mean variance predicted across
+latent elements and the three main EXPLORENET seeds over training steps 2760–2999. As in EX-
+PLORENET, the transition mean is Flow-GRPO’s µθ. The control has no gϕ and uses the seed 1
+training schedule through step 3000.
+B
+EVALUATION PROTOCOL
+B.1
+AUTOMATIC EVALUATION
+Benchmarks and prompt sets.
+GenEval2 (Kamath et al., 2025) contains 720 training prompts
+and a fixed 80-prompt held-out split covering object presence, count, attributes, and spatial relations.
+Each prompt is decomposed into atomic visual questions. Qwen3-VL-2B assigns probability to the
+accepted short answers, and the image score is the geometric mean across questions. GenEval2 is
+the sole reward used to train the main models. On the same 80-prompt test set, VLM Judge scores
+prompt alignment from 1 to 5.
+Official GenEval (Ghosh et al., 2023) uses 553 prompts with four generations per prompt, giving
+2,212 evaluated images. VVRBench-Fast (Li et al., 2026b) contains 820 prompts sampled from
+VVRBench Core across its attainable complexity levels. Its frozen, model-free verifier evaluates
+grounding, cardinality, spatial, size, and topology constraints from executable scene specifications.
+We report dense VVR, the mean dense verifier score over all 820 prompts.
+We evaluate PickScore (Kirstain et al., 2023) on 500 unique prompts from the Pick-a-Pic v1 val-
+idation split. We evaluate HPSv2.1 (Wu et al., 2023) on its complete 3,200-prompt benchmark,
+comprising 800 prompts each for anime, concept art, paintings, and photo. We report the mean
+PickScore, the four HPS domain means, and their unweighted macro average.
+We evaluate HPSv3 (Ma et al., 2025), Aesthetic score, and ImageReward on the full 200-prompt
+DrawBench (Saharia et al., 2022) set and fixed 1,000-prompt lists from PartiPrompts (Yu et al.,
+2022), DPG-Bench (Hu et al., 2024), and T2I-CompBench (Huang et al., 2023). The aesthetic score
+uses the LAION improved aesthetic predictor (Schuhmann, 2022), with a CLIP ViT-L/14 image
+encoder and its released linear MSE head; ImageReward uses ImageReward-v1.0 (Xu et al., 2023).
+We average each metric within a prompt list and report the unweighted mean of the four list means.
+Generation and aggregation.
+Checkpoints are saved and evaluated every 60 optimizer updates.
+For the main comparison, we evaluate the checkpoint at step 3000 without selecting by evaluation
+score. Evaluation uses the trained denoiser with the deterministic flow-matching sampler without
+EXPLORENET. The primary comparison comprises three independent training seeds per method
+and three GenEval2 evaluation passes per seed. All other automatic benchmarks use one pass per
+training seed. Each model generates one image per prompt except for official GenEval, which uses
+four. Matched methods receive the same prompts and initial latent seeds. We average evaluation
+passes within each training seed, then report the mean and sample standard deviation across seeds.
+18
+
+
+Preprint
+Controlled and robustness experiments use one training seed unless their corresponding result states
+otherwise. Flow-GRPO and EXPLORENET runs are paired by training seed (42, 123, and 456,
+labeled 1 to 3); Table 7 reports every seed.
+B.2
+HUMAN EVALUATION
+The preference and displacement studies use the same 72 matched triplets of pretrained, Flow-
+GRPO, and EXPLORENET outputs described in Section 4. Each of the six prompt suites contributes
+12 examples, and each training seed contributes four examples within a suite. For DrawBench, Par-
+tiPrompts, DPG-Bench, T2I-CompBench, and the Flow-GRPO OCR prompt set (Liu et al., 2025a),
+we draw 12 distinct prompts uniformly without replacement using a fixed study seed. For VVR-
+Bench, we draw one prompt from each of 12 prespecified strata spanning composition tier and
+difficulty. We then shuffle each suite with the same fixed seed and assign prompts cyclically across
+the three training seeds. The panel is fixed before image generation, and the three models use the
+same generation seed for each prompt.
+The preference interface presents the prompt and two unlabeled candidates. It instructs annota-
+tors to prioritize satisfaction of the full prompt and then visual quality, reserving a tie for cases in
+which neither image is meaningfully preferable. Trial order and candidate position are indepen-
+dently randomized. Three annotators evaluate all 216 pairwise comparisons, giving 648 judgments.
+Preference rates count each tie as one half for each model. Confidence intervals resample prompts
+while retaining all ratings associated with each sampled prompt.
+Pairwise exact agreement among the three annotators ranges from 56.9% to 72.7%, and 47.7% of
+comparisons receive unanimous labels.
+Preferred model
+Wins Ties Losses
+Rate
+95% CI
+Flow-GRPO over pretrained
+118
+8
+90 56.5% [48.6, 64.4]
+EXPLORENET over pretrained
+143
+8
+65 68.1% [60.0, 75.9]
+EXPLORENET over Flow-GRPO
+140
+7
+69 66.4% [58.6, 74.1]
+Table 6: EXPLORENET wins each pairwise preference comparison. Each row contains 216 ratings
+over 72 prompts. Rates split ties equally, and confidence intervals resample prompts with all associ-
+ated ratings.
+Qualitative examples.
+Figure 4 shows three prompts from the preference study (DrawBench, T2I-
+CompBench, and OCR), on which all three annotators preferred EXPLORENET to Flow-GRPO
+and each model’s image uses the shared generation seed, and two prompts from the training-time
+evaluations (VVRBench and held-out GenEval2), whose images three annotators ranked separately,
+each preferring EXPLORENET. Its OCR header abbreviates the prompt “A wizard holds a staff with
+glowing runes, casting a bright light as he utters the spell ‘Lumos Maximus’, illuminating a dark,
+mystical forest.”
+Change from pretrained outputs.
+The displacement study uses the same 72 matched triplets
+and three complete annotators. The interface presents the pretrained output as a labeled reference
+between blinded Flow-GRPO and EXPLORENET candidates. Annotators identify which candidate
+differs more from the reference in scene content or composition. The instructions define this cri-
+terion through entities, attributes, counts, spatial arrangement, viewpoint, and framing, while ex-
+cluding differences limited to color, lighting, texture, rendering style, or image quality. Trial order
+and candidate position are independently randomized for each annotator. Across 216 ratings, EX-
+PLORENET is selected 181 times, Flow-GRPO 25 times, and 10 judgments are ties. The tie-adjusted
+EXPLORENET rate is 86.1%, with a 95% CI of [80.1, 91.4]. EXPLORENET receives a majority on
+62 of 72 prompts, Flow-GRPO on 6, and 4 prompts have no majority. Pairwise exact agreement
+ranges from 77.8% to 80.6%, with unanimous labels on 70.8% of prompts.
+19
+
+
+Preprint
+C
+ADDITIONAL RESULTS
+C.1
+PER-SEED RESULTS
+Method
+Seed GenEval2
+VLM
+Judge GenEval VVR-Fast PickScore HPSv2.1 HPSv3 Aesthetic ImageReward
+Flow-GRPO
+1
+0.4982 4.5500
+0.6923
+0.7624
+0.8447
+0.3009
+8.3142
+5.5024
+1.1232
+Flow-GRPO
+2
+0.4933 4.5750
+0.7062
+0.7715
+0.8467
+0.3004
+8.3142
+5.5184
+1.1339
+Flow-GRPO
+3
+0.4956 4.4000
+0.6879
+0.7598
+0.8430
+0.2966
+8.0051
+5.4673
+1.0840
+EXPLORENET 1
+0.5674 4.7000
+0.7452
+0.8075
+0.8509
+0.3017
+8.6602
+5.5997
+1.2597
+EXPLORENET 2
+0.5972 4.7750
+0.7335
+0.7928
+0.8509
+0.3056
+8.7869
+5.6744
+1.2841
+EXPLORENET 3
+0.5337 4.7125
+0.7261
+0.7703
+0.8519
+0.3097
+8.9658
+5.7175
+1.2883
+Table 7: Per-seed results at step 3000 underlying Table 1. GenEval2 averages three evaluation
+passes; other metrics use one pass.
+C.2
+LATE-TRAINING STABILITY AND PROMPT-LEVEL UNCERTAINTY
+We measure stability over the final five checkpoints by averaging steps 2760, 2820, 2880, 2940, and
+3000 within each evaluation pass and training seed. The result then averages three evaluation passes
+within each seed and reports the mean and sample standard deviation across the three training seeds.
+Metric
+Flow-GRPO
+EXPLORENET
+Gain
+GenEval2
+0.4809±0.0093
+0.5524±0.0300
++0.0715
+Table 8: The GenEval2 gain persists across the final five checkpoints. Each seed value averages
+checkpoints 2760 through 3000 over three evaluation passes. Subscripts report sample standard
+deviation across training seeds.
+We also estimate sensitivity to the composition of each evaluation set with paired prompt bootstraps.
+For GenEval2, two evaluation passes retained complete prompt-level records for all three training
+seeds, both methods, and checkpoints 2760 through 3000; each replicate preserves these pairings
+and averages over training seeds, checkpoints, and evaluation passes. For VVRBench-Fast, each
+replicate resamples the 820 matched checkpoint-3000 prompts and averages the paired difference
+across the three training-seed pairs. Both analyses use 200,000 replicates and condition on the six
+trained models.
+Evaluation
+Paired gain
+95% prompt bootstrap interval
+GenEval2
++0.0748
+[+0.0405, +0.1085]
+VVR-Fast
++0.0256
+[+0.0202, +0.0311]
+Table 9: Prompt resampling gives positive gain intervals for GenEval2 and VVRBench-Fast.
+C.3
+PER-BENCHMARK RESULTS
+Table 10 reports PickScore and the four HPSv2.1 styles on their benchmark prompts, and Table 11
+reports HPSv3, Aesthetic, and ImageReward on each of the four prompt suites. Each entry is the
+mean and sample standard deviation across the three training seeds, and each seed generates one
+image per prompt with evaluation seed 42.
+20
+
+
+Preprint
+Prompt set and metric
+Flow-GRPO
+EXPLORENET
+Gain
+Pick-a-Pic v1 (500), PickScore
+0.8448±0.0019
+0.8512±0.0006
++0.0064
+HPSv2 anime prompts (800)
+0.3130±0.0018
+0.3204±0.0038
++0.0073
+HPSv2 concept art prompts (800)
+0.3034±0.0026
+0.3092±0.0054
++0.0058
+HPSv2 paintings prompts (800)
+0.3038±0.0027
+0.3085±0.0039
++0.0047
+HPSv2 photo prompts (800)
+0.2770±0.0027
+0.2845±0.0032
++0.0075
+HPSv2.1 macro (3,200)
+0.2993±0.0023
+0.3056±0.0040
++0.0063
+Table 10: EXPLORENET scores higher on PickScore and on all four HPSv2.1 prompt styles. Bold
+marks gains whose displayed intervals do not overlap.
+Prompt suite
+Method
+HPSv3
+Aesthetic
+ImageReward
+DrawBench
+Flow-GRPO
+9.5718±0.2295
+5.3664±0.0279
+1.0602±0.0503
+EXPLORENET
+10.3331±0.2491
+5.5109±0.0625
+1.2683±0.0210
+PartiPrompts
+Flow-GRPO
+7.4324±0.1504
+5.5783±0.0275
+1.2560±0.0110
+EXPLORENET
+7.8012±0.0808
+5.7438±0.0507
+1.3872±0.0174
+DPG-Bench
+Flow-GRPO
+9.2953±0.2166
+5.6607±0.0287
+0.8724±0.0316
+EXPLORENET
+9.8481±0.0996
+5.8578±0.0401
+1.0256±0.0153
+T2I-CompBench
+Flow-GRPO
+6.5454±0.1530
+5.3788±0.0253
+1.2663±0.0285
+EXPLORENET
+7.2348±0.2011
+5.5428±0.0885
+1.4283±0.0110
+Table 11: HPSv3, Aesthetic, and ImageReward results on the shared four-suite prompt panel. EX-
+PLORENET improves all three metrics on every prompt suite.
+Constraint family
+Prompts
+Flow-GRPO
+EXPLORENET
+Gain
+Grounding
+302
+0.6293±0.0311
+0.7683±0.0175
++0.1390
+Spatial
+665
+0.2924±0.0094
+0.4187±0.0164
++0.1263
+Size
+285
+0.1816±0.0361
+0.2722±0.0270
++0.0906
+Topology
+242
+0.1525±0.0313
+0.2385±0.0543
++0.0860
+Cardinality
+367
+0.6790±0.0080
+0.6644±0.0568
+−0.0146
+Table 12: EXPLORENET improves grounding, spatial, size, and topology constraints on VVRBench-
+Fast. Each entry is the mean verifier score on the prompts that contain the constraint family, averaged
+within each training seed and reported as mean and sample standard deviation across the three seeds.
+Bold marks gains whose displayed intervals do not overlap.
+D
+LATENT CHANNEL ANALYSIS
+The analysis uses the seed 1 EXPLORENET denoiser and gϕ at the end of training, together with
+the first 100 prompts in the fixed GenEval2 training manifest. For each prompt, we sample one
+initial latent and generate a reference image with the deterministic flow-matching ODE. At every
+one of the 25 denoising steps, we draw a spatial Gaussian field, normalize it to zero mean and unit
+standard deviation, and add it to one selected latent channel with either positive or negative sign.
+The perturbation uses the Flow-GRPO noise coefficient at with λ = 0.7. All other channels remain
+on the deterministic trajectory. Repeating this procedure for 16 channels gives 1,600 antithetic pairs,
+or 3,200 perturbed generations.
+We evaluate each perturbed image by its mean absolute RGB difference from the reference. For the
+same prompt, EXPLORENET is evaluated along the unperturbed reference trajectory. Its predicted
+log scale is averaged over spatial positions and then over denoising steps for each channel. The two
+signs are averaged to obtain one visual change value per prompt and channel.
+Table 13 reports the correlations at three aggregation levels. The four channels assigned the largest
+scales are 14, 2, 7, and 13 and average 0.0812 RGB change. The four channels assigned the smallest
+scales are 12, 4, 0, and 10 and average 0.0570.
+21
+
+
+Preprint
+Aggregation
+N Pearson r Spearman ρ
+95% Pearson CI
+Prompt and channel combinations 1600
++0.306
++0.332 [+0.273, +0.342]
+Centered within prompt
+1600
++0.461
++0.490 [+0.438, +0.485]
+Channel means
+16
++0.598
++0.491 [+0.145, +0.844]
+Within prompt, then averaged
+100
++0.485
++0.490 [+0.462, +0.506]
+Table 13: EXPLORENET’s predicted scale tracks intervention sensitivity across prompt and channel
+aggregation levels. The first two intervals and the last resample prompts with replacement over
+20,000 replicates; the channel-means interval is a Fisher interval over the 16 channels. The within-
+prompt correlation is positive for all 100 prompts, with minimum Spearman ρ = +0.156.
+Human perceptual evaluation.
+The human study uses prompts at fixed manifest indices 0, 20, 26,
+47, 67, and 98 from the GenEval2 training set and the pretrained, Flow-GRPO, and EXPLORENET
+denoisers. For every model and prompt, we generate a deterministic reference and intervene on
+each of the 16 latent channels with both signs. This gives 288 trials, each containing a reference
+and two perturbed images, and 576 perturbed images in total. Model, channel, and perturbation
+sign are hidden from annotators. Nine annotators participated, and each trial contributes exactly
+three independent ratings. When four ratings were available, we dropped one at random for each
+trial using a fixed seed before aggregation. Each image receives an ordinal change magnitude rating
+from 0 for no obvious visible difference to 4 for a very large difference.
+We use the median magnitude across annotators for each perturbed image. Within each prompt,
+channels are ranked by EXPLORENET’s mean predicted log standard deviation along the reference
+trajectory. Table 14 compares the top and bottom four channels. The pooled estimate averages both
+perturbation signs and all three denoisers; confidence intervals resample the six prompts over 20,000
+replicates.
+Denoiser
+Bottom quartile
+Top quartile
+Difference
+95% CI
+Pretrained
+1.521
+2.229
++0.708
+[+0.271, +0.958]
+Flow-GRPO
+1.125
+1.313
++0.188
+[−0.188, +0.521]
+EXPLORENET
+0.771
+1.250
++0.479
+[+0.250, +0.708]
+Pooled
+1.139
+1.597
++0.458
+[+0.319, +0.583]
+Table 14: Cross denoiser comparison of human change ratings for EXPLORENET’s largest and
+smallest scale quartiles. The separation is present before training and remains after EXPLORENET
+training. Quartiles are defined within each prompt, and ratings use a scale from 0 to 4.
+Magnitude ratings form the perceptual analysis. Across the twelve available comparisons between
+pairs of annotators, ratings are within one scale point in 84.7% of cases, with mean Spearman
+correlation 0.565 and mean quadratic weighted κ = 0.440.
+Pixel-space change across denoisers.
+The perturbations of the human study also record the RGB
+change of every perturbed image, which repeats the pixel-space analysis on the pretrained and Flow-
+GRPO denoisers. We use the perturbations at the strength of the main analysis, average the two
+signs and the six prompts for each channel, and correlate the result across the 16 channels with
+EXPLORENET’s channel mean log scale from the main analysis. Table 15 also reports the rank
+correlation computed within each prompt, using that prompt’s scales, and the number of prompts
+for which it is positive. We also repeat the full pixel-space analysis on the pretrained denoiser with
+the 100 prompts, seeds, and perturbations of the main analysis, giving 3,200 perturbed generations.
+On both prompt sets, the correlation on the pretrained denoiser is close to that on the EXPLORENET
+denoiser, so the relation between EXPLORENET’s scales and pixel-space sensitivity is present before
+RL training.
+22
+
+
+Preprint
+Perturbed denoiser
+Pearson r
+Spearman ρ
+95% Pearson CI
+Within-prompt ρ
+Positive prompts
+100 prompts of the main analysis
+Pretrained
++0.516
++0.488
+[+0.027, +0.806]
++0.421
+99/100
+EXPLORENET
++0.598
++0.491
+[+0.145, +0.844]
++0.490
+100/100
+Six prompts of the human study
+Pretrained
++0.562
++0.535
+[+0.092, +0.827]
++0.451
+6/6
+Flow-GRPO
++0.509
++0.494
+[+0.018, +0.802]
++0.425
+6/6
+EXPLORENET
++0.576
++0.618
+[+0.113, +0.834]
++0.523
+6/6
+Table 15: Correlation between EXPLORENET’s predicted scale and pixel-space change when each
+denoiser is perturbed. The first three columns use channel means; intervals are Fisher intervals over
+the 16 channels. Within-prompt ρ averages the per-prompt rank correlation.
+23
