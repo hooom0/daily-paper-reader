@@ -1,0 +1,541 @@
+STEPS: Scene Text Editing with Preserved Style
+Using Diffusion and Contrastive Style Encoding
+Nicolas Thiebaut
+Nameer Hirschkind
+Xiao Yu
+Kyle Spence
+Roblox
+San Mateo, CA, USA
+nthiebaut@roblox.com
+Abstract
+We introduce Scene Text Editing with Preserved Style (STEPS), a novel diffusion
+model architecture for quality text replacement in images. Scene Text Editing
+(STE), also known as Visual Text Editing, consists of changing the textual content
+in an image while conserving the original style, e.g. font, colors, orientation,
+background, etc. STEPS advances the state of the art in STE through directed
+focus on improved style preservation. We introduce a style encoder for visual text
+that captures style independently of textual content, and a model architecture that
+combines the style encoder with multiple semantic conditions (target text characters
+encoding and rendered glyphs).
+STEPS achieves superior results to previous STE methods in style preservation,
+output readability, and subjective quality.
+Indonesian Translation
+Italian Translation
+Input Images
+STEPS Results
+Figure 1: Examples of Scene Text Editing with STEPS applied to natural language translation of
+visual text in images with arbitrary backgrounds, fonts, and styles. (Top) Input images. (Bottom)
+translations of visual text into Indonesian (first three) and Italian (last three). STEPS is able to
+preserve the original text style, plausibly inpaint the disoccluded background, and to accommodate
+target texts with different lengths than the original.
+1
+Introduction
+The landscape of image generation and editing has been fundamentally reshaped by recent advances
+in diffusion models. While these models have established themselves as the state-of-the-art for
+general synthesis—driven by developments in latent space modeling and improved denoising—the
+precise rendering of visual text remains a persistent challenge. Generative models frequently exhibit
+A version of this paper appeared in Data Science: Foundations and Applications (PAKDD 2026), Lecture Notes in Computer
+Science, vol. 16618, pp. 473–484, Springer Nature Singapore. doi:10.1007/978-981-92-1947-6_38.
+arXiv:2609.38636v1  [cs.CV]  29 Sep 2026
+
+
+failure modes such as missing character strokes, hallucinating superfluous letters, or failing to strictly
+adhere to textual prompts.
+Within this domain, Scene Text Editing (STE) presents a uniquely constrained problem. Unlike
+general text generation, a model must not only modify the semantic content but also rigorously
+preserve the stylistic attributes—font, color, orientation, and background texture—of the original
+image.
+Historically, STE was dominated by Generative Adversarial Networks (GANs) operating at the text-
+patch level. While approaches like SRNet and MOSTEL established early benchmarks, their reliance
+on isolated patches prevents the utilization of global image context, often necessitating complex
+blending steps that result in visual artifacts. Conversely, recent diffusion-based approaches have
+improved inpainting capabilities but struggle to balance readability with style consistency. We observe
+that existing techniques [2, 4–6, 13, 14, 16] particularly struggle when the target text length deviates
+significantly from the original, a limitation not fully captured by current benchmarks. Furthermore,
+state-of-the-art large-scale editing models, such as Flux.1 Kontext and Qwen-Image-Edit, remain
+computationally demanding and lack the specific fine-grained control required for multilingual scene
+text replacement.
+To address these limitations, we introduce Scene Text Editing with Preserved Style (STEPS), a novel
+diffusion architecture designed to achieve superior style preservation without compromising output
+readability.
+Our approach bridges the gap between style and content through two key contributions:
+1. A Novel Style Encoder: We propose a visual text style encoder trained on a unique heuristic:
+that spatially close visual text tends to share similar stylistic attributes. This allows us to train
+a powerful style representation that is independent of semantic content, using a contrastive
+learning objective.
+2. Multi-Condition Text Rendering: To ensure robust text generation even when replacing short
+words with long phrases (e.g., translation tasks), we incorporate multiple semantic signals
+into a custom architecture, combining rendered text glyphs with a character-level encoder.
+We evaluate STEPS against state-of-the-art methods including MOSTEL, TextDiffuser2, and TextCtrl.
+Our experiments demonstrate that STEPS achieves superior performance in style preservation and
+subjective quality while effectively handling complex translation tasks that require accommodating
+different text lengths.
+2
+Related Work
+Historically, GAN-based methods like SRNet and MOSTEL dominated STE. However, their reliance
+on isolated text patches precludes global image context, often necessitating complex blending steps
+that introduce visual artifacts.
+Recent advances have shifted toward diffusion-based architectures. TextDiffuser2 [3] employs an
+inpainting approach to tackle visual text generation and editing jointly, offering state-of-the-art
+performance in readability and output quality. Alternatively, TextCtrl [16] utilizes a diffusion-based
+approach with glyph-adaptive self-attention to disentangle style and structure features effectively at
+the patch level. More recently, RS-STE [4] introduced a unified transformer framework that predicts
+text content and stylized images in parallel, employing a cyclic self-supervised fine-tuning strategy to
+disentangle style and content without paired training data.
+We focus our comparisons on models with comparable scale and architectural goals. Therefore,
+we exclude FLUX-Text [7], which, despite achieving state-of-the-art multilingual performance via
+lightweight glyph modules, utilizes a 12-billion parameter model substantially larger than the ∼1B
+parameter range of our work. Similarly, we exclude AnyText [14] as initial experiments indicated its
+output quality was systematically lower than the aforementioned baselines.
+Closest to our architectural approach is DiffUTE [2], which adapts Stable Diffusion 2 [12] by
+replacing the text condition with a rendered target text image and swapping the CLIP encoder
+for TrOCR [8]. However, DiffUTE discards the input patch, forcing it to infer style solely from
+surrounding text; this limits its efficacy to documents with consistent typography (e.g., receipts). Our
+2
+
+
+model overcomes this limitation by enriching TrOCR encodings with character-level and instruction
+embeddings. Furthermore, by incorporating a dedicated style encoder, our method recovers original
+text style even in the absence of surrounding stylistic cues.
+3
+Method
+We propose a novel diffusion model architecture specialized in style-preserving scene text editing.
+Training only requires images and the corresponding extracted text and bounding boxes. Textual
+content is usually obtained with OCR engines such as PaddleOCR.
+The architecture is based on Stable Diffusion 2 (SD2) inpainting [12], to which we add three input
+conditions. In this setting, the original image is encoded using a pre-trained Variational Auto-Encoder
+(VAE). A Gaussian perturbation is added to the encoded image, and the resulting noisy image is
+concatenated channel-wise with the encoded masked image and the (resized) binary mask. The
+resulting tensor is used as input to a U-Net denoising model that predicts noise in the latent space.
+Following the SD2 architecture, conditions are integrated via cross-attention mechanisms in the
+denoising model (Fig. 2). STEPS uses one context vector for each of the four following conditions:
+Figure 2: STEPS multi-conditions cross-attention module. From the source text patch and desired
+rendered text on the left, we compute four conditioning input embeddings (Style, OCR, Char, and
+Prompt). Each cross-attention layer of the U-Net is replaced by the sum of four corresponding
+cross-attention modules. The cross-attention modules share the same query vector Q and their outputs
+are simply summed (details in the main text).
+Standard text prompt instruction: we reuse the original text prompt condition from stable diffusion
+2. For each target text target_text, we simply pass the following string: write "target_text"
+to the CLIP tokenizer and text encoder. It produces an embedding vector of size (B, 77, 1024), where
+B is the batch size.
+Character level encoder: Character awareness has been found to improve visual text generation
+[9]. Indeed, standard text prompts use subword tokenizers that lose character-level information.
+To give character awareness to our model, we include a character tokenizer and encoder that maps
+the characters of the target text to embeddings with shape (B, 30, 1024). Those embeddings are
+initialized randomly and then learned jointly with the rest of the parameters during training.
+Rendered target text: Similarly to DiffUTE [2], the target text is rendered on a white background
+with a generic international typeface (GoNotoKurrent-Regular). The rendered text is an RGB image
+with a shape of 384x384. We pass that image through the encoder of a TrOCR model1, producing
+embeddings of size (B, 577, 1024).
+1https://huggingface.co/microsoft/trocr-large-printed
+3
+
+
+Figure 3: Style Encoder Training. To learn style embeddings (font, color, orientation, background)
+without encoding the textual content, we observe that stylistic similarity is correlated with spatial
+proximity in images that contain visual text. We then sample visual text patches from either different
+images (style similarity of zero) or the same image (style similarity of one minus bounding boxes
+distance). Finally, we train a bi-encoder on those stylistic similarity scores. A single copy of the
+resulting style encoder provides useful embeddings that we use as conditioning input for the main
+diffusion model.
+Style encoding: to learn the original style of the input patch (font, color, background, etc.) without
+leaking content information, we introduce style encodings with a narrow bottleneck. The style
+encoder itself is detailed in the next section.
+Mathematically, we augment each existing cross-attention layer in the U-Net architecture
+with three additional independent cross-attention layers.
+For each context vector xc (c ∈
+{prompt, char, render, style}) we compute the key Kc = xcWk,c, and value Vc = xcWv,c ma-
+trices. Inspired by IP-adapters [15] we use a shared query vector across cross-attention layers, i.e. for
+a query feature Z we compute a single query matrix Q = ZWq, and the output of the multi-conditions
+cross-attention module is given by
+Z′ =
+X
+c
+Softmax
+QK⊤
+c
+√
+d
+
+Vc
+where all W matrices are subsequently trained (conversely to [15]). The Wq, Wk,prompt, and Wv,prompt
+matrices are initialized from the SD2 checkpoint. Similarly to [15] we find that training converges
+faster when we initialize the new conditions attention matrices with the original cross-attention
+layer weights (i.e., Wv,c = Wv,prompt, Wk,c = Wk,prompt ∀c). Fig. 2 illustrates the multi-condition
+cross-attention module visually.
+3.1
+Style Encoder
+The style encoder is a critical piece of our model architecture. Its goal is to encode stylistic features
+of the text box to be edited (font, color, background, etc.) without leaking semantic content.
+We use a simple yet novel contrastive learning objective to train the style encoder, based on the
+following observation: in images containing text, text boxes close to one another tend to have a
+similar style because close words often belong to the same sentence and share similar backgrounds.
+We take advantage of this observed property to create a style similarity objective (Fig. 3).
+From the AnyWord-3M dataset, we sample text box patches from either the same image or a different
+one (probability 50%). Style similarity labels are generated for each patch pair (p1, p2) by assigning
+a similarity of zero to patches from different images, and one minus the normalized bounding boxes
+distance if they are from the same image.
+The image patches are then inpainted onto a 256x256 black background (and cropped if necessary).
+We then fine-tune a pre-trained ResNet50 model (pre-trained on ImageNet, with the last fully
+4
+
+
+connected layer replaced with a randomly initialized 2048x1024 linear layer) in a bi-encoder setting.
+The loss function is the Mean-Squared Error between the labels described above and the cosine
+similarity between the embedding from both arms of the bi-encoder. Mathematically, for a pair of
+visual text patches p1 and p2, the loss function reads
+ℓ(s, p1, p2) =
+
+f(p1) · f(p2)
+∥f(p1)∥2 ∥f(p2)∥2
+−s(p1, p2)
+2
+,
+(1)
+where f is the ResNet50-based image encoder and s ∈[0, 1] is the similarity label,
+s(p1, p2) =
+
+
+
+1 −
+min
+b1∈B1,b2∈B2
+∥b1 −b2∥2
+√
+w · h
+if p1 and p2 from same image,
+0
+otherwise.
+(2)
+B1 and B2 are the bounding boxes.
+As potential limitations, this simple heuristic for style similarity may create a noisy objective (because
+texts with different styles are often present in the same image) or fail to disentangle style from content
+(because spatially close words have related meanings). The experiments presented in section 4 show
+that those limitations are minimal.
+3.2
+Training
+We train STEPS on the AnyWord-3M-LAION dataset2, which consists of images containing visual
+text mostly in English, with OCR annotations (bounding boxes positions and content). All images
+are 512x512 RGB images sampled from the Internet and selected for the legibility of their textual
+content.
+Our model has 1.6B parameters, 882M of which are trainable. We trained for 5 days (40 epochs)
+on 8 A100-80G NVIDIA while freezing the VAE, CLIP prompt encoder, and TrOCR encoder. The
+character encoder is a linear embedding layer (dimension 128) followed by a 2-layer Transformer
+Encoder with 4 attention heads per layer.
+4
+Experiments
+Our method learns scene text editing capabilities from images with OCR annotations, in a self-
+supervised setting. We first train and evaluate the style encoder described in section 3, then use it as
+an input to train STEPS.
+As discussed in Section 2, we identified MOSTEL [11], TextDiffuser2 [3], and TextCtrl [16] as
+relevant competing methods. Of the many available methods, these three offer competitive per-
+formance, have a moderate number of parameters (∼1B parameters or less), and have accessible
+open-source implementations. They also provide a representative sample of recent approaches to STE:
+a GAN-based method (MOSTEL), a diffusion model operating at the image level (TextDiffuser2),
+and a diffusion model focused on text patches (TextCtrl).
+4.1
+Style Encoder
+The Style Encoder is trained for two epochs on the AnyWord-3M dataset using a single NVIDIA
+A100-80G GPU, a process that takes roughly 48 hours. We allocate 5% of the data for validation.
+After training, the model achieves a validation loss of 0.0315, compared to 0.4786 for a randomly
+initialized baseline evaluated on the same validation split.
+To validate the heuristic we use to train the style encoder, we use the ScenePair dataset. While the
+ScenePair dataset contains only short and clean text in English, it contains 1,280 pairs of visual text
+patches that are stylistically identical but semantically distinct. In table 1 we compare pair retrieval
+with our style encoder and with the SigLIP2 image encoder.
+Fig. 5 shows examples of an input text patch, together with its most similar and dissimilar examples
+in the validation set. This example visually supports the idea that the style encoder, trained on spatial
+2https://modelscope.cn/datasets/iic/AnyWord-3M/summary
+5
+
+
+Original repainting
+Indonesian Translation
+Italian Translation
+Input
+MOSTEL
+TextDiff. 2
+TextCtrl
+STEPS (new)
+Figure 4: Samples comparison (best viewed zoomed in). In some of those examples, MOSTEL fails
+to properly erase the original text, while TextDiffuser only partially matches the style of the input text.
+TextCtrl preserves style best for some examples, but sometimes suffers from blurriness or fails to
+produce the correct letters. Our new STEPS method offers the best readability and style-preservation
+properties.
+Table 1: Style encoder accuracy on the ScenePair retrieval task. To validate the training method
+of our style encoder, we treat pair retrieval within all 1,280 examples as a classification task. We
+perform nearest neighbor classification in the embedding space of the SigLIP2-base image encoder
+(86M parameters) and our style encoder (22M parameters). While being smaller, our model offers
+significantly higher accuracy, confirming that it captures style similarity more accurately than a
+generic image encoder such as SigLIP2.
+Accuracy @ 1
+Accuracy @ 10
+SigLIP2-base
+0.1793
+0.5354
+STEPS Style Encoder
+0.5880
+0.8882
+proximity as a proxy for style similarity, produces a representation that encodes visual text stylistic
+features, notably the text and background colors.
+Those results support the assumption that spatial proximity correlates with style similarity in natural
+images, sufficiently to encode visual text style.
+4.2
+Dataset
+Existing benchmarks (e.g., ScenePair, Anytext-benchmark) predominantly feature English text with
+matching source and target lengths. Consequently, they fail to adequately probe artifacts arising from
+significant length deviations or creative styling. We therefore evaluate our models using a translation
+task on the AnyWord-3M dataset. Following initial reconstruction tests on 1,000 annotated images,
+we translate text into Indonesian and Italian. These languages were selected to accommodate the
+English-only training of prior art (MOSTEL, TextDiffuser2, TextCtrl) while introducing necessary
+length variations.
+The AnyWord-3M dataset includes 1,000 evaluation images with OCR annotations. We first test all
+four models on reconstructing images with masked OCR regions. Then, we translate the text into
+Indonesian and Italian—chosen for their English-subset alphabets, because prior art of MOSTEL,
+TextDiffuser2 and TextCtrl were trained only on English. This evaluates the models’ ability to visually
+replace text of varying lengths.
+6
+
+
+Figure 5: Style Encoder example for illustration purposes. The leftmost image is a sample text patch
+(top: original, bottom: preprocessed input to the encoding model), for which we computed the cosine
+similarity with all text patches in a sample of 1,000 images. The top row contains the most similar
+patches within this sample according to our style encoder, while the bottom row shows the least
+similar images. Text patches with similar colors, fonts, and backgrounds have aligned embeddings,
+while low embedding alignment correlates with text style discrepancies.
+Table 2: Quantitative results on the AnyWord-3M-LAION benchmark dataset. Original refers to
+repainting the original image after masking text boxes, while Indonesian and Italian translations were
+selected because their alphabet is a subset of the English alphabet on which the models considered
+were trained. The translation task notably measures the ability to edit text that deviates from the
+original in length. Higher OCR indicates better readability, lower LPIPS better style preservation,
+and lower FID better output realism. Both MOSTEL and TextCtrl operate at the patch level. On
+the translation task, TextCtrl struggles with style consistency, while MOSTEL achieves strong style
+preservation—though often at the expense of readability, as it sometimes fails to fully erase the
+original text.
+Original
+Indonesian Translation
+Italian Translation
+LPIPS ↓
+FID ↓
+OCR ↑LPIPS ↓
+FID ↓
+OCR ↑LPIPS ↓
+FID ↓
+OCR ↑
+MOSTEL
+0.063
+16.119
+0.681
+0.072
+18.445
+0.506
+0.071
+18.179
+0.536
+TextDiffuser2
+0.080
+16.095
+0.690
+0.099
+19.226
+0.651
+0.097
+18.879
+0.653
+TextCtrl
+0.097
+22.975
+0.623
+0.104
+23.336
+0.619
+0.104
+23.786
+0.636
+STEPS (new)
+0.045
+9.116
+0.708
+0.070
+12.392
+0.686
+0.069
+11.984
+0.691
+4.3
+Metrics
+We evaluate three aspects of scene text editing methods in the absence of reference outputs: Readabil-
+ity ((1 - normalized edit distance) between the target text and characters extracted by PP-OCRv4),
+Style-preservation (LPIPS to measure aesthetic consistency between the original and edited images),
+and Output quality (Fréchet Inception Distance to assess overall aesthetic realism).
+All the methods we consider edit text boxes one at a time (although TextDiffuser 2 and STEPS take
+into account the entire image). For images that contain multiple text boxes, we experimented with
+several techniques and observe the best results when editing the images recursively for consistency
+and then blending all of the text boxes into the original image, using Poisson blending.
+4.4
+Vision-Language Model evaluation
+Beyond the metrics reported in the previous section, we also assess the legibility and aesthetic quality
+of the images generated by different methods using a Vision-Language Model (VLM). For this
+evaluation, we employ GPT-4o as the VLM and ask it to rate visual quality and legibility from 0 to 5
+each.
+4.5
+Results
+The quantitative (Tab. 2) and VLM (Tab. 3) evaluations show that STEPS matches or surpasses the
+performance of both state-of-the-art GAN-based models and leading diffusion-based approaches to
+text editing. Fig. 4 illustrates the differences with examples.
+7
+
+
+Table 3: Vision-Language Model evaluation. In this setting of scene text translation with multiple text
+boxes per image, methods that operate at the text patch-level struggle with visual quality and legibility,
+from the perspective of the VLM evaluator. This is partly due to the blending post-processing step
+that is necessary to edit the entire input image. Inpainting methods like TextDiffuser2 and STEPS do
+not suffer from this limitation, and STEPS outperforms competing methods in both visual quality and
+legibility.
+Indonesian Translation
+Italian Translation
+Visual Quality
+(0–5) ↑
+Legibility
+(0–5) ↑
+Visual Quality
+(0–5) ↑
+Legibility
+(0–5) ↑
+MOSTEL
+1.52
+1.38
+1.84
+1.68
+TextDiffuser2
+2.46
+2.83
+2.56
+3.01
+TextCtrl
+1.496
+1.536
+1.424
+1.472
+STEPS (new)
+3.224
+3.624
+3.544
+3.936
+Table 4: Quantitative results from the ablation study. Higher OCR values indicate improved readabil-
+ity, while lower LPIPS scores reflect better style preservation, and lower FID scores suggest higher
+output realism. Removing the style encoder from the conditioning inputs negatively affects style
+preservation and realism, but has a more limited impact on readability.
+Original
+Indonesian Translation
+Italian Translation
+LPIPS ↓
+FID ↓
+OCR ↑LPIPS ↓
+FID ↓
+OCR ↑LPIPS ↓
+FID ↓
+OCR ↑
+STEPS (all conditions)
+0.045
+9.116
+0.708
+0.070
+12.392
+0.686
+0.069
+11.984
+0.691
+W/o style encoder
+0.056
+11.501
+0.701
+0.083
+15.416
+0.676
+0.080
+14.848
+0.672
+To preserve the original image parts far from text boxes, we use Blended Latent Diffusion [1] during
+denoising. This constraint enables recursive editing, so we can successively edit different text boxes
+in the same image. We use DPM-Solver [10] with 30 steps for the denoising schedule.
+4.6
+Ablation Studies
+Our method adds three components to the underlying Stable Diffusion 2 inpainting model, through a
+multifold conditioning module (Fig. 2). The first component, the style encoder, captures the style of
+input text patches (font, color, background, etc.). The remaining two components (TrOCR encoder
+and character-level encoder) aim to improve the glyphs and character awareness of the model.
+Since the introduction of the style encoder is our main contribution, we train a model without it and
+evaluate it against our full STEPS model (Table 4).
+For both versions, the model is retrained from the same initial weights and with the same compute
+budget (5 days on 8 A100-80G NVIDIA). The checkpoint with the lowest validation loss is used (on
+a subsample of 70k images).
+Results from the ablation studies validate the expected contribution of the style encoder. Removing it
+degrades aesthetic quality and style consistency.
+These findings alleviate concerns that the style encoder inadvertently captures semantic content. If
+the encoder were leaking substantial semantic information, we would expect the model to exhibit
+a disproportionate performance advantage in the Original repainting task. However, the observed
+performance differential between the Original repainting and translation tasks remains consistent
+regardless of the style encoder’s inclusion. This indicates that the disparity is intrinsic to the training
+dataset rather than an artifact of semantic leakage from the style encoder.
+5
+Conclusion
+We introduce STEPS, a diffusion-based visual text editing technique with style transfer, addressing a
+key limitation in prior STE methods through the introduction of a novel style-preserving encoder.
+8
+
+
+Benchmarking against GAN and diffusion-based approaches, STEPS achieves strong style adherence,
+seamless text blending, and high legibility across diverse backgrounds and text lengths.
+Despite its advancements, STEPS has limitations, such as occasional superfluous glyphs. Future work
+could enhance robustness through improved style encoder training, larger VAE models, or alternative
+backbones like diffusion transformers and flow matching.
+References
+[1] Omri Avrahami, Ohad Fried, and Dani Lischinski. Blended Latent Diffusion. ACM Transactions on
+Graphics, 42(4):1–11, August 2023. doi: 10.1145/3592450. URL http://arxiv.org/abs/2206.
+02779. arXiv:2206.02779 [cs].
+[2] Haoxing Chen, Zhuoer Xu, Zhangxuan Gu, Jun Lan, Xing Zheng, Yaohui Li, Changhua Meng, Huijia
+Zhu, and Weiqiang Wang. DiffUTE: Universal Text Editing Diffusion Model, May 2023. URL http:
+//arxiv.org/abs/2305.10825. arXiv:2305.10825 [cs].
+[3] Jingye Chen, Yupan Huang, Tengchao Lv, Lei Cui, Qifeng Chen, and Furu Wei. TextDiffuser-2: Unleashing
+the Power of Language Models for Text Rendering, November 2023. URL http://arxiv.org/abs/
+2311.16465. arXiv:2311.16465 [cs].
+[4] Zhengyao Fang, Pengyuan Lyu, Jingjing Wu, Chengquan Zhang, Jun Yu, Guangming Lu, and Wenjie Pei.
+Recognition-synergistic scene text editing, 2025. URL https://arxiv.org/abs/2503.08387.
+[5] Jiabao Ji, Guanhua Zhang, Zhaowen Wang, Bairu Hou, Zhifei Zhang, Brian Price, and Shiyu Chang.
+Improving Diffusion Models for Scene Text Editing with Dual Encoders, April 2023.
+URL http:
+//arxiv.org/abs/2304.05568. arXiv:2304.05568 [cs].
+[6] Vladimir Kulikov, Matan Kleiner, Inbar Huberman-Spiegelglas, and Tomer Michaeli. FlowEdit: Inversion-
+free text-based editing using pre-trained flow models, 2025. URL https://arxiv.org/abs/2412.
+08629.
+[7] Rui Lan, Yancheng Bai, Xu Duan, Mingxing Li, Dongyang Jin, Ryan Xu, Dong Nie, Lei Sun, and
+Xiangxiang Chu. FLUX-Text: A simple and advanced diffusion transformer baseline for scene text editing,
+2025. URL https://arxiv.org/abs/2505.03329.
+[8] Minghao Li, Tengchao Lv, Jingye Chen, Lei Cui, Yijuan Lu, Dinei Florencio, Cha Zhang, Zhoujun Li, and
+Furu Wei. TrOCR: Transformer-based Optical Character Recognition with Pre-trained Models, September
+2022. URL http://arxiv.org/abs/2109.10282. arXiv:2109.10282 [cs].
+[9] Rosanne Liu, Dan Garrette, Chitwan Saharia, William Chan, Adam Roberts, Sharan Narang, Irina Blok,
+R. J. Mical, Mohammad Norouzi, and Noah Constant. Character-Aware Models Improve Visual Text
+Rendering, May 2023. URL http://arxiv.org/abs/2212.10562. arXiv:2212.10562 [cs].
+[10] Cheng Lu, Yuhao Zhou, Fan Bao, Jianfei Chen, Chongxuan Li, and Jun Zhu. DPM-Solver: A Fast
+ODE Solver for Diffusion Probabilistic Model Sampling in Around 10 Steps, October 2022. URL
+http://arxiv.org/abs/2206.00927. arXiv:2206.00927 [cs, stat].
+[11] Yadong Qu, Qingfeng Tan, Hongtao Xie, Jianjun Xu, Yuxin Wang, and Yongdong Zhang. Exploring
+Stroke-Level Modifications for Scene Text Editing, December 2022. URL http://arxiv.org/abs/
+2212.01982. arXiv:2212.01982 [cs].
+[12] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-resolution
+image synthesis with latent diffusion models, 2021.
+[13] Yuxiang Tuo, Yifeng Geng, and Liefeng Bo. AnyText2: Visual text generation and editing with customiz-
+able attributes, 2024. URL https://arxiv.org/abs/2411.15245.
+[14] Yuxiang Tuo, Wangmeng Xiang, Jun-Yan He, Yifeng Geng, and Xuansong Xie. AnyText: Multilingual
+Visual Text Generation And Editing, February 2024.
+URL http://arxiv.org/abs/2311.03054.
+arXiv:2311.03054 [cs].
+[15] Hu Ye, Jun Zhang, Sibo Liu, Xiao Han, and Wei Yang. IP-Adapter: Text Compatible Image Prompt
+Adapter for Text-to-Image Diffusion Models, August 2023. URL http://arxiv.org/abs/2308.06721.
+arXiv:2308.06721 [cs].
+[16] Weichao Zeng, Yan Shu, Zhenhang Li, Dongbao Yang, and Yu Zhou. TextCtrl: Diffusion-based scene
+text editing with prior guidance control. Advances in Neural Information Processing Systems, 37:138569–
+138594, 2024.
+9

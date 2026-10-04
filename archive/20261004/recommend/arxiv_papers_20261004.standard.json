@@ -1,0 +1,176 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-04T21:50:30.980619+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 4,
+    "quick_skim_target": 11,
+    "quick_selected": 4
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.38636v1",
+      "source": "arxiv",
+      "title": "STEPS: Scene Text Editing with Preserved Style Using Diffusion and Contrastive Style Encoding",
+      "abstract": "We introduce Scene Text Editing with Preserved Style (STEPS), a novel diffusion model architecture for quality text replacement in images. Scene Text Editing (STE), also known as Visual Text Editing, consists of changing the textual content in an image while conserving the original style, e.g. font, colors, orientation, background, etc. STEPS advances the state of the art in STE through directed focus on improved style preservation. We introduce a style encoder for visual text that captures style independently of textual content, and a model architecture that combines the style encoder with multiple semantic conditions (target text characters encoding and rendered glyphs). STEPS achieves superior results to previous STE methods in style preservation, output readability, and subjective quality.",
+      "authors": [
+        "Nicolas Thiebaut",
+        "Nameer Hirschkind",
+        "Xiao Yu",
+        "Kyle Spence"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-09-29T22:52:54+00:00",
+      "link": "https://arxiv.org/pdf/2609.38636v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "diffusion model architecture for controllable text replacement in images while preserving style",
+      "llm_evidence_cn": "基于扩散模型的可控图像文本替换并保留原始风格",
+      "llm_evidence": "基于扩散模型的可控图像文本替换并保留原始风格",
+      "canonical_evidence": "基于扩散模型的可控图像文本替换并保留原始风格",
+      "llm_tldr_en": "STEPS introduces a diffusion architecture for scene text editing that replaces text content in images while preserving font, color and layout, using a content-independent style encoder and multiple semantic conditions.",
+      "llm_tldr_cn": "论文针对场景文本编辑中风格难以保持的问题，提出基于扩散模型的STEPS框架。该方法引入独立于文本内容的风格编码器，并结合目标字符编码与渲染字形等多种语义条件进行条件生成。实验表明其在字体、颜色、朝向与背景等风格保持方面优于既有方法。该工作推进了可控图像编辑中风格一致性的研究。",
+      "llm_tldr": "论文针对场景文本编辑中风格难以保持的问题，提出基于扩散模型的STEPS框架。该方法引入独立于文本内容的风格编码器，并结合目标字符编码与渲染字形等多种语义条件进行条件生成。实验表明其在字体、颜色、朝向与背景等风格保持方面优于既有方法。该工作推进了可控图像编辑中风格一致性的研究。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.01331v1",
+      "source": "arxiv",
+      "title": "CLASP: Continual Low-rank Adapters for Spatially Placed Concepts from One Hypernetwork",
+      "abstract": "Continual personalization of text-to-image diffusion models requires sequentially acquiring new concepts while retaining previously learned ones. However, existing methods either suffer from catastrophic forgetting or rely on storing additional concept-specific parameters and spatial components, causing their parameter footprint to grow with the concept stream. This limits their ability to scale to long sequences of personalization tasks. We propose a rehearsal-free approach that uses a single fixed-size hypernetwork to continually personalize a frozen diffusion model. Instead of expanding the model as new concepts are acquired, the hypernetwork dynamically produces the concept-specific adaptations required for personalization while preserving previously learned concepts. Our framework further integrates spatial control into the personalization process, allowing users to specify where a personalized concept should appear without introducing additional per-concept components. This formulation enables continual personalization with a parameter footprint that remains independent of the number of learned concepts, aside from compact concept representations. Experiments demonstrate strong retention of previously learned concepts and reliable spatial grounding, matching or improving upon existing methods while scaling effectively to long streams of personalization tasks.",
+      "authors": [
+        "Wojciech Gromski",
+        "Patryk Krukowski",
+        "Jan Miksa",
+        "Maciej Zieba",
+        "Przemysław Spurek"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-01T08:59:37+00:00",
+      "link": "https://arxiv.org/pdf/2610.01331v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "continual personalization of text-to-image diffusion via hypernetwork adapters",
+      "llm_evidence_cn": "用超网络适配器持续个性化文本到图像扩散模型",
+      "llm_evidence": "用超网络适配器持续个性化文本到图像扩散模型",
+      "canonical_evidence": "用超网络适配器持续个性化文本到图像扩散模型",
+      "llm_tldr_en": "CLASP is a rehearsal-free approach that uses a single fixed-size hypernetwork to continually personalize a frozen text-to-image diffusion model, generating concept-specific low-rank adapters without growing parameters across a stream of concepts.",
+      "llm_tldr_cn": "针对文本到图像扩散模型持续个性化中灾难性遗忘与参数随概念增长的问题，论文提出 CLASP。该方法用单一固定规模的超网络，为冻结的扩散模型动态生成概念特定的低秩适配，无需回放旧数据或扩充模型参数。实验表明其能在依次获取新概念的同时保留旧概念，并可扩展到长序列个性化任务。工作为扩散模型的高效持续个性化提供了新方案。",
+      "llm_tldr": "针对文本到图像扩散模型持续个性化中灾难性遗忘与参数随概念增长的问题，论文提出 CLASP。该方法用单一固定规模的超网络，为冻结的扩散模型动态生成概念特定的低秩适配，无需回放旧数据或扩充模型参数。实验表明其能在依次获取新概念的同时保留旧概念，并可扩展到长序列个性化任务。工作为扩散模型的高效持续个性化提供了新方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.01496v1",
+      "source": "arxiv",
+      "title": "SALD: Self-Referenced Advantage Learning for Diffusion Models",
+      "abstract": "Recent work on language-model adaptation has shown that single models can obtain informative training signals by evaluating their behavior in demonstrationor feedback-augmented contexts, with the help of a teacher network, which is driven by the student's learned parameters. Inspired by this internal-reference principle, we investigate how diffusion models can identify self-referenced training signals without external demonstrations or teacher networks. We introduce SALD, a self-referenced training framework that evaluates each image-caption pair at two noise levels using the same model. The easier, lower-noise path is evaluated without gradient tracking to provide a reference, while the harder, higher-noise path provides the training gradient. Rather than directly distilling the easy-path prediction, SALD uses the difference between two path errors to adapt the hardpath objective. The proposed Advantage-Guided Diffusion (AGD) converts this relative error into a differentiable sample-level weight. Temporal Advantage Memory (TAM) accumulates relative difficulty across training and adapts the future gap between the two noise levels. Spectral Advantage Decomposition (SAD) further compares the residual power spectra of the two paths and constructs a differentiable, frequency-derived latent-element weight. All components share a single set of model parameters, requiring neither an external teacher network nor additional trainable parameters during training or inference, and no modification to the inference procedure. Experiments across multiple architectures and datasets demonstrate consistent improvements in generation quality, while component-wise ablations quantify the contributions of the proposed components.",
+      "authors": [
+        "Aryan Das",
+        "Surjo Dey",
+        "Koushik Biswas",
+        "Swalpa Kumar Roy",
+        "Moloud Abdar",
+        "Arnab Bhattacharya",
+        "Vinay Kumar Verma"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-01T11:37:37+00:00",
+      "link": "https://arxiv.org/pdf/2610.01496v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "self-referenced training framework for diffusion models",
+      "llm_evidence_cn": "面向扩散模型的自参考训练框架",
+      "llm_evidence": "面向扩散模型的自参考训练框架",
+      "canonical_evidence": "面向扩散模型的自参考训练框架",
+      "llm_tldr_en": "SALD is a self-referenced training framework for diffusion models that evaluates each image-caption pair at two noise levels with the same model, using the easier low-noise path as a gradient-free reference and the harder path for training gradients, without external demonstrations.",
+      "llm_tldr_cn": "针对扩散模型在缺乏外部演示或教师网络时难以获得有效训练信号的问题，论文提出自参考优势学习框架 SALD。该方法对每个图像-描述对在两个噪声水平上用同一模型评估：低噪声的简单路径不追踪梯度以提供参考，高噪声的困难路径提供训练梯度。实验表明该框架无需外部演示即可从模型自身行为中提取信息性信号并改善生成。工作为扩散模型训练提供了一种自参考范式。",
+      "llm_tldr": "针对扩散模型在缺乏外部演示或教师网络时难以获得有效训练信号的问题，论文提出自参考优势学习框架 SALD。该方法对每个图像-描述对在两个噪声水平上用同一模型评估：低噪声的简单路径不追踪梯度以提供参考，高噪声的困难路径提供训练梯度。实验表明该框架无需外部演示即可从模型自身行为中提取信息性信号并改善生成。工作为扩散模型训练提供了一种自参考范式。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.01969v1",
+      "source": "arxiv",
+      "title": "RASteer: Retain-Aware Activation Steering for Concept Erasure in Diffusion Models",
+      "abstract": "Concept erasure aims to remove a target concept, such as a copyrighted style, a recognizable character, or unsafe content, from a pretrained text-to-image diffusion model while preserving its ability to generate other content. Existing activation steering methods build an erasure direction mainly from the target concept and adjust model activations along it at inference time. However, target and retained concepts often overlap in the model's representation space, so this direction also contains shared components that retained concepts rely on. Steering directly along this direction can therefore suppress retained concepts and harm the generation of non-target content. To address this issue, we propose Retain-aware Activation Steering (RASteer), a training-free method. RASteer first builds a retain subspace from the concepts to preserve. Retain-Orthogonal Steering (ROS) then removes components aligned with this subspace from the erasure direction, making steering more specific to the target. Since fully removing the shared components can weaken erasure, we further introduce Overlap-Adaptive Calibration (OAC). At each layer and denoising step, OAC uses the overlap between the erasure direction and the retain subspace to control how much of each shared component is removed, balancing target erasure and concept preservation. Experiments on unsafe-content, instance, and artistic-style erasure across multiple backbones and benchmarks show that RASteer matches or outperforms the activation steering and weight editing baselines we evaluate, achieving a better balance between erasure and preservation.",
+      "authors": [
+        "Yongliang Wu",
+        "Haori Lu",
+        "Yulun Wu",
+        "Jinqi Luo",
+        "Xingyu Zhu",
+        "Yaoyao Liu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-01T16:20:09+00:00",
+      "link": "https://arxiv.org/pdf/2610.01969v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "retain-aware activation steering for concept erasure in T2I diffusion",
+      "llm_evidence_cn": "文本到图像扩散模型中保留感知的概念擦除",
+      "llm_evidence": "文本到图像扩散模型中保留感知的概念擦除",
+      "canonical_evidence": "文本到图像扩散模型中保留感知的概念擦除",
+      "llm_tldr_en": "RASteer is a retain-aware activation steering method for concept erasure in text-to-image diffusion models that accounts for shared components between target and retained concepts, avoiding suppression of non-target content during erasure.",
+      "llm_tldr_cn": "针对文本到图像扩散模型概念擦除中，激活引导方向混入与保留概念共享分量、从而误伤非目标内容的问题，论文提出保留感知激活引导 RASteer。该方法在构造擦除方向时显式考虑保留概念，减少对非目标内容生成的抑制。实验表明其能在擦除目标概念的同时更好地保留其他内容的生成能力。工作提升了概念擦除的精确性与可用性。",
+      "llm_tldr": "针对文本到图像扩散模型概念擦除中，激活引导方向混入与保留概念共享分量、从而误伤非目标内容的问题，论文提出保留感知激活引导 RASteer。该方法在构造擦除方向时显式考虑保留概念，减少对非目标内容生成的抑制。实验表明其能在擦除目标概念的同时更好地保留其他内容的生成能力。工作提升了概念擦除的精确性与可用性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

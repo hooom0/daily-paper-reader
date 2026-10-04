@@ -1,0 +1,73 @@
+{
+  "date": "20261004",
+  "date_label": "",
+  "generated_at": "2026-10-04 21:51:01 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2609.38636v1",
+      "route": "202610/04/2609.38636v1-steps-scene-text-editing-with-preserved-style-using-diffusion-and-contrastive-style-encoding",
+      "title": "STEPS: Scene Text Editing with Preserved Style Using Diffusion and Contrastive Style Encoding",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "基于扩散模型的可控图像文本替换并保留原始风格",
+      "first_seen_at": "2026-10-04 21:51:01 UTC",
+      "updated_at": "2026-10-04 21:51:01 UTC"
+    },
+    {
+      "paper_id": "2610.01331v1",
+      "route": "202610/04/2610.01331v1-clasp-continual-low-rank-adapters-for-spatially-placed-concepts-from-one-hypernetwork",
+      "title": "CLASP: Continual Low-rank Adapters for Spatially Placed Concepts from One Hypernetwork",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用超网络适配器持续个性化文本到图像扩散模型",
+      "first_seen_at": "2026-10-04 21:51:01 UTC",
+      "updated_at": "2026-10-04 21:51:01 UTC"
+    },
+    {
+      "paper_id": "2610.01496v1",
+      "route": "202610/04/2610.01496v1-sald-self-referenced-advantage-learning-for-diffusion-models",
+      "title": "SALD: Self-Referenced Advantage Learning for Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向扩散模型的自参考训练框架",
+      "first_seen_at": "2026-10-04 21:51:01 UTC",
+      "updated_at": "2026-10-04 21:51:01 UTC"
+    },
+    {
+      "paper_id": "2610.01969v1",
+      "route": "202610/04/2610.01969v1-rasteer-retain-aware-activation-steering-for-concept-erasure-in-diffusion-models",
+      "title": "RASteer: Retain-Aware Activation Steering for Concept Erasure in Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文本到图像扩散模型中保留感知的概念擦除",
+      "first_seen_at": "2026-10-04 21:51:01 UTC",
+      "updated_at": "2026-10-04 21:51:01 UTC"
+    }
+  ]
+}

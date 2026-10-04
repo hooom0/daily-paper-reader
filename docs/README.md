@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-03</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-04</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 11 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 4 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>4</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-03 22:25:44 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-04 21:51:01 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,9 +69,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日共生成 11 篇推荐（精读 0 篇，速读 11 篇）</p>
-<p>速读：《Learned End-to-End Guidance Schedules for Diffusion Models》（7.0/10）, 《Rethinking Memorization Mitigation in Diffusion Models: Reinforcing Text Conditioning》（7.0/10）, 《Debias Anything: Fairness with Diversity without Supervision in Diffusion Models》（7.0/10）</p>
-<p>这些结果覆盖了当下较热的方向，建议先看精读区论文的关键问题与方法。</p>
+<p>今日无精读，4 篇速读全部落在扩散模型与生成式编辑方向。</p>
+<p>最值得先看的是《STEPS：保风格的场景文本编辑》（7.0/10），用扩散模型加对比式风格编码同时管住&quot;改字&quot;和&quot;不丢风格&quot;；同批还有《CLASP》用超网络做持续低秩适配器、《SALD》给扩散模型做自参考优势学习（均 6.0/10）。</p>
+<p>普通读者若只想快速判断价值，可先翻 STEPS 的编辑前后对比图，看它能否满足你日常改海报文字又保留原字体的需求。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -93,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">4 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Learned End-to-End Guidance Schedules for Diffusion Models">Learned End-to-End Guidance Schedules for Diffusion Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Rethinking Memorization Mitigation in Diffusion Models: Reinforcing Text Conditioning">Rethinking Memorization Mitigation in Diffusion Models: Reinforcing Text Conditioning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Debias Anything: Fairness with Diversity without Supervision in Diffusion Models">Debias Anything: Fairness with Diversity without Supervision in Diffusion Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="STEPS: Scene Text Editing with Preserved Style Using Diffusion and Contrastive Style Encoding">STEPS: Scene Text Editing with Preserved Style Using Diffusion and Contrastive Style Encoding</span></li><li><span class="dpr-home-dashboard-paper-title" title="CLASP: Continual Low-rank Adapters for Spatially Placed Concepts from One Hypernetwork">CLASP: Continual Low-rank Adapters for Spatially Placed Concepts from One Hypernetwork</span></li><li><span class="dpr-home-dashboard-paper-title" title="SALD: Self-Referenced Advantage Learning for Diffusion Models">SALD: Self-Referenced Advantage Learning for Diffusion Models</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>4</strong></span></div>
 </section>
 </div>
 
