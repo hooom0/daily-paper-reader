@@ -1,109 +1,18 @@
 {
   "mode": "standard",
-  "generated_at": "2026-10-06T01:10:46.849009+00:00",
+  "generated_at": "2026-10-06T23:11:36.120336+00:00",
   "stats": {
     "mode": "standard",
     "tag_count": 1,
     "deep_divecandidates": 0,
     "deep_cap": 6,
     "deep_selected": 0,
-    "quick_candidates": 9,
+    "quick_candidates": 14,
     "quick_skim_target": 11,
-    "quick_selected": 9
+    "quick_selected": 11
   },
   "deep_dive": [],
   "quick_skim": [
-    {
-      "id": "2610.00737v1",
-      "source": "arxiv",
-      "title": "Personalized Image Generation with Reasoning and Reflection",
-      "abstract": "Personalized image generation has remained narrowly focused on conditional synthesis from curated visual exemplars, rather than capturing who a user is. In practice, however, a user's personal context is much richer, comprising reviews, posts, images, captions, and metadata accumulated over time. A truly personalized generator should leverage this history to produce images aligned with the user's lifestyle and aesthetic preferences. To this end, we introduce the first unified benchmark for personalized image generation from user histories. The benchmark comprises two complementary tasks and a multi-axis evaluation protocol that assesses target fidelity, visual quality, user distinguishability, semantic alignment with the user's history, and task-specific utility. Grounded in real-world e-commerce and social media settings, the benchmark includes: (1) Personalized Scene Generation, which places a given object in a scene that reflects a user's preferences and lifestyle, motivated by personalized product presentation; and (2) Personalized Creative Generation, which generates a novel image on a specified topic that is faithful to a user's aesthetic and visual identity, motivated by social media content creation. We further propose PEARL, which couples a multimodal reasoner with a frozen image generator in an interleaved reason-reflect loop optimized with differential data reward. Across both tasks, PEARL outperforms strong baselines, achieving an average improvement of 15% across personalization metrics.",
-      "authors": [
-        "Bo Ni",
-        "Ngoc N. Tran",
-        "Qinwen Ge",
-        "Franck Dernoncourt",
-        "Seunghyun Yoon",
-        "Samyadeep Basu",
-        "Sungchul Kim",
-        "Puneet Mathur",
-        "Nedim Lipka",
-        "Tong Yu",
-        "Yu Wang",
-        "Ryan A. Rossi",
-        "Tyler Derr"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV",
-        "cs.AI"
-      ],
-      "published": "2026-09-30T21:30:26+00:00",
-      "link": "https://arxiv.org/pdf/2610.00737v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "personalized controllable image generation from user histories",
-      "llm_evidence_cn": "基于用户历史的个性化可控图像生成",
-      "llm_evidence": "基于用户历史的个性化可控图像生成",
-      "canonical_evidence": "基于用户历史的个性化可控图像生成",
-      "llm_tldr_en": "Personalized image generation has focused on curated visual exemplars; this work introduces the first unified benchmark for generating images from rich user histories with a multi-axis evaluation protocol.",
-      "llm_tldr_cn": "个性化图像生成长期局限于从精选视觉样例进行条件合成，难以刻画用户本人，而真实个人语境包含评论、帖子、图像、描述与元数据等丰富历史。本文提出首个基于用户历史的个性化图像生成统一基准，包含两个互补任务与多轴评估协议，评估目标保真度、视觉质量、用户可区分性、与历史语义对齐及任务效用。该基准为更贴近用户身份的个性化生成研究奠定评测基础。",
-      "llm_tldr": "个性化图像生成长期局限于从精选视觉样例进行条件合成，难以刻画用户本人，而真实个人语境包含评论、帖子、图像、描述与元数据等丰富历史。本文提出首个基于用户历史的个性化图像生成统一基准，包含两个互补任务与多轴评估协议，评估目标保真度、视觉质量、用户可区分性、与历史语义对齐及任务效用。该基准为更贴近用户身份的个性化生成研究奠定评测基础。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "What are the methods for controllable image generation?",
-      "matched_requirement_id": "req-6",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2609.37537v1",
-      "source": "arxiv",
-      "title": "Weeding Out Bad Seeds: Initial-Noise-Robust Unlearning for Text-to-Image Diffusion Models",
-      "abstract": "Machine unlearning has emerged as a critical post-hoc safety measure to erase sensitive concepts from Text-to-Image (T2I) models without prohibitive retraining. However, we reveal that current state-of-the-art (SOTA) approaches are brittle due to a severe lack of robustness to noise initialization. We call this phenomenon ``probabilistic forgetting'': suppressed concepts re-emerge under specific random initial noise conditions, despite appearing unlearned on other initializations. We trace this failure to the misalignment between standard Gaussian sampling during unlearning and the unlearning objective. Since the target concept manifests only in specific initial noise regions throughout the unlearning phase, uniform random sampling yields sparse, uninformative gradient updates that fail to drive robust erasure. To overcome this issue, we propose an adaptive, concept-conditioned sampling strategy that dynamically concentrates gradient updates on regions where the target concept manifests, down-weighting uninformative areas. We integrate our framework with six distinct SOTA unlearning methods across four diffusion backbones and evaluate it across safety, object, and artistic-style unlearning, as well as under black-box and white-box adversarial attacks. Our method reduces the conditional nudity re-emergence rate across random initializations by 67.2% on average over four baselines and lowers attack success rates across both adversarial evaluations. Across concept domains, Adaptive Noise Sampling strengthens adversarial robustness and non-target retention while preserving competitive generative quality and target-erasure performance.",
-      "authors": [
-        "Arian Komaei Koma",
-        "Seyed Amir Kasaei",
-        "Aida Aryafar",
-        "Matin Ghiasi",
-        "Ali Aghayari",
-        "Amirhossein Souri",
-        "Mohammad Mosayyebi",
-        "AmirMahdi Sadeghzadeh",
-        "Mohammad Hossein Rohban"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV"
-      ],
-      "published": "2026-09-29T13:21:10+00:00",
-      "link": "https://arxiv.org/pdf/2609.37537v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "unlearning in text-to-image diffusion models",
-      "llm_evidence_cn": "文本到图像扩散模型中的概念遗忘",
-      "llm_evidence": "文本到图像扩散模型中的概念遗忘",
-      "canonical_evidence": "文本到图像扩散模型中的概念遗忘",
-      "llm_tldr_en": "This work reveals probabilistic forgetting in text-to-image diffusion unlearning, where suppressed concepts re-emerge under specific initial noise, and proposes a noise-robust unlearning method to make concept erasure reliable.",
-      "llm_tldr_cn": "机器遗忘是文本到图像扩散模型清除敏感概念的重要后处理手段，但现有方法对初始噪声缺乏鲁棒性。本文揭示概率性遗忘现象：被抑制概念在特定随机初始噪声下会重新出现，并归因于遗忘时高斯采样与遗忘目标的不一致。作者据此提出对初始噪声鲁棒的遗忘方法。该工作提升了文本到图像扩散模型概念擦除的可靠性与安全性。",
-      "llm_tldr": "机器遗忘是文本到图像扩散模型清除敏感概念的重要后处理手段，但现有方法对初始噪声缺乏鲁棒性。本文揭示概率性遗忘现象：被抑制概念在特定随机初始噪声下会重新出现，并归因于遗忘时高斯采样与遗忘目标的不一致。作者据此提出对初始噪声鲁棒的遗忘方法。该工作提升了文本到图像扩散模型概念擦除的可靠性与安全性。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "synthesizing images from textual descriptions",
-      "matched_requirement_id": "req-2",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
     {
       "id": "2610.02372v1",
       "source": "arxiv",
@@ -127,106 +36,19 @@
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "text-to-image diffusion generation with reward and diversity",
-      "llm_evidence_cn": "文本到图像扩散生成的奖励与多样性",
-      "llm_evidence": "文本到图像扩散生成的奖励与多样性",
-      "canonical_evidence": "文本到图像扩散生成的奖励与多样性",
-      "llm_tldr_en": "This paper formulates text-to-image generation as satisficing, requiring each image to meet a reward floor and the batch to meet a diversity cutoff, and shows how varying the floor trades off worst-case reward against diversity.",
-      "llm_tldr_cn": "文本到图像生成让用户从同一提示探索多张图像，但每张既要符合偏好奖励又要彼此视觉多样，现有方法难以兼顾。作者把生成建模为满足问题：单张图像需达到奖励下限，整批图像需满足多样性阈值，并用奖励下限调节最差候选奖励与批量多样性之间的平衡。该框架为文本到图像生成的偏好对齐提供新视角。",
-      "llm_tldr": "文本到图像生成让用户从同一提示探索多张图像，但每张既要符合偏好奖励又要彼此视觉多样，现有方法难以兼顾。作者把生成建模为满足问题：单张图像需达到奖励下限，整批图像需满足多样性阈值，并用奖励下限调节最差候选奖励与批量多样性之间的平衡。该框架为文本到图像生成的偏好对齐提供新视角。",
+      "llm_evidence_en": "text-to-image diffusion generation balancing reward satisfaction and diversity",
+      "llm_evidence_cn": "文本到图像扩散生成中平衡奖励满足与多样性",
+      "llm_evidence": "文本到图像扩散生成中平衡奖励满足与多样性",
+      "canonical_evidence": "文本到图像扩散生成中平衡奖励满足与多样性",
+      "llm_tldr_en": "Reformulates text-to-image diffusion generation as satisficing with a reward floor and diversity cutoff, avoiding the flaw of aggregate scores letting diversity mask low rewards.",
+      "llm_tldr_cn": "该文针对文本到图像生成中同一提示需兼顾用户偏好与视觉多样性的问题，指出已有方法或将二者分开处理，或用单一聚合分数使高多样性掩盖低奖励。作者将生成建模为满足式问题：每张候选图必须达到奖励下限，整批图像必须满足多样性阈值。实验表明调节奖励下限可控制最差候选奖励与批量多样性之间的平衡，从而更可靠地生成既符合偏好又彼此多样的图像。",
+      "llm_tldr": "该文针对文本到图像生成中同一提示需兼顾用户偏好与视觉多样性的问题，指出已有方法或将二者分开处理，或用单一聚合分数使高多样性掩盖低奖励。作者将生成建模为满足式问题：每张候选图必须达到奖励下限，整批图像必须满足多样性阈值。实验表明调节奖励下限可控制最差候选奖励与批量多样性之间的平衡，从而更可靠地生成既符合偏好又彼此多样的图像。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
       "matched_query_text": "synthesizing images from textual descriptions",
       "matched_requirement_id": "req-2",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2609.38597v1",
-      "source": "arxiv",
-      "title": "PixelUMM: Encoder-Free Unified Image and Video Understanding and Generation",
-      "abstract": "Unified Multimodal Models (UMMs) often rely on separate visual representations for understanding and generation, increasing visual context length and complicating integration with established vision-language pretraining pipelines. Recent advances in pixel-space modeling offer an encoder-free alternative, but extending this paradigm from images to videos is non-trivial: video understanding and generation adopt different temporal representations, leaving the design of a unified visual interface an open question. We present PixelUMM, an encoder-free model for unified image and video understanding and generation directly in pixel space. PixelUMM represents images as spatial patches and videos as spatiotemporal tubelets, connecting raw pixels to a shared multimodal backbone through single-layer linear projections. Its Mixture-of-Transformers architecture combines shared attention with task-specific parameters and extends clean-pixel prediction to video generation, jointly supporting autoregressive text prediction and pixel-space flow matching. Experiments show that PixelUMM achieves competitive performance across image and video understanding and generation tasks. We further conduct empirical studies of key design choices, including decoder design and spatial-temporal patch size, providing insights for future pixel-space unified multimodal models.",
-      "authors": [
-        "Cong Wei",
-        "Xuanchi Ren",
-        "Bryan Chu",
-        "Weiming Ren",
-        "Huan Ling",
-        "Jiahui Huang",
-        "Laura Leal-Taixé",
-        "Sanja Fidler",
-        "Wenhu Chen",
-        "Zian Wang",
-        "Jay Zhangjie Wu"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV"
-      ],
-      "published": "2026-09-29T21:59:07+00:00",
-      "link": "https://arxiv.org/pdf/2609.38597v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "unified image and video generation in pixel space",
-      "llm_evidence_cn": "像素空间中的统一图像与视频生成",
-      "llm_evidence": "像素空间中的统一图像与视频生成",
-      "canonical_evidence": "像素空间中的统一图像与视频生成",
-      "llm_tldr_en": "Unified multimodal models often use separate visual representations; PixelUMM is an encoder-free model performing unified image and video understanding and generation in pixel space, representing images as patches and videos as spatiotemporal tubelets.",
-      "llm_tldr_cn": "统一多模态模型常为理解与生成使用分离的视觉表示，增加视觉上下文长度并难以融入现有视觉语言预训练流程；将像素空间建模从图像扩展到视频又面临时序表示不一致的难题。作者提出PixelUMM，一个无编码器模型，在像素空间直接进行统一的图像与视频理解与生成，将图像表示为空间块、视频表示为时空管，连接原始像素与共享表示，为统一视觉接口提供了新范式。",
-      "llm_tldr": "统一多模态模型常为理解与生成使用分离的视觉表示，增加视觉上下文长度并难以融入现有视觉语言预训练流程；将像素空间建模从图像扩展到视频又面临时序表示不一致的难题。作者提出PixelUMM，一个无编码器模型，在像素空间直接进行统一的图像与视频理解与生成，将图像表示为空间块、视频表示为时空管，连接原始像素与共享表示，为统一视觉接口提供了新范式。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "diffusion probabilistic models for image generation",
-      "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
-    {
-      "id": "2610.02567v1",
-      "source": "arxiv",
-      "title": "DAGS: Disentangled Appearance-and-Geometry Steering of a Frozen Image DiT for Temporally Stabilized Generative Rendering",
-      "abstract": "Diffusion transformers (DiTs) generate high-fidelity images from text and image conditions, but their outputs carry large variance and their faithfulness to a desired target depends heavily on how the condition is supplied. We present DAGS, a lightweight, attention-free, disentangled appearance and geometry conditioning scheme that steers a frozen image DiT to produce high-fidelity, highly faithful, and independently controllable renders. Two small convolutional encoders compute conditioning features once per frame and inject them as a learned, per-layer, element-wise residual into the image tokens, avoiding the quadratic cost of stacking conditions through attention. Because control and temporal handling live outside the frozen backbone, we retain its vast pretrained prior and eliminate backbone-overfitting risk. We further add a small recurrent lighting stabilizer and a training-free temporal guidance term that, coupled with our conditioning, elevate a per-frame image model into a streaming renderer. DAGS produces controllable, high-quality renders at a fraction of the compute of path tracing; it is not real-time, trading compute for controllability and quality. On a matched 1-spp + G-buffer input, per-frame DAGS reconstructs +8.6 dB / +10.1 dB PSNR over the real-time denoiser Intel OIDN and the diffusion renderer RGB<->X while being 2.5-8x more temporally stable perceptually (temporal-LPIPS flicker).",
-      "authors": [
-        "Karthik Mohan Kumar",
-        "Damian Andrysiak",
-        "Pedro Antonio Pena",
-        "Kunal Tyagi",
-        "Rama Harihara"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV",
-        "cs.AI",
-        "cs.GR",
-        "cs.LG"
-      ],
-      "published": "2026-10-01T22:59:42+00:00",
-      "link": "https://arxiv.org/pdf/2610.02567v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "disentangled appearance and geometry steering of a frozen image DiT for controllable rendering",
-      "llm_evidence_cn": "对冻结图像DiT进行外观与几何解耦引导以实现可控渲染",
-      "llm_evidence": "对冻结图像DiT进行外观与几何解耦引导以实现可控渲染",
-      "canonical_evidence": "对冻结图像DiT进行外观与几何解耦引导以实现可控渲染",
-      "llm_tldr_en": "Diffusion transformers generate high-fidelity images but their faithfulness depends heavily on how conditions are injected. DAGS uses two small convolutional encoders to inject disentangled appearance and geometry residuals into a frozen DiT, enabling independent control.",
-      "llm_tldr_cn": "扩散Transformer能从文本与图像条件生成高保真图像，但输出方差大，忠实度依赖条件注入方式。本文提出DAGS，一种轻量、无注意力、解耦外观与几何的条件方案，用两个小型卷积编码器每帧计算条件特征，并以逐层逐元素残差注入图像token，避免注意力堆叠的二次开销，实现对冻结图像DiT的高保真、可控生成与时间稳定渲染。该工作为扩散模型的可控图像生成提供了高效的条件注入范式。",
-      "llm_tldr": "扩散Transformer能从文本与图像条件生成高保真图像，但输出方差大，忠实度依赖条件注入方式。本文提出DAGS，一种轻量、无注意力、解耦外观与几何的条件方案，用两个小型卷积编码器每帧计算条件特征，并以逐层逐元素残差注入图像token，避免注意力堆叠的二次开销，实现对冻结图像DiT的高保真、可控生成与时间稳定渲染。该工作为扩散模型的可控图像生成提供了高效的条件注入范式。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "What are the methods for controllable image generation?",
-      "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
@@ -258,19 +80,109 @@
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "unified continuous generative model of language and vision",
-      "llm_evidence_cn": "语言与视觉的统一连续生成模型",
-      "llm_evidence": "语言与视觉的统一连续生成模型",
-      "canonical_evidence": "语言与视觉的统一连续生成模型",
-      "llm_tldr_en": "Presents Multimodal Flow, a fully continuous generative model that unifies language and vision in embedding spaces with a shared chunk-causal flow backbone, avoiding visual quantization bottlenecks.",
-      "llm_tldr_cn": "现有多模态统一模型常将图像量化为离散token或采用模态相关目标，带来视觉量化瓶颈与流程割裂。论文提出Multimodal Flow，在连续嵌入空间中以共享的分块因果流主干统一建模文本与图像，形成单一连续生成过程。该框架避免离散化损失，实现语言与视觉的共享生成建模。作为全连续多模态预训练范式，它为统一生成模型提供了新方向。",
-      "llm_tldr": "现有多模态统一模型常将图像量化为离散token或采用模态相关目标，带来视觉量化瓶颈与流程割裂。论文提出Multimodal Flow，在连续嵌入空间中以共享的分块因果流主干统一建模文本与图像，形成单一连续生成过程。该框架避免离散化损失，实现语言与视觉的共享生成建模。作为全连续多模态预训练范式，它为统一生成模型提供了新方向。",
+      "llm_evidence_en": "fully continuous unified generative model of language and vision",
+      "llm_evidence_cn": "语言与视觉的全连续统一生成模型",
+      "llm_evidence": "语言与视觉的全连续统一生成模型",
+      "canonical_evidence": "语言与视觉的全连续统一生成模型",
+      "llm_tldr_en": "Multimodal Flow is a fully continuous generative model of language and vision using a shared chunk-causal flow backbone, avoiding image quantization bottlenecks and modality-dependent objectives.",
+      "llm_tldr_cn": "现有多模态模型要么把图像量化为离散令牌而引入视觉量化瓶颈，要么将离散语言预测与连续图像生成结合而需模态相关目标与采样流程。本文提出Multimodal Flow，一种语言与视觉的全连续生成模型，用共享的块因果流主干统一组织文本块与图像的连续表示。该架构避免了量化瓶颈与模态相关目标，实现共享的连续生成过程，为多模态预训练探索了全连续统一生成路径。",
+      "llm_tldr": "现有多模态模型要么把图像量化为离散令牌而引入视觉量化瓶颈，要么将离散语言预测与连续图像生成结合而需模态相关目标与采样流程。本文提出Multimodal Flow，一种语言与视觉的全连续生成模型，用共享的块因果流主干统一组织文本块与图像的连续表示。该架构避免了量化瓶颈与模态相关目标，实现共享的连续生成过程，为多模态预训练探索了全连续统一生成路径。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "diffusion probabilistic models for image generation",
-      "matched_requirement_id": "req-1",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.02567v1",
+      "source": "arxiv",
+      "title": "DAGS: Disentangled Appearance-and-Geometry Steering of a Frozen Image DiT for Temporally Stabilized Generative Rendering",
+      "abstract": "Diffusion transformers (DiTs) generate high-fidelity images from text and image conditions, but their outputs carry large variance and their faithfulness to a desired target depends heavily on how the condition is supplied. We present DAGS, a lightweight, attention-free, disentangled appearance and geometry conditioning scheme that steers a frozen image DiT to produce high-fidelity, highly faithful, and independently controllable renders. Two small convolutional encoders compute conditioning features once per frame and inject them as a learned, per-layer, element-wise residual into the image tokens, avoiding the quadratic cost of stacking conditions through attention. Because control and temporal handling live outside the frozen backbone, we retain its vast pretrained prior and eliminate backbone-overfitting risk. We further add a small recurrent lighting stabilizer and a training-free temporal guidance term that, coupled with our conditioning, elevate a per-frame image model into a streaming renderer. DAGS produces controllable, high-quality renders at a fraction of the compute of path tracing; it is not real-time, trading compute for controllability and quality. On a matched 1-spp + G-buffer input, per-frame DAGS reconstructs +8.6 dB / +10.1 dB PSNR over the real-time denoiser Intel OIDN and the diffusion renderer RGB<->X while being 2.5-8x more temporally stable perceptually (temporal-LPIPS flicker).",
+      "authors": [
+        "Karthik Mohan Kumar",
+        "Damian Andrysiak",
+        "Pedro Antonio Pena",
+        "Kunal Tyagi",
+        "Rama Harihara"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.GR",
+        "cs.LG"
+      ],
+      "published": "2026-10-01T22:59:42+00:00",
+      "link": "https://arxiv.org/pdf/2610.02567v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "controllable appearance and geometry steering of a frozen image diffusion transformer",
+      "llm_evidence_cn": "对冻结图像扩散Transformer进行外观与几何的可控引导",
+      "llm_evidence": "对冻结图像扩散Transformer进行外观与几何的可控引导",
+      "canonical_evidence": "对冻结图像扩散Transformer进行外观与几何的可控引导",
+      "llm_tldr_en": "DAGS steers a frozen image diffusion transformer with disentangled appearance and geometry conditioning injected as lightweight residual features, enabling faithful and independently controllable rendering.",
+      "llm_tldr_cn": "该文针对扩散Transformer生成结果方差大、条件注入方式影响可控性的问题，提出DAGS这一轻量、无注意力机制的外观与几何解耦条件方案。两个小型卷积编码器逐帧计算条件特征，并以逐层逐元素残差注入图像token，避免了注意力堆叠条件的二次开销。方法实现了高保真、忠实且可独立控制的渲染，同时改善了时间稳定性，为可控图像生成提供了高效途径。",
+      "llm_tldr": "该文针对扩散Transformer生成结果方差大、条件注入方式影响可控性的问题，提出DAGS这一轻量、无注意力机制的外观与几何解耦条件方案。两个小型卷积编码器逐帧计算条件特征，并以逐层逐元素残差注入图像token，避免了注意力堆叠条件的二次开销。方法实现了高保真、忠实且可独立控制的渲染，同时改善了时间稳定性，为可控图像生成提供了高效途径。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.00737v1",
+      "source": "arxiv",
+      "title": "Personalized Image Generation with Reasoning and Reflection",
+      "abstract": "Personalized image generation has remained narrowly focused on conditional synthesis from curated visual exemplars, rather than capturing who a user is. In practice, however, a user's personal context is much richer, comprising reviews, posts, images, captions, and metadata accumulated over time. A truly personalized generator should leverage this history to produce images aligned with the user's lifestyle and aesthetic preferences. To this end, we introduce the first unified benchmark for personalized image generation from user histories. The benchmark comprises two complementary tasks and a multi-axis evaluation protocol that assesses target fidelity, visual quality, user distinguishability, semantic alignment with the user's history, and task-specific utility. Grounded in real-world e-commerce and social media settings, the benchmark includes: (1) Personalized Scene Generation, which places a given object in a scene that reflects a user's preferences and lifestyle, motivated by personalized product presentation; and (2) Personalized Creative Generation, which generates a novel image on a specified topic that is faithful to a user's aesthetic and visual identity, motivated by social media content creation. We further propose PEARL, which couples a multimodal reasoner with a frozen image generator in an interleaved reason-reflect loop optimized with differential data reward. Across both tasks, PEARL outperforms strong baselines, achieving an average improvement of 15% across personalization metrics.",
+      "authors": [
+        "Bo Ni",
+        "Ngoc N. Tran",
+        "Qinwen Ge",
+        "Franck Dernoncourt",
+        "Seunghyun Yoon",
+        "Samyadeep Basu",
+        "Sungchul Kim",
+        "Puneet Mathur",
+        "Nedim Lipka",
+        "Tong Yu",
+        "Yu Wang",
+        "Ryan A. Rossi",
+        "Tyler Derr"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-09-30T21:30:26+00:00",
+      "link": "https://arxiv.org/pdf/2610.00737v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "personalized image generation from user histories benchmark",
+      "llm_evidence_cn": "基于用户历史的个性化图像生成基准",
+      "llm_evidence": "基于用户历史的个性化图像生成基准",
+      "canonical_evidence": "基于用户历史的个性化图像生成基准",
+      "llm_tldr_en": "The paper introduces the first unified benchmark for personalized image generation from rich user histories, with two complementary tasks and a multi-axis evaluation protocol assessing fidelity, quality, distinguishability and semantic alignment.",
+      "llm_tldr_cn": "针对个性化图像生成长期局限于从精选视觉示例做条件合成、难以刻画用户完整个人语境的问题，论文提出首个基于用户历史（评论、帖子、图像、描述与元数据等）的个性化图像生成统一基准。该基准包含两个互补任务与多轴评估协议，衡量目标保真、视觉质量、用户可区分性以及与历史语义的对齐程度。工作为个性化图像生成提供了系统化评测框架与更丰富的语境设定。",
+      "llm_tldr": "针对个性化图像生成长期局限于从精选视觉示例做条件合成、难以刻画用户完整个人语境的问题，论文提出首个基于用户历史（评论、帖子、图像、描述与元数据等）的个性化图像生成统一基准。该基准包含两个互补任务与多轴评估协议，衡量目标保真、视觉质量、用户可区分性以及与历史语义的对齐程度。工作为个性化图像生成提供了系统化评测框架与更丰富的语境设定。",
+      "llm_tags": [
+        "query:image-gen:composite"
+      ],
+      "matched_query_tag": "query:image-gen:composite",
+      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
+      "matched_requirement_id": "req-composite-image-gen",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
     },
@@ -295,59 +207,19 @@
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "correcting guided diffusion trajectories for conditional image generation",
-      "llm_evidence_cn": "为条件图像生成校正引导扩散轨迹",
-      "llm_evidence": "为条件图像生成校正引导扩散轨迹",
-      "canonical_evidence": "为条件图像生成校正引导扩散轨迹",
-      "llm_tldr_en": "Classifier-free guidance lacks an explicit criterion to judge whether guided trajectories progress correctly in conditional image generation. Spectral Correction Guidance uses spectral alignment to detect deviations and adaptively correct sampling, improving alignment and fidelity.",
-      "llm_tldr_cn": "条件图像生成中分类器无关引导（CFG）缺乏显式准则来判断引导轨迹是否按预期推进，难以评估对齐与保真度。本文发现中间状态的频谱可作为与扩散前向过程预期演化一致性的指标，进而提出频谱校正引导方法，自适应地纠正偏离预期频谱的采样轨迹。实验表明该方法改善了条件对齐与视觉保真度，为可控扩散生成提供了原理性的采样校正工具。",
-      "llm_tldr": "条件图像生成中分类器无关引导（CFG）缺乏显式准则来判断引导轨迹是否按预期推进，难以评估对齐与保真度。本文发现中间状态的频谱可作为与扩散前向过程预期演化一致性的指标，进而提出频谱校正引导方法，自适应地纠正偏离预期频谱的采样轨迹。实验表明该方法改善了条件对齐与视觉保真度，为可控扩散生成提供了原理性的采样校正工具。",
+      "llm_evidence_en": "improving guided conditional image generation via spectral correction",
+      "llm_evidence_cn": "通过谱对齐校正引导条件图像生成",
+      "llm_evidence": "通过谱对齐校正引导条件图像生成",
+      "canonical_evidence": "通过谱对齐校正引导条件图像生成",
+      "llm_tldr_en": "Classifier-free guidance lacks an explicit criterion for whether the guided trajectory progresses as intended. This paper shows spectral alignment provides such a criterion and introduces Spectral Correction Guidance to adaptively correct guided diffusion sampling.",
+      "llm_tldr_cn": "条件图像生成的成功依赖分类器无引导（CFG），但其缺乏显式准则来判断引导轨迹是否按预期推进。本文指出中间状态的频谱可作为与扩散前向过程预期谱演化一致性的指标。基于此提出谱校正引导方法，自适应地纠正偏离预期谱演化的采样轨迹，从而改善条件对齐与视觉保真度，为理解并改进引导扩散采样提供了有原则的依据。",
+      "llm_tldr": "条件图像生成的成功依赖分类器无引导（CFG），但其缺乏显式准则来判断引导轨迹是否按预期推进。本文指出中间状态的频谱可作为与扩散前向过程预期谱演化一致性的指标。基于此提出谱校正引导方法，自适应地纠正偏离预期谱演化的采样轨迹，从而改善条件对齐与视觉保真度，为理解并改进引导扩散采样提供了有原则的依据。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
       "matched_query_text": "What are the methods for controllable image generation?",
       "matched_requirement_id": "req-6",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2610.03084v1",
-      "source": "arxiv",
-      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
-      "abstract": "Text-to-image (T2I) models are judged by benchmarks that measure whether requested content appears, but these benchmarks largely overlook the complementary ability to satisfy negated constraints, for example, generating \"a non-red cup.\" Measuring negation raises challenges not faced by affirmation-based benchmarks and requires careful prompt and evaluation design. We introduce NegT2IBench, a benchmark of 4,800 prompts covering two attribute types and four relation categories. Prompts are organized by polarity: the number of positive statements that must hold and negated statements that must not, each ranging from 0 to 2. Varying the two independently separates the effect of negation from the effect of prompt complexity. Our detector-based scoring is reproducible, auditable, and pinpoints which requirement failed. On 600 images with three-annotator labels, it agrees with humans as closely as vision-language judges up to 30x larger, while using only a fraction of their GPU memory. Across eleven T2I models and 211,200 images, nine score lower on a single negated statement than on a single positive one. Per-statement scoring reveals that the loss is largest for color and near zero for proximity, and that 41.5% of failed statements render exactly what the prompt forbids. Rendering what a prompt asks for and withholding what it forbids are distinct capabilities that an aggregate compositional score cannot distinguish. NegT2IBench measures the latter directly, providing a controlled testbed for diagnosing negation failures and developing methods to overcome them.",
-      "authors": [
-        "Omar Elfatairy",
-        "Maria A. Bravo",
-        "Jessica Bader",
-        "Zeynep Akata"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV",
-        "cs.AI",
-        "cs.LG"
-      ],
-      "published": "2026-10-02T10:03:56+00:00",
-      "link": "https://arxiv.org/pdf/2610.03084v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "benchmark for negation handling in text-to-image models",
-      "llm_evidence_cn": "面向文本到图像模型否定处理的基准",
-      "llm_evidence": "面向文本到图像模型否定处理的基准",
-      "canonical_evidence": "面向文本到图像模型否定处理的基准",
-      "llm_tldr_en": "Text-to-image benchmarks mainly measure whether requested content appears, overlooking the ability to satisfy negated constraints. NegT2IBench provides 4800 polarity-organized prompts and detection methods, revealing systematic negation weaknesses in T2I models.",
-      "llm_tldr_cn": "现有文本到图像模型评测主要衡量请求内容是否出现，却忽视了对否定约束（如生成非红色杯子）的满足能力。本文提出NegT2IBench，一个包含4800条提示的极性基准，覆盖两类属性与四种关系，并按肯定与否定陈述数量组织提示，以分离否定效应与提示复杂度的影响。配套检测方法揭示了T2I模型在否定处理上的系统性缺陷，为更全面的文本到图像评测提供了工具。",
-      "llm_tldr": "现有文本到图像模型评测主要衡量请求内容是否出现，却忽视了对否定约束（如生成非红色杯子）的满足能力。本文提出NegT2IBench，一个包含4800条提示的极性基准，覆盖两类属性与四种关系，并按肯定与否定陈述数量组织提示，以分离否定效应与提示复杂度的影响。配套检测方法揭示了T2I模型在否定处理上的系统性缺陷，为更全面的文本到图像评测提供了工具。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "synthesizing images from textual descriptions",
-      "matched_requirement_id": "req-2",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
@@ -372,20 +244,212 @@
         "keyword:image-gen",
         "query:image-gen"
       ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "adaptive step selection in flow models for efficient visual generation",
-      "llm_evidence_cn": "流模型自适应步数选择用于高效视觉生成",
-      "llm_evidence": "流模型自适应步数选择用于高效视觉生成",
-      "canonical_evidence": "流模型自适应步数选择用于高效视觉生成",
-      "llm_tldr_en": "Flow matching gives high-quality visual generation but is costly at inference; COFLOW adaptively selects step counts per prompt and is trained online with an unsupervised efficiency-fidelity reward, plug-and-play without retraining.",
-      "llm_tldr_cn": "流匹配通过连续时间动力学实现高质量视觉生成，但多次顺序函数评估使推理昂贵，现有加速方法常带来额外训练开销或质量下降，且忽略输入相关差异。本文提出COFLOW，一种推理时方法，根据提示特征为每次生成自适应选择步数，并用无监督奖励在线训练以平衡推理效率与生成保真度。方法即插即用、无需重训底层生成模型，可推广到图像与视频生成。",
-      "llm_tldr": "流匹配通过连续时间动力学实现高质量视觉生成，但多次顺序函数评估使推理昂贵，现有加速方法常带来额外训练开销或质量下降，且忽略输入相关差异。本文提出COFLOW，一种推理时方法，根据提示特征为每次生成自适应选择步数，并用无监督奖励在线训练以平衡推理效率与生成保真度。方法即插即用、无需重训底层生成模型，可推广到图像与视频生成。",
+      "llm_score": 6.0,
+      "llm_evidence_en": "flow matching for efficient high-quality visual generation",
+      "llm_evidence_cn": "用于高效高质量视觉生成的流匹配",
+      "llm_evidence": "用于高效高质量视觉生成的流匹配",
+      "canonical_evidence": "用于高效高质量视觉生成的流匹配",
+      "llm_tldr_en": "COFLOW is a plug-and-play inference-time method that adaptively selects step counts per generation based on prompt features for efficient visual generation.",
+      "llm_tldr_cn": "流匹配通过连续时间动力学实现高质量视觉生成，但推理需多次顺序函数评估，代价高昂。现有加速方法或引入额外训练开销、或损害质量、或忽略输入差异。本文提出COFLOW，一种推理时方法，根据提示特征自适应选择每次生成的步数，并用无监督奖励在线训练以平衡效率与保真度。该方法即插即用，无需重训生成模型，可推广到图像与视频生成。",
+      "llm_tldr": "流匹配通过连续时间动力学实现高质量视觉生成，但推理需多次顺序函数评估，代价高昂。现有加速方法或引入额外训练开销、或损害质量、或忽略输入差异。本文提出COFLOW，一种推理时方法，根据提示特征自适应选择每次生成的步数，并用无监督奖励在线训练以平衡效率与保真度。该方法即插即用，无需重训生成模型，可推广到图像与视频生成。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
       "matched_query_text": "diffusion probabilistic models for image generation",
       "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.03068v1",
+      "source": "arxiv",
+      "title": "Where to Look Is Not How to Fix: Pre-Denoising Diagnostics and Modality-Dependent Control in Diffusion Composition",
+      "abstract": "Understanding compositional failures in text-to-image diffusion requires identifying both where stress is detectable and how intervention changes the output. We study these questions through a controlled anchor--stress protocol that jointly evaluates text-encoder diagnostics and denoiser interventions. We introduce a text-only Compositional Stress Index (CSI), which separates common from rare compositions across SD1.5, SDXL, and the SD3 text path and provides an upstream diagnostic coordinate. A matched six-prompt localization study links intervention location to distinct outcomes: residual-minimizing embedding adapters improve representation fit, while downstream cross-attention intervention increases color hit rate (CHR) by 0.0272. Across SD1.5 and SDXL denoiser blocks, the largest positive signed diagnostic-accessibility mean occurs at the deep encoder, whereas selective boost has its largest positive mean CHR response at decoder blocks. Selective subtraction and broad ablation reveal further modality- and architecture-dependent responses, including a substantial CHR decrease when SDXL decoder cross-attention is broadly ablated. We find a diagnosis-control dissociation under our controlled attribute-object composition setting: compositional defects are diagnosable before denoising, but the representation coordinate that exposes risk is not necessarily the coordinate or modality that improves generation.",
+      "authors": [
+        "Fangzheng Wu",
+        "Brian Summa"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-02T09:50:43+00:00",
+      "link": "https://arxiv.org/pdf/2610.03068v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "diagnosing and controlling compositional failures in text-to-image diffusion",
+      "llm_evidence_cn": "诊断并控制文本到图像扩散的组合失败",
+      "llm_evidence": "诊断并控制文本到图像扩散的组合失败",
+      "canonical_evidence": "诊断并控制文本到图像扩散的组合失败",
+      "llm_tldr_en": "Uses an anchor-stress protocol and a Compositional Stress Index to localize and control compositional failures in text-to-image diffusion models.",
+      "llm_tldr_cn": "理解文本到图像扩散的组合失败，需要同时定位压力所在与干预如何改变输出。本文通过受控的锚点-压力协议，联合评估文本编码器诊断与去噪器干预。作者提出仅文本的组合压力指数（CSI），并在SD1.5、SDXL与SD3上定位干预位置与不同结果的关系。研究表明干预位置决定效果，为可控图像生成提供了诊断与控制依据。",
+      "llm_tldr": "理解文本到图像扩散的组合失败，需要同时定位压力所在与干预如何改变输出。本文通过受控的锚点-压力协议，联合评估文本编码器诊断与去噪器干预。作者提出仅文本的组合压力指数（CSI），并在SD1.5、SDXL与SD3上定位干预位置与不同结果的关系。研究表明干预位置决定效果，为可控图像生成提供了诊断与控制依据。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.05066v1",
+      "source": "arxiv",
+      "title": "Salvation Lies Within: Eliciting Inherent Style Transfer in Step-Distilled Diffusion Models",
+      "abstract": "Adapting step-distilled text-to-image (T2I) models through post-training incurs additional computational costs and affects native few-step generation behavior. This motivates a complementary route beyond style-specific adaptation: drawing on the visual knowledge already encoded in step-distilled T2I models to elicit stylistic capabilities through language. Pursuing this direction requires textual guidance that captures how visual attributes jointly define a style and remain applicable as the depicted content changes. To explore this approach, we introduce StyleForge, a fully automatic, training-free framework that expresses reference styles as reusable rendering instructions. By integrating overall rendering characteristics with local color and lighting behavior, StyleForge organizes visual evidence from reference images into a coherent specification of how the target style should be expressed. The specification is then compiled into textual guidance that can be reused across content prompts, enabling frozen step-distilled T2I models to render different subjects and scenes in the reference style while retaining native few-step generation. Extensive experiments show relative gains of up to 29.47\\% in generation quality scores over the strongest baseline, while Pareto analysis indicates that improved stylization is accompanied by strong adherence to the requested content.",
+      "authors": [
+        "Shengyin Sun",
+        "Yiming Li",
+        "Yingzhao Lian",
+        "Xing Li",
+        "Xingzhi Zhou",
+        "Anxin Tian",
+        "Zhili Wang",
+        "Haoyang Li",
+        "Ziqiang Cui",
+        "Chen Ma"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-04T09:06:57+00:00",
+      "link": "https://arxiv.org/pdf/2610.05066v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "training-free style transfer in step-distilled text-to-image models",
+      "llm_evidence_cn": "步蒸馏文生图模型中的免训练风格迁移",
+      "llm_evidence": "步蒸馏文生图模型中的免训练风格迁移",
+      "canonical_evidence": "步蒸馏文生图模型中的免训练风格迁移",
+      "llm_tldr_en": "Post-training step-distilled text-to-image models for style adaptation is costly and harms few-step behavior. StyleForge is a training-free framework that expresses reference styles as reusable rendering instructions via language.",
+      "llm_tldr_cn": "对步蒸馏文生图模型进行后训练以适配风格会带来额外计算开销，并破坏其原生少步生成行为。作者提出StyleForge，一个全自动免训练框架，将参考风格表达为可复用的渲染指令，通过语言引导唤起模型内在的风格能力。该工作整合整体渲染特征与局部细节，在不重新训练的前提下实现内容变化时仍适用的风格迁移。",
+      "llm_tldr": "对步蒸馏文生图模型进行后训练以适配风格会带来额外计算开销，并破坏其原生少步生成行为。作者提出StyleForge，一个全自动免训练框架，将参考风格表达为可复用的渲染指令，通过语言引导唤起模型内在的风格能力。该工作整合整体渲染特征与局部细节，在不重新训练的前提下实现内容变化时仍适用的风格迁移。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.03771v1",
+      "source": "arxiv",
+      "title": "LoRA Direction Extraction for Controllable Light Toggling in FLUX.1 Kontext",
+      "abstract": "We propose a fine-tuning method for flow-matching diffusion models aimed at realistic artificial light modeling without the need for a large training dataset. We address the task of controllable interior image editing, where the goal is to turn artificial light sources on or off while preserving the scene geometry, object placement, materials, and visual identity of the original image. To achieve this, we decompose the task into two independent formulations. We introduce the LoRA Direction Training Method, which extracts the pure direction of the LoRA adapter effect in the diffusion model flow field, and we also introduce specialized loss functions to ensure the realism of the inverse transformation. Additionally, the resulting increment map is used for more precise adjustment of the lighting color and temperature.",
+      "authors": [
+        "Petr Golenderov",
+        "Dmitry Mazyar",
+        "Natalia Sovpel",
+        "Alexander Aksenov"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-09-29T08:44:46+00:00",
+      "link": "https://arxiv.org/pdf/2610.03771v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "controllable image editing by toggling lights with LoRA in diffusion",
+      "llm_evidence_cn": "扩散模型中用LoRA实现可控光照切换编辑",
+      "llm_evidence": "扩散模型中用LoRA实现可控光照切换编辑",
+      "canonical_evidence": "扩散模型中用LoRA实现可控光照切换编辑",
+      "llm_tldr_en": "The paper targets controllable interior image editing that toggles artificial lights while preserving scene geometry and identity. It uses LoRA direction extraction in the flow field of FLUX.1 Kontext and specialized losses, requiring little training data.",
+      "llm_tldr_cn": "室内图像编辑中开关人工光源时需保持场景几何、物体布局与视觉身份不变，而传统方法依赖大规模训练数据。作者针对流匹配扩散模型提出LoRA方向提取方法，从扩散流场中分离LoRA适配器的纯方向，并设计专门损失保证逆变换的真实性。实验在FLUX.1 Kontext上实现可控光照切换，为少样本可控图像编辑提供了新方案。",
+      "llm_tldr": "室内图像编辑中开关人工光源时需保持场景几何、物体布局与视觉身份不变，而传统方法依赖大规模训练数据。作者针对流匹配扩散模型提出LoRA方向提取方法，从扩散流场中分离LoRA适配器的纯方向，并设计专门损失保证逆变换的真实性。实验在FLUX.1 Kontext上实现可控光照切换，为少样本可控图像编辑提供了新方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.05908v1",
+      "source": "arxiv",
+      "title": "Safe Image Generation via Reinforcement Learning",
+      "abstract": "Recent Text-to-Image (T2I) models achieve remarkable visual image generation performance, but they can still generate NSFW (Not-Safe-For-Work) contents, including violent or explicit images. Existing safety checker mechanisms are largely confined to pre-generation filtering (e.g. prompt-level text classifiers) or post-hoc moderation applied after an image is completely synthesized. However, adversarial attack methods operate over a much broader space. This imbalance highlights the need for a safety mechanism that intervenes during the generation process. We propose an in-generation safety framework that monitors the denoising trajectory and detects emerging NSFW signals from intermediate representations. Rather than merely detecting NSFW generations, our method applies reinforcement learning to generate safe images from NSFW prompts. By coupling in-generation detection with controllable steering, our approach mitigates unsafe trajectories even when NSFW signals emerge after generation has already begun. Experiments results show that our method consistently outperforms existing safe image generation methods across both standard and adversarial evaluation sets, while preserving perceptual quality and prompt fidelity. Code will be released upon acceptance.",
+      "authors": [
+        "Eungyeol Han",
+        "Jong-Seok Lee"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-05T07:24:01+00:00",
+      "link": "https://arxiv.org/pdf/2610.05908v1",
+      "tags": [
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Text-to-Image generation safety during denoising",
+      "llm_evidence_cn": "文本到图像生成过程中的安全干预",
+      "llm_evidence": "文本到图像生成过程中的安全干预",
+      "canonical_evidence": "文本到图像生成过程中的安全干预",
+      "llm_tldr_en": "Text-to-image models can still produce unsafe content, and existing checks are only pre-generation or post-hoc. This work proposes an in-generation safety framework that monitors the denoising trajectory and applies reinforcement learning to intervene.",
+      "llm_tldr_cn": "针对文生图模型仍会生成暴力或色情等不安全内容的问题，现有安全机制多局限于生成前的提示词过滤或生成后的审查。本文提出一种生成中安全框架，通过监测去噪轨迹并从中间表示中检测正在出现的不安全信号。该方法进一步用强化学习在生成过程中施加干预，而不仅是事后检测，从而在更广的对抗空间中提升生成安全性。",
+      "llm_tldr": "针对文生图模型仍会生成暴力或色情等不安全内容的问题，现有安全机制多局限于生成前的提示词过滤或生成后的审查。本文提出一种生成中安全框架，通过监测去噪轨迹并从中间表示中检测正在出现的不安全信号。该方法进一步用强化学习在生成过程中施加干预，而不仅是事后检测，从而在更广的对抗空间中提升生成安全性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.04980v1",
+      "source": "arxiv",
+      "title": "Geometry-Aware Preference Optimization for Text-to-Image Diffusion Models",
+      "abstract": "Preference alignment has become a standard practice for text-to-image diffusion models. Direct Preference Optimization (DPO) simplifies this process by eliminating explicit reward modeling. Its diffusion variant, Diffusion-DPO, has become a widely adopted baseline. Diffusion-DPO essentially encourages the likelihood of preferred samples while suppressing dispreferred ones. In this paper, we revisit DPO-style alignment methods for diffusion models from the perspective of the manifold hypothesis. Under this view, natural images concentrate near a low-dimensional manifold embedded in the high-dimensional ambient space, whereas DPO directly optimizes preference distributions in the full space without accounting for this geometric structure. This creates a mismatch in the optimization dynamics: it suppresses geometry-preserving tangential updates, while insufficiently restricting hazardous normal-direction updates. This mismatch gradually degrades image quality and diversity. To address this issue, we propose Anisotropic Geometry-Aware Preference Optimization (APO), which replaces the uniform Euclidean treatment of prediction errors with a geometry-aware anisotropic metric derived from the reference model. Concretely, APO adaptively strengthens regularization in directions where the reference denoising function is highly sensitive, while relaxing constraints in directions that permit safe semantic adjustment. This recalibrates preference optimization according to the local manifold geometry, and maintains the original manifold structure. Experiments show that APO achieves strong performance and an average win rate exceeding 60\\% against various existing alignment methods across diverse benchmarks. It requires significantly fewer training steps than prior methods, and preserves generation diversity throughout training.",
+      "authors": [
+        "Lei Wang",
+        "Zhen Wang",
+        "Yuexiang Xie",
+        "Yaliang Li"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-04T05:55:08+00:00",
+      "link": "https://arxiv.org/pdf/2610.04980v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "geometry-aware preference optimization for text-to-image diffusion models",
+      "llm_evidence_cn": "面向文本到图像扩散模型的几何感知偏好优化",
+      "llm_evidence": "面向文本到图像扩散模型的几何感知偏好优化",
+      "canonical_evidence": "面向文本到图像扩散模型的几何感知偏好优化",
+      "llm_tldr_en": "The paper revisits DPO-style alignment for text-to-image diffusion models through the manifold hypothesis, arguing that optimizing preference distributions in full space ignores the low-dimensional image manifold, and proposes a geometry-aware alternative.",
+      "llm_tldr_cn": "针对Diffusion-DPO在完整空间中优化偏好分布、忽略自然图像集中于低维流形这一几何结构的问题，论文从流形假设重新审视扩散模型的DPO式对齐方法。作者指出直接在环境空间优化偏好分布会带来偏差，并提出几何感知的偏好优化方法来纳入流形结构。该工作为文本到图像扩散模型的偏好对齐提供了新的几何视角与改进方向。",
+      "llm_tldr": "针对Diffusion-DPO在完整空间中优化偏好分布、忽略自然图像集中于低维流形这一几何结构的问题，论文从流形假设重新审视扩散模型的DPO式对齐方法。作者指出直接在环境空间优化偏好分布会带来偏差，并提出几何感知的偏好优化方法来纳入流形结构。该工作为文本到图像扩散模型的偏好对齐提供了新的几何视角与改进方向。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     }

@@ -1,9 +1,9 @@
 {
   "date": "20261006",
   "date_label": "",
-  "generated_at": "2026-10-06 01:11:52 UTC",
+  "generated_at": "2026-10-06 23:12:43 UTC",
   "recommend_exists": true,
-  "run_count": 1,
+  "run_count": 2,
   "papers": [
     {
       "paper_id": "2610.00737v1",
@@ -19,7 +19,7 @@
       "score": 7.0,
       "evidence": "基于用户历史的个性化可控图像生成",
       "first_seen_at": "2026-10-06 01:11:52 UTC",
-      "updated_at": "2026-10-06 01:11:52 UTC"
+      "updated_at": "2026-10-06 23:12:43 UTC"
     },
     {
       "paper_id": "2610.02372v1",
@@ -35,7 +35,7 @@
       "score": 7.0,
       "evidence": "文本到图像扩散生成的奖励与多样性",
       "first_seen_at": "2026-10-06 01:11:52 UTC",
-      "updated_at": "2026-10-06 01:11:52 UTC"
+      "updated_at": "2026-10-06 23:12:43 UTC"
     },
     {
       "paper_id": "2610.02567v1",
@@ -51,7 +51,7 @@
       "score": 7.0,
       "evidence": "对冻结图像DiT进行外观与几何解耦引导以实现可控渲染",
       "first_seen_at": "2026-10-06 01:11:52 UTC",
-      "updated_at": "2026-10-06 01:11:52 UTC"
+      "updated_at": "2026-10-06 23:12:43 UTC"
     },
     {
       "paper_id": "2610.02753v1",
@@ -67,7 +67,71 @@
       "score": 7.0,
       "evidence": "为条件图像生成校正引导扩散轨迹",
       "first_seen_at": "2026-10-06 01:11:52 UTC",
-      "updated_at": "2026-10-06 01:11:52 UTC"
+      "updated_at": "2026-10-06 23:12:43 UTC"
+    },
+    {
+      "paper_id": "2610.03068v1",
+      "route": "202610/06/2610.03068v1-where-to-look-is-not-how-to-fix-pre-denoising-diagnostics-and-modality-dependent-control-in-diffusion-composition",
+      "title": "Where to Look Is Not How to Fix: Pre-Denoising Diagnostics and Modality-Dependent Control in Diffusion Composition",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "诊断并控制文本到图像扩散的组合失败",
+      "first_seen_at": "2026-10-06 23:12:43 UTC",
+      "updated_at": "2026-10-06 23:12:43 UTC"
+    },
+    {
+      "paper_id": "2610.03202v1",
+      "route": "202610/06/2610.03202v1-contextual-flow-matching-adaptive-step-selection-in-flow-models-for-efficient-visual-generation",
+      "title": "Contextual Flow Matching: Adaptive Step Selection in Flow Models for Efficient Visual Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "流模型自适应步数选择用于高效视觉生成",
+      "first_seen_at": "2026-10-06 01:11:52 UTC",
+      "updated_at": "2026-10-06 23:12:43 UTC"
+    },
+    {
+      "paper_id": "2610.03771v1",
+      "route": "202610/06/2610.03771v1-lora-direction-extraction-for-controllable-light-toggling-in-flux1-kontext",
+      "title": "LoRA Direction Extraction for Controllable Light Toggling in FLUX.1 Kontext",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "扩散模型中用LoRA实现可控光照切换编辑",
+      "first_seen_at": "2026-10-06 23:12:43 UTC",
+      "updated_at": "2026-10-06 23:12:43 UTC"
+    },
+    {
+      "paper_id": "2610.04980v1",
+      "route": "202610/06/2610.04980v1-geometry-aware-preference-optimization-for-text-to-image-diffusion-models",
+      "title": "Geometry-Aware Preference Optimization for Text-to-Image Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向文本到图像扩散模型的几何感知偏好优化",
+      "first_seen_at": "2026-10-06 23:12:43 UTC",
+      "updated_at": "2026-10-06 23:12:43 UTC"
     },
     {
       "paper_id": "2610.03084v1",
@@ -86,9 +150,9 @@
       "updated_at": "2026-10-06 01:11:52 UTC"
     },
     {
-      "paper_id": "2610.03202v1",
-      "route": "202610/06/2610.03202v1-contextual-flow-matching-adaptive-step-selection-in-flow-models-for-efficient-visual-generation",
-      "title": "Contextual Flow Matching: Adaptive Step Selection in Flow Models for Efficient Visual Generation",
+      "paper_id": "2609.40362v1",
+      "route": "202610/06/2609.40362v1-multimodal-flow-unified-flow-modeling-of-language-and-vision-in-embedding-spaces",
+      "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
       "section": "quick",
       "tags": [
         {
@@ -96,10 +160,42 @@
           "label": "image-gen"
         }
       ],
-      "score": 7.0,
-      "evidence": "流模型自适应步数选择用于高效视觉生成",
+      "score": 6.0,
+      "evidence": "语言与视觉的统一连续生成模型",
       "first_seen_at": "2026-10-06 01:11:52 UTC",
-      "updated_at": "2026-10-06 01:11:52 UTC"
+      "updated_at": "2026-10-06 23:12:43 UTC"
+    },
+    {
+      "paper_id": "2610.05066v1",
+      "route": "202610/06/2610.05066v1-salvation-lies-within-eliciting-inherent-style-transfer-in-step-distilled-diffusion-models",
+      "title": "Salvation Lies Within: Eliciting Inherent Style Transfer in Step-Distilled Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "步蒸馏文生图模型中的免训练风格迁移",
+      "first_seen_at": "2026-10-06 23:12:43 UTC",
+      "updated_at": "2026-10-06 23:12:43 UTC"
+    },
+    {
+      "paper_id": "2610.05908v1",
+      "route": "202610/06/2610.05908v1-safe-image-generation-via-reinforcement-learning",
+      "title": "Safe Image Generation via Reinforcement Learning",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文本到图像生成过程中的安全干预",
+      "first_seen_at": "2026-10-06 23:12:43 UTC",
+      "updated_at": "2026-10-06 23:12:43 UTC"
     },
     {
       "paper_id": "2609.37537v1",
@@ -130,22 +226,6 @@
       ],
       "score": 6.0,
       "evidence": "像素空间中的统一图像与视频生成",
-      "first_seen_at": "2026-10-06 01:11:52 UTC",
-      "updated_at": "2026-10-06 01:11:52 UTC"
-    },
-    {
-      "paper_id": "2609.40362v1",
-      "route": "202610/06/2609.40362v1-multimodal-flow-unified-flow-modeling-of-language-and-vision-in-embedding-spaces",
-      "title": "Multimodal Flow: Unified Flow Modeling of Language and Vision in Embedding Spaces",
-      "section": "quick",
-      "tags": [
-        {
-          "kind": "query",
-          "label": "image-gen"
-        }
-      ],
-      "score": 6.0,
-      "evidence": "语言与视觉的统一连续生成模型",
       "first_seen_at": "2026-10-06 01:11:52 UTC",
       "updated_at": "2026-10-06 01:11:52 UTC"
     }
