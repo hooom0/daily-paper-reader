@@ -1,10 +1,26 @@
 {
   "date": "20261008",
   "date_label": "",
-  "generated_at": "2026-10-08 00:15:20 UTC",
+  "generated_at": "2026-10-08 23:40:21 UTC",
   "recommend_exists": true,
-  "run_count": 1,
+  "run_count": 2,
   "papers": [
+    {
+      "paper_id": "2610.10497v1",
+      "route": "202610/08/2610.10497v1-quadtok-quadtree-visual-tokenizer-for-autoregressive-image-generation",
+      "title": "QuadTok: Quadtree Visual Tokenizer for Autoregressive Image Generation",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向自回归图像生成的四叉树视觉分词器",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
     {
       "paper_id": "2610.04722v1",
       "route": "202610/08/2610.04722v1-namvis-next-scale-autoregressive-multi-view-image-synthesis",
@@ -19,7 +35,55 @@
       "score": 8.0,
       "evidence": "将多视图图像合成重构为下一尺度自回归生成",
       "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.08704v1",
+      "route": "202610/08/2610.08704v1-local-content-style-control-for-diffusion-based-image-stylization",
+      "title": "Local Content-Style Control for Diffusion-based Image Stylization",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "潜扩散风格化中的局部逐轴内容与风格控制",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.09450v1",
+      "route": "202610/08/2610.09450v1-iris-3b-going-beyond-the-latent-with-pixel-space-diffusion-training-conversion-and-fine-tuning",
+      "title": "Iris-3B: Going Beyond the Latent with Pixel-Space Diffusion Training, Conversion and Fine-Tuning",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "面向高分辨率生成的像素空间扩散文生图Transformer",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.09841v1",
+      "route": "202610/08/2610.09841v1-orca-hunting-compositional-failures-in-text-to-image-diffusion",
+      "title": "ORCA: Hunting Compositional Failures in Text-to-Image Diffusion",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "文本到图像扩散中的组合失败",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
     },
     {
       "paper_id": "2610.07720v1",
@@ -38,20 +102,52 @@
       "updated_at": "2026-10-08 00:15:20 UTC"
     },
     {
-      "paper_id": "2610.08704v1",
-      "route": "202610/08/2610.08704v1-local-content-style-control-for-diffusion-based-image-stylization",
-      "title": "Local Content-Style Control for Diffusion-based Image Stylization",
-      "section": "deep",
+      "paper_id": "2610.00737v1",
+      "route": "202610/08/2610.00737v1-personalized-image-generation-with-reasoning-and-reflection",
+      "title": "Personalized Image Generation with Reasoning and Reflection",
+      "section": "quick",
       "tags": [
         {
           "kind": "query",
           "label": "image-gen"
         }
       ],
-      "score": 8.0,
-      "evidence": "潜扩散风格化中的局部逐轴内容与风格控制",
+      "score": 7.0,
+      "evidence": "基于用户历史的个性化图像生成基准",
       "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.04538v1",
+      "route": "202610/08/2610.04538v1-faster-fast-adjoint-stochastic-transport-for-endpoint-refinement-in-reward-guided-image-editing",
+      "title": "FASTER: Fast Adjoint Stochastic Transport for Endpoint Refinement in Reward-Guided Image Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "奖励引导的扩散图像编辑与高效测试时细化",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.05711v1",
+      "route": "202610/08/2610.05711v1-from-pixels-without-pre-training-joint-generative-and-self-supervised-representation-learning-in-one-model",
+      "title": "From Pixels, Without Pre-training: Joint Generative and Self-Supervised Representation Learning in One Model",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "无需预训练的图像生成与自监督表征联合学习",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
     },
     {
       "paper_id": "2610.05816v1",
@@ -67,7 +163,7 @@
       "score": 7.0,
       "evidence": "多分辨率token布局实现自适应高效图像与视频扩散生成",
       "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
+      "updated_at": "2026-10-08 23:40:21 UTC"
     },
     {
       "paper_id": "2610.06021v1",
@@ -83,7 +179,7 @@
       "score": 7.0,
       "evidence": "面向可控最小改动的指令图像编辑的强化学习",
       "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
+      "updated_at": "2026-10-08 23:40:21 UTC"
     },
     {
       "paper_id": "2610.07002v1",
@@ -134,9 +230,9 @@
       "updated_at": "2026-10-08 00:15:20 UTC"
     },
     {
-      "paper_id": "2610.00737v1",
-      "route": "202610/08/2610.00737v1-personalized-image-generation-with-reasoning-and-reflection",
-      "title": "Personalized Image Generation with Reasoning and Reflection",
+      "paper_id": "2610.02914v2",
+      "route": "202610/08/2610.02914v2-custom-forcing-training-free-subject-customization-for-autoregressive-video-generation",
+      "title": "Custom Forcing: Training-Free Subject Customization for Autoregressive Video Generation",
       "section": "quick",
       "tags": [
         {
@@ -145,25 +241,9 @@
         }
       ],
       "score": 6.0,
-      "evidence": "基于用户历史的个性化图像生成基准",
-      "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
-    },
-    {
-      "paper_id": "2610.03084v1",
-      "route": "202610/08/2610.03084v1-negt2ibench-when-negation-changes-the-picture-a-polarity-benchmark-for-text-to-image-models",
-      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
-      "section": "quick",
-      "tags": [
-        {
-          "kind": "query",
-          "label": "image-gen"
-        }
-      ],
-      "score": 6.0,
-      "evidence": "面向文本到图像模型的否定提示基准",
-      "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
+      "evidence": "自回归生成中的免训练主体定制",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
     },
     {
       "paper_id": "2610.05000v1",
@@ -179,7 +259,7 @@
       "score": 6.0,
       "evidence": "文生图扩散模型中的概念擦除",
       "first_seen_at": "2026-10-08 00:15:20 UTC",
-      "updated_at": "2026-10-08 00:15:20 UTC"
+      "updated_at": "2026-10-08 23:40:21 UTC"
     },
     {
       "paper_id": "2610.05401v1",
@@ -194,6 +274,54 @@
       ],
       "score": 6.0,
       "evidence": "文本到图像扩散模型中可验证的概念擦除",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.06260v1",
+      "route": "202610/08/2610.06260v1-centriq-calibration-free-quantization-of-diffusion-transformers-via-exact-mean-centering",
+      "title": "CentriQ: Calibration-Free Quantization of Diffusion Transformers via Exact Mean Centering",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向扩散Transformer图像生成的量化",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.07337v1",
+      "route": "202610/08/2610.07337v1-compositional-concept-erasure-in-text-to-image-diffusion-models-via-hierarchically-grounded-semantic-surgery",
+      "title": "Compositional Concept Erasure in Text-to-Image Diffusion Models via Hierarchically Grounded Semantic Surgery",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文生图扩散中的免训练组合概念擦除",
+      "first_seen_at": "2026-10-08 23:40:21 UTC",
+      "updated_at": "2026-10-08 23:40:21 UTC"
+    },
+    {
+      "paper_id": "2610.03084v1",
+      "route": "202610/08/2610.03084v1-negt2ibench-when-negation-changes-the-picture-a-polarity-benchmark-for-text-to-image-models",
+      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向文本到图像模型的否定提示基准",
       "first_seen_at": "2026-10-08 00:15:20 UTC",
       "updated_at": "2026-10-08 00:15:20 UTC"
     },

@@ -1,89 +1,55 @@
 {
   "mode": "standard",
-  "generated_at": "2026-10-08T00:10:46.668366+00:00",
+  "generated_at": "2026-10-08T23:36:59.329359+00:00",
   "stats": {
     "mode": "standard",
     "tag_count": 1,
-    "deep_divecandidates": 3,
+    "deep_divecandidates": 4,
     "deep_cap": 6,
-    "deep_selected": 3,
-    "quick_candidates": 13,
+    "deep_selected": 4,
+    "quick_candidates": 21,
     "quick_skim_target": 11,
     "quick_selected": 11
   },
   "deep_dive": [
     {
-      "id": "2610.04722v1",
+      "id": "2610.10497v1",
       "source": "arxiv",
-      "title": "NAMVIS: Next-Scale Autoregressive Multi-View Image Synthesis",
-      "abstract": "Sparse-view novel view synthesis is a central problem in 3D content creation, but diffusion-based approaches remain limited by iterative denoising, making multi-view generation expensive at inference time. We introduce NAMVIS, a diffusion-free framework that reformulates multi-view image synthesis as geometry-conditioned next-scale autoregression. Instead of generating target views through repeated denoising, NAMVIS predicts discrete visual tokens through a small number of coarse-to-fine scale steps, while sampling all tokens within each scale and across target views in parallel. To anchor this generation process to explicit camera geometry, we propose Multi-scale Projective Pose Encoding, which injects source and target camera transformations into both target-view self-attention and source-to-target cross-attention at every resolution. NAMVIS further combines global conditioning with dense geometry-aware cross-attention, enabling the model to preserve source-view appearance while maintaining target-view consistency. Across Objaverse, GSO, and OmniObject3D, NAMVIS outperforms diffusion-based baselines in PSNR, SSIM, and LPIPS, while running over 3 times faster than the evaluated diffusion baselines under the same evaluation setting. These results suggest that geometry-conditioned next-scale autoregression is a promising and efficient alternative to diffusion for sparse-view multi-view synthesis. Additional qualitative results, videos, and resources are available at https://corl-team.github.io/namvis/",
+      "title": "QuadTok: Quadtree Visual Tokenizer for Autoregressive Image Generation",
+      "abstract": "We introduce QuadTok, a novel framework for visual tokenization and autoregressive image generation. Compared to traditional approaches using 2D grids or 1D token sequences, we propose a hierarchical quadtree structure, bridging the gap between 2D spatial binding and 1D sequence-level flexibility. The QuadTok tokenizer dynamically allocates representational capacity to visually intricate areas while leaving homogeneous regions at a coarse resolution. Compared with a fixed 256-token grid, our ImageNet-trained tokenizer saves approximately 10% of tokens on ImageNet and 9% when transferred zero-shot to the COCO dataset, while maintaining comparable reconstruction fidelity. Furthermore, the natural causality introduced by the tree structure seamlessly enables autoregressive image generation. Conditioned on a quadtree topology supplied before generation, our 947M GPT-style generative model achieves a 2.08 gFID on the ImageNet $256 \\times 256$ benchmark. Additionally, leveraging the strong spatial correlation preserved by the quadtree structure, the QuadTok generator enables zero-shot spatially controlled image generation capabilities. Code: https://github.com/myc634/QuadTok.",
       "authors": [
-        "Ramil Khafizov",
-        "Ilya Statsenko",
-        "Ruslan Rakhimov",
-        "Artem Komarichev",
-        "Peter Wonka",
-        "Evgeny Burnaev"
+        "Yucheng Mao",
+        "Zeyuan Chen",
+        "Xiaojun Shan",
+        "Xiang Zhang",
+        "Divyansh Srivastava",
+        "Bingnan Li",
+        "Zhuowen Tu"
       ],
       "primary_category": "cs.CV",
       "categories": [
         "cs.CV"
       ],
-      "published": "2026-10-03T19:22:02+00:00",
-      "link": "https://arxiv.org/pdf/2610.04722v1",
+      "published": "2026-10-07T17:47:42+00:00",
+      "link": "https://arxiv.org/pdf/2610.10497v1",
       "tags": [
-        "keyword:image-gen"
+        "keyword:image-gen",
+        "query:image-gen"
       ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "reformulates multi-view image synthesis as next-scale autoregression",
-      "llm_evidence_cn": "将多视图图像合成重构为下一尺度自回归生成",
-      "llm_evidence": "将多视图图像合成重构为下一尺度自回归生成",
-      "canonical_evidence": "将多视图图像合成重构为下一尺度自回归生成",
-      "llm_tldr_en": "NAMVIS replaces diffusion with geometry-conditioned next-scale autoregression for multi-view image synthesis, predicting discrete visual tokens in parallel across scales and views, cutting inference cost.",
-      "llm_tldr_cn": "针对扩散模型在多视图生成中迭代去噪导致推理昂贵的问题，本文提出无扩散框架NAMVIS，将多视图图像合成重构为几何条件的下一尺度自回归生成，通过少量由粗到细的尺度步骤并行预测离散视觉token。作者还提出多尺度投影姿态编码，将源与目标相机变换注入生成过程以锚定相机几何。实验表明该方法在保持多视图一致性的同时显著降低推理成本，为高效多视图图像生成提供了新思路。",
-      "llm_tldr": "针对扩散模型在多视图生成中迭代去噪导致推理昂贵的问题，本文提出无扩散框架NAMVIS，将多视图图像合成重构为几何条件的下一尺度自回归生成，通过少量由粗到细的尺度步骤并行预测离散视觉token。作者还提出多尺度投影姿态编码，将源与目标相机变换注入生成过程以锚定相机几何。实验表明该方法在保持多视图一致性的同时显著降低推理成本，为高效多视图图像生成提供了新思路。",
+      "llm_score": 9.0,
+      "llm_evidence_en": "quadtree visual tokenizer for autoregressive image generation",
+      "llm_evidence_cn": "面向自回归图像生成的四叉树视觉分词器",
+      "llm_evidence": "面向自回归图像生成的四叉树视觉分词器",
+      "canonical_evidence": "面向自回归图像生成的四叉树视觉分词器",
+      "llm_tldr_en": "This paper introduces QuadTok, a hierarchical quadtree visual tokenizer for autoregressive image generation. It allocates capacity to intricate regions and keeps homogeneous areas coarse, saving roughly 10 percent tokens on ImageNet and 9 percent zero-shot on COCO while preserving reconstruction fidelity.",
+      "llm_tldr_cn": "针对传统自回归图像生成依赖2D网格或1D序列分词、空间绑定与序列灵活性难以兼顾的问题，本文提出QuadTok四叉树视觉分词器。该分词器以层级四叉树结构动态分配表征容量，对复杂区域细化、对同质区域粗化，并自然引入因果序以适配自回归建模。实验显示相比固定256 token网格，在ImageNet省约10% token、零样本迁移COCO省约9% token且重建保真度相当，为高效自回归图像生成提供了新分词方案。",
+      "llm_tldr": "针对传统自回归图像生成依赖2D网格或1D序列分词、空间绑定与序列灵活性难以兼顾的问题，本文提出QuadTok四叉树视觉分词器。该分词器以层级四叉树结构动态分配表征容量，对复杂区域细化、对同质区域粗化，并自然引入因果序以适配自回归建模。实验显示相比固定256 token网格，在ImageNet省约10% token、零样本迁移COCO省约9% token且重建保真度相当，为高效自回归图像生成提供了新分词方案。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
       "matched_query_text": "autoregressive models for image generation",
       "matched_requirement_id": "req-4",
-      "selection_source": "fresh_fetch"
-    },
-    {
-      "id": "2610.07720v1",
-      "source": "arxiv",
-      "title": "RefRoute: Decoupling Conditioning Cost from References via Compact Residual Conditioning and Spatial Routing",
-      "abstract": "Multi-reference image generation requires preserving the appearance of multiple subjects while composing them into a coherent scene. However, existing diffusion transformers commonly encode references as dense visual token grids and jointly process them with global attention, making conditioning increasingly expensive as the number and resolution of references grow. We present RefRoute, a framework that addresses both reference representation cost and attention overhead through two complementary mechanisms. Compact residual conditioning combines low-resolution latent tokens with lightweight residual features extracted from full-resolution pixels, reducing reference token counts while retaining fine-grained appearance cues. Condition routing and attention routing align reference tokens with their assigned target regions and restrict cross-reference interactions, while allowing selective reference access beyond region boundaries for scene integration. We further introduce RefRoute-Data for training many-reference generation models and ManyRef100, a benchmark spanning human, object, and mixed compositions with 10-17 references. After many-reference fine-tuning, RefRoute achieves an overall Weighted-Ref-VIEScore of 36.06 on ManyRef100, compared with 8.88 for FLUX.2-Klein-9B. Separate inference-cost evaluations show substantially slower latency growth as the reference count increases: at 16 references, our 50-step and 4-step configurations achieve $18.3\\times$ and $14.2\\times$ speedups over their corresponding FLUX baselines, respectively. These results establish compact reference representations and spatially routed attention as an effective approach to scalable many-reference image generation.",
-      "authors": [
-        "Wanning He",
-        "Yuyao Zhang",
-        "Yu-Wing Tai"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV",
-        "cs.LG"
-      ],
-      "published": "2026-10-06T04:16:27+00:00",
-      "link": "https://arxiv.org/pdf/2610.07720v1",
-      "tags": [
-        "keyword:image-gen"
-      ],
-      "llm_score": 8.0,
-      "llm_evidence_en": "multi-reference image generation via compact residual conditioning and spatial routing",
-      "llm_evidence_cn": "紧凑残差条件与空间路由实现多参考图像生成",
-      "llm_evidence": "紧凑残差条件与空间路由实现多参考图像生成",
-      "canonical_evidence": "紧凑残差条件与空间路由实现多参考图像生成",
-      "llm_tldr_en": "RefRoute reduces conditioning cost in multi-reference diffusion transformers by combining low-resolution latent tokens with residual pixel features and spatial routing, preserving subject appearance while lowering attention overhead.",
-      "llm_tldr_cn": "多参考图像生成需在合成一致场景的同时保留多个主体的外观，但现有扩散Transformer将参考编码为密集视觉token并全局注意力处理，随参考数量与分辨率增长开销剧增。本文提出RefRoute，通过紧凑残差条件将低分辨率潜在token与全分辨率像素残差特征结合，并用空间路由降低注意力开销。该框架在保留细粒度外观的同时显著降低条件成本，为高效可控的多参考图像生成提供了新方案。",
-      "llm_tldr": "多参考图像生成需在合成一致场景的同时保留多个主体的外观，但现有扩散Transformer将参考编码为密集视觉token并全局注意力处理，随参考数量与分辨率增长开销剧增。本文提出RefRoute，通过紧凑残差条件将低分辨率潜在token与全分辨率像素残差特征结合，并用空间路由降低注意力开销。该框架在保留细粒度外观的同时显著降低条件成本，为高效可控的多参考图像生成提供了新方案。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "What are the methods for controllable image generation?",
-      "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch"
     },
     {
@@ -107,12 +73,12 @@
       ],
       "llm_score": 8.0,
       "llm_evidence_en": "local per-axis content and style control in latent diffusion stylization",
-      "llm_evidence_cn": "潜扩散风格化中的局部逐轴内容与风格控制",
-      "llm_evidence": "潜扩散风格化中的局部逐轴内容与风格控制",
-      "canonical_evidence": "潜扩散风格化中的局部逐轴内容与风格控制",
-      "llm_tldr_en": "This work lifts two conditioning weights in a ControlNet plus IP-Adapter stylization pipeline from global scalars to spatial maps, enabling local per-axis control of content and style in latent diffusion image stylization.",
-      "llm_tldr_cn": "本文针对潜扩散图像风格化中内容与风格纠缠、现有流程仅提供全局控制的问题，指出专业修图需要区域级精细控制。作者将ControlNet与IP-Adapter流程中已有的两个条件权重从全局标量提升为逐位置空间图，从而在单次生成中实现内容与风格的局部、逐轴控制。由于两条通路互不重叠，可独立调节形成从自由重绘到身份保持的2x2修图词汇。实验验证编辑仅局限于目标区域且各权重主要控制对应轴，为可控图像生成提供了精细的空间控制手段。",
-      "llm_tldr": "本文针对潜扩散图像风格化中内容与风格纠缠、现有流程仅提供全局控制的问题，指出专业修图需要区域级精细控制。作者将ControlNet与IP-Adapter流程中已有的两个条件权重从全局标量提升为逐位置空间图，从而在单次生成中实现内容与风格的局部、逐轴控制。由于两条通路互不重叠，可独立调节形成从自由重绘到身份保持的2x2修图词汇。实验验证编辑仅局限于目标区域且各权重主要控制对应轴，为可控图像生成提供了精细的空间控制手段。",
+      "llm_evidence_cn": "潜扩散风格化中的局部内容与风格分轴控制",
+      "llm_evidence": "潜扩散风格化中的局部内容与风格分轴控制",
+      "canonical_evidence": "潜扩散风格化中的局部内容与风格分轴控制",
+      "llm_tldr_en": "The paper lifts global conditioning weights in a ControlNet + IP-Adapter latent-diffusion stylization pipeline to per-location spatial maps, enabling local per-axis content and style control in a single generative pass.",
+      "llm_tldr_cn": "现有潜扩散风格化流程仅提供全局控制，难以满足专业修图中区域级精细调节的需求。本文将ControlNet与IP-Adapter流程中的两个条件权重从全局标量提升为逐位置空间图，在单次生成中实现对内容与风格的局部、分轴控制。实验验证编辑仅局限于目标区域，且每个权重主要驱动其对应维度，形成从自由重绘到身份保持的2x2修图体系，为交互式图像编辑提供了更细粒度的可控性。",
+      "llm_tldr": "现有潜扩散风格化流程仅提供全局控制，难以满足专业修图中区域级精细调节的需求。本文将ControlNet与IP-Adapter流程中的两个条件权重从全局标量提升为逐位置空间图，在单次生成中实现对内容与风格的局部、分轴控制。实验验证编辑仅局限于目标区域，且每个权重主要驱动其对应维度，形成从自由重绘到身份保持的2x2修图体系，为交互式图像编辑提供了更细粒度的可控性。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -120,52 +86,86 @@
       "matched_query_text": "What are the methods for controllable image generation?",
       "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch"
-    }
-  ],
-  "quick_skim": [
+    },
     {
-      "id": "2610.05816v1",
+      "id": "2610.09450v1",
       "source": "arxiv",
-      "title": "Level-of-Token Diffusion",
-      "abstract": "Image and video diffusion models allocate equal computation to every region, even when the intended scene calls for varying levels of detail. The spatial distribution of detail can often be anticipated before generation, indicating where computation can be reduced. We introduce Level-of-Token (LoT) Diffusion, a framework that turns this knowledge into an explicit multiresolution token layout (Level-of-Token layout) for adaptive and efficient generation. Tokens represent rectangular patches of varying sizes and shapes, allocating finer tokens where detail is needed and coarser tokens elsewhere. We adapt pretrained diffusion transformers to LoT layouts through a patch-wise asymmetric flow parametrization and embeddings for multiresolution tokens, preserving full-resolution flow prediction at every denoising step while processing only a reduced token sequence. LoT Diffusion enables layout-adaptive generation while preserving pretrained generative priors. We demonstrate LoT with layouts derived from semantic masks, bounding boxes, texture variance, and depth-of-field cues, as well as agentic plans. Across image and video generation, LoT offers favorable quality-efficiency tradeoffs, with significant speedups determined by the layout's token budget. Our project website is at https://georgenakayama.github.io/lotdiffusion/.",
+      "title": "Iris-3B: Going Beyond the Latent with Pixel-Space Diffusion Training, Conversion and Fine-Tuning",
+      "abstract": "Pixel-space diffusion models avoid the lossy VAE of latent models, which suggests an advantage on downstream tasks where fine-grained detail matters. We test this claim along both routes to a pixel-space backbone. We pretrain Iris-3B, a 3B-parameter pixel-space text-to-image transformer, from scratch through a $256\\to512\\to1024$ curriculum, after first ablating the prediction target and representation alignment at $256^2$ to decide what to scale. We also convert a pretrained latent model, FLUX.2 Klein base 4B, to pixel space. We fine-tune both families for monocular depth estimation and for image restoration/super-resolution. We find no significant improvement from using a pixel-space generative prior. Fine-tuned for depth with one matched direct-regression recipe, Iris-3B is level with the latent FLUX.2 Klein and the converted pixel FLUX.2 Klein falls behind it, and on $4\\times$ DIV2K restoration neither pixel model beats a latent FLUX.2 Klein fine-tune, the converted one trailing it slightly. We document the recipes, the failure modes and the remaining confounds behind this negative result. Nevertheless, Iris-3B shows that pixel-space pretraining with the pixel-transformer (PiT) head of PixelDiT scales to 3B parameters and to text-to-image quality competitive with latent models, matching Qwen-Image on OneIG under the official evaluators at $1024^2$. We release its weights and training code in the hope that they help pave the way for further work on pixel-space generation.",
       "authors": [
-        "Kiyohiro Nakayama",
-        "Brian Chao",
-        "Jan Ackermann",
-        "Hansheng Chen",
-        "Federico Tombari",
-        "Leonidas Guibas",
-        "Lior Yariv",
-        "Gordon Wetzstein"
+        "Hanqiu Li Cai",
+        "Chema Garabito"
       ],
       "primary_category": "cs.CV",
       "categories": [
         "cs.CV",
         "cs.AI"
       ],
-      "published": "2026-10-05T05:11:12+00:00",
-      "link": "https://arxiv.org/pdf/2610.05816v1",
+      "published": "2026-10-07T05:07:09+00:00",
+      "link": "https://arxiv.org/pdf/2610.09450v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "multiresolution token layout for adaptive and efficient image and video diffusion generation",
-      "llm_evidence_cn": "多分辨率token布局实现自适应高效图像与视频扩散生成",
-      "llm_evidence": "多分辨率token布局实现自适应高效图像与视频扩散生成",
-      "canonical_evidence": "多分辨率token布局实现自适应高效图像与视频扩散生成",
-      "llm_tldr_en": "Level-of-Token Diffusion adapts pretrained diffusion transformers to a multiresolution token layout, allocating finer tokens where detail is needed and coarser tokens elsewhere for efficient image and video generation.",
-      "llm_tldr_cn": "图像与视频扩散模型对每个区域分配相同计算量，即使场景不同区域所需细节差异很大。本文提出Level-of-Token扩散，将生成前可预期的细节空间分布转化为显式的多分辨率token布局，在需要细节处使用更细token、其他地方使用更粗token，并通过逐块非对称流参数化与多分辨率嵌入适配预训练扩散Transformer。该方法在保持全分辨率流预测的同时实现自适应高效生成，为扩散模型的算力分配提供了新视角。",
-      "llm_tldr": "图像与视频扩散模型对每个区域分配相同计算量，即使场景不同区域所需细节差异很大。本文提出Level-of-Token扩散，将生成前可预期的细节空间分布转化为显式的多分辨率token布局，在需要细节处使用更细token、其他地方使用更粗token，并通过逐块非对称流参数化与多分辨率嵌入适配预训练扩散Transformer。该方法在保持全分辨率流预测的同时实现自适应高效生成，为扩散模型的算力分配提供了新视角。",
+      "llm_score": 8.0,
+      "llm_evidence_en": "pixel-space diffusion text-to-image transformer for high-resolution generation",
+      "llm_evidence_cn": "面向高分辨率生成的像素空间扩散文生图Transformer",
+      "llm_evidence": "面向高分辨率生成的像素空间扩散文生图Transformer",
+      "canonical_evidence": "面向高分辨率生成的像素空间扩散文生图Transformer",
+      "llm_tldr_en": "Pixel-space diffusion avoids the lossy VAE of latent models, potentially helping fine-grained detail. This work pretrains Iris-3B, a 3B pixel-space text-to-image transformer with a 256-512-1024 curriculum, and converts a latent model, testing whether pixel priors help downstream tasks.",
+      "llm_tldr_cn": "潜在扩散模型依赖有损VAE，可能损害对细粒度细节敏感的下游任务。本文沿两条路径探索像素空间扩散主干：一是从头预训练30亿参数的像素空间文生图Transformer Iris-3B，采用256到512再到1024的分辨率课程；二是将预训练潜在模型FLUX.2转换到像素空间。作者在深度估计与图像恢复/超分任务上微调两族模型，发现像素空间生成先验并未带来显著提升。该工作为像素空间与潜在空间扩散的取舍提供了实证参考。",
+      "llm_tldr": "潜在扩散模型依赖有损VAE，可能损害对细粒度细节敏感的下游任务。本文沿两条路径探索像素空间扩散主干：一是从头预训练30亿参数的像素空间文生图Transformer Iris-3B，采用256到512再到1024的分辨率课程；二是将预训练潜在模型FLUX.2转换到像素空间。作者在深度估计与图像恢复/超分任务上微调两族模型，发现像素空间生成先验并未带来显著提升。该工作为像素空间与潜在空间扩散的取舍提供了实证参考。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
       "matched_query_text": "diffusion probabilistic models for image generation",
       "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
+      "selection_source": "fresh_fetch"
     },
+    {
+      "id": "2610.09841v1",
+      "source": "arxiv",
+      "title": "ORCA: Hunting Compositional Failures in Text-to-Image Diffusion",
+      "abstract": "Text-to-image diffusion models fail predictably on compositional prompts: attributes bind to the wrong objects, spatial relations invert, and multi-object scenes lose count. Recent architectures already augment CLIP with a T5 encoder precisely because CLIP's contrastive embedding loses compositional structure, yet these failures persist. We argue the binding problem is therefore not one of missing information but of misaligned information: a text encoder preserves compositional structure, but in a representation space shaped by language modelling rather than vision, and the denoising objective does not directly reward aligning the two. We show this correspondence can be supplied as an explicit training signal, that the relevant cross-modal information is concentrated in a low-rank subspace of self-supervised visual features, and that supplying it can be folded into diffusion training as a single auxiliary loss. Our method, ORCA (Orthogonal Residual Compositional Alignment), aligns the latent of a diffusion transformer with a low-rank target derived from a frozen visual encoder, through a predictor whose orthogonal basis is parameterised by a learned residual between T5 and CLIP embeddings, which provides a prompt-dependent signal for selecting the visual readout subspace. We prove that the cross-modal information recoverable at a given rank is bounded by the spectral mass of the visual encoder's covariance in the top components. Across three diffusion-transformer backbones (DiT-B/2, DiT-L/2, U-ViT-L), ORCA improves FID and GenEval over both vanilla and REPA baselines at zero inference-time cost; on DiT-L/2 it reaches FID 16.65 and GenEval 0.291 at 200K steps, exceeding the strongest 400K baseline at half the training cost, with the largest gains concentrated on attribute binding, spatial relations, and multi-object prompts.",
+      "authors": [
+        "Arshia Hemmat",
+        "Amirhossein Vahidi",
+        "Amitis Shidani",
+        "Mohammad Vali Sanian",
+        "Hesam Asadollahzadeh",
+        "Aryan Yazdan Parast",
+        "Mohammad Lotfollahi"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-10-07T11:03:58+00:00",
+      "link": "https://arxiv.org/pdf/2610.09841v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "compositional failures in text-to-image diffusion",
+      "llm_evidence_cn": "文本到图像扩散中的组合失败",
+      "llm_evidence": "文本到图像扩散中的组合失败",
+      "canonical_evidence": "文本到图像扩散中的组合失败",
+      "llm_tldr_en": "Text-to-image diffusion fails on compositional prompts; this work argues the binding problem stems from misaligned cross-modal information and supplies the text-vision correspondence as an explicit training signal.",
+      "llm_tldr_cn": "文本到图像扩散模型在组合提示上可预测地失败，如属性错绑、空间关系反转、多物体计数丢失。已有架构用T5增强CLIP仍无法根治，本文认为问题不在信息缺失而在信息错位：文本编码器的表示空间由语言建模塑造，去噪目标未直接奖励跨模态对齐。作者将文本-视觉对应作为显式训练信号加以约束。该工作揭示了绑定问题本质，为提升文本到图像组合生成质量提供了新方向。",
+      "llm_tldr": "文本到图像扩散模型在组合提示上可预测地失败，如属性错绑、空间关系反转、多物体计数丢失。已有架构用T5增强CLIP仍无法根治，本文认为问题不在信息缺失而在信息错位：文本编码器的表示空间由语言建模塑造，去噪目标未直接奖励跨模态对齐。作者将文本-视觉对应作为显式训练信号加以约束。该工作揭示了绑定问题本质，为提升文本到图像组合生成质量提供了新方向。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
     {
       "id": "2610.00737v1",
       "source": "arxiv",
@@ -197,93 +197,14 @@
         "keyword:image-gen",
         "query:image-gen"
       ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "benchmark for personalized image generation from user histories",
-      "llm_evidence_cn": "基于用户历史的个性化图像生成基准",
-      "llm_evidence": "基于用户历史的个性化图像生成基准",
-      "canonical_evidence": "基于用户历史的个性化图像生成基准",
-      "llm_tldr_en": "This paper introduces the first unified benchmark for personalized image generation from user histories, with two complementary tasks and a multi-axis protocol assessing fidelity, quality, distinguishability and alignment.",
-      "llm_tldr_cn": "个性化图像生成长期局限于基于精选视觉样本的条件合成，难以刻画真实的用户偏好。本文提出首个基于用户历史的个性化图像生成统一基准，包含两个互补任务与多维度评估协议，覆盖目标保真度、视觉质量、用户可区分性、语义对齐与任务效用。该基准为个性化生成研究提供了系统化评测平台。",
-      "llm_tldr": "个性化图像生成长期局限于基于精选视觉样本的条件合成，难以刻画真实的用户偏好。本文提出首个基于用户历史的个性化图像生成统一基准，包含两个互补任务与多维度评估协议，覆盖目标保真度、视觉质量、用户可区分性、语义对齐与任务效用。该基准为个性化生成研究提供了系统化评测平台。",
-      "llm_tags": [
-        "query:image-gen:composite"
-      ],
-      "matched_query_tag": "query:image-gen:composite",
-      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
-      "matched_requirement_id": "req-composite-image-gen",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
-    {
-      "id": "2610.06021v1",
-      "source": "arxiv",
-      "title": "Scalable Minimal-Change Learning for Controllable Image Editing",
-      "abstract": "Image editing should change only the attributes specified by an instruction while preserving everything else, yet current methods often make unintended changes. We treat this minimal-change principle as an optimization objective for instruction-based editing. Latent L1 regularization is a poor proxy for output locality in modern nonlinear generators and often requires supervision unavailable at scale. We instead optimize edit outcomes with reinforcement learning. An agentic vision-language reward model audits each source image, instruction, and edited image for two failure types: unimplemented requested changes and unintended changes. A group-level rubric merges and verifies these issues to provide consistent rewards across candidate edits without per-instruction human annotations. On FLUX.1 Kontext-dev, ARRO raises average EditScore from 5.21 to 5.88 across MinEval, MagicBrush, AnyBench, and Emu-Edit. On 600 evaluation examples, it reduces off-target pixel change by 8.4% relative to the base editor. Reward and SFT controls, blinded human evaluations, and transfer to OmniGen2 provide complementary evidence. Code: https://github.com/Showwwwwwwww/ARRO",
-      "authors": [
-        "Shuo Chen",
-        "Fengming Huang",
-        "Yu Yao",
-        "Mingming Gong",
-        "Tongliang Liu"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV",
-        "cs.AI"
-      ],
-      "published": "2026-10-05T09:18:55+00:00",
-      "link": "https://arxiv.org/pdf/2610.06021v1",
-      "tags": [
-        "query:image-gen"
-      ],
       "llm_score": 7.0,
-      "llm_evidence_en": "reinforcement learning for controllable, minimal-change instruction image editing",
-      "llm_evidence_cn": "面向可控最小改动的指令图像编辑的强化学习",
-      "llm_evidence": "面向可控最小改动的指令图像编辑的强化学习",
-      "canonical_evidence": "面向可控最小改动的指令图像编辑的强化学习",
-      "llm_tldr_en": "Instruction-based image editing often makes unintended changes. This paper treats minimal-change as an optimization objective and uses RL with an agentic vision-language reward model to audit and reward edits that only apply the requested changes.",
-      "llm_tldr_cn": "指令式图像编辑应只改动指定属性并保留其余内容，但现有方法常产生非预期修改。本文把最小改动原则作为优化目标，指出潜在L1正则在现代非线性生成器上并非输出局部性的良好代理且难以大规模监督，因而改用强化学习优化编辑结果。方法引入智能体式视觉-语言奖励模型，审查源图、指令与编辑结果中的未实现改动与意外改动，并用群体级评分准则提供一致奖励。该工作推动了可控图像编辑的精确性。",
-      "llm_tldr": "指令式图像编辑应只改动指定属性并保留其余内容，但现有方法常产生非预期修改。本文把最小改动原则作为优化目标，指出潜在L1正则在现代非线性生成器上并非输出局部性的良好代理且难以大规模监督，因而改用强化学习优化编辑结果。方法引入智能体式视觉-语言奖励模型，审查源图、指令与编辑结果中的未实现改动与意外改动，并用群体级评分准则提供一致奖励。该工作推动了可控图像编辑的精确性。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "What are the methods for controllable image generation?",
-      "matched_requirement_id": "req-6",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2610.03084v1",
-      "source": "arxiv",
-      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
-      "abstract": "Text-to-image (T2I) models are judged by benchmarks that measure whether requested content appears, but these benchmarks largely overlook the complementary ability to satisfy negated constraints, for example, generating \"a non-red cup.\" Measuring negation raises challenges not faced by affirmation-based benchmarks and requires careful prompt and evaluation design. We introduce NegT2IBench, a benchmark of 4,800 prompts covering two attribute types and four relation categories. Prompts are organized by polarity: the number of positive statements that must hold and negated statements that must not, each ranging from 0 to 2. Varying the two independently separates the effect of negation from the effect of prompt complexity. Our detector-based scoring is reproducible, auditable, and pinpoints which requirement failed. On 600 images with three-annotator labels, it agrees with humans as closely as vision-language judges up to 30x larger, while using only a fraction of their GPU memory. Across eleven T2I models and 211,200 images, nine score lower on a single negated statement than on a single positive one. Per-statement scoring reveals that the loss is largest for color and near zero for proximity, and that 41.5% of failed statements render exactly what the prompt forbids. Rendering what a prompt asks for and withholding what it forbids are distinct capabilities that an aggregate compositional score cannot distinguish. NegT2IBench measures the latter directly, providing a controlled testbed for diagnosing negation failures and developing methods to overcome them.",
-      "authors": [
-        "Omar Elfatairy",
-        "Maria A. Bravo",
-        "Jessica Bader",
-        "Zeynep Akata"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV",
-        "cs.AI",
-        "cs.LG"
-      ],
-      "published": "2026-10-02T10:03:56+00:00",
-      "link": "https://arxiv.org/pdf/2610.03084v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "benchmark for text-to-image models on negated prompts",
-      "llm_evidence_cn": "面向文本到图像模型的否定提示基准",
-      "llm_evidence": "面向文本到图像模型的否定提示基准",
-      "canonical_evidence": "面向文本到图像模型的否定提示基准",
-      "llm_tldr_en": "The paper introduces NegT2IBench, a 4800-prompt benchmark testing whether text-to-image models can satisfy negated constraints like generating a non-red cup, an ability overlooked by affirmation-based evaluation.",
-      "llm_tldr_cn": "文本到图像模型通常只按请求内容是否出现来评测，忽视了满足否定约束的能力，例如生成一个非红色的杯子。作者构建NegT2IBench基准，包含4800条提示，覆盖两类属性与四类关系，并按极性组织正负陈述数量。通过独立变化正负陈述数目，分离否定效应与提示复杂度的影响，为文本到图像生成提供了更细粒度的评测工具。",
-      "llm_tldr": "文本到图像模型通常只按请求内容是否出现来评测，忽视了满足否定约束的能力，例如生成一个非红色的杯子。作者构建NegT2IBench基准，包含4800条提示，覆盖两类属性与四类关系，并按极性组织正负陈述数量。通过独立变化正负陈述数目，分离否定效应与提示复杂度的影响，为文本到图像生成提供了更细粒度的评测工具。",
+      "llm_evidence_en": "personalized image generation from user histories",
+      "llm_evidence_cn": "基于用户历史的个性化图像生成",
+      "llm_evidence": "基于用户历史的个性化图像生成",
+      "canonical_evidence": "基于用户历史的个性化图像生成",
+      "llm_tldr_en": "Personalized image generation has focused on curated visual exemplars rather than rich user context. The paper introduces the first unified benchmark for personalized image generation from user histories with multi-axis evaluation.",
+      "llm_tldr_cn": "个性化图像生成长期局限于基于精选视觉样本的条件合成，未能捕捉用户的真实个人背景。本文提出首个从用户历史进行个性化图像生成的统一基准，涵盖两个互补任务与多维度评估协议。评估维度包括目标保真度、视觉质量、用户可区分性、与用户历史的语义一致性及任务实用性。该工作为更贴近用户生活与审美的个性化图像生成研究提供了标准化评测平台。",
+      "llm_tldr": "个性化图像生成长期局限于基于精选视觉样本的条件合成，未能捕捉用户的真实个人背景。本文提出首个从用户历史进行个性化图像生成的统一基准，涵盖两个互补任务与多维度评估协议。评估维度包括目标保真度、视觉质量、用户可区分性、与用户历史的语义一致性及任务实用性。该工作为更贴近用户生活与审美的个性化图像生成研究提供了标准化评测平台。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -291,43 +212,81 @@
       "matched_query_text": "synthesizing images from textual descriptions",
       "matched_requirement_id": "req-2",
       "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.02914v2",
+      "source": "arxiv",
+      "title": "Custom Forcing: Training-Free Subject Customization for Autoregressive Video Generation",
+      "abstract": "Autoregressive video models can generate minute-long videos in real time, but they produce generic subjects from text rather than specific subjects from user-provided images. Existing customization methods either require costly per-subject optimization or use pretrained conditioning networks that jointly process all video frames with bidirectional attention. Neither approach is designed for causal streaming. We present Custom Forcing, a training-free method that stores reference-based anchor frames in the persistent KV cache of a frozen autoregressive video model. However, fixed anchors face two limitations: simple conditioning allows identity to drift, and the text prompt continues to favor a generic subject. To address these problems, drift-adaptive value amplification (DVA) scales reference influence with the degree of identity drift, while anchor contrast guidance (ACG) steers generation away from the generic class prior. Over two-minute rollouts, fixed anchors fall from 0.58 to 0.42 in DINO-I, while Custom Forcing keeps it between 0.58 and 0.62 without reducing motion. Custom Forcing also achieves higher subject similarity than bidirectional customization methods and better preserves identity over 30s than causal image-to-video and reference-to-video models, while generating each frame 9.5-28.5 times faster than these long-video baselines.",
+      "authors": [
+        "Yunseung Ok",
+        "Hyunsoo Kim",
+        "Minseo Kim",
+        "Suhyun Kim"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-02T07:04:09+00:00",
+      "link": "https://arxiv.org/pdf/2610.02914v2",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "autoregressive generation with training-free subject customization",
+      "llm_evidence_cn": "自回归生成中的免训练主体定制",
+      "llm_evidence": "自回归生成中的免训练主体定制",
+      "canonical_evidence": "自回归生成中的免训练主体定制",
+      "llm_tldr_en": "Autoregressive video models generate generic subjects from text rather than specific user subjects. The paper proposes Custom Forcing, a training-free method storing reference anchor frames in the persistent KV cache of a frozen autoregressive model to reduce identity drift and improve subject customization.",
+      "llm_tldr_cn": "自回归视频模型能实时生成分钟级视频，但只能依据文本生成通用主体，无法定制用户提供的具体主体。现有定制方法需昂贵的逐主体优化，或使用双向注意力条件网络，均不适配因果流式生成。作者提出Custom Forcing，将参考锚帧存入冻结自回归模型的持久KV缓存，缓解身份漂移并提升主体定制效果。",
+      "llm_tldr": "自回归视频模型能实时生成分钟级视频，但只能依据文本生成通用主体，无法定制用户提供的具体主体。现有定制方法需昂贵的逐主体优化，或使用双向注意力条件网络，均不适配因果流式生成。作者提出Custom Forcing，将参考锚帧存入冻结自回归模型的持久KV缓存，缓解身份漂移并提升主体定制效果。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
       "quick_tier": "6"
     },
     {
-      "id": "2610.07002v1",
+      "id": "2610.04538v1",
       "source": "arxiv",
-      "title": "Should We Skip Diffusion?",
-      "abstract": "Diffusion models learn semantic representations while generating images. In the Decoupled Diffusion Transformer (DDT), a condition encoder provides features that guide a velocity decoder in denoising. To enable effective denoising at all noise levels, these features must capture both high-level abstract structures and low-level details. However, skip/residual connections in the encoder allow shallow features to bypass successive transformations, which may limit progressive abstraction, or at least make it difficult to disentangle different levels of abstraction. We propose DDT-RFE, which removes the residual connections around the Self-Attention and MLP operations in each encoder block while maintaining stable training. To retain the information that abstraction discards but that the decoder still needs, we fuse the input patch embedding with intermediate and final encoder features to form the encoder output. The decoder thus has access to information from multiple encoder depths, while each encoder block is able to learn more abstract representations. DDT-RFE achieves overall improvements over DDT across visual understanding tasks, including image classification, semantic segmentation, object discovery, and semantic correspondence, while using fewer encoder blocks. It also achieves a lower FID for image generation on ImageNet.",
+      "title": "FASTER: Fast Adjoint Stochastic Transport for Endpoint Refinement in Reward-Guided Image Editing",
+      "abstract": "Reward-guided image editing at test time seeks to improve a specified reward while preserving source content and visual plausibility. Many existing approaches optimize candidates through pretrained generation processes, making repeated adjustment depend on costly large-model execution and, in some cases, backbone backpropagation. We develop a theoretical framework that jointly accounts for reward, source preservation, and pretrained-prior preferences, allowing the desired output distribution to be specified separately from the dynamics used to realize it. Based on this framework, we introduce FASTER, which trains a small network for each source and objective to perform inexpensive editing, while pretrained and reward models provide feedback on candidate outputs. By reusing each candidate and its feedback across multiple small-network updates, FASTER reduces repeated sampling and supervision queries without placing the pretrained generative backbone inside the inner optimization loop. On SD3, FASTER leads all four target metrics and several validation metrics among the evaluated methods. Compared with the evaluated baseline that optimizes controls along pretrained generation trajectories, FASTER achieves editing-time speedups of up to \\({6.91\\times}\\) on Stable Diffusion 3 and \\({24.14\\times}\\) on Stable Diffusion 1.5.",
       "authors": [
-        "Yiping Ji",
-        "James Martens",
-        "Simon Lucey"
+        "Yimiao Zhou",
+        "Zejia Zhong",
+        "Jingya Wang",
+        "Ye Shi"
       ],
-      "primary_category": "cs.LG",
+      "primary_category": "cs.CV",
       "categories": [
-        "cs.LG",
         "cs.CV"
       ],
-      "published": "2026-10-04T09:42:27+00:00",
-      "link": "https://arxiv.org/pdf/2610.07002v1",
+      "published": "2026-10-03T14:09:00+00:00",
+      "link": "https://arxiv.org/pdf/2610.04538v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "removing residual connections in diffusion transformer for image generation",
-      "llm_evidence_cn": "在扩散Transformer中移除残差连接以改进图像生成",
-      "llm_evidence": "在扩散Transformer中移除残差连接以改进图像生成",
-      "canonical_evidence": "在扩散Transformer中移除残差连接以改进图像生成",
-      "llm_tldr_en": "DDT-RFE studies how skip connections in the condition encoder of a decoupled diffusion transformer hinder abstraction, proposing to remove residual connections to improve image denoising and generation.",
-      "llm_tldr_cn": "本文针对解耦扩散Transformer中条件编码器的问题展开研究：跳连/残差连接让浅层特征绕过逐级变换，削弱了渐进抽象并难以区分不同抽象层次。作者提出DDT-RFE，移除每个编码器块自注意力与MLP周围的残差连接，同时保持训练稳定，并保留解码器所需的信息。实验表明该改动有助于图像去噪与生成质量提升。该工作为理解与改进扩散生成模型的编码结构提供了新视角。",
-      "llm_tldr": "本文针对解耦扩散Transformer中条件编码器的问题展开研究：跳连/残差连接让浅层特征绕过逐级变换，削弱了渐进抽象并难以区分不同抽象层次。作者提出DDT-RFE，移除每个编码器块自注意力与MLP周围的残差连接，同时保持训练稳定，并保留解码器所需的信息。实验表明该改动有助于图像去噪与生成质量提升。该工作为理解与改进扩散生成模型的编码结构提供了新视角。",
+      "llm_evidence_en": "reward-guided diffusion image editing with efficient test-time refinement",
+      "llm_evidence_cn": "奖励引导的扩散图像编辑与高效测试时细化",
+      "llm_evidence": "奖励引导的扩散图像编辑与高效测试时细化",
+      "canonical_evidence": "奖励引导的扩散图像编辑与高效测试时细化",
+      "llm_tldr_en": "Reward-guided image editing at test time is costly due to repeated large-model execution. FASTER develops a theoretical framework separating output distribution from realization dynamics and trains a small network for cheap editing.",
+      "llm_tldr_cn": "测试时的奖励引导图像编辑旨在提升指定奖励并保持源内容，但现有方法依赖昂贵的大模型反复执行甚至反向传播。本文提出一个联合考虑奖励、源保持与预训练先验的理论框架，使目标输出分布与实现动态相分离。基于此框架，FASTER为每个源与目标训练一个小网络以进行低成本编辑。该方法在保证编辑质量的同时显著降低了计算开销，推进了可控图像编辑的效率。",
+      "llm_tldr": "测试时的奖励引导图像编辑旨在提升指定奖励并保持源内容，但现有方法依赖昂贵的大模型反复执行甚至反向传播。本文提出一个联合考虑奖励、源保持与预训练先验的理论框架，使目标输出分布与实现动态相分离。基于此框架，FASTER为每个源与目标训练一个小网络以进行低成本编辑。该方法在保证编辑质量的同时显著降低了计算开销，推进了可控图像编辑的效率。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "diffusion probabilistic models for image generation",
-      "matched_requirement_id": "req-1",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
@@ -355,57 +314,59 @@
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "concept erasure in text-to-image diffusion models",
-      "llm_evidence_cn": "文生图扩散模型中的概念擦除",
-      "llm_evidence": "文生图扩散模型中的概念擦除",
-      "canonical_evidence": "文生图扩散模型中的概念擦除",
-      "llm_tldr_en": "The paper proposes VisualErase, a dual-branch visual trajectory redirection paradigm that truly removes unwanted concepts from text-to-image diffusion models rather than only redirecting text mappings.",
-      "llm_tldr_cn": "文生图扩散模型可能复现有害或受版权保护的内容，概念擦除对安全部署至关重要。现有方法仅重定向文本到图像映射，擦除后的模型仍保留目标概念的视觉生成轨迹，易遭对抗恢复攻击。本文提出VisualErase，通过双分支视觉轨迹重定向真正移除视觉知识。实验表明该方法在抵抗恢复攻击方面更稳健，同时保持通用生成能力。该工作深化了文生图扩散模型的安全控制。",
-      "llm_tldr": "文生图扩散模型可能复现有害或受版权保护的内容，概念擦除对安全部署至关重要。现有方法仅重定向文本到图像映射，擦除后的模型仍保留目标概念的视觉生成轨迹，易遭对抗恢复攻击。本文提出VisualErase，通过双分支视觉轨迹重定向真正移除视觉知识。实验表明该方法在抵抗恢复攻击方面更稳健，同时保持通用生成能力。该工作深化了文生图扩散模型的安全控制。",
+      "llm_evidence_en": "concept erasure for safe text-to-image diffusion generation",
+      "llm_evidence_cn": "面向安全文生图扩散生成的概念擦除",
+      "llm_evidence": "面向安全文生图扩散生成的概念擦除",
+      "canonical_evidence": "面向安全文生图扩散生成的概念擦除",
+      "llm_tldr_en": "Concept erasure aims to remove harmful content from text-to-image diffusion models, but redirecting text-to-image mappings leaves visual generative trajectories intact. The paper proposes VisualErase, a dual-branch trajectory redirection paradigm that more robustly removes visual knowledge against adversarial recovery.",
+      "llm_tldr_cn": "概念擦除对文生图扩散模型的安全部署至关重要，但现有方法仅重定向文本到图像映射，被擦除模型仍保留目标概念的视觉生成轨迹，易被对抗恢复。作者提出VisualErase，采用双分支视觉轨迹重定向范式来真正移除视觉知识。该工作弥合了映射重定向与知识移除之间的差距，增强了擦除的鲁棒性。",
+      "llm_tldr": "概念擦除对文生图扩散模型的安全部署至关重要，但现有方法仅重定向文本到图像映射，被擦除模型仍保留目标概念的视觉生成轨迹，易被对抗恢复。作者提出VisualErase，采用双分支视觉轨迹重定向范式来真正移除视觉知识。该工作弥合了映射重定向与知识移除之间的差距，增强了擦除的鲁棒性。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "How do diffusion models generate images from text prompts?",
-      "matched_requirement_id": "req-5",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
     },
     {
-      "id": "2610.07684v1",
+      "id": "2610.04722v1",
       "source": "arxiv",
-      "title": "Disentangling Dual Image References in Frequency Aware Diffusion Models for Personalized Generation",
-      "abstract": "Personalized image generation aims to synthesize text-driven images conditioned on reference images, while mainly casting the generation as image customization for foreground and style transfer for background. Previous arts of diffusion models suffers from the text misalignment with background for image customization and foreground for style transfer during the denoising process. Such facts, as we observed, rooted from the entanglement among hybrid frequency bands during the denoising process. To address such salient limitation, in this paper, we study personalized generation based on dual references - customization and color and style reference - and propose a paradigm to disentangle these Dual image references within Frequency-aware Diffusion Models, dubbed Dual-FDM, to simultaneously tackle two crucial personalized image generation tasks: customization style transfer and color style transfer, by disentangling different frequency bands via mask strategy within frequency domain. For customization style transfer, we replace the mid-frequency band of the background in the style reference with that from the foreground of the customized reference. For color style transfer, we substitute the low-frequency band of the background in the style reference with that from both the foreground and background of the color reference. Both the substituted frequency bands are used as the key and value to reconstruct the query foreground and background of the denoised personalized image.Extensive experiments validate the superiority of Dual-FDM over the state-of-the-art diffusion models for personalized image generation. Our code can be accessed from https://github.com/htyjers/Dual-FDM.",
+      "title": "NAMVIS: Next-Scale Autoregressive Multi-View Image Synthesis",
+      "abstract": "Sparse-view novel view synthesis is a central problem in 3D content creation, but diffusion-based approaches remain limited by iterative denoising, making multi-view generation expensive at inference time. We introduce NAMVIS, a diffusion-free framework that reformulates multi-view image synthesis as geometry-conditioned next-scale autoregression. Instead of generating target views through repeated denoising, NAMVIS predicts discrete visual tokens through a small number of coarse-to-fine scale steps, while sampling all tokens within each scale and across target views in parallel. To anchor this generation process to explicit camera geometry, we propose Multi-scale Projective Pose Encoding, which injects source and target camera transformations into both target-view self-attention and source-to-target cross-attention at every resolution. NAMVIS further combines global conditioning with dense geometry-aware cross-attention, enabling the model to preserve source-view appearance while maintaining target-view consistency. Across Objaverse, GSO, and OmniObject3D, NAMVIS outperforms diffusion-based baselines in PSNR, SSIM, and LPIPS, while running over 3 times faster than the evaluated diffusion baselines under the same evaluation setting. These results suggest that geometry-conditioned next-scale autoregression is a promising and efficient alternative to diffusion for sparse-view multi-view synthesis. Additional qualitative results, videos, and resources are available at https://corl-team.github.io/namvis/",
       "authors": [
-        "Haipeng Liu",
-        "Yang Wang",
-        "Meng Wang"
+        "Ramil Khafizov",
+        "Ilya Statsenko",
+        "Ruslan Rakhimov",
+        "Artem Komarichev",
+        "Peter Wonka",
+        "Evgeny Burnaev"
       ],
       "primary_category": "cs.CV",
       "categories": [
-        "cs.CV",
-        "cs.AI"
+        "cs.CV"
       ],
-      "published": "2026-10-06T03:18:07+00:00",
-      "link": "https://arxiv.org/pdf/2610.07684v1",
+      "published": "2026-10-03T19:22:02+00:00",
+      "link": "https://arxiv.org/pdf/2610.04722v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "frequency-aware diffusion for personalized text-driven image generation",
-      "llm_evidence_cn": "面向个性化文本驱动图像生成的频率感知扩散",
-      "llm_evidence": "面向个性化文本驱动图像生成的频率感知扩散",
-      "canonical_evidence": "面向个性化文本驱动图像生成的频率感知扩散",
-      "llm_tldr_en": "The paper tackles text-image misalignment in personalized generation by disentangling dual image references within frequency bands, proposing a frequency-aware diffusion paradigm for customization and style transfer.",
-      "llm_tldr_cn": "个性化图像生成需在参考图条件下合成文本驱动的图像，但现有扩散模型在去噪过程中存在文本与背景、前景错配的问题。作者观察到这源于混合频带之间的纠缠，于是研究基于定制与颜色风格双重参考的生成，并提出在频域中解耦双图像参考的范式。该工作提升了文本驱动个性化生成的语义对齐，为可控图像生成提供了新方法。",
-      "llm_tldr": "个性化图像生成需在参考图条件下合成文本驱动的图像，但现有扩散模型在去噪过程中存在文本与背景、前景错配的问题。作者观察到这源于混合频带之间的纠缠，于是研究基于定制与颜色风格双重参考的生成，并提出在频域中解耦双图像参考的范式。该工作提升了文本驱动个性化生成的语义对齐，为可控图像生成提供了新方法。",
+      "llm_evidence_en": "autoregressive next-scale framework for multi-view image synthesis",
+      "llm_evidence_cn": "面向多视图图像合成的自回归下一尺度框架",
+      "llm_evidence": "面向多视图图像合成的自回归下一尺度框架",
+      "canonical_evidence": "面向多视图图像合成的自回归下一尺度框架",
+      "llm_tldr_en": "NAMVIS reformulates multi-view image synthesis as geometry-conditioned next-scale autoregression, predicting discrete visual tokens in parallel to avoid costly iterative denoising, with projective pose encoding for camera geometry.",
+      "llm_tldr_cn": "稀疏视图新视角合成是3D内容创作的核心问题，但基于扩散的方法受迭代去噪拖累，使多视图生成的推理成本高昂。本文提出无扩散框架NAMVIS，将多视图图像合成重构为几何条件的下一尺度自回归，通过少量由粗到细的尺度步预测离散视觉token，并在同一尺度内跨目标视图并行采样，同时用多尺度投影位姿编码注入相机几何。该方法降低了推理成本并保持几何一致，为高效自回归多视图图像生成提供新范式。",
+      "llm_tldr": "稀疏视图新视角合成是3D内容创作的核心问题，但基于扩散的方法受迭代去噪拖累，使多视图生成的推理成本高昂。本文提出无扩散框架NAMVIS，将多视图图像合成重构为几何条件的下一尺度自回归，通过少量由粗到细的尺度步预测离散视觉token，并在同一尺度内跨目标视图并行采样，同时用多尺度投影位姿编码注入相机几何。该方法降低了推理成本并保持几何一致，为高效自回归多视图图像生成提供新范式。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "synthesizing images from textual descriptions",
-      "matched_requirement_id": "req-2",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
@@ -436,13 +397,13 @@
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "verifiable concept erasure in text-to-image diffusion models",
-      "llm_evidence_cn": "文本到图像扩散模型中可验证的概念擦除",
-      "llm_evidence": "文本到图像扩散模型中可验证的概念擦除",
-      "canonical_evidence": "文本到图像扩散模型中可验证的概念擦除",
-      "llm_tldr_en": "The paper shows erased concepts remain recoverable from latent representations in text-to-image diffusion models, and proposes auditing-aware unlearning to enable verifiable concept erasure.",
-      "llm_tldr_cn": "文本到图像扩散模型可能生成违规内容，因而需要通过机器遗忘进行概念擦除，但多数方法仅干预文本接口并以输出评估，无法反映网络内部仍编码的信息。本文通过绕过文本条件、直接探测去噪网络的潜在空间审计，发现被擦除概念仍可从内部表示中恢复，且该问题随擦除概念数量增加而加剧，即使对鲁棒方法也成立。为此提出审计感知的遗忘方法，实现可验证的概念擦除，为扩散模型安全控制提供更可靠的评估与干预手段。",
-      "llm_tldr": "文本到图像扩散模型可能生成违规内容，因而需要通过机器遗忘进行概念擦除，但多数方法仅干预文本接口并以输出评估，无法反映网络内部仍编码的信息。本文通过绕过文本条件、直接探测去噪网络的潜在空间审计，发现被擦除概念仍可从内部表示中恢复，且该问题随擦除概念数量增加而加剧，即使对鲁棒方法也成立。为此提出审计感知的遗忘方法，实现可验证的概念擦除，为扩散模型安全控制提供更可靠的评估与干预手段。",
+      "llm_evidence_en": "concept erasure controls what text-to-image diffusion models generate",
+      "llm_evidence_cn": "概念擦除控制文生图扩散模型的生成内容",
+      "llm_evidence": "概念擦除控制文生图扩散模型的生成内容",
+      "canonical_evidence": "概念擦除控制文生图扩散模型的生成内容",
+      "llm_tldr_en": "Text-to-image diffusion models can output prohibited content, so concept erasure is used, but output-based evaluation misses internal encodings. The paper proposes auditing-aware unlearning with latent-space probing of the denoiser, showing erased concepts stay recoverable and worsening with more erased concepts.",
+      "llm_tldr_cn": "文生图扩散模型可能生成违禁内容，因此需要概念擦除，但现有方法仅以输出评估擦除效果，无法反映网络内部仍编码的知识。作者提出审计感知的遗忘方法，直接在潜空间探测去噪网络，绕过文本条件。实验表明被擦除概念仍可从内部表征恢复，且随擦除概念数量增加而加剧，为可验证擦除提供了新评估视角。",
+      "llm_tldr": "文生图扩散模型可能生成违禁内容，因此需要概念擦除，但现有方法仅以输出评估擦除效果，无法反映网络内部仍编码的知识。作者提出审计感知的遗忘方法，直接在潜空间探测去噪网络，绕过文本条件。实验表明被擦除概念仍可从内部表征恢复，且随擦除概念数量增加而加剧，为可验证擦除提供了新评估视角。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -453,37 +414,35 @@
       "quick_tier": "6"
     },
     {
-      "id": "2610.08626v1",
+      "id": "2610.05711v1",
       "source": "arxiv",
-      "title": "Feature Information Dynamics in Diffusion",
-      "abstract": "Diffusion models generate data through a continuum of denoising problems, and are widely observed to reveal coarse structure before fine detail. Yet, this intuition is mostly empirical and qualitative. We introduce feature information dynamics, an information-theoretic framework for localizing when a feature is generated during diffusion. Using the I-MMSE identity, we connect the rate of feature mutual information change to a gap between optimal unconditional and feature-conditional denoising losses, yielding practical estimators for feature information density. We further develop a chained decomposition that separates shared from incremental information in a feature hierarchy. We use this framework first to quantitatively confirm spectral autoregression in pixel diffusion, and then to extend the analysis beyond frequency: under a class $\\to$ mask $\\to$ Canny conditioning chain, the per-feature information densities differ across pixel, SDVAE, VAVAE, and RAE, exposing fundamental differences between these representations and suggesting that ordered generation could be beneficial for training diffusion models. Our code is available at https://github.com/AI4Science-WestlakeU/feature-information-dynamics.",
+      "title": "From Pixels, Without Pre-training: Joint Generative and Self-Supervised Representation Learning in One Model",
+      "abstract": "Strong image generation models are conditioned on class labels, aligned to frozen pretrained encoders, or built on separately trained autoencoders. While effective, generation then depends on supervision or pretraining: labels must be annotated, and encoders or autoencoders pretrained for the target domain. We study joint generative and self-supervised representation learning in a single model, enabling self-conditioned generation without labels or pretrained models. This is challenging because the objectives are mismatched: contrastive learning consumes clean augmented views and favors coarse, invariant semantics, while flow matching consumes noisy images and must preserve the fine detail and spatial layout that contrastive learning discards. We propose SCION (Self-conditioned Generation on Self-supervised representation), whose core is a single pixel-space encoder conditioned on the flow timestep and an embedding. For representation learning, this conditioning embedding is a learned global vector shared across images, with the encoder's [CLS] token yielding the semantic representation trained by the contrastive loss. For generative training, the conditioning embedding is the image's own [CLS] representation, while patch tokens pass through a decoder to predict the image. To sample without a reference image at inference, we jointly learn a prior over the embedding. Gradient-norm balancing and stop-gradient mechanisms enable joint optimization in one run. SCION is self-supervised and self-contained, with no labels or pretrained models. On ImageNet 256x256, with the JiT-B recipe and no representation guidance, SCION reaches 8.92 FID, surpassing class-unconditional iREPA, which aligns to pretrained DINOv2 (46.44), and RCG, which conditions on it (14.27). With JiT-L, SCION achieves 5.89 FID without guidance and 3.47 with representation guidance, outperforming RCG with the ADM recipe (6.24).",
       "authors": [
-        "Jia-Shu Pan",
-        "Tao Zhang",
-        "Yufei Huang",
-        "Yanjun Sheng",
-        "Tailin Wu"
+        "Vicente Balmaseda",
+        "Ching-Long Lin",
+        "Tianbao Yang"
       ],
-      "primary_category": "stat.ML",
+      "primary_category": "cs.LG",
       "categories": [
-        "stat.ML",
-        "cs.AI",
-        "cs.LG"
+        "cs.LG",
+        "cs.CV",
+        "stat.ML"
       ],
-      "published": "2026-10-06T16:24:07+00:00",
-      "link": "https://arxiv.org/pdf/2610.08626v1",
+      "published": "2026-10-05T02:51:03+00:00",
+      "link": "https://arxiv.org/pdf/2610.05711v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "information-theoretic framework for when features are generated in diffusion",
-      "llm_evidence_cn": "刻画扩散模型特征生成时刻的信息论框架",
-      "llm_evidence": "刻画扩散模型特征生成时刻的信息论框架",
-      "canonical_evidence": "刻画扩散模型特征生成时刻的信息论框架",
-      "llm_tldr_en": "The paper introduces feature information dynamics, an information-theoretic framework that localizes when a feature is generated during diffusion, linking mutual information change to denoising loss gaps.",
-      "llm_tldr_cn": "扩散模型常被观察到先生成粗结构再生成细节，但这一直觉多为定性经验。本文提出特征信息动力学框架，利用I-MMSE恒等式将特征互信息变化率与最优无条件及条件去噪损失之差联系起来，给出可实用的特征信息密度估计。作者进一步提出链式分解区分特征层级中的共享与增量信息。该框架定量验证了像素扩散中的谱自回归现象，为理解扩散生成机制提供了理论工具。",
-      "llm_tldr": "扩散模型常被观察到先生成粗结构再生成细节，但这一直觉多为定性经验。本文提出特征信息动力学框架，利用I-MMSE恒等式将特征互信息变化率与最优无条件及条件去噪损失之差联系起来，给出可实用的特征信息密度估计。作者进一步提出链式分解区分特征层级中的共享与增量信息。该框架定量验证了像素扩散中的谱自回归现象，为理解扩散生成机制提供了理论工具。",
+      "llm_evidence_en": "joint generative and self-supervised representation learning for image generation without pretraining",
+      "llm_evidence_cn": "无需预训练的图像生成与自监督表征联合学习",
+      "llm_evidence": "无需预训练的图像生成与自监督表征联合学习",
+      "canonical_evidence": "无需预训练的图像生成与自监督表征联合学习",
+      "llm_tldr_en": "The paper studies joint generative and self-supervised representation learning in one model, enabling self-conditioned image generation without labels or pretrained encoders, tackling mismatched objectives between contrastive learning and flow matching.",
+      "llm_tldr_cn": "现有强图像生成模型依赖类别标签、冻结预训练编码器或单独训练的自动编码器，导致生成受限于监督或预训练。本文研究在单一模型中联合进行生成与自监督表征学习，实现无需标签和预训练模型的自条件生成。方法上调和对比学习偏好干净不变语义与流匹配需保留细节空间布局之间的目标冲突。该工作为摆脱外部监督依赖的生成建模提供了新思路。",
+      "llm_tldr": "现有强图像生成模型依赖类别标签、冻结预训练编码器或单独训练的自动编码器，导致生成受限于监督或预训练。本文研究在单一模型中联合进行生成与自监督表征学习，实现无需标签和预训练模型的自条件生成。方法上调和对比学习偏好干净不变语义与流匹配需保留细节空间布局之间的目标冲突。该工作为摆脱外部监督依赖的生成建模提供了新思路。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -494,76 +453,120 @@
       "quick_tier": "7"
     },
     {
-      "id": "2610.06844v1",
+      "id": "2610.06260v1",
       "source": "arxiv",
-      "title": "Learning to Read the Contextual Tokens in Diffusion Transformers",
-      "abstract": "Multimodal Diffusion Transformers (MM-DiTs) jointly process visual and textual representations throughout generation. These models repeatedly update the text tokens through multimodal attention, forming dynamic contextual tokens whose function is not well understood. In this work, we introduce a framework for reading this contextual space through natural-language interrogation. We train a lightweight bottleneck network that maps intermediate contextual tokens into the input space of a frozen Large Language Model (LLM), allowing the LLM to answer questions about the emerging image directly from these hidden representations. Our reader reveals that contextual tokens encode a rich, global representation of the emerging scene: generation-specific semantics, including attributes left underspecified by the prompt, are accessible surprisingly early in denoising, while increasingly fine-grained details become readable over time. Remarkably, this information remains decodable even when the MM-DiT receives an empty prompt, showing that contextual tokens accumulate substantial image-specific information from the evolving visual representation itself. We further find that generations with more readable contextual representations tend to receive higher human-preference scores. Building on these observations, we introduce Contextual Alignment, a training technique that explicitly reinforces the visual-semantic information encoded in the contextual tokens, improving generation quality and distributional coverage. Together, our results establish contextual tokens as both an interpretable view into the internal dynamics of MM-DiTs and an effective target for improving generative models.",
+      "title": "CentriQ: Calibration-Free Quantization of Diffusion Transformers via Exact Mean Centering",
+      "abstract": "Diffusion transformers (DiTs) achieve state-of-the-art image generation, but their sampling cost limits deployment. Quantizing both weights and activations to 4 bits reduces this cost, yet existing methods fall short in one of two ways. Calibration-based methods are tied to a specific checkpoint and prompt distribution, whereas data-free Hadamard rotation, effective for LLMs, loses quality on DiTs. We show that this loss has a structural cause. Adaptive layer-norm conditioning adds a per-token mean to the activations, and at the widths of the evaluated DiTs, the Hadamard rotations used by data-free methods cannot spread this mean uniformly across coordinates. A single dominant direction therefore survives the rotation and sets the quantization range. We introduce CentriQ, a calibration-free quantizer that centers each token before rotation and restores the mean exactly through a rank-1 full-precision branch, so that per-token scales follow in closed form without data. Weights are fitted under a robust $\\ell_p$ objective that tracks the dense mode of each group and discounts heavy tails. Across three DiTs, CentriQ matches the quality of calibrated SVDQuant at 4 bits, whereas calibration-free weight quantizers with plain per-token activation quantization collapse or degrade substantially. CentriQ outperforms the strongest calibration-free method reported to date at 2-bit weights. It is also the first calibration-free method to retain usable image quality at 2-bit activations.",
       "authors": [
-        "Omer Dahary",
-        "Etai Sella",
-        "Hadar Averbuch-Elor",
-        "Daniel Cohen-Or",
-        "Or Patashnik"
+        "Nataša Jovanović",
+        "Mathieu Salzmann",
+        "Saqib Javed"
       ],
       "primary_category": "cs.CV",
       "categories": [
         "cs.CV",
         "cs.AI",
-        "cs.GR",
-        "cs.LG"
+        "cs.RO"
       ],
-      "published": "2026-10-05T17:59:17+00:00",
-      "link": "https://arxiv.org/pdf/2610.06844v1",
+      "published": "2026-10-05T12:54:46+00:00",
+      "link": "https://arxiv.org/pdf/2610.06260v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "reads contextual text tokens in diffusion transformers for text-to-image generation",
-      "llm_evidence_cn": "解读扩散Transformer中文本token的生成作用",
-      "llm_evidence": "解读扩散Transformer中文本token的生成作用",
-      "canonical_evidence": "解读扩散Transformer中文本token的生成作用",
-      "llm_tldr_en": "The paper probes how multimodal diffusion transformers encode the emerging image inside their contextual text tokens, training a bottleneck to let an LLM interrogate hidden representations and revealing generation-specific semantics.",
-      "llm_tldr_cn": "多模态扩散Transformer在生成过程中会不断更新文本token，但其动态上下文token的作用尚不清楚。作者提出一种自然语言审问框架，训练轻量瓶颈网络把中间上下文token映射到冻结大模型的输入空间，让大模型直接回答关于正在生成图像的问题。结果发现上下文token编码了丰富的全局场景语义与生成相关特征，为理解文本到图像扩散模型的内部机制提供了新工具。",
-      "llm_tldr": "多模态扩散Transformer在生成过程中会不断更新文本token，但其动态上下文token的作用尚不清楚。作者提出一种自然语言审问框架，训练轻量瓶颈网络把中间上下文token映射到冻结大模型的输入空间，让大模型直接回答关于正在生成图像的问题。结果发现上下文token编码了丰富的全局场景语义与生成相关特征，为理解文本到图像扩散模型的内部机制提供了新工具。",
+      "llm_evidence_en": "quantization for diffusion transformer image generation",
+      "llm_evidence_cn": "面向扩散Transformer图像生成的量化",
+      "llm_evidence": "面向扩散Transformer图像生成的量化",
+      "canonical_evidence": "面向扩散Transformer图像生成的量化",
+      "llm_tldr_en": "Diffusion transformers generate SOTA images but sampling is costly; CentriQ proposes calibration-free 4-bit quantization via exact mean centering, fixing the structural quality loss of data-free Hadamard rotation.",
+      "llm_tldr_cn": "扩散Transformer虽能生成高质量图像，但其采样成本高，限制了实际部署，而现有4比特量化方法要么依赖特定校准数据，要么在DiT上损失质量。本文指出该损失的根源在于自适应层归一化引入的逐token均值无法被Hadamard旋转均匀分散。为此提出CentriQ，通过精确均值中心化实现无校准量化。实验表明该方法在保持生成质量的同时降低采样开销，为DiT的高效部署提供了免校准方案。",
+      "llm_tldr": "扩散Transformer虽能生成高质量图像，但其采样成本高，限制了实际部署，而现有4比特量化方法要么依赖特定校准数据，要么在DiT上损失质量。本文指出该损失的根源在于自适应层归一化引入的逐token均值无法被Hadamard旋转均匀分散。为此提出CentriQ，通过精确均值中心化实现无校准量化。实验表明该方法在保持生成质量的同时降低采样开销，为DiT的高效部署提供了免校准方案。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "How do diffusion models generate images from text prompts?",
-      "matched_requirement_id": "req-5",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
     },
     {
-      "id": "2610.06945v1",
+      "id": "2610.05816v1",
       "source": "arxiv",
-      "title": "Beyond the Linear Representation Hypothesis: Non-Linear Activation Steering in Text-to-Image Models",
-      "abstract": "Mechanistic interpretability often relies on the Linear Representation Hypothesis (LRH), which assumes that high-level concepts are encoded as linear directions in activation space. Yet a natural visual concept does not necessarily require a linear visual transition: between sunny and stormy lies an intermediate weather state such as a sky with a few white clouds, not simply a weaker storm; between a caterpillar and a butterfly, the progression is not a caterpillar with continuously growing wings. This raises the question of whether such true intermediate states are also represented nonlinearly by the model. Indeed, when we prompt text-to-image models directly for intermediate attributes, their activations rarely fall along the straight direction connecting the endpoints. Therefore, we propose KANSteer, which models concept traversal as a curve passing through its intermediate states. Seeking a representation that is both simple and interpretable, we propose to use Kolmogorov-Arnold Networks (KANs), which provide a one-dimensional coordinate whose learned functions define the trajectory. This allows the steering direction to vary along the concept while preserving an interpretable representation. Across several concepts and text-to-image diffusion transformers, we find that their activation trajectories substantially deviate from straight lines, and that KANSteer provide a closer fit and smoother traversal of intermediate attributes than linear steering.",
+      "title": "Level-of-Token Diffusion",
+      "abstract": "Image and video diffusion models allocate equal computation to every region, even when the intended scene calls for varying levels of detail. The spatial distribution of detail can often be anticipated before generation, indicating where computation can be reduced. We introduce Level-of-Token (LoT) Diffusion, a framework that turns this knowledge into an explicit multiresolution token layout (Level-of-Token layout) for adaptive and efficient generation. Tokens represent rectangular patches of varying sizes and shapes, allocating finer tokens where detail is needed and coarser tokens elsewhere. We adapt pretrained diffusion transformers to LoT layouts through a patch-wise asymmetric flow parametrization and embeddings for multiresolution tokens, preserving full-resolution flow prediction at every denoising step while processing only a reduced token sequence. LoT Diffusion enables layout-adaptive generation while preserving pretrained generative priors. We demonstrate LoT with layouts derived from semantic masks, bounding boxes, texture variance, and depth-of-field cues, as well as agentic plans. Across image and video generation, LoT offers favorable quality-efficiency tradeoffs, with significant speedups determined by the layout's token budget. Our project website is at https://georgenakayama.github.io/lotdiffusion/.",
       "authors": [
-        "Muhammad Atif Butt",
-        "Paweł Skierś",
-        "Joost Van De Weijer",
-        "Kamil Deja"
+        "Kiyohiro Nakayama",
+        "Brian Chao",
+        "Jan Ackermann",
+        "Hansheng Chen",
+        "Federico Tombari",
+        "Leonidas Guibas",
+        "Lior Yariv",
+        "Gordon Wetzstein"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-10-05T05:11:12+00:00",
+      "link": "https://arxiv.org/pdf/2610.05816v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "efficient diffusion framework for image and video generation",
+      "llm_evidence_cn": "面向图像与视频生成的高效扩散框架",
+      "llm_evidence": "面向图像与视频生成的高效扩散框架",
+      "canonical_evidence": "面向图像与视频生成的高效扩散框架",
+      "llm_tldr_en": "Diffusion models spend equal computation on all regions even when detail varies. The paper proposes Level-of-Token Diffusion, a multiresolution token layout with patch-wise asymmetric flow and multiresolution embeddings, enabling adaptive and efficient generation while preserving full-resolution flow prediction.",
+      "llm_tldr_cn": "图像和视频扩散模型对每个区域分配相同计算量，但场景所需细节并不均匀，造成浪费。作者提出令牌级别扩散框架，将预训练扩散Transformer适配为多分辨率令牌布局，用矩形补丁表示不同大小区域并引入非对称流参数化。该方法在需要细节处分配更细令牌，从而在保持全分辨率流预测的同时实现自适应高效生成。",
+      "llm_tldr": "图像和视频扩散模型对每个区域分配相同计算量，但场景所需细节并不均匀，造成浪费。作者提出令牌级别扩散框架，将预训练扩散Transformer适配为多分辨率令牌布局，用矩形补丁表示不同大小区域并引入非对称流参数化。该方法在需要细节处分配更细令牌，从而在保持全分辨率流预测的同时实现自适应高效生成。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.07337v1",
+      "source": "arxiv",
+      "title": "Compositional Concept Erasure in Text-to-Image Diffusion Models via Hierarchically Grounded Semantic Surgery",
+      "abstract": "Removing copyrighted, unsafe, or user-specified concepts from a deployed text-to-image diffusion model is now a practical requirement. Weight-editing methods can suppress fixed targets, but they require per-target retraining and modify the model checkpoint. Training-free methods, on the other hand, are deployment-friendly, but they suffer from text-side routing failures on compositional prompts. In such prompts, the erase target may be invoked through a related class rather than its lexical name, and its modifiers may migrate onto preserved objects. This paper proposes Hierarchically Grounded Semantic Surgery (HGSS), a training-free framework for compositional concept erasure. The framework lifts both the routing signal and the edit operator used by text-side erasure. First, hierarchical span grounding resolves erase-target spans through lexical, taxonomic, and semantic evidence, while guarding against broad-hypernym and compound-head false positives. Second, dynamic attribute binding refines the text conditioning during early denoising via a counterfactual reference and a preserve-aware cross-attention objective, keeping surviving attribute-noun bindings intact. HGSS selectively removes the erase target without updating model weights or adding learned parameters. On SEE, HGSS cuts hierarchical evasion from 29.54 to 10.02 and roughly halves pairwise attribute leakage, achieving the best Neighbor E and AttrP scores among the reported erasure methods. On UnlearnCanvas, HGSS slightly improves the six-metric average over the matched Semantic Surgery baseline, reaching state-of-the-art.",
+      "authors": [
+        "Chen Dai",
+        "Ganyu Zou",
+        "Nathan Self",
+        "Kevin Piper",
+        "Ramachandra Rao Seethiraju",
+        "Karthik Shyamsunder",
+        "Chang-Tien Lu",
+        "Naren Ramakrishnan"
       ],
       "primary_category": "cs.CV",
       "categories": [
         "cs.CV"
       ],
-      "published": "2026-10-03T10:32:28+00:00",
-      "link": "https://arxiv.org/pdf/2610.06945v1",
+      "published": "2026-10-05T20:12:52+00:00",
+      "link": "https://arxiv.org/pdf/2610.07337v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "activation steering to control text-to-image generation",
-      "llm_evidence_cn": "通过激活引导控制文生图生成",
-      "llm_evidence": "通过激活引导控制文生图生成",
-      "canonical_evidence": "通过激活引导控制文生图生成",
-      "llm_tldr_en": "The paper questions the Linear Representation Hypothesis in text-to-image models, showing intermediate visual concepts are encoded nonlinearly, and proposes non-linear activation steering to control generation.",
-      "llm_tldr_cn": "本文针对文生图模型中线性表示假设的局限，指出阳光与暴风雨之间的中间天气、毛虫与蝴蝶之间的过渡状态等自然视觉概念并不能由线性方向刻画。作者提出非线性激活引导方法，在激活空间中操控概念生成。实验表明直接提示中间属性时激活很少落在预期方向，说明需要非线性表示。该工作为可解释性与可控图像生成提供了新视角。",
-      "llm_tldr": "本文针对文生图模型中线性表示假设的局限，指出阳光与暴风雨之间的中间天气、毛虫与蝴蝶之间的过渡状态等自然视觉概念并不能由线性方向刻画。作者提出非线性激活引导方法，在激活空间中操控概念生成。实验表明直接提示中间属性时激活很少落在预期方向，说明需要非线性表示。该工作为可解释性与可控图像生成提供了新视角。",
+      "llm_evidence_en": "training-free compositional concept erasure in text-to-image diffusion",
+      "llm_evidence_cn": "文生图扩散中的免训练组合概念擦除",
+      "llm_evidence": "文生图扩散中的免训练组合概念擦除",
+      "canonical_evidence": "文生图扩散中的免训练组合概念擦除",
+      "llm_tldr_en": "Removing concepts from deployed text-to-image diffusion models is required, but training-free methods fail on compositional prompts where erase targets are invoked via related classes. The paper proposes Hierarchically Grounded Semantic Surgery, a training-free framework for robust compositional concept erasure.",
+      "llm_tldr_cn": "从已部署的文生图扩散模型中移除版权、不安全或用户指定概念已是实际需求，但免训练方法在组合提示下会出现文本侧路由失败，擦除目标可能通过相关类别被调用。作者提出层次化语义手术HGSS，一种免训练的组合概念擦除框架，从路由与语义层面同时干预。该方法在保持部署便利性的同时提升了组合场景下的擦除可靠性。",
+      "llm_tldr": "从已部署的文生图扩散模型中移除版权、不安全或用户指定概念已是实际需求，但免训练方法在组合提示下会出现文本侧路由失败，擦除目标可能通过相关类别被调用。作者提出层次化语义手术HGSS，一种免训练的组合概念擦除框架，从路由与语义层面同时干预。该方法在保持部署便利性的同时提升了组合场景下的擦除可靠性。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -572,6 +575,46 @@
       "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
+    },
+    {
+      "id": "2610.06021v1",
+      "source": "arxiv",
+      "title": "Scalable Minimal-Change Learning for Controllable Image Editing",
+      "abstract": "Image editing should change only the attributes specified by an instruction while preserving everything else, yet current methods often make unintended changes. We treat this minimal-change principle as an optimization objective for instruction-based editing. Latent L1 regularization is a poor proxy for output locality in modern nonlinear generators and often requires supervision unavailable at scale. We instead optimize edit outcomes with reinforcement learning. An agentic vision-language reward model audits each source image, instruction, and edited image for two failure types: unimplemented requested changes and unintended changes. A group-level rubric merges and verifies these issues to provide consistent rewards across candidate edits without per-instruction human annotations. On FLUX.1 Kontext-dev, ARRO raises average EditScore from 5.21 to 5.88 across MinEval, MagicBrush, AnyBench, and Emu-Edit. On 600 evaluation examples, it reduces off-target pixel change by 8.4% relative to the base editor. Reward and SFT controls, blinded human evaluations, and transfer to OmniGen2 provide complementary evidence. Code: https://github.com/Showwwwwwwww/ARRO",
+      "authors": [
+        "Shuo Chen",
+        "Fengming Huang",
+        "Yu Yao",
+        "Mingming Gong",
+        "Tongliang Liu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-10-05T09:18:55+00:00",
+      "link": "https://arxiv.org/pdf/2610.06021v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "reinforcement learning for controllable minimal-change image editing",
+      "llm_evidence_cn": "面向可控最小改动图像编辑的强化学习",
+      "llm_evidence": "面向可控最小改动图像编辑的强化学习",
+      "canonical_evidence": "面向可控最小改动图像编辑的强化学习",
+      "llm_tldr_en": "Instruction-based image editing should change only the requested attributes, but current methods make unintended changes. This work treats minimal-change as an optimization objective and uses reinforcement learning with a vision-language reward model that audits edits for missed and unintended changes.",
+      "llm_tldr_cn": "基于指令的图像编辑应只修改指令指定的属性而保持其余内容不变，但现有方法常引入非预期改动。潜在L1正则化在现代非线性生成器中难以有效代理输出局部性，且依赖难以大规模获取的监督。本文把最小改动原则作为优化目标，采用强化学习，并引入智能体式视觉语言奖励模型审查源图、指令与编辑结果，识别未实现改动与非预期改动，通过组级评分提供稳定奖励，从而提升可控图像编辑的精确性。",
+      "llm_tldr": "基于指令的图像编辑应只修改指令指定的属性而保持其余内容不变，但现有方法常引入非预期改动。潜在L1正则化在现代非线性生成器中难以有效代理输出局部性，且依赖难以大规模获取的监督。本文把最小改动原则作为优化目标，采用强化学习，并引入智能体式视觉语言奖励模型审查源图、指令与编辑结果，识别未实现改动与非预期改动，通过组级评分提供稳定奖励，从而提升可控图像编辑的精确性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
     }
   ]
 }
