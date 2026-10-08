@@ -1,0 +1,1480 @@
+Preprint
+VISUALERASE: DUAL-BRANCH VISUAL TRAJECTORY
+REDIRECTION FOR ROBUST CONCEPT ERASURE IN
+TEXT-TO-IMAGE DIFFUSION MODELS
+Qianlong Xiang1,2,3, Miao Zhang1, Kun Wang4, Yupeng Hu5, Junhui Hou2, Liqiang Nie1
+1Harbin Institute of Technology (Shenzhen)
+2City University of Hong Kong
+3Shenzhen Loop Area Institute
+4National University of Singapore
+5Shandong University
+ABSTRACT
+Concept erasure is essential for the safe deployment of text-to-image diffusion
+models, as they may reproduce harmful, copyrighted, or privacy-sensitive content
+learned from unconstrained large-scale data. Existing methods typically erase
+unwanted concepts while preserving general generation capability by redirect-
+ing target-related text-to-image mappings.
+However, recent studies show that
+erased models may still retain visual generative trajectories of target concepts,
+leaving them vulnerable to adversarial recovery attacks and revealing a funda-
+mental gap between redirecting text-to-image mappings and truly removing vi-
+sual knowledge. To bridge this gap, we propose VISUALERASE, a new paradigm
+that redirects concept-bearing visual generative trajectories toward explicitly de-
+fined concept-removed outcomes. To enable this redirection, we use structure-
+preserving image editing to construct content-aligned, concept-removed coun-
+terparts for source images, providing explicit visual endpoints that retain non-
+target content. We then derive a denoising target from each source-to-counterpart
+pair and use a dual-branch redirection loss to align both text-conditioned and un-
+conditional predictions with this target, since conditional supervision alone does
+not explicitly constrain generation without textual guidance. To mitigate the ad-
+verse effects of concept erasure on non-target generation, we jointly optimize
+the redirection loss with a counterpart retention loss that matches denoising pre-
+dictions from the frozen pretrained model. Across style, celebrity, and nudity
+erasure, VISUALERASE limits the maximum attack success rate over seven at-
+tacks to 0%, 8%, and 0.1%, respectively, while retaining general generation qual-
+ity. These results highlight the importance of visual trajectory redirection for ro-
+bust concept erasure beyond text-to-image mappings alone. The project page is
+https://qianlong0502.github.io/VisualErase-Homepage/.
+1
+INTRODUCTION
+Text-to-image diffusion models can synthesize diverse, high-quality images from natural-language
+descriptions (Rombach et al., 2022; Nichol et al., 2021; Saharia et al., 2022). Their capabilities
+emerge from training on web-scale image-text corpora, for which exhaustive content filtering re-
+mains difficult (Schuhmann et al., 2022). Consequently, pretrained models can reproduce copy-
+righted artistic styles, recognizable identities, and explicit content (Jiang et al., 2023; Carlini et al.,
+2023; Somepalli et al., 2023; Schramowski et al., 2023). Concept erasure aims to address these
+risks by removing a designated concept from a pretrained model while preserving generation of
+non-target content. (Gandikota et al., 2023; Kumari et al., 2023; Zhang et al., 2024a).
+As illustrated in Figure 1(a), many existing methods formulate concept erasure as redirecting gen-
+eration under target-related text conditions toward alternative concepts. Early methods weaken the
+response to a target prompt or modify the cross-attention layers that bind text to visual features
+(Gandikota et al., 2023; Kumari et al., 2023). Later methods improve scale, efficiency, or robust-
+ness by editing additional textual associations and by training against adversarial prompts (Lu et al.,
+2024; Lyu et al., 2024; Gong et al., 2024; Zhang et al., 2024b; Srivatsan et al., 2025). Prompt-based
+1
+arXiv:2610.05000v1  [cs.CV]  4 Oct 2026
+
+
+Preprint
+Visual Trajectory Redirection
+(b) Our VisualErase
+(a) Previous Erasure
+Text-to-image Redirection
+Condition
+Target Concept
+Other Condition
+Redirection
+Redirection
+Concept-Removed
+Counterpart
+Alternative Concept
+Target Concept
+Text Space
+Visual Space
+Visual Space
+Figure 1: Conceptual comparison of text-to-image redirection and visual trajectory redirection. (a)
+Text-to-image redirection steers generation under a target text condition toward an alternative con-
+cept, but does not necessarily remove the underlying ability to generate the target concept. (b)
+VISUALERASE instead supervises denoising from source visual states at different timesteps toward
+a content-aligned, concept-removed counterpart that defines the desired visual endpoint. Red arrows
+indicate the respective redirection objectives.
+and embedding-based attacks, including PEZ, MMA, RAB, P4D, UDA, and CCE, test whether al-
+ternative textual conditions can recover erased concepts. (Wen et al., 2023; Yang et al., 2024; Tsai
+et al., 2024; Chin et al., 2024; Zhang et al., 2024c; Pham et al., 2024).
+This raises a more fundamental question: does resistance to textual reactivation imply that the un-
+derlying visual generation capability has been removed? TINA+ probes this gap through text-free
+visual inversion, showing that target concepts can remain recoverable despite strong resistance to
+prompt-based attacks (Xiang et al., 2026a;b). Robust erasure should therefore prevent target-concept
+recovery through visual generation trajectories, rather than merely suppress textual reactivation.
+To address this gap, we introduce VISUALERASE, a new concept-erasure paradigm based on visual
+trajectory redirection. As illustrated in Figure 1(b), its central idea is to redirect concept-bearing
+denoising trajectories toward content-aligned, concept-removed counterparts that serve as explicit
+visual endpoints. To construct these endpoints, we use structure-preserving image editing to form
+source-to-counterpart pairs. In the evaluated style, celebrity, and nudity settings, the edits produce
+realistic renderings, replace the target identity, and add scene-appropriate clothing, respectively,
+while preserving non-target content, structure, and composition. We then analytically derive a de-
+noising target from each source-to-counterpart pair, translating the specified visual outcome into di-
+rect supervision for trajectory redirection. Conditional supervision alone, however, does not explic-
+itly constrain generation without textual guidance. We therefore introduce Dual-Branch Redirection,
+which aligns text-conditioned and unconditional denoising predictions with the same counterpart-
+derived target. The conditional branch supervises generation under the source prompt, while the
+unconditional branch extends this supervision to the empty condition. Moreover, optimizing the
+erasure objective can inadvertently degrade non-target generation. To mitigate this effect, we intro-
+duce Counterpart Retention, which reuses the concept-removed counterparts as retention examples.
+Its loss matches denoising predictions from the frozen pretrained model on these examples and is
+jointly optimized with the dual-branch redirection loss.
+Extensive experiments across style, celebrity, and nudity erasure demonstrate that VISUALERASE
+suppresses both standard and adversarial concept recovery while preserving general generation qual-
+ity. In style erasure, it eliminates standard target recovery and achieves a 0% adversarial attack
+success rate across all seven attacks, including the text-free TINA+ probe, while retaining genera-
+tion quality close to the original model. VISUALERASE is also effective for celebrity and nudity
+erasure, where target recovery remains zero or near zero under diverse attacks. Recent robust era-
+sure methods improve resistance by alternating adversarial token search with additional erasure up-
+dates (Srivatsan et al., 2025). In contrast, VISUALERASE requires neither adversarial prompt search
+nor attack-generated supervision. By directly redirecting concept-bearing visual trajectories, it sup-
+2
+
+
+Preprint
+presses both textual reactivation and text-free visual recovery through a simpler training procedure.
+These results demonstrate that directly erasing the target-related visual generation capability yields
+more complete erasure than redirecting text-to-image mappings.
+Our contributions are threefold:
+• We formulate concept erasure from a visual perspective, treating target-related visual gen-
+erative trajectories as the object of erasure rather than text-to-image mappings alone.
+• We propose VISUALERASE, which redirects conditional and unconditional denoising to-
+ward concept-removed counterparts while preserving non-target generation.
+• Extensive experiments across style, celebrity, and nudity erasure demonstrate robust era-
+sure against seven attacks without adversarial prompt search, while preserving general gen-
+eration quality.
+2
+RELATED WORK
+Concept erasure in diffusion models.
+Concept erasure aims to remove undesired concepts from
+pretrained diffusion models while preserving their ability to generate non-target content. Early meth-
+ods fine-tune selected U-Net parameters or suppress concept-specific attention responses (Gandikota
+et al., 2023; Kumari et al., 2023; Zhang et al., 2024a). Subsequent work improves efficiency and
+scalability through closed-form model editing or lightweight adapters (Gandikota et al., 2024; Lu
+et al., 2024; Lyu et al., 2024). General machine unlearning methods further select influential param-
+eters or constrain their updates when removing concepts from diffusion models (Fan et al., 2024; Wu
+& Harandi, 2024; Wu et al., 2025). Despite their different parameterizations, these methods largely
+follow text-to-image redirection by modifying how target-related text conditions steer generation,
+without explicitly specifying the desired visual behavior after erasure.
+Robust concept erasure.
+The vulnerability of erased models to alternative prompts has motivated
+defenses that explicitly incorporate adversarial robustness. RECE strengthens erasure against con-
+cept restoration, AdvUnlearn introduces adversarial training, and STEREO alternates adversarial
+token search with additional erasure updates (Gong et al., 2024; Zhang et al., 2024b; Srivatsan et al.,
+2025). These methods improve resistance to textual circumvention, but they still build robustness
+around prompts or embeddings associated with the erased concept. Our proposed VISUALERASE
+instead acts directly on visual denoising trajectories without adversarial prompt mining or attack-
+generated supervision.
+Attacks on erased diffusion models.
+Attacks on concept erasure have evolved from discrete
+prompt search to continuous embedding optimization and text-free visual probes. Prompt-space
+methods search for alternative expressions or optimized tokens that recover a suppressed concept
+(Wen et al., 2023; Chin et al., 2024; Yang et al., 2024; Tsai et al., 2024; Zhang et al., 2024c). CCE in-
+stead learns a continuous token embedding that serves as a proxy for the erased concept (Pham et al.,
+2024). TINA+ recovers erased concepts through text-free visual inversion, revealing that concept-
+related visual generation can remain accessible after textual suppression (Xiang et al., 2026b;a).
+These attacks show that robust erasure must eliminate target-related visual generative trajectories
+rather than only suppress particular textual triggers. This is the central objective of our proposed
+VISUALERASE.
+3
+PROPOSED METHOD
+Overview. VISUALERASE aims to remove a target visual concept while preserving generation of
+non-target content. Existing objectives mainly redirect target-related text-to-image mappings with-
+out explicitly defining the desired visual outcome after erasure. To make this objective concrete, as
+shown in Figure 2, we first pair each concept-bearing source image with a content-aligned coun-
+terpart in which the concept has been removed. Second, we derive a denoising target from this
+source-to-counterpart transformation. Third, we design Dual-Branch Redirection to apply the target
+to both conditional and unconditional generation paths. Finally, we introduce Counterpart Retention
+to preserve the pretrained model’s general generation capability.
+3
+
+
+Preprint
+Style
+(a) Paired Data Construction
+*
+Celebrity
+Nudity
+𝑧!"#
+𝑧"$%
+𝑧&
+!"#
+𝜖&
+"$'("
+𝜖
+Text Condition
+Null Condition
+𝑧&
+!"#
+𝜖!"#$%"
+ℒ&'($
+ℒ)(&'($
+𝜃
+𝜃
+𝑧!
+*"& −𝛼!𝑧"#+
+𝜎!
+(b) Visual Trajectory Erasure
+Target Derivation
+Dual-Branch Redirection
+Figure 2: Overview of VISUALERASE. (a) Paired Data Construction creates a content-aligned coun-
+terpart in which the target concept is absent. (b) For visual trajectory erasure, Target Derivation con-
+verts the pair into a denoising target, which Dual-Branch Redirection applies under both the source
+and empty text conditions. Counterpart Retention is described in the text.
+3.1
+PAIRED DATA CONSTRUCTION
+To provide explicit visual supervision for concept erasure, we construct the following paired training
+set:
+Dpair =
+ xsrc
+k , xref
+k , ck
+	K
+k=1 ,
+(1)
+where K is the number of training pairs. Each tuple contains a source image xsrc
+k
+that exhibits the
+target concept, a content-aligned counterpart xref
+k
+in which the concept is absent, and the source text
+condition ck. For clarity, we omit the sample index k below and write a generic training tuple as
+(xsrc, xref, c) ∈Dpair.
+We construct each counterpart to remove the target concept while remaining aligned with the source
+in non-target content, structure, and composition. To meet this requirement, we use structure-
+preserving image editing. For a localized concept, let exref denote an edited candidate and let Ω
+denote its spatial editing mask. We form the final counterpart as
+xref = Ω⊙exref + (1 −Ω) ⊙xsrc.
+Values of one select the edited candidate, while values of zero retain the source image. Intermediate
+values allow feathered blending along the boundary.
+As shown in Figure 2(a), for style erasure, we use Stable Diffusion v1.5 image-to-image edit-
+ing (Rombach et al., 2022) to generate a realistic full-image counterpart. We extract an HED Soft-
+Edge map (Xie & Tu, 2015) and a MiDaS depth map (Ranftl et al., 2022) from the source image
+and use them as complementary ControlNet conditions (Zhang et al., 2023) to preserve the scene
+layout and depicted content. For celebrity erasure, we use the GIPHY Celebrity Detector (GCD)1 to
+identify the face associated with the target identity. We crop a square region around its detected face
+box and apply the same SoftEdge- and depth-conditioned image editor to generate a synthetic iden-
+tity that does not correspond to the target celebrity while preserving pose, expression, illumination,
+and surrounding appearance. We then blend the edited face through a feathered mask. For nudity
+erasure, we derive garment-coverage masks from NudeNet2 detections and use the Stable Diffusion
+v1.5 inpainting model3 to add scene-appropriate opaque clothing. We then restore the source pixels
+outside the edited region. Across all settings, we retain only candidates that remove the target con-
+cept while preserving non-target content, structure, and composition. Appendix A provides more
+details.
+3.2
+TARGET DERIVATION
+As shown in Figure 2(b), we use the pretrained VAE encoder E to encode the source and its coun-
+terpart as zsrc = E(xsrc) and zref = E(xref). The source latent provides the initial state, while the
+1https://github.com/Giphy/celeb-detection-oss
+2https://github.com/notAI-tech/NudeNet
+3https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting
+4
+
+
+Preprint
+counterpart latent specifies the desired clean target. Following the standard forward process (Ho
+et al., 2020), we sample ϵ ∼N(0, I) at timestep t and construct
+zsrc
+t
+= αtzsrc + σtϵ,
+(2)
+where αt and σt are the signal and noise coefficients of the diffusion schedule.
+For an epsilon-prediction model, a noise prediction bϵ corresponds to the clean-latent estimate (zsrc
+t
+−
+σtbϵ)/αt. Setting this estimate to the counterpart latent zref yields the redirection target
+ϵredir
+t
+= zsrc
+t
+−αtzref
+σt
+.
+(3)
+Matching the model prediction to this target redirects denoising of the noised source state toward
+the concept-removed counterpart.
+3.3
+DUAL-BRANCH REDIRECTION
+As shown in Figure 2(b), we apply the redirection target to two predictions of the trainable denoiser
+ϵθ. The conditional branch receives the source prompt c, while the unconditional branch receives the
+empty condition c∅. The conditional branch addresses standard prompt-conditioned generation. The
+unconditional branch applies the same denoising target without textual guidance, directly shaping
+the model’s prompt-independent visual generation behavior. Together, the two branches enforce
+erasure under standard text conditioning and in prompt-independent visual generation. At each
+update, both branches process the same noised source state and share the training pair, timestep t,
+and noise ϵ. We match both predictions to the same redirection target:
+Lcond =
+ϵθ(zsrc
+t , t, c) −ϵredir
+t
+2
+2 ,
+(4)
+Luncond =
+ϵθ(zsrc
+t , t, c∅) −ϵredir
+t
+2
+2 ,
+(5)
+LDBR = λcLcond + λuLuncond.
+(6)
+Here, λc and λu control the contributions of the two branches. Both losses are optimized at every
+update, redirecting the text-conditioned and text-free denoising paths toward the same counterpart
+target.
+3.4
+COUNTERPART RETENTION
+Although the redirection objective removes the target concept, optimizing it can inadvertently alter
+denoising predictions for non-target content. To mitigate this effect, we reuse the counterpart images
+as a compact retain set instead of introducing a separate retention dataset. Each counterpart provides
+a natural retain example because it preserves the non-target content of the source image. Let ϵθ0
+denote a frozen copy of the pretrained denoiser. We apply the standard forward process to the
+counterpart latent, zref
+t
+= αtzref + σtϵ, and match the trainable denoiser to the frozen model:
+Lretain =
+ϵθ(zref
+t , t, cr) −ϵθ0(zref
+t , t, cr)
+2
+2 ,
+(7)
+where cr is sampled uniformly from {c, c∅}. The overall training objective is
+L = E(xsrc,xref,c)∼Dpair, t,ϵ,cr [LDBR + λrLretain] .
+(8)
+The frozen denoiser is used only as the reference for Counterpart Retention. The redirection target in
+Equation 3 remains analytically determined by the paired latents and does not depend on predictions
+from the frozen model.
+4
+EXPERIMENTS
+4.1
+EXPERIMENTAL SETUP
+Tasks and training data.
+We evaluate VISUALERASE on Stable Diffusion v1.4 (Rombach et al.,
+2022) for Van Gogh style, Taylor Swift identity, and nudity erasure. Style uses 1,000 pairs from
+100 source images, with ten realistic counterparts per source. Celebrity uses 50 one-to-one identity
+replacements that preserve pose, clothing, and scene. Nudity uses 109 one-to-one natural clothed
+counterparts that preserve identity, pose, and scene.
+5
+
+
+Preprint
+Table 1: Van Gogh style erasure.
+Erasure method
+ACC↓
+Attack Success Rate (%) ↓
+Generation utility
+PEZ
+MMA
+RAB
+P4D
+UDA
+CCE
+TINA+
+FID ↓
+CLIP ↑
+SD1.4
+76.0
+40.0
+40.0
+90.0
+94.0
+96.0
+60.0
+76.0
+14.0
+26.6
+ESD
+2.0
+2.0
+0.0
+6.0
+30.0
+32.0
+8.0
+60.0
+14.5
+25.9
+FMN
+10.0
+0.0
+2.0
+6.0
+54.0
+56.0
+18.0
+70.0
+13.8
+26.5
+AC
+12.0
+0.0
+6.0
+14.0
+68.0
+77.0
+14.0
+72.0
+14.0
+26.5
+MACE
+4.0
+0.0
+0.0
+4.0
+42.0
+56.0
+26.0
+72.0
+12.4
+23.5
+SPM
+42.0
+5.0
+14.0
+48.0
+78.0
+88.0
+36.0
+74.0
+14.0
+26.6
+RECE
+18.0
+0.0
+14.0
+20.0
+62.0
+64.0
+40.0
+72.0
+13.8
+26.6
+AdvUnlearn
+0.0
+0.0
+0.0
+0.0
+0.0
+2.0
+44.0
+68.0
+14.1
+26.2
+STEREO
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+4.0
+46.0
+15.8
+26.0
+VISUALERASE
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+14.7
+26.5
+Baselines and attacks.
+We compare against concept-erasure methods with publicly available im-
+plementations or task-specific checkpoints, including ESD (Gandikota et al., 2023), FMN (Zhang
+et al., 2024a), AC (Kumari et al., 2023), UCE (Gandikota et al., 2024), MACE (Lu et al., 2024),
+SPM (Lyu et al., 2024), RECE (Gong et al., 2024), AdvUnlearn (Zhang et al., 2024b), SalUn (Fan
+et al., 2024), and STEREO (Srivatsan et al., 2025). Checkpoint availability varies across concept
+categories, so each table includes the corresponding available subset.
+We evaluate robustness against PEZ (Wen et al., 2023), MMA (Yang et al., 2024), RAB (Tsai et al.,
+2024), P4D (Chin et al., 2024), UDA (Zhang et al., 2024c), CCE (Pham et al., 2024), and TINA+ (Xi-
+ang et al., 2026a). The first six recover concepts through alternative prompts or embeddings, whereas
+TINA+ uses text-free inversion to probe prompt-independent visual knowledge.
+Evaluation protocol.
+We report concept accuracy under standard target prompts (ACC) and at-
+tack success rate (ASR), with lower values indicating stronger erasure. Following UDA, Van Gogh
+recovery is measured by the Top-1 prediction of a 129-class ViT-Base style classifier pretrained on
+ImageNet and fine-tuned on WikiArt (Zhang et al., 2024c; Wu et al., 2020; Saleh & Elgammal,
+2015). Taylor Swift recovery is measured by exact Top-1 identity matching with GCD. For nudity,
+we observe that NudeNet frequently misclassifies censored or non-explicit outputs as positive. We
+therefore use a frozen VLM-based evaluator built on LlavaGuard (Helff et al., 2025) to determine
+whether recognizable explicit nudity is present. Further details of this evaluation protocol and its
+comparison with NudeNet are provided in Appendix B.1.
+We evaluate non-target generation on COCO-30K (Lin et al., 2014). For each model, we gener-
+ate 30,000 images at 512 × 512 using 50 denoising steps and a classifier-free guidance scale of
+7.5 (Ho & Salimans, 2022). All models reuse the same prompts, seeds, and initial latents. We report
+FID (Heusel et al., 2017) and CLIP ViT-L/14 alignment (Radford et al., 2021). CLIP values are
+multiplied by 100 throughout the paper.
+Implementation details.
+For style and celebrity erasure, VISUALERASE uses the All-Attn scope,
+updating all query, key, value, and output projections in the U-Net self-attention and cross-
+attention layers, corresponding to 93.5M trainable parameters.
+We optimize the model with
+AdamW (Loshchilov & Hutter, 2017) using a batch size of 4, a learning rate of 2 × 10−6, and a
+weight decay of 0.01 for 1,000 updates. We set λc = λu = 0.5 and λr = 1.0. For nudity, we retain
+the same objective and learning rate but use a fixed Dual-Branch Redirection gradient ranking to
+select the top 10% of weights within the Non-Cross scope, which comprises the U-Net linear and
+convolutional parameters outside the cross-attention layers. The nudity model is trained for 5,000
+updates. Its saliency construction and optimizer implementation are detailed in Appendix B.2.
+4.2
+MAIN RESULTS
+Tables 1, 2, and 3 report results for the three settings. Across them, VISUALERASE suppresses
+standard and adversarial recovery while preserving general generation quality. Figure 3 provides
+qualitative comparisons under standard generation and TINA+.
+6
+
+
+Preprint
+Style
+Celebrity
+Nudity
+SD1.4
+ESD
+STEREO VisualErase
+SD1.4
+ESD
+STEREO VisualErase
+*
+*
+*
+*
+*
+*
+*
+*
+Text-to-image Generation
+TINA+ Attack
+Setting
+Figure 3: Qualitative comparison across style, celebrity, and nudity erasure under standard genera-
+tion and TINA+. Each setting compares SD1.4, ESD, STEREO, and VISUALERASE on the same
+evaluation cases. Black regions are presentation masks used only to conceal explicit content.
+Style erasure.
+Table 1 reports the complete Van Gogh comparison. Under standard target prompts,
+VISUALERASE reduces Top-1 style accuracy from 76% on SD1.4 to 0%. All seven attacks re-
+cover the target style from SD1.4, with attack success rates ranging from 40% to 96%, while VI-
+SUALERASE remains at 0% under every attack. This contrast is particularly clear for TINA+, whose
+attack success rate ranges from 60% to 74% for the erasure baselines other than STEREO and
+reaches 46% for STEREO, but remains at 0% for VISUALERASE. VISUALERASE also achieves
+0% under CCE. Together, these results support the importance of Visual Trajectory Erasure. Robust
+erasure must eliminate target-related visual generative trajectories rather than only alter generation
+under the original target condition.
+This robustness is achieved without compromising general generation quality. VISUALERASE ob-
+tains an FID of 14.7 and a CLIP score of 26.5 on COCO-30K, close to SD1.4 at 14.0 and 26.6 and
+better than STEREO at 15.8 and 26.0. MACE reports a lower FID of 12.4, but its CLIP score drops
+to 23.5. VISUALERASE therefore retains strong generation utility while remaining robust across all
+attacks.
+The style rows in Figure 3 provide consistent visual evidence. Under standard generation, VI-
+SUALERASE preserves scene content while removing the characteristic Van Gogh appearance.
+Under TINA+, ESD and STEREO recover recognizable palette and brushwork, whereas VI-
+SUALERASE produces coherent images without the target style.
+Celebrity erasure.
+Table 2 shows that VISUALERASE generalizes effectively to celebrity identity
+erasure, with automatic attack success rates at or below 8%. Figure 4 presents all eight outputs
+counted as successful attacks by RAB, P4D, and UDA. None exhibits recognizable Taylor Swift
+characteristics, indicating that the nonzero results for these three attacks arise from GCD false
+positives rather than genuine identity recovery. We retain the uncorrected automatic rates for re-
+7
+
+
+Preprint
+Table 2: Celebrity erasure. SR. and VE.
+denote STEREO and VISUALERASE.
+Metric
+SD1.4 ESD
+SR.
+VE.
+ACC ↓
+100.0
+38.0
+0.0
+0.0
+PEZ ↓
+38.0
+2.0
+0.0
+0.0
+MMA ↓
+42.0
+2.0
+0.0
+0.0
+RAB ↓
+56.0
+12.0
+0.0
+4.0
+P4D ↓
+100.0
+98.0
+0.0
+4.0
+UDA ↓
+100.0
+98.0
+0.0
+8.0
+CCE ↓
+84.0
+76.0
+0.0
+0.0
+TINA+ ↓
+100.0
+96.0 94.0
+6.0
+FID ↓
+14.0
+13.0 18.3 13.8
+CLIP ↑
+26.6
+26.5 24.6 26.7
+RAB
+RAB
+P4D
+P4D
+UDA
+UDA
+UDA
+UDA
+Figure 4: GCD false positives for VISUALERASE un-
+der RAB, P4D, and UDA.
+Table 3: Nudity erasure under the VLM-based semantic evaluation protocol.
+Erasure method
+ACC↓
+Attack Success Rate (%) ↓
+Generation utility
+PEZ MMA RAB P4D UDA CCE TINA+ FID ↓
+CLIP ↑
+SD1.4
+35.6
+31.4
+34.8
+70.5
+40.7
+39.8
+3.5
+42.4
+14.0
+26.6
+ESD
+2.5
+0.8
+0.7
+20.0
+3.5
+5.6
+46.5
+39.0
+13.6
+25.6
+FMN
+33.9
+30.5
+31.1
+69.5
+38.0
+38.7
+15.5
+44.9
+13.8
+26.3
+UCE
+0.0
+4.2
+6.9
+8.4
+7.0
+7.7
+14.8
+41.5
+14.3
+26.4
+MACE
+0.0
+1.7
+0.1
+0.0
+5.6
+7.7
+17.6
+43.2
+12.8
+24.2
+RECE
+0.8
+1.7
+4.9
+0.0
+2.8
+2.1
+21.8
+41.5
+14.5
+26.2
+AdvUnlearn
+0.0
+0.0
+0.1
+0.0
+0.0
+0.7
+49.3
+44.9
+15.4
+24.1
+SalUN
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+0.0
+47.5
+31.1
+23.7
+STEREO
+0.0
+0.0
+0.1
+1.1
+0.0
+0.0
+0.7
+47.5
+15.7
+25.3
+VISUALERASE
+0.0
+0.0
+0.1
+0.0
+0.0
+0.0
+0.0
+0.0
+15.5
+26.6
+producibility. Most notably, STEREO suppresses every listed attack other than TINA+ to 0%, but
+remains at 94% under TINA+. VISUALERASE reduces this value to 6%, while obtaining an FID
+close to SD1.4 and the highest CLIP score in the table. The celebrity rows in Figure 3 provide the
+corresponding visual comparison. Under standard prompts and TINA+, VISUALERASE removes
+the target facial identity while preserving a plausible portrait or scene-level interpretation.
+Nudity erasure.
+Table 3 reports the results for nudity erasure. VISUALERASE obtains 0% ACC
+and 0% attack success under PEZ, RAB, P4D, UDA, CCE, and TINA+, while MMA produces only
+one positive sample. In particular, TINA+ decreases from 42.4% on SD1.4 and 47.5% on STEREO
+to 0% on VISUALERASE, without using attack outputs during training. Its FID increases from 14.0
+to 15.5 relative to SD1.4, while the CLIP score remains 26.6. For this setting, we use saliency-
+localized updating to balance robust erasure and general generation quality. Its construction and
+ablation are detailed in Appendix B.2. The recognizability-based evaluation and NudeNet false
+positives are analyzed in Appendix B.1.
+The nudity rows in Figure 3 reveal two characteristic outcomes. In some cases, VISUALERASE
+generates clothing over previously exposed regions. In others, it produces a localized blur or censor-
+like texture that makes explicit anatomy unrecognizable. This blur is generated by the model rather
+than applied as post-processing. It is distinct from the black presentation masks used only to conceal
+explicit baseline outputs in the figure.
+Training efficiency.
+On a single NVIDIA H100, VISUALERASE completes Van Gogh style era-
+sure in 14.2 minutes versus 30.0 minutes for STEREO, reducing the measured training time by
+52.8%. The timing protocol and breakdown are provided in Appendix C.
+8
+
+
+Preprint
+Table 4: Objective ablation on Van Gogh style erasure.
+Variant
+TINA+ ASR ↓
+FID ↓
+CLIP ↑
+Cond.
+66.0
+16.0
+26.8
+Uncond.
+2.0
+25.3
+26.5
+Cond. + Uncond.
+0.0
+22.0
+26.5
+Cond. + Uncond. + Retent. (VISUALERASE)
+0.0
+14.7
+26.5
+Table 5: Trainable U-Net parameter scope on Van Gogh style erasure under the complete VI-
+SUALERASE objective. Attention scopes update Q/K/V/output projections unless K/V is explicitly
+specified. Non-Cross and All Linear/Conv denote linear and convolutional parameters outside cross-
+attention and throughout the U-Net, respectively.
+Trainable scope
+Updated (M)
+UDA ASR ↓
+TINA+ ASR ↓
+FID ↓
+CLIP ↑
+Cross-KV
+19.2
+2.0
+46.0
+21.1
+26.1
+Cross-Attn
+44.0
+0.0
+2.0
+17.4
+26.7
+Self-Attn
+49.6
+6.0
+0.0
+14.2
+26.6
+All-Attn (VISUALERASE)
+93.5
+0.0
+0.0
+14.7
+26.5
+Non-Cross
+815.4
+2.0
+0.0
+14.5
+26.5
+All Linear/Conv
+859.3
+0.0
+0.0
+14.4
+26.5
+4.3
+ABLATION STUDIES
+We isolate the training objective and parameter scope on Van Gogh, whose coherent visual distribu-
+tion provides a controlled setting.
+Dual-branch redirection and retention.
+Table 4 isolates the three components while fixing the
+all-attention parameter scope and all other settings. The conditional branch alone remains vulnerable
+to TINA+, with an attack success rate of 66.0%. The unconditional branch reduces this value to
+2.0%, and combining the two branches reaches 0.0%. Joint redirection without retention, however,
+shifts the general image distribution. Counterpart Retention reduces FID from 22.0 to 14.7 while
+preserving zero TINA+ recovery. These results show that the unconditional branch provides the
+main robustness gain, while Counterpart Retention restores generation utility.
+Trainable parameter scope.
+We keep the complete VISUALERASE objective fixed and vary the
+trainable U-Net scope. As shown in Table 5, cross-attention-only settings remain recoverable by
+TINA+, while self-attention alone and Non-Cross updating remain recoverable by UDA in 3 and
+1 of 50 cases, respectively. Updating all self- and cross-attention projections closes both gaps.
+This complementarity motivates the All-Attn scope used by VISUALERASE for style and celebrity
+erasure. Updating all U-Net linear and convolutional parameters also reaches zero recovery under
+both attacks, but VISUALERASE updates approximately 89% fewer parameters.
+5
+CONCLUSION
+We presented VISUALERASE, which formulates robust concept erasure as visual trajectory erasure.
+VISUALERASE constructs paired training data, derives a denoising target from each pair, and ap-
+plies it to conditional and unconditional generation through Dual-Branch Redirection. Counterpart
+Retention preserves general generation capability. Experiments across style, celebrity, and nudity
+erasure demonstrate zero or near-zero target recovery under seven attacks while maintaining strong
+generation quality. These results show that robust concept erasure requires erasing target-related
+visual generative trajectories rather than redirecting text-to-image mappings alone.
+9
+
+
+Preprint
+REFERENCES
+Nicholas Carlini, Jamie Hayes, Milad Nasr, Matthew Jagielski, Vikash Sehwag, Florian Tram`er,
+Borja Balle, Daphne Ippolito, and Eric Wallace. Extracting training data from diffusion models.
+In 32nd USENIX Security Symposium, pp. 5253–5270, 2023.
+Zhi-Yi Chin, Chieh Ming Jiang, Ching-Chun Huang, Pin-Yu Chen, and Wei-Chen Chiu. Prompt-
+ing4debugging: Red-teaming text-to-image diffusion models by finding problematic prompts. In
+Proceedings of the 41st International Conference on Machine Learning, volume 235 of Proceed-
+ings of Machine Learning Research, pp. 8468–8486, 2024.
+Chongyu Fan, Jiancheng Liu, Yihua Zhang, Eric Wong, Dennis Wei, and Sijia Liu. SalUn: Em-
+powering machine unlearning via gradient-based weight saliency in both image classification and
+generation. In The Twelfth International Conference on Learning Representations, 2024. URL
+https://openreview.net/forum?id=gn0mIhQGNM.
+Rohit Gandikota, Joanna Materzynska, Jaden Fiotto-Kaufman, and David Bau. Erasing concepts
+from diffusion models. In Proceedings of the IEEE/CVF International Conference on Computer
+Vision, pp. 2426–2436, 2023.
+Rohit Gandikota, Hadas Orgad, Yonatan Belinkov, Joanna Materzy´nska, and David Bau. Unified
+concept editing in diffusion models. In Proceedings of the IEEE/CVF Winter Conference on
+Applications of Computer Vision, pp. 5111–5120, 2024.
+Chao Gong, Kai Chen, Zhipeng Wei, Jingjing Chen, and Yu-Gang Jiang. Reliable and efficient
+concept erasure of text-to-image diffusion models. In European Conference on Computer Vision,
+pp. 73–88. Springer, 2024.
+Lukas Helff, Felix Friedrich, Manuel Brack, Kristian Kersting, and Patrick Schramowski. Llava-
+Guard: An open VLM-based framework for safeguarding vision datasets and models.
+In
+Proceedings of the 42nd International Conference on Machine Learning, volume 267 of Pro-
+ceedings of Machine Learning Research, pp. 22964–22987. PMLR, 2025.
+URL https:
+//proceedings.mlr.press/v267/helff25a.html.
+Martin
+Heusel,
+Hubert
+Ramsauer,
+Thomas
+Unterthiner,
+Bernhard
+Nessler,
+and
+Sepp
+Hochreiter.
+GANs
+trained
+by
+a
+two
+time-scale
+update
+rule
+converge
+to
+a
+lo-
+cal nash equilibrium.
+In Advances in Neural Information Processing Systems,
+vol-
+ume 30, 2017.
+URL https://proceedings.neurips.cc/paper/2017/hash/
+8a1d694707eb0fefe65871369074926d-Abstract.html.
+Jonathan Ho and Tim Salimans.
+Classifier-free diffusion guidance.
+arXiv preprint
+arXiv:2207.12598, 2022.
+Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. Advances in
+Neural Information Processing Systems, 33:6840–6851, 2020.
+Harry H Jiang, Lauren Brown, Jessica Cheng, Mehtab Khan, Abhishek Gupta, Deja Workman, Alex
+Hanna, Johnathan Flowers, and Timnit Gebru. AI art and its impact on artists. In Proceedings of
+the 2023 AAAI/ACM Conference on AI, Ethics, and Society, pp. 363–374, 2023.
+Nupur Kumari, Bingliang Zhang, Sheng-Yu Wang, Eli Shechtman, Richard Zhang, and Jun-Yan
+Zhu. Ablating concepts in text-to-image diffusion models. In Proceedings of the IEEE/CVF
+International Conference on Computer Vision, pp. 22691–22702, 2023.
+Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Pi-
+otr Doll´ar, and C. Lawrence Zitnick. Microsoft COCO: Common objects in context. In Com-
+puter Vision – ECCV 2014, volume 8693 of Lecture Notes in Computer Science, pp. 740–755.
+Springer, 2014. doi: 10.1007/978-3-319-10602-1 48. URL https://doi.org/10.1007/
+978-3-319-10602-1_48.
+Ilya Loshchilov and Frank Hutter.
+Decoupled weight decay regularization.
+arXiv preprint
+arXiv:1711.05101, 2017.
+10
+
+
+Preprint
+Shilin Lu, Zilan Wang, Leyang Li, Yanzhu Liu, and Adams Wai-Kin Kong. Mace: Mass concept
+erasure in diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, pp. 6430–6440, 2024.
+Mengyao Lyu, Yuhong Yang, Haiwen Hong, Hui Chen, Xuan Jin, Yuan He, Hui Xue, Jungong
+Han, and Guiguang Ding. One-dimensional adapter to rule them all: Concepts diffusion models
+and erasing applications. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pp. 7559–7568, 2024.
+Alex Nichol, Prafulla Dhariwal, Aditya Ramesh, Pranav Shyam, Pamela Mishkin, Bob McGrew,
+Ilya Sutskever, and Mark Chen. GLIDE: Towards photorealistic image generation and editing
+with text-guided diffusion models. arXiv preprint arXiv:2112.10741, 2021.
+Minh Pham, Kelly O. Marshall, Niv Cohen, Govind Mittal, and Chinmay Hegde. Circumvent-
+ing concept erasure methods for text-to-image generative models.
+In International Confer-
+ence on Learning Representations, 2024. URL https://openreview.net/forum?id=
+ag3o2T51Ht.
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agar-
+wal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya
+Sutskever. Learning transferable visual models from natural language supervision. In Proceed-
+ings of the 38th International Conference on Machine Learning, volume 139 of Proceedings of
+Machine Learning Research, pp. 8748–8763. PMLR, 2021. URL https://proceedings.
+mlr.press/v139/radford21a.html.
+Ren´e Ranftl, Katrin Lasinger, David Hafner, Konrad Schindler, and Vladlen Koltun. Towards robust
+monocular depth estimation: Mixing datasets for zero-shot cross-dataset transfer. IEEE Trans-
+actions on Pattern Analysis and Machine Intelligence, 44(3):1623–1637, 2022. doi: 10.1109/
+TPAMI.2020.3019967. URL https://doi.org/10.1109/TPAMI.2020.3019967.
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj¨orn Ommer. High-
+resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Con-
+ference on Computer Vision and Pattern Recognition, pp. 10684–10695, 2022.
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily L. Denton, Kamyar
+Ghasemipour, Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Salimans, et al. Photorealistic
+text-to-image diffusion models with deep language understanding. Advances in Neural Informa-
+tion Processing Systems, 35:36479–36494, 2022.
+Babak Saleh and Ahmed Elgammal. Large-scale classification of fine-art paintings: Learning the
+right metric on the right feature. arXiv preprint arXiv:1505.00855, 2015.
+Patrick Schramowski, Manuel Brack, Bj¨orn Deiseroth, and Kristian Kersting. Safe latent diffusion:
+Mitigating inappropriate degeneration in diffusion models.
+In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, pp. 22522–22531, 2023.
+Christoph Schuhmann, Romain Beaumont, Richard Vencu, Cade Gordon, Ross Wightman, Mehdi
+Cherti, Theo Coombes, Aarush Katta, Clayton Mullis, Mitchell Wortsman, et al. LAION-5b:
+An open large-scale dataset for training next generation image-text models. Advances in Neural
+Information Processing Systems, 35:25278–25294, 2022.
+Gowthami Somepalli, Vasu Singla, Micah Goldblum, Jonas Geiping, and Tom Goldstein. Diffusion
+art or digital forgery? investigating data replication in diffusion models. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 6048–6058, 2023.
+Koushik Srivatsan, Fahad Shamshad, Muzammal Naseer, Vishal M Patel, and Karthik Nandakumar.
+Stereo: A two-stage framework for adversarially robust concept erasing from text-to-image dif-
+fusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pp. 23765–23774, 2025.
+Yu-Lin Tsai, Chia-Yi Hsu, Chulin Xie, Chih-Hsun Lin, Jia-You Chen, Bo Li, Pin-Yu Chen, Chia-Mu
+Yu, and Chun-Ying Huang. Ring-a-bell! how reliable are concept removal methods for diffusion
+models? In International Conference on Learning Representations, 2024.
+11
+
+
+Preprint
+Yuxin Wen, Neel Jain, John Kirchenbauer, Micah Goldblum, Jonas Geiping, and Tom Goldstein.
+Hard prompts made easy: Gradient-based discrete optimization for prompt tuning and discovery.
+Advances in Neural Information Processing Systems, 36:51008–51025, 2023.
+Bichen Wu, Chenfeng Xu, Xiaoliang Dai, Alvin Wan, Peizhao Zhang, Zhicheng Yan, Masayoshi
+Tomizuka, Joseph Gonzalez, Kurt Keutzer, and Peter Vajda. Visual transformers: Token-based
+image representation and processing for computer vision. arXiv preprint arXiv:2006.03677, 2020.
+Jing Wu and Mehrtash Harandi. Scissorhands: Scrub data influence via connection sensitivity in
+networks. In European Conference on Computer Vision, pp. 367–384. Springer, 2024.
+Jing Wu, Trung Le, Munawar Hayat, and Mehrtash Harandi. Erasing undesirable influence in dif-
+fusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pp. 28263–28273, 2025.
+Qianlong Xiang, Miao Zhang, Kun Wang, Haoyu Zhang, Junhui Hou, and Liqiang Nie. TINA+:
+Probing residual visual knowledge in unlearned diffusion models via diffusion-consistent text-
+free inversion. arXiv preprint arXiv:2608.17747, 2026a. doi: 10.48550/arXiv.2608.17747. URL
+https://arxiv.org/abs/2608.17747.
+Qianlong Xiang, Miao Zhang, Haoyu Zhang, Kun Wang, Junhui Hou, and Liqiang Nie.
+Tina:
+Text-free inversion attack for unlearned text-to-image diffusion models. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 30076–30086, 2026b.
+Saining Xie and Zhuowen Tu.
+Holistically-nested edge detection.
+In Proceedings of
+the IEEE International Conference on Computer Vision (ICCV), pp. 1395–1403, Decem-
+ber 2015. URL https://openaccess.thecvf.com/content_iccv_2015/html/
+Xie_Holistically-Nested_Edge_Detection_ICCV_2015_paper.html.
+Yijun Yang, Ruiyuan Gao, Xiaosen Wang, Tsung-Yi Ho, Nan Xu, and Qiang Xu. Mma-diffusion:
+Multimodal attack on diffusion models. In Proceedings of the IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition, pp. 7737–7746, 2024.
+Gong Zhang, Kai Wang, Xingqian Xu, Zhangyang Wang, and Humphrey Shi. Forget-me-not: Learn-
+ing to forget in text-to-image diffusion models. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition Workshops, pp. 1755–1764, 2024a.
+Lvmin Zhang, Anyi Rao, and Maneesh Agrawala.
+Adding conditional control to text-to-image
+diffusion models.
+In Proceedings of the IEEE/CVF International Conference on Computer
+Vision (ICCV), pp. 3836–3847, October 2023.
+URL https://openaccess.thecvf.
+com/content/ICCV2023/html/Zhang_Adding_Conditional_Control_to_
+Text-to-Image_Diffusion_Models_ICCV_2023_paper.html.
+Yimeng Zhang, Xin Chen, Jinghan Jia, Yihua Zhang, Chongyu Fan, Jiancheng Liu, Mingyi Hong,
+Ke Ding, and Sijia Liu. Defensive unlearning with adversarial training for robust concept era-
+sure in diffusion models. Advances in Neural Information Processing Systems, 37:36748–36776,
+2024b.
+Yimeng Zhang, Jinghan Jia, Xin Chen, Aochuan Chen, Yihua Zhang, Jiancheng Liu, Ke Ding, and
+Sijia Liu. To generate or not? safety-driven unlearned diffusion models are still easy to generate
+unsafe images... for now. In European Conference on Computer Vision, pp. 385–403. Springer,
+2024c.
+12
+
+
+Preprint
+A
+PAIRED DATA CONSTRUCTION DETAILS
+A.1
+CONSTRUCTION PROTOCOL
+The paired data used by VISUALERASE are designed to provide instance-aligned visual supervision.
+Given a concept-bearing source image xsrc, the counterpart xref should remove the target concept
+while preserving the source-specific scene, composition, geometry, and other non-target content.
+This requirement is stronger than generating an image that is merely compatible with a concept-
+removed text prompt.
+All counterparts are constructed offline using publicly available, locally hosted diffusion models. For
+style erasure, we apply full-image image-to-image generation with SoftEdge and depth ControlNet
+conditions to preserve the depicted content and scene layout. For celebrity erasure, we locate the
+target face, regenerate a local face crop with a synthetic non-famous identity, and composite the
+result through a feathered face mask. For nudity erasure, we derive garment-coverage masks from
+NudeNet detections and use a locally hosted inpainting model to add natural, scene-appropriate
+clothing.
+For localized editing, only pixels inside the designated editing mask are taken from the generated
+candidate. Pixels outside the mask are restored directly from the source image. This construction
+gives an exact pixel-preservation guarantee outside the edited region rather than relying on an image
+generator to reproduce the complete source image.
+A.2
+REPRODUCIBLE TAYLOR SWIFT CONSTRUCTION
+We use the Taylor Swift subset as a concrete example of the celebrity-pair construction process.
+For each source image, GCD is used to identify the target face. We extract a square crop around
+the detected face using a crop scale of 1.80 and resize it to 512 × 512. SoftEdge and depth maps
+extracted from the crop are supplied to a Stable Diffusion v1.5 image-to-image model.
+The positive prompt follows the common template:
+RAW candid photograph of a real young adult woman aged
+25, a different non-famous identity, [facial-structure
+descriptor], natural skin pores and subtle imperfections,
+coherent eyes nose and mouth, realistic proportions, natural
+makeup, same head pose gaze expression hairstyle lighting
+and camera perspective.
+The negative prompt excludes the target identity, celebrities, lookalikes, stylized rendering, wax-like
+skin, duplicated faces, and malformed facial features. The facial-structure descriptor is not sampled
+randomly. It is assigned deterministically by the parameter group and within-group seed index. For
+c72, j = 0 uses “a soft oval facial structure,” and j = 1 uses “a naturally round facial structure.”
+For c82, j = 0 uses “a gentle square jaw,” and j = 1 uses “a heart-shaped facial structure.” For
+c88, j = 0 uses “subtle high cheekbones,” and j = 1 uses “a broad natural facial structure.” Thus,
+the six group-seed combinations correspond one-to-one with six fixed generic descriptors. None
+specifies another real person.
+We use three fixed parameter groups:
+c72 = (s = 0.72, λedge = 0.20, λdepth = 0.25, ectrl = 0.50),
+c82 = (s = 0.82, λedge = 0.20, λdepth = 0.20, ectrl = 0.50),
+c88 = (s = 0.88, λedge = 0.15, λdepth = 0.20, ectrl = 0.45),
+where s is the image-to-image strength, the two λ values are the ControlNet conditioning scales,
+and ectrl is the ControlNet guidance end. All groups use 50 denoising steps, a guidance scale of 5.8,
+and 12-pixel boundary feathering.
+For case i, parameter group g ∈{0, 1, 2}, and within-group candidate j ∈{0, 1}, the random seed
+is fixed as
+seed(i, g, j) = 480000 + 100i + 10g + j.
+(9)
+13
+
+
+Preprint
+This produces six deterministic candidates per source image. We first verify the absence of residual
+target identity and exact equality outside the face mask. We then select one candidate based on facial
+naturalness, geometry, boundary consistency, and preservation of the original scene.
+Across the complete Taylor subset, all 300 generated candidates have zero detected Taylor Swift
+residuals under the adopted GCD Top-1 and Top-20 checks. Their maximum pixel difference outside
+the face mask is also zero. One candidate is retained for each of the 50 source images, and both
+properties continue to hold for all 50 selected counterparts.
+Upon acceptance, we will release the complete paired-data construction pipeline, including source
+preprocessing, prompt templates, fixed parameter schedules, deterministic seed assignments, spatial
+masks, and candidate-selection metadata. We will also release the final paired datasets used in this
+paper where permitted by the corresponding licenses and safety requirements, to support reproduc-
+tion and further research.
+A.3
+PRACTICAL CONSTRAINTS OF PROPRIETARY IMAGE GENERATORS
+We additionally investigated whether a proprietary GPT-based image-generation service could
+replace the local construction pipeline.
+Such services provide strong general-purpose image-
+generation and editing capabilities. However, their inputs and outputs are processed by service-side
+safety systems, and requests involving sensitive content may be rejected during either input or output
+moderation.4
+We first submitted a representative Taylor Swift source image together with a privacy-preserving de-
+identification instruction. Under the interface available to us in September 2026, the first request was
+rejected during output moderation. A reformulated request that described the operation as face de-
+identification was rejected during input moderation under the public-figure category. We therefore
+could not use this interface to consistently construct the celebrity counterparts.
+As a feasible GPT-only diagnostic, we instead generated images independently for four representa-
+tive Taylor cases using only their generic scene descriptions, without providing the corresponding
+source images as visual inputs. Figure 5 compares these generations with our locally constructed
+counterparts.
+The independently generated GPT images exhibit strong standalone visual quality. Nevertheless,
+they are category-level matches rather than instance-aligned counterparts. Across the examples, they
+alter object placement, body pose, scene layout, limb configuration, and viewpoint. These changes
+would confound identity removal with unrelated visual transformations during paired supervision.
+The nudity setting introduces an additional access constraint because its sources contain explicit
+visual content, which belongs to a moderation-sensitive sexual category for both text and image
+inputs.5 We did not upload these images to the proprietary service or attempt to circumvent its
+safeguards. Instead, we use a locally hosted inpainting model with explicit garment masks from the
+outset.
+These observations do not imply that GPT-based models intrinsically lack image-editing capability.
+Rather, proprietary generators are unsuitable as the sole construction dependency in our setting for
+two practical reasons. Their availability for sensitive inputs is policy-dependent, and independent
+text-to-image generation does not satisfy the required instance-level alignment. The locally hosted
+pipeline provides uniform coverage across style, celebrity, and nudity erasure while exposing the
+model checkpoint, random seeds, spatial masks, and candidate-selection process for reproduction
+and auditing.
+B
+NUDITY-SPECIFIC EVALUATION AND TRAINING DETAILS
+B.1
+RECOGNIZABILITY-BASED NUDITY EVALUATION
+The main Nudity results measure whether an attack recovers recognizable explicit anatomy rather
+than whether it merely activates a low-level nudity detector. We count an output as a success-
+4https://developers.openai.com/api/docs/guides/image-generation
+5https://developers.openai.com/api/docs/guides/moderation
+14
+
+
+Preprint
+microphone
+Source A
+Our paired B
+GPT text-to-image B
+desk and laptop
+waving from balcony
+library profile
+Figure 5: Comparison of paired-data construction strategies. Each row contains the source
+image, our locally edited counterpart, and an image independently generated by GPT from the
+corresponding generic scene description. The GPT samples are photorealistic and semantically
+compatible with their captions, but alter the source-specific pose, clothing, objects, viewpoint, and
+background. Our construction restricts the modification to the target face region and exactly pre-
+serves pixels outside the editing mask.
+ful recovery only when female breasts or nipples, genitalia, anus, or bare buttocks remain visibly
+recognizable. Skin exposure, body shape, male chest, underwear or swimwear, and suggestive com-
+15
+
+
+Preprint
+position alone are insufficient. Effective clothing, occlusion, cropping, mosaicing, or strong blur
+therefore count as successful suppression.
+We implement this criterion using three source-blinded signals. The evaluator is not given the orig-
+inating model or attack. For each LlavaGuard semantic query q ∈{anat, comp}, we define its
+response margin as mq = ℓq(Yes) −ℓq(No). The anatomy query asks whether target anatomy is
+visibly recognizable, while the independently worded composition query assesses the overall nude
+composition. We use LlavaGuard (Helff et al., 2025) for both queries and denote the maximum
+NudeNet confidence among the target anatomy classes by sNN. The resulting fixed decision rule is
+positive = [manat ≥1.0] ∧[mcomp ≥1.640625]
+∧[manat ≥2.5 ∨sNN ≥0.70].
+(10)
+We select the thresholds using 83 determinate labels from a source-blinded calibration set and then
+freeze them across all models and attacks. On this set, the rule gives 15 true positives, no false
+positives, 64 true negatives, and four false negatives. The observed precision, recall, and specificity
+are 100.0%, 78.9%, and 100.0%, respectively. We prioritize precision because the reported attack
+success rate is intended to measure recognizable recovery, not detector sensitivity to skin-colored or
+censored images.
+We evaluate each attack on its complete benchmark and retain its native denominator. For P4D,
+UDA, and TINA+, we take the union of standard and attack outputs within each case before com-
+puting the case-level attack success rate.
+The discrepancy with classifier-only evaluation is substantial for the final VISUALERASE under
+UDA. NudeNet marks 36 of 118 cases as positive, whereas the recognizability-based protocol finds
+no case with recognizable target anatomy. The eight examples in Figure 6 illustrate the main causes.
+Censor-like blur, male torsos, covered people, abstract body-like textures, unrelated objects, armor,
+and non-human puppet characters can all trigger NudeNet. These cues produce many false positives.
+Treating every NudeNet detection as a successful attack therefore overestimates the recovery of
+recognizable explicit content.
+Figure 6: Representative NudeNet false positives without recognizable explicit anatomy.
+For comparison, Table 6 reports classifier-only NudeNet results at a threshold of 0.45. Under this
+detector, the final VISUALERASE obtains 19.5% TINA+ and 30.5% UDA attack success rates even
+though the recognizability-based evaluation finds no target anatomy in either set. We include this
+table only to expose evaluator sensitivity.
+16
+
+
+Preprint
+Table 6: Classifier-only NudeNet evaluation for Nudity erasure at a threshold of 0.45.
+Erasure method
+ACC↓
+Attack Success Rate (%) ↓
+Generation utility
+PEZ MMA RAB
+P4D
+UDA CCE TINA+ FID ↓
+CLIP ↑
+SD1.4
+94.1
+66.1
+70.9
+96.8 100.0 100.0
+32.4
+100.0
+14.0
+26.6
+ESD
+21.2
+11.9
+13.1
+50.5
+69.0
+76.1
+74.7
+86.4
+13.6
+25.6
+FMN
+88.1
+62.7
+67.0
+97.9
+97.9
+97.9
+54.9
+100.0
+13.8
+26.3
+UCE
+24.6
+25.4
+32.6
+29.5
+76.1
+78.9
+49.3
+97.5
+14.3
+26.4
+MACE
+10.2
+8.5
+6.0
+6.3
+75.4
+81.7
+50.0
+93.2
+12.8
+24.2
+RECE
+15.3
+15.3
+22.8
+10.5
+66.2
+63.4
+66.9
+93.2
+14.5
+26.2
+AdvUnlearn
+8.5
+1.7
+1.7
+2.1
+18.3
+23.2
+76.8
+92.4
+15.4
+24.1
+SalUN
+1.7
+0.0
+1.7
+0.0
+15.5
+13.4
+2.8
+73.7
+31.1
+23.7
+STEREO
+3.4
+0.0
+5.5
+8.4
+24.7
+25.4
+16.9
+97.5
+15.7
+25.3
+VISUALERASE
+1.7
+0.8
+3.3
+4.2
+26.3
+30.5
+0.0
+19.5
+15.5
+26.6
+B.2
+SALIENCY-LOCALIZED UPDATING
+Nudity exhibits greater variation in pose, anatomy, composition, and rendering than style or celebrity
+identity. Updating only attention projections can underfit this variation, whereas updating the full
+Non-Cross scope improves erasure at the cost of generation quality. We retain the natural clothed
+counterparts and the same training objective, then localize the parameter update within the Non-
+Cross scope.
+We construct a fixed element-wise saliency mask inspired by SalUn (Fan et al., 2024). Let ΘNC
+denote the candidate set of U-Net linear and convolutional parameters outside the cross-attention
+layers. For each parameter θi ∈ΘNC, we estimate its importance on the pretrained model using the
+magnitude of the Dual-Branch Redirection gradient:
+si = EDpair,t,ϵ
+
+∂LDBR
+∂θi
+
+
+.
+(11)
+We estimate the scores with four deterministic passes over the 109 paired examples and freeze the
+resulting ranking. During training, gradients outside the selected mask are zeroed and the corre-
+sponding parameters are restored to their pretrained values after every AdamW step. This prevents
+decoupled weight decay from changing parameters intended to remain fixed. The mask changes
+only which parameters are updated. Target Derivation, Dual-Branch Redirection, and Counterpart
+Retention remain unchanged, and no adversarial prompt or attack output is used to construct the
+mask.
+Table 7 separates the effect of expanding the trainable scope from that of localizing updates within
+the Non-Cross parameters.
+Table 7: Trainable scope and saliency ratio for Nudity erasure. All rows use natural clothed coun-
+terparts and 5,000 updates. SG denotes saliency-gated updating, and bold marks the selected con-
+figuration.
+Trainable scope
+Active
+Updated (M)
+ACC ↓
+TINA+ ↓
+FID ↓
+CLIP ↑
+All-Attn
+100%
+93.5
+0.0
+6.8
+15.5
+26.8
+Non-Cross
+100%
+815.4
+0.0
+0.8
+16.7
+26.3
+All Linear/Conv
+100%
+859.3
+0.0
+0.8
+16.3
+26.4
+SG Non-Cross
+50%
+407.7
+0.0
+0.0
+16.7
+26.4
+SG Non-Cross
+25%
+203.9
+0.8
+0.8
+16.0
+26.5
+SG Non-Cross (VISUALERASE)
+10%
+81.5
+0.0
+0.0
+15.5
+26.6
+All rows use the complete ACC and TINA+ evaluations together with COCO-30K. The first block
+shows that a broader trainable scope improves resistance to recovery but increases distribution shift.
+The second block shows that localized updating recovers a better balance. The selected 10% mask
+17
+
+
+Preprint
+Standard generation
+TINA+ attack
+Figure 7: VisualErase on Tench object erasure under standard target prompts and TINA+ attacks.
+The generated images do not contain a recognizable Tench.
+reaches 0% ACC and 0% TINA+ recovery while retaining an FID of 15.5 and a CLIP score of 26.6.
+Its split-half Jaccard similarity is 0.831, indicating that the high-saliency parameter set is stable
+across disjoint halves of the paired training data.
+C
+TRAINING TIME COMPARISON
+We compare the wall-clock time required by STEREO and VISUALERASE to erase the Van Gogh
+style on a single NVIDIA H100. Timing begins when each training program loads SD1.4 and
+ends after the final erased checkpoint is written. Task-specific data preparation and downstream
+evaluation are excluded. The STEREO run includes two STE rounds. Each round performs 200
+erasure updates and 3,000 textual inversion updates, followed by 200 REO updates. VISUALERASE
+uses a single training run of 1,000 updates.
+Table 8: Wall-clock training time for Van Gogh erasure on one H100.
+Method
+Time (min)
+Relative time
+STEREO
+30.0
+2.12×
+VISUALERASE
+14.2
+1.00×
+VISUALERASE reduces the measured training time by 52.8%.
+The difference arises because
+STEREO alternates erasure with repeated adversarial token optimization, whereas VISUALERASE
+performs one paired visual trajectory training run. The STEREO gallery was generated before train-
+ing and required an additional 11.8 minutes. This offline preparation time is reported separately
+because paired data construction for VISUALERASE is likewise performed before training.
+D
+TENCH OBJECT ERASURE
+We additionally examine Tench as an object-erasure setting. As shown in Figure 7, VISUALERASE
+suppresses recognizable Tench under both standard target prompts and TINA+ attacks. However, the
+ImageNet classifier used for this setting frequently maps fishing scenes, blurred objects, or generic
+fish to the Tench class, as illustrated in Figure 8. We therefore present this setting as a qualitative
+analysis rather than a detailed quantitative comparison.
+18
+
+
+Preprint
+True positives
+False positives
+Figure 8: Tench classifier predictions. All examples are predicted as Tench. The top row shows true
+positives, whereas the bottom row shows false positives without a recognizable Tench.
+19

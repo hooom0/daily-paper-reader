@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-06</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-08</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
     <strong class="dpr-home-dashboard-count">共 14 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
-    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>2 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>14</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>3</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-06 23:12:43 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-08 00:15:20 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-10-06 日报速读 14 篇、精读挂零，图像生成仍是绝对主线。最值得看的是个性化图像生成引入推理与反思机制，以及文生图扩散在满意度与多样性之间寻找平衡，另有冻结 DiT 的解耦外观与几何控制用于时序稳定渲染。普通读者可优先挑个性化生成那篇入门，再按需跟进扩散权衡与渲染控制方向。</p>
+<p>今日共筛出14篇论文，精读3篇、速读11篇，多视图生成与条件路由是主线。最值得关注NAMVIS的下一尺度自回归多视图合成，以及RefRoute用紧凑残差与空间路由解耦条件成本。普通读者可优先看这两篇精读，再按需浏览速读中的扩散与图像编辑方向。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -78,12 +78,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="NAMVIS: Next-Scale Autoregressive Multi-View Image Synthesis">NAMVIS: Next-Scale Autoregressive Multi-View Image Synthesis</span></li><li><span class="dpr-home-dashboard-paper-title" title="RefRoute: Decoupling Conditioning Cost from References via Compact Residual Conditioning and Spatial Routing">RefRoute: Decoupling Conditioning Cost from References via Compact Residual Conditioning and Spatial Routing</span></li><li><span class="dpr-home-dashboard-paper-title" title="Local Content-Style Control for Diffusion-based Image Stylization">Local Content-Style Control for Diffusion-based Image Stylization</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>3</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -91,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">14 篇</strong>
+    <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Personalized Image Generation with Reasoning and Reflection">Personalized Image Generation with Reasoning and Reflection</span></li><li><span class="dpr-home-dashboard-paper-title" title="Traversing the Satisfaction-Diversity Frontier in Text-to-Image Diffusion">Traversing the Satisfaction-Diversity Frontier in Text-to-Image Diffusion</span></li><li><span class="dpr-home-dashboard-paper-title" title="DAGS: Disentangled Appearance-and-Geometry Steering of a Frozen Image DiT for Temporally Stabilized Generative Rendering">DAGS: Disentangled Appearance-and-Geometry Steering of a Frozen Image DiT for Temporally Stabilized Generative Rendering</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Level-of-Token Diffusion">Level-of-Token Diffusion</span></li><li><span class="dpr-home-dashboard-paper-title" title="Scalable Minimal-Change Learning for Controllable Image Editing">Scalable Minimal-Change Learning for Controllable Image Editing</span></li><li><span class="dpr-home-dashboard-paper-title" title="Should We Skip Diffusion?">Should We Skip Diffusion?</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>14</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
 </section>
 </div>
 

@@ -1,0 +1,233 @@
+{
+  "date": "20261008",
+  "date_label": "",
+  "generated_at": "2026-10-08 00:15:20 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.04722v1",
+      "route": "202610/08/2610.04722v1-namvis-next-scale-autoregressive-multi-view-image-synthesis",
+      "title": "NAMVIS: Next-Scale Autoregressive Multi-View Image Synthesis",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "将多视图图像合成重构为下一尺度自回归生成",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.07720v1",
+      "route": "202610/08/2610.07720v1-refroute-decoupling-conditioning-cost-from-references-via-compact-residual-conditioning-and-spatial-routing",
+      "title": "RefRoute: Decoupling Conditioning Cost from References via Compact Residual Conditioning and Spatial Routing",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "紧凑残差条件与空间路由实现多参考图像生成",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.08704v1",
+      "route": "202610/08/2610.08704v1-local-content-style-control-for-diffusion-based-image-stylization",
+      "title": "Local Content-Style Control for Diffusion-based Image Stylization",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "潜扩散风格化中的局部逐轴内容与风格控制",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.05816v1",
+      "route": "202610/08/2610.05816v1-level-of-token-diffusion",
+      "title": "Level-of-Token Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "多分辨率token布局实现自适应高效图像与视频扩散生成",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.06021v1",
+      "route": "202610/08/2610.06021v1-scalable-minimal-change-learning-for-controllable-image-editing",
+      "title": "Scalable Minimal-Change Learning for Controllable Image Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向可控最小改动的指令图像编辑的强化学习",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.07002v1",
+      "route": "202610/08/2610.07002v1-should-we-skip-diffusion",
+      "title": "Should We Skip Diffusion?",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "在扩散Transformer中移除残差连接以改进图像生成",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.07684v1",
+      "route": "202610/08/2610.07684v1-disentangling-dual-image-references-in-frequency-aware-diffusion-models-for-personalized-generation",
+      "title": "Disentangling Dual Image References in Frequency Aware Diffusion Models for Personalized Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向个性化文本驱动图像生成的频率感知扩散",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.08626v1",
+      "route": "202610/08/2610.08626v1-feature-information-dynamics-in-diffusion",
+      "title": "Feature Information Dynamics in Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "刻画扩散模型特征生成时刻的信息论框架",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.00737v1",
+      "route": "202610/08/2610.00737v1-personalized-image-generation-with-reasoning-and-reflection",
+      "title": "Personalized Image Generation with Reasoning and Reflection",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "基于用户历史的个性化图像生成基准",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.03084v1",
+      "route": "202610/08/2610.03084v1-negt2ibench-when-negation-changes-the-picture-a-polarity-benchmark-for-text-to-image-models",
+      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向文本到图像模型的否定提示基准",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.05000v1",
+      "route": "202610/08/2610.05000v1-visualerase-dual-branch-visual-trajectory-redirection-for-robust-concept-erasure-in-text-to-image-diffusion-models",
+      "title": "VisualErase: Dual-Branch Visual Trajectory Redirection for Robust Concept Erasure in Text-to-Image Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文生图扩散模型中的概念擦除",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.05401v1",
+      "route": "202610/08/2610.05401v1-no-concept-escapes-the-audit-auditing-aware-unlearning-for-verifiable-concept-erasure-in-diffusion-models",
+      "title": "No Concept Escapes the Audit: Auditing-Aware Unlearning for Verifiable Concept Erasure in Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "文本到图像扩散模型中可验证的概念擦除",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.06844v1",
+      "route": "202610/08/2610.06844v1-learning-to-read-the-contextual-tokens-in-diffusion-transformers",
+      "title": "Learning to Read the Contextual Tokens in Diffusion Transformers",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "解读扩散Transformer中文本token的生成作用",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    },
+    {
+      "paper_id": "2610.06945v1",
+      "route": "202610/08/2610.06945v1-beyond-the-linear-representation-hypothesis-non-linear-activation-steering-in-text-to-image-models",
+      "title": "Beyond the Linear Representation Hypothesis: Non-Linear Activation Steering in Text-to-Image Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "通过激活引导控制文生图生成",
+      "first_seen_at": "2026-10-08 00:15:20 UTC",
+      "updated_at": "2026-10-08 00:15:20 UTC"
+    }
+  ]
+}
