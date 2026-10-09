@@ -1,0 +1,201 @@
+{
+  "date": "20261009",
+  "date_label": "",
+  "generated_at": "2026-10-09 23:26:52 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.09071v1",
+      "route": "202610/09/2610.09071v1-overlay-dense-overlap-layout-to-image-generation-dataset",
+      "title": "OverLay++: Dense-Overlap Layout-to-Image Generation Dataset",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "大规模布局到图像数据集，支持空间可控图像生成",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.05845v1",
+      "route": "202610/09/2610.05845v1-cacfg-curvature-aware-classifier-free-guidance-and-optimal-control",
+      "title": "CACFG: Curvature-Aware Classifier-Free Guidance and Optimal Control",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "用于提示条件扩散采样的无分类器引导",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.07002v1",
+      "route": "202610/09/2610.07002v1-should-we-skip-diffusion",
+      "title": "Should We Skip Diffusion?",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "移除扩散变换器编码器残差连接以改进图像生成",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.07250v1",
+      "route": "202610/09/2610.07250v1-internalizing-agent-experience-into-diffusion-model-weights-via-on-policy-context-distillation",
+      "title": "Internalizing Agent Experience into Diffusion Model Weights via On-Policy Context Distillation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "将智能体经验蒸馏进扩散模型权重以提升文生图",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.07684v1",
+      "route": "202610/09/2610.07684v1-disentangling-dual-image-references-in-frequency-aware-diffusion-models-for-personalized-generation",
+      "title": "Disentangling Dual Image References in Frequency Aware Diffusion Models for Personalized Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "扩散模型驱动的个性化文本图像生成",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.07720v1",
+      "route": "202610/09/2610.07720v1-refroute-decoupling-conditioning-cost-from-references-via-compact-residual-conditioning-and-spatial-routing",
+      "title": "RefRoute: Decoupling Conditioning Cost from References via Compact Residual Conditioning and Spatial Routing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "扩散Transformer的高效多参考可控图像生成",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.08772v1",
+      "route": "202610/09/2610.08772v1-backend-agnostic-sparse-attention-for-fast-high-resolution-visual-generation",
+      "title": "Backend-Agnostic Sparse Attention for Fast High-Resolution Visual Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向高分辨率视觉生成的稀疏注意力扩散Transformer",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.09015v1",
+      "route": "202610/09/2610.09015v1-personalize-at-test-time-learning-user-preferences-for-image-generation",
+      "title": "Personalize at Test Time: Learning User Preferences for Image Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "测试时个性化，使扩散图像生成对齐用户偏好",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.06545v1",
+      "route": "202610/09/2610.06545v1-empirical-variational-autoencoder",
+      "title": "Empirical Variational Autoencoder",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "用于高保真图像与声音合成的自回归潜变量先验",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.08626v1",
+      "route": "202610/09/2610.08626v1-feature-information-dynamics-in-diffusion",
+      "title": "Feature Information Dynamics in Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "对扩散模型特征生成时序的信息论分析",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.10859v1",
+      "route": "202610/09/2610.10859v1-enabling-preference-driven-unlearning-in-few-step-distilled-text-to-image-diffusion-models",
+      "title": "Enabling Preference-driven Unlearning in Few-step Distilled Text-to-Image Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向少步蒸馏文本到图像扩散模型的遗忘",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    },
+    {
+      "paper_id": "2610.10990v1",
+      "route": "202610/09/2610.10990v1-omni-diffusion-distill-few-step-distillation-of-unified-multimodal-diffusion-large-language-models",
+      "title": "Omni-Diffusion-Distill: Few-Step Distillation of Unified Multimodal Diffusion Large Language Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向图像生成的统一多模态扩散大模型少步蒸馏",
+      "first_seen_at": "2026-10-09 23:26:52 UTC",
+      "updated_at": "2026-10-09 23:26:52 UTC"
+    }
+  ]
+}

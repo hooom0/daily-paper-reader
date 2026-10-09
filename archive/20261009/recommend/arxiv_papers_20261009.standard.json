@@ -1,0 +1,489 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-09T23:23:11.454241+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 1,
+    "deep_cap": 6,
+    "deep_selected": 1,
+    "quick_candidates": 16,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [
+    {
+      "id": "2610.09071v1",
+      "source": "arxiv",
+      "title": "OverLay++: Dense-Overlap Layout-to-Image Generation Dataset",
+      "abstract": "Layout-to-Image generation has made substantial progress in spatial and object-level control. However, existing methods still struggle with complex scenes containing many overlapping and interacting objects. We argue that training data is a particular bottleneck: existing datasets lack examples with dense, complex object interactions. To address this gap, we introduce OverLay++, a large-scale Layout-to-Image dataset with structurally complex scenes. OverLay++ contains approximately 500K images with an average of 6.6 objects per image, exceeding existing datasets by 1.67 times in annotation density. Beyond annotation density, OverLay++ provides rich semantic detail with object captions over six times longer than in current datasets. Our dataset generation pipeline is simple and produces dense, overlapping object annotations with rich per-object captions. Across multiple benchmarks, state-of-the-art Layout-to-Image methods trained on the OverLay++ dataset show consistent improvement and faster convergence, demonstrating the importance of dense, overlap-aware, and caption-rich supervision for controllable image generation.",
+      "authors": [
+        "Shivansh Aggarwal",
+        "Shresth Grover",
+        "Divyansh Srivastava",
+        "Haiyang Xu",
+        "Bingnan Li",
+        "Xiang Zhang",
+        "Ethan J. Armand",
+        "Chuan Li",
+        "Jianwen Xie",
+        "Zhuowen Tu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-06T20:16:16+00:00",
+      "link": "https://arxiv.org/pdf/2610.09071v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "large-scale layout-to-image dataset enabling spatially controllable image generation",
+      "llm_evidence_cn": "大规模布局到图像数据集，支持空间可控图像生成",
+      "llm_evidence": "大规模布局到图像数据集，支持空间可控图像生成",
+      "canonical_evidence": "大规模布局到图像数据集，支持空间可控图像生成",
+      "llm_tldr_en": "Layout-to-Image generation struggles with dense overlapping objects due to data scarcity. OverLay++ provides 500K images with 6.6 objects each and rich captions to enable controllable generation of complex scenes.",
+      "llm_tldr_cn": "布局到图像生成在空间与物体级控制上已有进展，但在包含大量重叠与交互物体的复杂场景中仍表现不佳，作者认为训练数据是主要瓶颈。为此提出OverLay++，一个约50万张图像的大规模布局到图像数据集，平均每图6.6个物体，标注密度超过现有数据集1.67倍，且物体描述长度超过现有数据六倍。该数据集为可控图像生成研究，尤其是密集重叠复杂场景的生成与评测，提供了更丰富的训练与评估资源。",
+      "llm_tldr": "布局到图像生成在空间与物体级控制上已有进展，但在包含大量重叠与交互物体的复杂场景中仍表现不佳，作者认为训练数据是主要瓶颈。为此提出OverLay++，一个约50万张图像的大规模布局到图像数据集，平均每图6.6个物体，标注密度超过现有数据集1.67倍，且物体描述长度超过现有数据六倍。该数据集为可控图像生成研究，尤其是密集重叠复杂场景的生成与评测，提供了更丰富的训练与评估资源。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2610.05845v1",
+      "source": "arxiv",
+      "title": "CACFG: Curvature-Aware Classifier-Free Guidance and Optimal Control",
+      "abstract": "Diffusion models generate samples by learning to reverse a fixed corruption process, and classifier-free guidance (CFG) is the standard mechanism for conditioning this process on a desired class or prompt. CFG can be applied at varying guidance strengths, and while higher strengths improve image quality and conditional alignment, too high a guidance strength can degrade image quality and diversity. Furthermore, CFG violates principled diffusion sampling dynamics, and existing explanations for why it works despite the violation disagree on the underlying theory or do not extend to deterministic samplers used in practice. We address both these issues. We first frame CFG sampling as a continuous-time optimal control problem, treating the sampling trajectory as a sequence of controls chosen to maximise the probability of the desired condition. Solving the resulting Hamilton--Jacobi--Bellman equation shows that CFG is recovered under specific path costs when using an unconstrained control set. We argue this lack of constraint is responsible for CFG's failure at high guidance strengths, since it permits the sampling path to move arbitrarily far from the current image estimate. To fix this, we propose curvature-aware CFG (CACFG), which constrains the control set to a hypersphere informed by the Gaussian regularisation used when training variational autoencoders. We show that the control inputs produced by CFG sampling routinely violate this bound, and that across diffusion models, datasets, and guidance schedules, CACFG achieves superior generative quality at mid-to-high guidance strengths with a less severe quality-diversity tradeoff than regular CFG.",
+      "authors": [
+        "Max Collins",
+        "Dasith de Silva Edirimuni",
+        "Jordan Vice",
+        "Tim French",
+        "Ajmal Mian"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-10-05T06:02:28+00:00",
+      "link": "https://arxiv.org/pdf/2610.05845v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "classifier-free guidance for conditioning diffusion sampling on prompts",
+      "llm_evidence_cn": "用于提示条件扩散采样的无分类器引导",
+      "llm_evidence": "用于提示条件扩散采样的无分类器引导",
+      "canonical_evidence": "用于提示条件扩散采样的无分类器引导",
+      "llm_tldr_en": "Classifier-free guidance is the standard way to condition diffusion models on prompts, but high guidance strengths degrade quality and it violates sampling dynamics. CACFG frames CFG sampling as optimal control to explain and improve guidance.",
+      "llm_tldr_cn": "无分类器引导（CFG）是让扩散模型按类别或提示进行条件生成的标准机制，但引导强度过大会损害图像质量与多样性，且违背了扩散采样的理论动力学。现有解释对确定性采样器并不适用。论文将CFG采样重新表述为连续时间最优控制问题，从轨迹角度分析其作用机制并加以改进。该工作为理解与优化可控扩散生成提供了新的理论工具。",
+      "llm_tldr": "无分类器引导（CFG）是让扩散模型按类别或提示进行条件生成的标准机制，但引导强度过大会损害图像质量与多样性，且违背了扩散采样的理论动力学。现有解释对确定性采样器并不适用。论文将CFG采样重新表述为连续时间最优控制问题，从轨迹角度分析其作用机制并加以改进。该工作为理解与优化可控扩散生成提供了新的理论工具。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.06545v1",
+      "source": "arxiv",
+      "title": "Empirical Variational Autoencoder",
+      "abstract": "We present Empirical Variational Autoencoder, a general generative framework for continuous-valued (i.e., non-vector-quantized) sequences. EVA is based on the evidence lower bound of the Variational Autoencoder (VAE) but learns autoregressive latent priors empirically from training data, which can be implemented only by an additional single linear layer on top of VAEs. By replacing the conventional standard-Gaussian constraint with the self-predicted priors, EVA significantly alleviates the latent distribution gap between prior and posterior which is typically observed in conventional VAEs, and leads to high-fidelity ancestral sampling for sequential data generation. Extensive experiments on image and sound synthesis demonstrate that EVA achieves competitive generation quality with autoregressive diffusion baselines despite its much faster inference time.",
+      "authors": [
+        "Kaede Shiohara"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-10-05T15:39:44+00:00",
+      "link": "https://arxiv.org/pdf/2610.06545v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "autoregressive latent priors for high-fidelity image and sound synthesis",
+      "llm_evidence_cn": "用于高保真图像与声音合成的自回归潜变量先验",
+      "llm_evidence": "用于高保真图像与声音合成的自回归潜变量先验",
+      "canonical_evidence": "用于高保真图像与声音合成的自回归潜变量先验",
+      "llm_tldr_en": "EVA is a VAE-based generative framework that learns autoregressive latent priors empirically, closing the prior-posterior gap and enabling high-fidelity ancestral sampling for image and sound synthesis.",
+      "llm_tldr_cn": "传统变分自编码器用标准高斯约束先验，导致先验与后验之间存在分布鸿沟，影响采样保真度。本文提出经验变分自编码器 EVA，基于证据下界，从训练数据中经验地学习自回归潜变量先验，仅需在 VAE 上增加一个线性层即可实现。该方法以自预测先验替代高斯约束，显著缓解先验后验差距，在图像与声音合成上实现高保真祖先采样。实验表明其生成质量可与自回归模型竞争，为连续序列生成提供了简洁有效的通用框架。",
+      "llm_tldr": "传统变分自编码器用标准高斯约束先验，导致先验与后验之间存在分布鸿沟，影响采样保真度。本文提出经验变分自编码器 EVA，基于证据下界，从训练数据中经验地学习自回归潜变量先验，仅需在 VAE 上增加一个线性层即可实现。该方法以自预测先验替代高斯约束，显著缓解先验后验差距，在图像与声音合成上实现高保真祖先采样。实验表明其生成质量可与自回归模型竞争，为连续序列生成提供了简洁有效的通用框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.07002v1",
+      "source": "arxiv",
+      "title": "Should We Skip Diffusion?",
+      "abstract": "Diffusion models learn semantic representations while generating images. In the Decoupled Diffusion Transformer (DDT), a condition encoder provides features that guide a velocity decoder in denoising. To enable effective denoising at all noise levels, these features must capture both high-level abstract structures and low-level details. However, skip/residual connections in the encoder allow shallow features to bypass successive transformations, which may limit progressive abstraction, or at least make it difficult to disentangle different levels of abstraction. We propose DDT-RFE, which removes the residual connections around the Self-Attention and MLP operations in each encoder block while maintaining stable training. To retain the information that abstraction discards but that the decoder still needs, we fuse the input patch embedding with intermediate and final encoder features to form the encoder output. The decoder thus has access to information from multiple encoder depths, while each encoder block is able to learn more abstract representations. DDT-RFE achieves overall improvements over DDT across visual understanding tasks, including image classification, semantic segmentation, object discovery, and semantic correspondence, while using fewer encoder blocks. It also achieves a lower FID for image generation on ImageNet.",
+      "authors": [
+        "Yiping Ji",
+        "James Martens",
+        "Simon Lucey"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CV"
+      ],
+      "published": "2026-10-04T09:42:27+00:00",
+      "link": "https://arxiv.org/pdf/2610.07002v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "removing residual connections in diffusion transformer encoder for image generation",
+      "llm_evidence_cn": "移除扩散变换器编码器残差连接以改进图像生成",
+      "llm_evidence": "移除扩散变换器编码器残差连接以改进图像生成",
+      "canonical_evidence": "移除扩散变换器编码器残差连接以改进图像生成",
+      "llm_tldr_en": "The paper studies Decoupled Diffusion Transformer encoders for image generation, arguing skip connections hinder progressive abstraction, and proposes DDT-RFE removing residual connections around self-attention and MLP while keeping training stable.",
+      "llm_tldr_cn": "扩散模型在生成图像时需学习语义表征，而解耦扩散变换器编码器中的跳跃连接使浅层特征绕过变换，阻碍层级抽象的解耦。本文提出 DDT-RFE，移除每个编码器块中自注意力与 MLP 周围的残差连接，同时维持训练稳定，并保留解码器所需的底层信息。实验显示该改动有助于更清晰地分离不同抽象层级，为扩散生成模型的架构设计提供了新的分析视角与改进方案。",
+      "llm_tldr": "扩散模型在生成图像时需学习语义表征，而解耦扩散变换器编码器中的跳跃连接使浅层特征绕过变换，阻碍层级抽象的解耦。本文提出 DDT-RFE，移除每个编码器块中自注意力与 MLP 周围的残差连接，同时维持训练稳定，并保留解码器所需的底层信息。实验显示该改动有助于更清晰地分离不同抽象层级，为扩散生成模型的架构设计提供了新的分析视角与改进方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.08626v1",
+      "source": "arxiv",
+      "title": "Feature Information Dynamics in Diffusion",
+      "abstract": "Diffusion models generate data through a continuum of denoising problems, and are widely observed to reveal coarse structure before fine detail. Yet, this intuition is mostly empirical and qualitative. We introduce feature information dynamics, an information-theoretic framework for localizing when a feature is generated during diffusion. Using the I-MMSE identity, we connect the rate of feature mutual information change to a gap between optimal unconditional and feature-conditional denoising losses, yielding practical estimators for feature information density. We further develop a chained decomposition that separates shared from incremental information in a feature hierarchy. We use this framework first to quantitatively confirm spectral autoregression in pixel diffusion, and then to extend the analysis beyond frequency: under a class $\\to$ mask $\\to$ Canny conditioning chain, the per-feature information densities differ across pixel, SDVAE, VAVAE, and RAE, exposing fundamental differences between these representations and suggesting that ordered generation could be beneficial for training diffusion models. Our code is available at https://github.com/AI4Science-WestlakeU/feature-information-dynamics.",
+      "authors": [
+        "Jia-Shu Pan",
+        "Tao Zhang",
+        "Yufei Huang",
+        "Yanjun Sheng",
+        "Tailin Wu"
+      ],
+      "primary_category": "stat.ML",
+      "categories": [
+        "stat.ML",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-10-06T16:24:07+00:00",
+      "link": "https://arxiv.org/pdf/2610.08626v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "information-theoretic analysis of when features are generated in diffusion models",
+      "llm_evidence_cn": "对扩散模型特征生成时序的信息论分析",
+      "llm_evidence": "对扩散模型特征生成时序的信息论分析",
+      "canonical_evidence": "对扩散模型特征生成时序的信息论分析",
+      "llm_tldr_en": "Diffusion models are observed to generate coarse structure before fine detail, but this is mostly qualitative. Feature Information Dynamics provides an information-theoretic framework localizing when features emerge during diffusion.",
+      "llm_tldr_cn": "扩散模型通过连续去噪生成数据，普遍被观察到先形成粗结构后生成细节，但这一直觉多停留在经验与定性层面。本文提出特征信息动力学，一个用于定位特征在扩散过程中何时生成的信息论框架。作者借助I-MMSE恒等式，将特征互信息变化率与最优无条件及特征条件去噪损失之差联系起来，给出可实用的特征信息密度估计，并提出链式分解以区分特征层级中的共享与增量信息。该框架定量验证了像素扩散中的谱式自回归，为理解扩散生成机理提供了理论工具。",
+      "llm_tldr": "扩散模型通过连续去噪生成数据，普遍被观察到先形成粗结构后生成细节，但这一直觉多停留在经验与定性层面。本文提出特征信息动力学，一个用于定位特征在扩散过程中何时生成的信息论框架。作者借助I-MMSE恒等式，将特征互信息变化率与最优无条件及特征条件去噪损失之差联系起来，给出可实用的特征信息密度估计，并提出链式分解以区分特征层级中的共享与增量信息。该框架定量验证了像素扩散中的谱式自回归，为理解扩散生成机理提供了理论工具。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.07250v1",
+      "source": "arxiv",
+      "title": "Internalizing Agent Experience into Diffusion Model Weights via On-Policy Context Distillation",
+      "abstract": "Wrapping an image generation model in an agentic harness can effectively boost Text-to-Image task performance: the harness can leverage memory, skills, workflow orchestration, result verification, and iterative refinement to continually construct and revise prompts, thereby eliciting better images. These gains, however, remain external to the diffusion model and are realized only while the full harness runs. We propose Diffusion On-Policy Context Distillation (D-OPCD), which treats the agent-improved prompt as privileged context and distills the knowledge encoded in the agent harness into the weights of the diffusion model, so that the model retains part of the harness's benefit when conditioned on the original query alone. Using a Text-to-Image agent equipped with our proposed Auto Skill Evolver (ASE), we show that D-OPCD can internalize harness capabilities into the generator's weights, raising the average direct-generation score from 60.52 to 65.09 across four benchmarks. With this knowledge absorbed into the weights, the harness can shed its saturated skills and resume evolving: a second ASE round on the updated generator improves on a skill-free harness by additional 1.83 points, pointing toward text-to-image systems in which harness and model keep improving each other through continual co-evolution.",
+      "authors": [
+        "Wenxuan Wang",
+        "Zekai Liu",
+        "Weinan Zhang",
+        "Yu Cheng",
+        "Yang Yang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-10-05T18:50:09+00:00",
+      "link": "https://arxiv.org/pdf/2610.07250v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "distilling agent experience into diffusion weights for text-to-image",
+      "llm_evidence_cn": "将智能体经验蒸馏进扩散模型权重以提升文生图",
+      "llm_evidence": "将智能体经验蒸馏进扩散模型权重以提升文生图",
+      "canonical_evidence": "将智能体经验蒸馏进扩散模型权重以提升文生图",
+      "llm_tldr_en": "Agentic harnesses boost text-to-image by refining prompts, but gains vanish without the harness. D-OPCD distills the harness knowledge into diffusion model weights so the model retains benefits when given only the original query.",
+      "llm_tldr_cn": "将图像生成模型包裹在智能体框架中，可通过记忆、技能编排与迭代提示优化显著提升文生图性能，但这些收益仅存在于框架运行时，无法内化到模型本身。论文提出扩散在线策略上下文蒸馏D-OPCD，将智能体改进后的提示视为特权上下文，把框架中蕴含的知识蒸馏进扩散模型权重。这样模型在仅接收原始查询时也能保留部分框架收益，为提升文生图能力提供了新思路。",
+      "llm_tldr": "将图像生成模型包裹在智能体框架中，可通过记忆、技能编排与迭代提示优化显著提升文生图性能，但这些收益仅存在于框架运行时，无法内化到模型本身。论文提出扩散在线策略上下文蒸馏D-OPCD，将智能体改进后的提示视为特权上下文，把框架中蕴含的知识蒸馏进扩散模型权重。这样模型在仅接收原始查询时也能保留部分框架收益，为提升文生图能力提供了新思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.10859v1",
+      "source": "arxiv",
+      "title": "Enabling Preference-driven Unlearning in Few-step Distilled Text-to-Image Diffusion Models",
+      "abstract": "Text-to-image diffusion models are increasingly distilled into few-step variants and being deployed to enable fast inference. However, their ability to generate harmful or undesired content poses significant safety risks. Data-driven unlearning methods suppress targeted generations by fine-tuning model weights using specialized unlearning objectives. Crucially, these objectives implicitly rely on multi-step denoising dynamics, an assumption that breaks down for few-step distilled (FSD) models, resulting in ineffective forgetting. Furthermore, performing unlearning on the non-distilled base model and subsequently re-distilling it to obtain an unlearned FSD model incurs substantial computational and time overhead, making it impractical in many settings. Hence, we address this limitation with a preference-driven unlearning framework that revisits Direct Preference Optimization (DPO) for diffusion models. We show that standard DPO and its unlearning derivatives, formulated around noise-prediction error, transfer poorly to FSD models due to their altered generation dynamics. To overcome this, we introduce a modified preference optimization formulation explicitly aligned with the few-step generation properties, enabling direct concept removal in FSD models while preserving few-step efficiency and maintaining strong retention of desirable (non-targeted) capabilities. We evaluate our framework primarily on identity and NSFW (nudity) removal tasks and also extend our method to object-level unlearning. Extensive experiments demonstrate consistent and effective forgetting, and strong retention performance, establishing our method as a practical and principled solution for unlearning in FSD models.",
+      "authors": [
+        "Gaurav Patel",
+        "Jun Fang",
+        "Greg Ver Steeg",
+        "Qiang Qiu",
+        "Sravan Sripada"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-10-07T20:03:49+00:00",
+      "link": "https://arxiv.org/pdf/2610.10859v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "unlearning in few-step distilled text-to-image diffusion models",
+      "llm_evidence_cn": "面向少步蒸馏文本到图像扩散模型的遗忘",
+      "llm_evidence": "面向少步蒸馏文本到图像扩散模型的遗忘",
+      "canonical_evidence": "面向少步蒸馏文本到图像扩散模型的遗忘",
+      "llm_tldr_en": "Few-step distilled text-to-image diffusion models are fast but can produce harmful content. This paper proposes a preference-driven unlearning method that works directly on the distilled model, avoiding costly base-model unlearning and re-distillation.",
+      "llm_tldr_cn": "少步蒸馏文本到图像扩散模型推理快速，但可能生成有害内容，而现有数据驱动遗忘方法依赖多步去噪动力学，在少步模型上失效。作者提出面向偏好的遗忘方法，直接在少步蒸馏模型上抑制目标内容生成，避免在基座模型遗忘后再重蒸馏的高昂开销。实验表明该方法在保持图像质量的同时实现有效遗忘。工作提升了快速文本到图像模型部署的安全性。",
+      "llm_tldr": "少步蒸馏文本到图像扩散模型推理快速，但可能生成有害内容，而现有数据驱动遗忘方法依赖多步去噪动力学，在少步模型上失效。作者提出面向偏好的遗忘方法，直接在少步蒸馏模型上抑制目标内容生成，避免在基座模型遗忘后再重蒸馏的高昂开销。实验表明该方法在保持图像质量的同时实现有效遗忘。工作提升了快速文本到图像模型部署的安全性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.07684v1",
+      "source": "arxiv",
+      "title": "Disentangling Dual Image References in Frequency Aware Diffusion Models for Personalized Generation",
+      "abstract": "Personalized image generation aims to synthesize text-driven images conditioned on reference images, while mainly casting the generation as image customization for foreground and style transfer for background. Previous arts of diffusion models suffers from the text misalignment with background for image customization and foreground for style transfer during the denoising process. Such facts, as we observed, rooted from the entanglement among hybrid frequency bands during the denoising process. To address such salient limitation, in this paper, we study personalized generation based on dual references - customization and color and style reference - and propose a paradigm to disentangle these Dual image references within Frequency-aware Diffusion Models, dubbed Dual-FDM, to simultaneously tackle two crucial personalized image generation tasks: customization style transfer and color style transfer, by disentangling different frequency bands via mask strategy within frequency domain. For customization style transfer, we replace the mid-frequency band of the background in the style reference with that from the foreground of the customized reference. For color style transfer, we substitute the low-frequency band of the background in the style reference with that from both the foreground and background of the color reference. Both the substituted frequency bands are used as the key and value to reconstruct the query foreground and background of the denoised personalized image.Extensive experiments validate the superiority of Dual-FDM over the state-of-the-art diffusion models for personalized image generation. Our code can be accessed from https://github.com/htyjers/Dual-FDM.",
+      "authors": [
+        "Haipeng Liu",
+        "Yang Wang",
+        "Meng Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-10-06T03:18:07+00:00",
+      "link": "https://arxiv.org/pdf/2610.07684v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "personalized text-driven image generation with diffusion models",
+      "llm_evidence_cn": "扩散模型驱动的个性化文本图像生成",
+      "llm_evidence": "扩散模型驱动的个性化文本图像生成",
+      "canonical_evidence": "扩散模型驱动的个性化文本图像生成",
+      "llm_tldr_en": "Personalized text-to-image generation with diffusion models suffers text misalignment between foreground customization and background style transfer. The authors attribute this to entangled frequency bands and propose disentangling dual image references in the frequency domain.",
+      "llm_tldr_cn": "个性化图像生成需依据参考图合成文本驱动图像，但现有扩散方法在前景定制与背景风格迁移之间存在文本错位。作者观察到该问题源于去噪过程中混合频带的纠缠，提出在频域解耦定制参考与颜色风格参考的双参考范式。实验表明该方法缓解了定制与风格迁移中的文本错位，提升了生成一致性，为双参考个性化文生图提供了频域解耦的新思路。",
+      "llm_tldr": "个性化图像生成需依据参考图合成文本驱动图像，但现有扩散方法在前景定制与背景风格迁移之间存在文本错位。作者观察到该问题源于去噪过程中混合频带的纠缠，提出在频域解耦定制参考与颜色风格参考的双参考范式。实验表明该方法缓解了定制与风格迁移中的文本错位，提升了生成一致性，为双参考个性化文生图提供了频域解耦的新思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.10990v1",
+      "source": "arxiv",
+      "title": "Omni-Diffusion-Distill: Few-Step Distillation of Unified Multimodal Diffusion Large Language Models",
+      "abstract": "Unified multimodal diffusion large language models (dLLMs) offer a single architecture for both image generation and multimodal understanding, but their iterative decoding requires tens to hundreds of forward passes. Existing few-step distillation methods largely focus on either image generation or text generation, making it unclear how to compress a fully discrete multimodal dLLM into a single efficient student while preserving both generation and understanding. We introduce Omni-Diffusion-Distill, a unified two-stage distillation framework that retains strong generation and understanding capabilities while substantially reducing the inference cost of a unified multimodal dLLM. Omni-Diffusion-Distill aligns the distillation of both generation and understanding, for both images and text, in the discrete token space. In the first stage, the student is trained to skip decoding steps by replaying cached teacher trajectories, and in the second stage the student is refined on intermediate states along its own rollouts. We further remedy two sources of degradation in unified distillation with a pairwise collision penalty that reduces repetition under parallel text decoding, and entropy-matched guidance that prevents entropy collapse caused by fitting the sharpened teacher distribution in image generation. Omni-Diffusion-Distill achieves state-of-the-art trade-offs between decoding efficiency and generation and understanding performance for multimodal dLLMs, reducing image generation from 128 to 8 decoding steps and multimodal understanding from 512 to 64, giving 18.2x and 21.2x wall-clock speedups. Under these budgets, it scores 0.828 on GenEval and 83.0 on DPG-Bench for text-to-image generation, while reaching GPT judge scores of 20.0 on MM-Vet and 57.2 on COCO captioning (twice the teacher's 28.4 at the same steps) for multimodal understanding.",
+      "authors": [
+        "Hong Huang",
+        "Chenhongyi Yang",
+        "Junzhe Sun",
+        "Animesh Sinha",
+        "Wuyang Chen",
+        "Yifan Jiang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-10-07T23:24:16+00:00",
+      "link": "https://arxiv.org/pdf/2610.10990v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "few-step distillation of unified multimodal diffusion LLMs for image generation",
+      "llm_evidence_cn": "面向图像生成的统一多模态扩散大模型少步蒸馏",
+      "llm_evidence": "面向图像生成的统一多模态扩散大模型少步蒸馏",
+      "canonical_evidence": "面向图像生成的统一多模态扩散大模型少步蒸馏",
+      "llm_tldr_en": "Unified multimodal diffusion LLMs handle both image generation and understanding but need many decoding steps. Omni-Diffusion-Distill uses a two-stage distillation framework to compress the model while preserving generation and understanding quality.",
+      "llm_tldr_cn": "统一多模态扩散大模型能用单一架构同时完成图像生成与多模态理解，但其迭代解码需要数十到数百次前向计算，效率低下。现有少步蒸馏方法多只针对图像或文本生成之一，难以压缩完全离散的多模态模型。论文提出Omni-Diffusion-Distill两阶段统一蒸馏框架，对齐蒸馏过程以同时保留生成与理解能力。该方法显著降低推理成本，为高效多模态扩散模型提供了可行路径。",
+      "llm_tldr": "统一多模态扩散大模型能用单一架构同时完成图像生成与多模态理解，但其迭代解码需要数十到数百次前向计算，效率低下。现有少步蒸馏方法多只针对图像或文本生成之一，难以压缩完全离散的多模态模型。论文提出Omni-Diffusion-Distill两阶段统一蒸馏框架，对齐蒸馏过程以同时保留生成与理解能力。该方法显著降低推理成本，为高效多模态扩散模型提供了可行路径。",
+      "llm_tags": [
+        "query:image-gen:composite"
+      ],
+      "matched_query_tag": "query:image-gen:composite",
+      "matched_query_text": "Papers central to 图像生成, especially work that connects or combines: diffusion probabilistic models for image generation; synthesizing images from textual descriptions; latent diffusion models for high-resolution image synthesis; autoregressive models for image generation; How do diffusion models generate images from text prompts?; What are the methods for controllable image generation?.",
+      "matched_requirement_id": "req-composite-image-gen",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.07720v1",
+      "source": "arxiv",
+      "title": "RefRoute: Decoupling Conditioning Cost from References via Compact Residual Conditioning and Spatial Routing",
+      "abstract": "Multi-reference image generation requires preserving the appearance of multiple subjects while composing them into a coherent scene. However, existing diffusion transformers commonly encode references as dense visual token grids and jointly process them with global attention, making conditioning increasingly expensive as the number and resolution of references grow. We present RefRoute, a framework that addresses both reference representation cost and attention overhead through two complementary mechanisms. Compact residual conditioning combines low-resolution latent tokens with lightweight residual features extracted from full-resolution pixels, reducing reference token counts while retaining fine-grained appearance cues. Condition routing and attention routing align reference tokens with their assigned target regions and restrict cross-reference interactions, while allowing selective reference access beyond region boundaries for scene integration. We further introduce RefRoute-Data for training many-reference generation models and ManyRef100, a benchmark spanning human, object, and mixed compositions with 10-17 references. After many-reference fine-tuning, RefRoute achieves an overall Weighted-Ref-VIEScore of 36.06 on ManyRef100, compared with 8.88 for FLUX.2-Klein-9B. Separate inference-cost evaluations show substantially slower latency growth as the reference count increases: at 16 references, our 50-step and 4-step configurations achieve $18.3\\times$ and $14.2\\times$ speedups over their corresponding FLUX baselines, respectively. These results establish compact reference representations and spatially routed attention as an effective approach to scalable many-reference image generation.",
+      "authors": [
+        "Wanning He",
+        "Yuyao Zhang",
+        "Yu-Wing Tai"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-10-06T04:16:27+00:00",
+      "link": "https://arxiv.org/pdf/2610.07720v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "efficient multi-reference controllable image generation with diffusion transformers",
+      "llm_evidence_cn": "扩散Transformer的高效多参考可控图像生成",
+      "llm_evidence": "扩散Transformer的高效多参考可控图像生成",
+      "canonical_evidence": "扩散Transformer的高效多参考可控图像生成",
+      "llm_tldr_en": "Multi-reference image generation must preserve multiple subjects in one scene, but dense reference token grids make conditioning costly. RefRoute uses compact residual conditioning and spatial routing to cut reference cost while keeping fine appearance details.",
+      "llm_tldr_cn": "多参考图像生成需在统一场景中保留多个主体外观，但现有扩散Transformer将参考编码为稠密视觉token网格并全局注意力处理，随参考数量与分辨率增长开销剧增。本文提出RefRoute，通过紧凑残差条件与空间路由两种互补机制降低参考表示与注意力开销。实验表明其在保持细粒度外观的同时显著减少计算，提升了可控多参考生成的效率。",
+      "llm_tldr": "多参考图像生成需在统一场景中保留多个主体外观，但现有扩散Transformer将参考编码为稠密视觉token网格并全局注意力处理，随参考数量与分辨率增长开销剧增。本文提出RefRoute，通过紧凑残差条件与空间路由两种互补机制降低参考表示与注意力开销。实验表明其在保持细粒度外观的同时显著减少计算，提升了可控多参考生成的效率。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.08772v1",
+      "source": "arxiv",
+      "title": "Backend-Agnostic Sparse Attention for Fast High-Resolution Visual Generation",
+      "abstract": "Diffusion Transformers (DiTs) have achieved strong performance in image and video generation, but the quadratic complexity of full attention makes high-resolution generation computationally expensive. Window attention offers an efficient alternative, yet existing methods face a practical trade-off: partitioned window attention typically achieves computational efficiency consistent with its theoretical complexity. However, isolated windows block cross-window interaction, often introducing visible grid-like artifacts in the generated results. Fine-grained sliding-window attention effectively restores interactions across neighboring windows and improves visual quality. However, its irregular computation patterns create a substantial gap between theoretical and practical speedups and require specialized kernels tailored to each hardware backend. To tackle these challenges, we propose BASA, a backend-agnostic sparse attention, which brings the best of both worlds: visual quality and practical acceleration. Specifically, BASA replaces visual self-attention with shifted local-window attention. By introducing a structured window-shifting scheme across DiT blocks, we allow tokens divided by window boundaries in one layer to communicate in the following layers, thereby achieving global information exchange and eliminating window-induced visual artifacts. Notably, our design introduces no additional irregular operators or customized kernels, making it readily deployable on existing attention backends and closing the gap between theoretical sparsity and practical acceleration. Experiments demonstrate that BASA achieves measured speedups exceeding 90\\% of the theoretical estimates on FLUX and delivers a 4.52$\\times$ attention speedup on Wan while maintaining competitive generation quality.",
+      "authors": [
+        "Liao Ma",
+        "Jiayi Song",
+        "Yunfeng Wu",
+        "Songhua Liu",
+        "Peilin Zhao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-06T17:55:24+00:00",
+      "link": "https://arxiv.org/pdf/2610.08772v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "sparse attention for high-resolution visual generation with diffusion transformers",
+      "llm_evidence_cn": "面向高分辨率视觉生成的稀疏注意力扩散Transformer",
+      "llm_evidence": "面向高分辨率视觉生成的稀疏注意力扩散Transformer",
+      "canonical_evidence": "面向高分辨率视觉生成的稀疏注意力扩散Transformer",
+      "llm_tldr_en": "Diffusion Transformers enable high-resolution image and video generation but full attention is quadratically costly. This work proposes a backend-agnostic sparse attention that avoids window artifacts while restoring cross-window interaction, improving efficiency and visual quality.",
+      "llm_tldr_cn": "扩散Transformer在图像与视频生成上表现优异，但全注意力的二次复杂度使高分辨率生成代价高昂。本文提出一种与后端无关的稀疏注意力机制，在保持跨窗口交互的同时避免分块窗口带来的网格伪影。实验表明该方法在提升生成效率的同时改善了视觉质量，为高效高分辨率图像生成提供了通用方案。",
+      "llm_tldr": "扩散Transformer在图像与视频生成上表现优异，但全注意力的二次复杂度使高分辨率生成代价高昂。本文提出一种与后端无关的稀疏注意力机制，在保持跨窗口交互的同时避免分块窗口带来的网格伪影。实验表明该方法在提升生成效率的同时改善了视觉质量，为高效高分辨率图像生成提供了通用方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "latent diffusion models for high-resolution image synthesis",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.09015v1",
+      "source": "arxiv",
+      "title": "Personalize at Test Time: Learning User Preferences for Image Generation",
+      "abstract": "Diffusion models can generate high-quality images, yet aligning their outputs with individual user preferences remains challenging. A key bottleneck is accurately modeling diverse user preferences from limited feedback. Existing approaches often rely on labor-intensive manual preference annotations or vision-language models (VLM) to extract preference information from user interaction histories, introducing substantial annotation or computational costs that limit scalability. We propose an approach that learns personalized reward models directly from users' historical image preference pairs. First, we use an autoencoder to compress hundreds of visual attributes into 50 attribute-anchored preference dimensions and train an evaluator to score images along these dimensions. We then represent each user's preferences as a linear combination of the shared dimension scores, estimating the user-specific weights by maximizing the likelihood of their observed pairwise preferences under the Bradley-Terry model. This formulation reduces per-user adaptation to optimizing a low-dimensional weight vector, simplifying optimization and enabling data-efficient personalization from sparse feedback. The learned personalized rewards guide image generation at inference time while keeping the diffusion model frozen. Experiments on real-user preference data show that our approach achieves approximately 77% held-out pairwise preference prediction accuracy and improves the alignment of generated images with individual user preferences.",
+      "authors": [
+        "Jiamu Bai",
+        "Jiaming Hu",
+        "Yanhong Wu",
+        "Zellux Wang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-10-06T19:10:08+00:00",
+      "link": "https://arxiv.org/pdf/2610.09015v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "test-time personalization aligning diffusion image generation with user preferences",
+      "llm_evidence_cn": "测试时个性化，使扩散图像生成对齐用户偏好",
+      "llm_evidence": "测试时个性化，使扩散图像生成对齐用户偏好",
+      "canonical_evidence": "测试时个性化，使扩散图像生成对齐用户偏好",
+      "llm_tldr_en": "Aligning diffusion image generation with individual user preferences is hard given limited feedback. This work learns personalized reward models from historical preference pairs for test-time personalization.",
+      "llm_tldr_cn": "扩散模型能生成高质量图像，但让输出对齐个体用户偏好仍具挑战，关键在于从有限反馈中准确建模多样偏好。现有方法依赖大量人工偏好标注或用视觉语言模型从交互历史中提取偏好，成本高且难扩展。本文提出直接从用户历史图像偏好对中学习个性化奖励模型：先用自编码器将数百个视觉属性压缩为50个属性锚定的偏好维度，再训练评估器对图像打分。该方法在测试时实现个性化生成，降低了标注与算力开销，提升了扩散图像生成的可控性与用户契合度。",
+      "llm_tldr": "扩散模型能生成高质量图像，但让输出对齐个体用户偏好仍具挑战，关键在于从有限反馈中准确建模多样偏好。现有方法依赖大量人工偏好标注或用视觉语言模型从交互历史中提取偏好，成本高且难扩展。本文提出直接从用户历史图像偏好对中学习个性化奖励模型：先用自编码器将数百个视觉属性压缩为50个属性锚定的偏好维度，再训练评估器对图像打分。该方法在测试时实现个性化生成，降低了标注与算力开销，提升了扩散图像生成的可控性与用户契合度。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

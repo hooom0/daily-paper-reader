@@ -1,0 +1,1914 @@
+OverLay++: Dense-Overlap Layout-to-Image
+Generation Dataset
+Shivansh Aggarwal1,∗
+Shresth Grover1,∗
+Divyansh Srivastava1,∗
+Haiyang Xu1
+Bingnan Li1
+Xiang Zhang1
+Ethan J. Armand1
+Chuan Li2
+Jianwen Xie2
+Zhuowen Tu1
+1UC San Diego
+2Lambda, Inc.
+∗Equal contribution
+Dense, Overlay-Aware Annotations
+Training on OverLay++ Improves  
+Dense Layout Generation
+500K
+Images
+6.6
+Objects/Image
+1.67x
+Denser 
+Annotations
+6x
+Richer  
+local captions
+Highland Cow
+A large, shaggy highland cow with reddish-
+brown fur and light beige curved horns, 
+standing in frosty grass.
+Frosty Grass
+Dense, tall grass covered in white frost, 
+creating a glistening, textured winter 
+landscape.
+Overcast Sky
+A uniform, pale grayish-white overcast sky, 
+featureless and diffused, indicating a cold, 
+cloudy day.
+⋯
+Man in Suit
+Man in dark navy suit, light blue shirt, 
+patterned blue tie, thin-rimmed glasses, short 
+graying hair, smiling, holding child.
+Stroller
+Black and gray stroller with white handlebar, 
+black storage basket, metal frame, small 
+rubber wheels, child seated inside.
+Stone Pillar
+Weathered light gray stone pillar with moss, 
+square base, decorative cap, rough texture, on 
+far left, framing scene.
+Area Rug
+Large ornate area rug with beige, cream, and 
+gray floral/medallion pattern under table and 
+chairs.
+Dining Table
+Large rectangular dining table in distressed 
+off-white with fluted legs and smooth top, 
+centered on patterned rug.
+Wall Art
+Framed wall art with silver frame, abstract 
+green and gray brushstrokes, on olive-green 
+wall.
+⋯
+⋯
+Figure 1: OverLay++: A dense and overlap-aware dataset for Layout-to-Image generation. Left:
+OverLay++ provides dense object annotations with rich local captions for fine-grained spatial and
+attribute control. Center: Our dataset contains 500K images with 6.6 objects per image, yielding
+denser annotations and richer captions. Right: Training on OverLay++ improves generation quality
+in dense and overlapping scenes, producing better object fidelity and spatial alignment.
+Abstract
+Layout-to-Image generation has made substantial progress in spatial and object-
+level control. However, existing methods still struggle with complex scenes con-
+taining many overlapping and interacting objects. We argue that training data
+is a particular bottleneck: existing datasets lack examples with dense, complex
+object interactions. To address this gap, we introduce OverLay++, a large-scale
+Layout-to-Image dataset with structurally complex scenes. OverLay++ contains
+approximately 500K images with an average of 6.6 objects per image, exceeding
+existing datasets by 1.67× in annotation density. Beyond annotation density, Over-
+Lay++ provides rich semantic detail with object captions over six times longer than
+Website: https://mlpc-ucsd.github.io/OverLayPP
+Dataset:
+https://huggingface.co/datasets/mlpcucsd/OverLayPP
+40th Conference on Neural Information Processing Systems (NeurIPS 2026). Track on Evaluations and Datasets.
+arXiv:2610.09071v1  [cs.CV]  6 Oct 2026
+
+
+in current datasets. Our dataset generation pipeline is simple and produces dense,
+overlapping object annotations with rich per-object captions. Across multiple
+benchmarks, state-of-the-art Layout-to-Image methods trained on the OverLay++
+dataset show consistent improvement and faster convergence, demonstrating the
+importance of dense, overlap-aware, and caption-rich supervision for controllable
+image generation.
+1
+Introduction
+While text-to-image diffusion models [Saharia et al., 2022, Ramesh et al., 2021, Nichol et al., 2022,
+Rombach et al., 2022, Chen et al., 2024a, Xue et al., 2023] have achieved remarkable progress in
+generating high-quality and realistic images, they provide imperfect control over visual attributes
+such as spatial arrangement, color, and texture. This has led to a growing interest in controllable
+image generation [Li et al., 2023a, Zhang et al., 2023, Xie et al., 2023, Wang et al., 2024a, Lee et al.,
+2024, Chen et al., 2025, 2024b, Tan et al., 2025, Zhao et al., 2025, Binyamin et al., 2025, Yang et al.,
+2023, Srivastava et al., 2026], where users provide additional conditions, such as depth maps [Zhou
+et al., 2024a, 2025], human pose [Zhang et al., 2023], or scene layouts [Li et al., 2023a, Zhang et al.,
+2025a], to guide generation. Among these conditions, scene layouts provide a direct way to specify
+object locations, counts, and object-level attributes, thereby supporting a broad range of controllable
+image generation scenarios. Specifically, in Layout-to-Image generation [Zhang et al., 2025a,b, Wang
+et al., 2024a, Li et al., 2023a, Zhang et al., 2023, Zhou et al., 2024b, Lee et al., 2024], the model is
+conditioned on a global text caption and a scene layout. Each layout element consists of a bounding
+box that specifies the object’s location and a local text caption that describes the object.
+Layout-to-Image generation methods typically adapt diffusion models [Song and Ermon, 2019,
+Ho et al., 2020, Song et al., 2020, Dhariwal and Nichol, 2021, Ho and Salimans, 2022, Rombach
+et al., 2022, Ramesh et al., 2022, Saharia et al., 2022, Esser et al., 2024, Srivastava et al., 2025]
+pretrained on internet-scale datasets [Schuhmann et al., 2022, Gadre et al., 2023, Byeon et al., 2022]
+to support layout conditioning. Recent methods [Zhang et al., 2025a,b] use stronger backbones
+such as SD3 [Esser et al., 2024] and FLUX [Black Forest Labs, 2024], where multimodal DiT
+blocks [Peebles and Xie, 2023] allow layout, visual, and text information to be combined within a
+shared architecture. However, current methods still struggle in complex scenes with many objects,
+particularly when objects overlap [Li et al., 2025]. We argue that these failures reflect limitations
+in existing training data: current datasets contain few dense, overlapping layouts, and their local
+captions often omit object-level details needed to control color, texture, and interactions.
+Existing datasets for Layout-to-Image generation are largely adapted from object detection [Lin et al.,
+2014, Shao et al., 2019] and visual grounding datasets [Plummer et al., 2015, Peng et al., 2023], which
+contain relatively few dense object interactions. Further, object annotations typically use class names
+or short phrases, providing little detail about object attributes. More recent data-collection efforts,
+including the dataset proposed by EliGen [Zhang et al., 2025b] and LayoutSAM [Zhang et al., 2025a],
+improve these annotations and object density with foundation models such as GroundingDINO [Liu
+et al., 2023] for improved object grounding and Qwen2-VL [Wang et al., 2024b] for detailed object
+annotations. However, these data-generation pipelines do not specifically target scenes with dense,
+overlapping objects, leaving such scenes underrepresented in the resulting datasets.
+To address this gap, we introduce OverLay++, a large-scale dataset for dense and overlap-aware
+Layout-to-Image generation. OverLay++ contains approximately 500K images with an average of 6.6
+objects per image, along with short and long captions at both the global and per-object levels. Notably,
+even our short captions are 6× longer than those in existing datasets. We construct OverLay++ using
+a simple and robust pipeline that prompts MLLMs to generate overlapping object proposals and
+applies per-object grounded validation. This produces images with dense layouts, substantial overlap,
+rich captions, and high instance-level accuracy. Training state-of-the-art L2I methods on OverLay++
+improves performance across multiple benchmarks, and we find that models trained on OverLay++
+converge faster than corresponding baselines trained on existing datasets, highlighting the value of
+dense, overlap-aware, and caption-rich supervision.
+Our contributions are summarized as follows:
+1. We introduce OverLay++, a large-scale dataset for dense and overlap-aware Layout-to-
+Image generation. OverLay++ contains approximately 500K images with an average of 6.6
+2
+
+
+objects per image, along with short and long captions at both the global and per-object levels.
+Notably, the short captions in OverLay++ are 6× longer than those in existing datasets.
+2. We design a simple and robust dataset generation pipeline that targets dense, complex
+scenes. The pipeline prompts MLLMs to generate overlapping object proposals and applies
+per-object grounded validation to improve accuracy and localization.
+3. We benchmark state-of-the-art Layout-to-Image generation methods trained on OverLay++
+and show improved performance across multiple benchmarks. We further find that models
+trained on OverLay++ converge faster than the corresponding baselines trained on existing
+datasets. Our results highlight the importance of dense layouts, substantial object overlap,
+and rich captions.
+2
+Related Work
+2.1
+Layout-to-Image Generation
+Layout-to-Image (L2I) makes Text-to-Image (T2I) models more controllable for real-world applica-
+tions, enabling image synthesis that is both visually realistic and spatially grounded. L2I methods
+typically adapt text-to-image diffusion models [Song and Ermon, 2019, Ho et al., 2020, Song et al.,
+2020, Dhariwal and Nichol, 2021, Ho and Salimans, 2022, Rombach et al., 2022, Ramesh et al.,
+2022, Saharia et al., 2022, Esser et al., 2024, Srivastava et al., 2025], pretrained on internet-scale
+datasets [Schuhmann et al., 2022, Gadre et al., 2023, Byeon et al., 2022]. Broadly, existing L2I
+methods can be divided into training-free and training-based approaches. Training-free methods [Lee
+et al., 2024, Chen et al., 2025, Bar-Tal et al., 2023, Kim et al., 2023, Chefer et al., 2023, Xie et al.,
+2023, Gani et al., 2023, Yang et al., 2024, Chen et al., 2024c] avoid modifying the underlying T2I
+model and instead encourage objects to appear within their intended spatial regions through inference
+modification (e.g., altering attention maps or modifying classifier-free guidance). While attractive for
+their simplicity and compatibility with off-the-shelf models, these methods provide limited control in
+complex scenes and perform worse than training-based counterparts [Li et al., 2025].
+On the other hand, training-based methods modify the underlying T2I architecture to incorporate
+layout conditions. Early L2I methods [Li et al., 2023a, Wang et al., 2024a, Zhou et al., 2024b,
+Cheng et al., 2024] were largely built on latent-diffusion U-Net [Ronneberger et al., 2015] backbones
+and introduced layout information through layout-specific adapters, spatial masks, gated attention
+layers, or ControlNet [Zhang et al., 2023]-like module additions. For example, GLIGEN [Li et al.,
+2023a] adds gated self-attention layers that incorporate bounding-box conditions into a pretrained
+SD-1.5 diffusion model. Similarly, InstanceDiffusion [Wang et al., 2024a] incorporates various
+spatial conditioning schemes with specialized fusion layers. Although these methods demonstrated
+the effectiveness of layout conditioning, their generation quality and controllability are constrained
+by the representational capacity of U-Net backbones, especially in dense scenes. Recent L2I methods
+leverage stronger multimodal DiT [Peebles and Xie, 2023] backbones, such as SD3 [Esser et al.,
+2024] and FLUX [Black Forest Labs, 2024]. Compared with earlier U-Net-based models, these
+backbones offer greater modeling capacity and improved image realism. As a result, recent works
+incorporate layout information into DiTs through text-like layout tokens, region-level attention masks,
+or multimodal conditioning mechanisms [Zhang et al., 2025a,b]. While there has been significant
+progress in algorithm design, these models still struggle to handle complex scenes with numerous
+overlapping objects. Our work instead focuses on improving the training data by constructing denser
+layouts with higher levels of object overlap and richer local and global descriptions, ensuring that L2I
+models can learn complex object interactions and generate visually and spatially coherent images.
+2.2
+Training Datasets for Layout-to-Image Generation
+Early Layout-to-Image (L2I) generation methods, including GLIGEN [Li et al., 2023a], were typically
+trained on object detection [Shao et al., 2019, Lin et al., 2014] and grounding datasets. While these
+datasets provide bounding-box annotations, their localized annotations are usually class labels rather
+than descriptive object-level captions. This sparsity limits their utility for training L2I models, where
+fine-grained object descriptions are important for controllable generation.
+To address this limitation, InstanceDiffusion [Wang et al., 2024a] generated dense object-level
+captions by first extracting objects with pretrained tagging models [Zhang et al., 2024a], detecting
+3
+
+
+ⅠImage Filtering
+ⅡObject Detection
+IV Captioning
+Resolution Filter 
+& Center Crop
+1024 × 1024
+850,900 Images
+Qwen3-VL-32B
+Detection
+label: bed
+bbox: [477, 334, 1024, 845]
+label: nightstand
+bbox: [365, 518, 525, 745]
+label: lamp
+bbox: [360, 345, 468, 535]
+…
+Scene-Level (for the entire image)
+Object-Level (for each detected box)
+Long Global Caption
+Short Global Caption
+describing the overall scene
+< 20 words, key objects and 
+scene context
+Long Local Prompt
+Short Local Prompt
+detailed appearance, style, 
+visual characteristics 
+< 20 words, object identity 
+and salient visual attributes
+Input Image
+(1024 × 1024)
+Aesthetics 
+Predictor v2
+keep score ≥5.98
+Qwen3-VL-32B
+Binary Check
+Keep
+Remove
+Discard if < 5 
+Validated Detections 
+III Scene Filtering
+score ≥4.75
+LAION-Aesthetics
+one or two sentences
+Figure 2: Dataset generation pipeline for the OverLay++ dataset. Four stages: (I) image filtering
+via aesthetics, resolution, and center cropping; (II) object detection for bounding boxes and labels;
+(III) scene filtering to remove low-quality or inconsistent samples, and (IV) hierarchical captioning
+producing scene-level and object-level captions (long and short).
+objects with Grounding-SAM [Ren et al., 2024], and then captioning each detected object using
+BLIP-2 [Li et al., 2022, 2023b]. More recent works, including SiamLayout [Zhang et al., 2025a] and
+EliGen [Zhang et al., 2025b], further improve L2I datasets by refining data construction pipelines and
+leveraging stronger foundation models. SiamLayout derived base images from the SA-1B [Kirillov
+et al., 2023] dataset, using GroundingDINO [Liu et al., 2023] for object localization and VLMs [Yao
+et al., 2024] for generating global and local captions. In contrast, EliGen relies on synthetic images: it
+samples captions from DiffusionDB [Wang et al., 2023], generates images with FLUX.1-dev [Black
+Forest Labs, 2024], and then applies Qwen2-VL [Wang et al., 2024b] to re-caption each image,
+extract spatial locations of objects, and generate a caption for each object. While these methods
+substantially improve caption quality and regional descriptions, the resulting annotations still have
+limited structural complexity, particularly in dense scenes with many overlapping objects. Our dataset
+generation addresses this limitation by explicitly prompting VLMs to generate object proposals with
+overlapping bounding boxes, ensuring that the resulting images contain dense scenes with many
+objects, substantial overlap, and rich captions. Further, our dataset generation pipeline includes
+per-object grounded validation, ensuring high instance-level accuracy in the images.
+3
+Dataset Curation Pipeline
+3.1
+Motivation and Design Goals
+Existing layout-to-image datasets such as LayoutSAM [Zhang et al., 2025a], EliGen [Zhang et al.,
+2025b], and GRIT [Peng et al., 2023] contain limited examples of complex scenes.
+First, many commonly used datasets contain relatively sparse object layouts. As shown in Table 1,
+prior datasets include only 1.78–3.93 objects per image on average, which limits their ability to
+supervise dense multi-object generation. Beyond object number, we directly measure object density:
+for each bounding box, we identify its nearest neighbor based on center-to-center distance, then
+measure the intersection-over-union (IoU) for that pair. Mean NN IoU reflects the degree of overlap
+between nearby objects, while Mean NN Dist measures normalized spatial proximity in [0, 1]
+bounding box space. Existing datasets generally exhibit low NN IoU and relatively large NN distance,
+indicating that nearby objects often have weak local spatial interactions.
+4
+
+
+Second, existing datasets usually provide limited language supervision. As summarized in Table 1,
+most prior datasets rely primarily on image-level captions or sparse textual descriptions, without
+systematically providing object-level appearance descriptions tied to individual bounding boxes. This
+weakens supervision for fine-grained object attributes and makes it difficult for models to jointly
+learn global scene semantics and local object appearance from layout-conditioned data.
+Based on these observations, our design goals are to construct a Layout-to-Image dataset with denser
+object layouts, stronger local spatial interactions, and richer multi-level language supervision. As
+shown in Table 1, our dataset substantially improves these key properties over existing datasets,
+including object density, nearest-neighbor spatial interaction, and annotation granularity. The detailed
+curation and annotation procedures used to achieve these improvements are described in the follow-
+ing subsections. Specifically, we develop an automated pipeline based on the LAION-Aesthetics
+V2 [Schuhmann et al., 2022] 4.75 subset (956M images), consisting of four stages: 1) Image Filtering,
+2) Object Detection, 3) Scene Filtering and 4) Captioning.
+Table 1: Dataset statistics for Layout-to-Image datasets. Our dataset has higher object density,
+stronger spatial interactions, and richer caption supervision than prior datasets. Caption lengths are
+measured in number of words. Bold and underline mark the best and second-best values in each
+column.
+Local Caption
+Global Caption
+Dataset
+Images
+Objects ↑
+IoU ↑
+Dist ↓
+Short ↑
+Long ↑
+Short ↑
+Long ↑
+LayoutSAM [Zhang et al., 2025a]
+2.66M
+3.93
+0.22
+0.22
+1.99
+11.93
+–
+81.81
+EliGen [Zhang et al., 2025b]
+496K
+2.56
+0.26
+0.24
+2.12
+–
+17.76
+–
+GRIT [Peng et al., 2023]
+20.5M
+1.78
+0.16
+0.25
+2.40
+–
+17.47
+–
+OverLay++ (Ours)
+500K
+6.59
+0.31
+0.17
+15.89
+89.70
+19.98
+52.24
+3.2
+Image Filtering
+Given the highly variable quality of web-scraped data, we first filter the corpus using the LAION-
+Aesthetics Predictor V2 [Schuhmann et al., 2022], retaining only images with an aesthetic score of
+at least 5.98. This step ensures that the retained images have strong compositional and perceptual
+quality, providing a high-quality visual basis for dense layout construction. We additionally discard
+any image where either spatial dimension falls below 1024 pixels, enforcing min(H, W) ≥1024.
+Images that satisfy both criteria are then center-cropped deterministically to a standardized resolution
+of 1024 × 1024 pixels. After this filtering step, we obtain 850,900 images.
+3.3
+Object Detection
+To address the lack of dense objects in existing datasets, we explicitly construct object-dense scenes.
+We prompt the model, Qwen3-VL-32B [Bai et al., 2025a], to detect all visually salient objects
+and return structured predictions consisting of: (i) a semantic category label, (ii) a bounding box
+in [x1, y1, x2, y2] format normalized to a 1024-pixel coordinate space, and (iii) a detailed caption
+describing each object’s visual attributes. After the detection result, to further encourage dense
+layouts, images with fewer than five valid detections after applying these constraints are discarded.
+3.4
+Scene Filtering
+To further reduce hallucinated or low-quality detections, we perform per-object validation. For each
+candidate detection, the corresponding image region is cropped and re-evaluated using Qwen3-VL-
+32B with a binary prompt that asks whether the described object is present in the cropped region.
+Detections for which the model returns a negative response are removed. Afterwards, to ensure the
+density of the objects, images with fewer than five remaining valid detections after this validation
+step are discarded. 499,249 images are kept after this step.
+5
+
+
+3.5
+Captioning
+We use Qwen3-VL-32B to do scene-level captioning. The retained images are annotated with
+complementary textual fields at two levels of granularity: scene-level descriptions and object-level
+descriptions. Scene-level captions provide holistic semantic context for the full image, while object-
+level captions describe the appearance and attributes of individual objects associated with specific
+bounding boxes.
+While detailed captions are a valuable supervision signal, some layout-to-image methods use language
+encoders with short token limits [Ramesh et al., 2022]. To increase dataset accessibility while
+preserving semantic supervision, we provide both long and short captions.
+A long scene-level caption is prompted to describe the overall image, including its main objects
+and their attributes, whereas a short scene-level caption is prompted to use fewer than 20 words
+and provides a compact summary of the key objects and context. Similarly, the long object-level
+caption, generated during the object detection stage, provides a detailed description of each object’s
+appearance, style, and visual characteristics. In contrast, the corresponding short object-level caption,
+also prompted to use fewer than 20 words, captures the object’s identity and salient visual attributes.
+Together, these annotations provide both scene-level and object-level supervision. This design directly
+addresses the limitations of prior datasets by producing layouts with more objects, stronger local
+spatial interactions, and richer hierarchical annotations. The prompts are provided in Appendix A.1.
+The word limits are prompt instructions rather than post-generation truncation rules, and Table 1
+reports observed caption lengths.
+4
+Evaluation
+4.1
+Implementation Details
+We evaluate the OverLay++ dataset using two state-of-the-art Layout-to-Image generation methods,
+EliGen [Zhang et al., 2025b] and SiamLayout [Zhang et al., 2025a]. For EliGen, we use the publicly
+released code to train separate layout-conditioned models on the EliGen and OverLay++ datasets,
+starting from a pretrained SD3 backbone. Both models are trained for 10K steps with a per-GPU
+batch size of 12 on 8×A6000 GPUs and a learning rate of 3 × 10−4. The OverLay++ EliGen-SD3
+run uses short local captions and long global captions. For SiamLayout, since the training code is not
+publicly available, we fine-tune the released model on OverLay++ for 60K steps with a per-GPU
+batch size of 2, gradient accumulation of 2, and a learning rate of 5 × 10−5 on 8×A6000 GPUs. We
+compare against the SiamLayout-SD3 results reported in the original paper [Zhang et al., 2025a]. All
+models are optimized with the AdamW [Loshchilov and Hutter, 2019] optimizer with a weight decay
+of 0.05, β1 = 0.9, and β2 = 0.95. We use a constant learning rate and a classifier-free guidance [Ho
+and Salimans, 2022] scale of 7.5 for generation. We compare our dataset on three benchmarks:
+LayoutSAM [Zhang et al., 2025a], OverLayBench [Li et al., 2025], and DenseLayout [Xiang et al.,
+2025].
+4.2
+LayoutSAM Benchmark
+LayoutSAM-Eval [Zhang et al., 2025a] is a Layout-to-Image generation benchmark built from a subset
+of LayoutSAM and contains 5,000 layouts. It evaluates generation quality from two perspectives:
+region-wise quality and global quality. Region-wise quality uses VLM-based VQA to measure
+whether each object appears in the correct bounding box and whether its attributes, such as color,
+texture, and shape, match the local descriptions. Global quality is summarized using FID [Heusel
+et al., 2017] and Inception Score (IS) [Salimans et al., 2016], which measure distribution-level image
+fidelity and diversity.
+Results are reported in Table 2. Training on OverLay++ consistently improves each model over its
+corresponding baseline. Eligen-SD3 (Ours) achieves state-of-the-art results on all region-wise quality
+metrics, with gains of up to 8.5%. SiamLayout-SD3 (Ours) achieves the best FID and the second-best
+IS among all methods, demonstrating the effectiveness of training with the OverLay++ dataset.
+6
+
+
+EliGen-SD3
+Ours
+Missing 
+Objects
+Missing 
+Attributes
+EliGen-SD3
+Ours
+Layout
+Layout
+Dense 
+Objects
+A white umbrella with red designs and text is perched on a metal railing, 
+slightly tilted as if caught in the wind. The background features a blurred view 
+of a road with a car driving away, adding a sense of motion to the scene. 
+The umbrella's design includes what appears to be stylized text or symbols, 
+possibly artistic or decorative in nature.
+A vibrant green electric vehicle with sleek, modern design features is 
+prominently displayed in the foreground, driving down a bustling city street. 
+The car's aerodynamic shape and futuristic headlights suggest advanced 
+technology and eco-friendly transportation. In the background, a public bus 
+labeled \"MGU MIST\" adds to the urban setting.
+A construction worker wearing an orange hard hat and a high-visibility yellow 
+vest is seen from behind, holding a stop sign on a road. The worker appears 
+to be directing traffic, with a large truck approaching in the background. 
+The scene suggests a work zone or road maintenance activity, emphasizing 
+safety and traffic control.
+A mouthwatering hot dog served in a soft bun is the centerpiece of this 
+appetizing meal. The hot dog is generously topped with vibrant red ketchup 
+and creamy white mayonnaise. Accompanying the hot dog is a small metal 
+cup filled with golden, crispy French fries. In the background, a glass of 
+amber-colored beer sits on the table.
+A collection of soft, plush teddy bears is neatly arranged in a red plastic 
+crate. The teddy bears have a light beige fur with darker brown accents on 
+their ears and snouts, giving them a charming appearance. Each bear has a 
+small tag attached to its ear. The background features more teddy bears, 
+hinting at a larger assortment available.
+A joyful group of children and an adult are posing for a photo on a snowy 
+mountain slope. All are dressed in colorful ski gear, including helmets and 
+goggles, with their arms raised in excitement. The backdrop features majestic 
+snow-capped mountains under a partly cloudy sky, creating a picturesque 
+winter scene perfect for skiing adventures.
+Figure 3: Qualitative comparison of L2I generation. Models trained on OverLay++ produce more
+coherent and detailed images than those trained on prior datasets. Common failure cases of prior
+datasets include missing objects, missing attributes, and poor handling of dense object layouts.
+Table 2: Results on LayoutSAM-Eval [Zhang et al., 2025a]. Comparison of region-wise and
+global quality across different methods. Our methods consistently outperform their corresponding
+baselines, achieving substantial gains in region-wise quality while maintaining competitive global
+image quality. Improvements over baseline are shown in green, and bold and underline denote the
+best and second-best results among all compared methods.
+Region-wise Quality
+Global Quality
+Model
+Spatial(%) ↑
+Color(%) ↑
+Texture(%) ↑
+Shape(%) ↑
+FID ↓
+IS ↑
+GLIGEN [Li et al., 2023a]
+77.53
+49.41
+55.29
+52.72
+21.92
+20.57
+Ranni [Feng et al., 2024]
+41.38
+24.10
+25.57
+23.35
+27.24
+19.81
+MIGC [Zhou et al., 2024b]
+85.66
+66.97
+71.24
+69.06
+21.19
+19.65
+InstanceDiffusion [Wang et al., 2024a]
+87.99
+69.16
+72.78
+71.08
+19.67
+20.02
+Be Yourself [Dahary et al., 2024]
+53.99
+31.73
+35.26
+32.75
+28.10
+17.98
+HiCo [Cheng et al., 2024]
+87.04
+69.19
+72.36
+71.10
+22.61
+20.15
+SiamLayout-SD3 [Zhang et al., 2025a]
+92.67
+74.45
+77.21
+75.93
+19.10
+22.04
+SiamLayout-SD3 (Ours)
+93.30 (+0.68%) 75.99 (+2.07%) 78.77 (+2.02%) 78.41 (+3.27%)
+17.96 (-5.97%)
+21.60
+EliGen-SD3 [Zhang et al., 2025b]
+93.04
+82.96
+86.73
+86.35
+25.17
+19.21
+EliGen-SD3 (Ours)
+95.45 (+2.59%) 90.03 (+8.52%) 93.14 (+7.39%) 92.81 (+7.48%) 19.61 (-22.09%) 19.54 (+1.72%)
+4.3
+OverLayBench Benchmark
+OverLayBench [Li et al., 2025] evaluates instance-level layout control under increasing scene
+complexity, stratified into Simple, Regular, and Complex splits. We use Qwen2.5-VL-32B [Bai et al.,
+2025b] to extract instance-level bounding boxes and compute mIoU and O-mIoU (overlap-specific
+IoU), and success rates SRE and SRR under strict and relaxed IoU thresholds, respectively. Scene-
+level quality is assessed via CLIPG, instance-level semantic alignment via CLIPL, and overall realism
+via FID [Heusel et al., 2017].
+7
+
+
+Table 3: Results on OverLayBench [Li et al., 2025]. Comparison of generation quality across
+different methods and complexity settings. Our methods consistently outperform their corresponding
+baselines, achieving substantial gains in region-aware metrics while maintaining competitive overall
+image fidelity. Improvements over the baseline are shown in green, and bold and underline indicate
+the best and second-best results among all compared methods.
+Method
+mIoU(%) ↑
+O-mIoU(%) ↑
+SRE(%) ↑
+SRR(%) ↑
+CLIPG ↑
+CLIPL ↑
+FID ↓
+OverLayBench-Simple
+GLIGEN [Li et al., 2023a]
+60.54
+36.22
+49.99
+78.72
+34.17
+24.75
+31.27
+InstanceDiffusion [Wang et al., 2024a]
+71.21
+49.99
+77.71
+87.49
+34.25
+27.69
+36.17
+MIGC [Zhou et al., 2024b]
+58.64
+32.15
+63.41
+81.60
+33.07
+26.49
+31.64
+HiCo [Cheng et al., 2024]
+69.47
+47.23
+67.75
+86.08
+35.25
+27.04
+29.21
+3DIS [Zhou et al., 2024a]
+65.75
+38.38
+86.24
+86.98
+35.85
+29.67
+29.18
+SiamLayout-SD3 [Zhang et al., 2025a]
+58.78
+32.52
+72.34
+84.45
+37.29
+27.49
+27.51
+SiamLayout-SD3 (Ours)
+61.01 (+3.79%)
+37.23 (+14.48%)
+75.19 (+3.94%)
+85.60 (+1.36%)
+37.03
+27.59 (+0.36%)
+26.73 (-2.84%)
+EliGen-SD3 [Zhang et al., 2025b]
+66.67
+41.34
+85.70
+88.67
+37.01
+28.57
+30.29
+EliGen-SD3 (Ours)
+70.39 (+5.58%)
+47.09 (+13.91%)
+91.83 (+7.15%)
+91.06 (+2.70%)
+36.27
+29.15 (+2.03%)
+30.28 (-0.03%)
+OverLayBench-Regular
+GLIGEN [Li et al., 2023a]
+52.46
+26.53
+44.88
+77.46
+33.93
+23.42
+52.22
+InstanceDiffusion [Wang et al., 2024a]
+60.08
+34.15
+72.51
+83.36
+33.09
+26.19
+59.73
+MIGC [Zhou et al., 2024b]
+47.42
+20.06
+56.67
+77.85
+32.72
+24.99
+54.24
+HiCo [Cheng et al., 2024]
+55.02
+29.60
+58.24
+79.89
+33.91
+25.34
+49.07
+3DIS [Zhou et al., 2024a]
+55.66
+27.29
+80.80
+83.69
+35.42
+28.12
+48.56
+SiamLayout-SD3 [Zhang et al., 2025a]
+47.04
+20.67
+62.60
+78.31
+36.67
+25.55
+45.57
+SiamLayout-SD3 (Ours)
+48.41 (+2.91%)
+23.32 (+12.82%)
+65.53 (+4.68%)
+80.39 (+2.66%)
+36.49
+25.66 (+0.43%)
+45.37 (-0.44%)
+EliGen-SD3 [Zhang et al., 2025b]
+56.79
+29.24
+81.34
+83.57
+36.54
+27.20
+49.15
+EliGen-SD3 (Ours)
+62.40 (+9.88%)
+36.66 (+25.38%)
+89.45 (+9.97%)
+86.75 (+3.81%)
+35.64
+28.17 (+3.57%)
+49.09 (-0.12%)
+OverLayBench-Complex
+GLIGEN [Li et al., 2023a]
+50.79
+23.85
+41.70
+79.93
+33.92
+22.75
+57.32
+InstanceDiffusion [Wang et al., 2024a]
+53.68
+25.63
+66.02
+80.34
+32.33
+25.53
+66.32
+MIGC [Zhou et al., 2024b]
+40.04
+13.26
+47.80
+74.48
+31.93
+24.20
+66.52
+HiCo [Cheng et al., 2024]
+46.56
+20.35
+48.88
+75.19
+33.15
+24.41
+55.78
+3DIS [Zhou et al., 2024a]
+50.65
+21.75
+74.31
+81.57
+35.11
+27.35
+54.90
+SiamLayout-SD3 [Zhang et al., 2025a]
+44.24
+18.05
+52.10
+79.98
+36.55
+24.76
+53.29
+SiamLayout-SD3 (Ours)
+45.81 (+3.55%)
+20.42 (+13.13%)
+57.54 (+10.44%)
+81.60 (+2.03%)
+36.15
+24.97 (+0.85%)
+52.21 (-2.03%)
+EliGen-SD3 [Zhang et al., 2025b]
+50.53
+22.97
+73.75
+82.22
+36.49
+26.32
+53.58
+EliGen-SD3 (Ours)
+57.90 (+14.59%)
+30.99 (+34.92%)
+83.30 (+12.95%)
+85.59 (+4.10%)
+35.46
+26.97 (+2.47%)
+53.63
+Results are reported in Table 3 across all three difficulty tiers. Training on OverLay++ yields
+consistent gains across both baselines, demonstrating the effectiveness of our dataset. Across all
+OverLayBench splits, Eligen-SD3 (Ours) improves spatial alignment over the original EliGen-SD3
+and achieves the best results on several metrics. On OverLayBench-Simple, it obtains the best
+SRE (91.83%) and SRR (91.06%). On OverLayBench-Regular, it achieves the best mIoU (62.40),
+O-mIoU (36.66), and SRE (89.45%). On OverLayBench-Complex, it again obtains the best mIoU
+(57.90), O-mIoU (30.99), and SRE (83.30%). These results suggest that OverLay++ improves layout
+alignment, particularly in dense scenes with overlapping objects.
+We further compare the convergence of EliGen-SD3 when trained on the EliGen dataset and on
+OverLay++. As shown in Figure 4, training on OverLay++ leads to faster IoU score convergence
+across all splits, suggesting that our dataset helps the model learn overlapping layouts more efficiently.
+4.4
+DenseLayout Benchmark
+DenseLayout [Xiang et al., 2025] evaluates Layout-to-Image generation in high-density scenes
+with many objects and fine-grained spatial constraints. Following the Layout Grounding Score
+protocol used in LayoutSAM-Eval, GroundingDINO [Liu et al., 2023] detects each labeled instance
+and computes the mIoU score. Instance-level attribute alignment is then evaluated by a vision-
+language model [Yao et al., 2024] on each cropped region, conditioned on the corresponding instance
+description, resulting in three attribute metrics: Color, Texture, and Shape.
+Results are shown in Table 4. Training on OverLay++ improves both EliGen-SD3 and SiamLayout-
+SD3 across all evaluation metrics. EliGen-SD3 (Ours) achieves the best overall performance,
+8
+
+
+2K
+4K
+6K
+8K
+10K
+Training Steps
+0.30
+0.35
+0.40
+0.45
+0.50
+0.55
+0.60
+0.65
+0.70
+0.75
+IoU Score
+Convergence (OverLayBench-Simple)
+EliGen-SD3 mIoU
+EliGen-SD3 O-mIoU
+EliGen-SD3 (Ours) mIoU
+EliGen-SD3 (Ours) O-mIoU
+(a) Simple
+2K
+4K
+6K
+8K
+10K
+Training Steps
+0.2
+0.3
+0.4
+0.5
+0.6
+IoU Score
+Convergence (OverLayBench-Regular)
+EliGen-SD3 mIoU
+EliGen-SD3 O-mIoU
+EliGen-SD3 (Ours) mIoU
+EliGen-SD3 (Ours) O-mIoU
+(b) Regular
+2K
+4K
+6K
+8K
+10K
+Training Steps
+0.2
+0.3
+0.4
+0.5
+0.6
+IoU Score
+Convergence (OverLayBench-Complex)
+EliGen-SD3 mIoU
+EliGen-SD3 O-mIoU
+EliGen-SD3 (Ours) mIoU
+EliGen-SD3 (Ours) O-mIoU
+(c) Complex
+Figure 4: Convergence analysis. Comparison of mIoU and O-mIoU versus training steps for Simple,
+Regular, and Complex settings. The model trained on OverLay++ achieves higher scores across all
+difficulty levels and demonstrates stable convergence behavior.
+Table 4: Results on DenseLayout [Xiang et al., 2025]. EliGen-SD3 and SiamLayout-SD3 trained on
+OverLay++ outperform their corresponding baselines on DenseLayout benchmark. Improvements
+over baselines are highlighted in green, and bold indicates the best results among all compared
+methods.
+Model
+mIoU(%) ↑
+Color(%) ↑
+Texture(%) ↑
+Shape(%) ↑
+EliGen-SD3 [Zhang et al., 2025b]
+45.79
+37.65
+39.98
+39.76
+EliGen-SD3 (Ours)
+46.92 (+2.47%)
+40.61 (+7.86%)
+42.91 (+7.33%)
+42.82 (+7.70%)
+SiamLayout-SD3 [Zhang et al., 2025a]
+15.54
+11.69
+12.34
+12.17
+SiamLayout-SD3 (Ours)
+17.10 (+10.04%) 13.15 (+12.49%) 13.77 (+11.59%) 13.61 (+11.83%)
+improving mIoU from 45.79 to 46.92 and consistently improving attribute alignment, with gains of
+7.86% in Color, 7.33% in Texture, and 7.7% in Shape. SiamLayout-SD3 (Ours) also improves over
+its baseline on all metrics, showing that OverLay++ benefits dense-layout generation across different
+L2I models.
+4.5
+Caption Granularity
+We ablate the effect of caption granularity by training EliGen-SD3 with different combinations of
+short and long captions at the local and global levels. Results are shown in Table 5. The Short-Long
+setting achieves the best overall results, suggesting that short local captions are more effective for
+object grounding while long global captions provide useful scene-level context. This is likely due to
+the CLIP text encoder used for local prompts, which is limited to 77 tokens and may truncate longer
+object descriptions. With stronger local text encoders or longer context windows, long local captions
+may provide additional gains.
+5
+Conclusion, Limitations, and Broader Impact
+We introduced OverLay++, a large-scale dataset for dense and overlap-aware Layout-to-Image
+generation. OverLay++ contains approximately 500K images with an average of 6.6 objects per image,
+exceeding existing datasets by 1.67× in annotation density, and provides caption-rich supervision with
+short and long captions at both the global and per-object levels. Across multiple benchmarks, state-
+of-the-art L2I methods trained on OverLay++ show consistent improvements and faster convergence,
+highlighting the importance of dense and overlap-aware supervision for controllable image generation.
+Despite these improvements, OverLay++ has several limitations. Since our pipeline uses MLLMs
+for captioning and grounding visual entities, the dataset may inherit model biases and annotation
+noise. In addition, although the OverLay++ dataset focuses on dense scenes with overlapping objects,
+it may still underrepresent difficult cases such as unusual object interactions, transparent objects,
+and rare object categories. OverLay++ is intended to support the development of more reliable
+Layout-to-Image models for real-world and industrial applications, where fine-grained visual control
+and spatially grounded image synthesis are basic requirements. However, because the dataset is
+constructed using open-source foundation models, it may inherit the same biases, failure modes, and
+9
+
+
+Table 5: Ablation study on caption granularity on OverLayBench. Short local captions with long
+global captions achieve the best region-level alignment. Bold and underline indicate the best and
+second-best results within each split.
+Method
+Split
+Local Caption
+Global Caption
+mIoU(%) ↑
+O-mIoU(%) ↑
+SRE(%) ↑
+SRR(%) ↑
+CLIPG ↑
+CLIPL ↑
+EliGen-SD3
+Simple
+Short
+Long
+70.39
+47.09
+91.83
+91.06
+36.27
+29.15
+Simple
+Short
+Short
+69.17
+45.80
+92.95
+90.62
+36.37
+29.66
+Simple
+Long
+Long
+60.90
+35.85
+89.55
+89.47
+36.69
+29.24
+Simple
+Long
+Short
+56.28
+32.32
+89.10
+89.64
+36.79
+28.62
+EliGen-SD3
+Regular
+Short
+Long
+62.40
+36.66
+89.45
+86.75
+35.64
+28.17
+Regular
+Short
+Short
+62.32
+36.33
+90.72
+86.94
+35.55
+28.55
+Regular
+Long
+Long
+53.30
+26.64
+85.94
+84.66
+35.99
+28.11
+Regular
+Long
+Short
+48.60
+23.48
+87.25
+85.45
+36.11
+27.47
+EliGen-SD3
+Complex
+Short
+Long
+57.90
+30.99
+83.30
+85.59
+35.46
+26.97
+Complex
+Short
+Short
+57.48
+30.51
+85.10
+85.76
+35.31
+27.54
+Complex
+Long
+Long
+47.64
+21.31
+78.49
+82.19
+35.85
+27.09
+Complex
+Long
+Short
+44.23
+19.52
+79.67
+84.25
+35.79
+26.43
+safety risks present in existing open-source generative models. Further research on the misuse of L2I
+models is needed to better understand these risks and support the safe deployment of controllable
+image generation systems.
+Acknowledgment
+This work is supported by U.S. National Science Foundation Award IIS-2433768
+and IIS-2127544. This work also used Delta and DeltaAI at National Center for Supercomputing
+Applications (NCSA) through allocation CIS260179 from the Advanced Cyberinfrastructure Coordi-
+nation Ecosystem: Services & Support (ACCESS) program, which is supported by U.S. National
+Science Foundation grants #2138259, #2138286, #2138307, #2137603, and #2138296. We also thank
+Lambda, Inc. for their valuable compute resource help.
+References
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily L Denton, Kamyar
+Ghasemipour, Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Salimans, et al. Photorealistic
+text-to-image diffusion models with deep language understanding. Advances in Neural Information
+Processing Systems, 35:36479–36494, 2022.
+Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray, Chelsea Voss, Alec Radford, Mark
+Chen, and Ilya Sutskever. Zero-shot text-to-image generation. In Marina Meila and Tong Zhang,
+editors, Proceedings of the 38th International Conference on Machine Learning, volume 139 of
+Proceedings of Machine Learning Research, pages 8821–8831. PMLR, 18–24 Jul 2021. URL
+https://proceedings.mlr.press/v139/ramesh21a.html.
+Alexander Quinn Nichol, Prafulla Dhariwal, Aditya Ramesh, Pranav Shyam, Pamela Mishkin, Bob
+Mcgrew, Ilya Sutskever, and Mark Chen. GLIDE: Towards photorealistic image generation and
+editing with text-guided diffusion models. In Kamalika Chaudhuri, Stefanie Jegelka, Le Song,
+Csaba Szepesvari, Gang Niu, and Sivan Sabato, editors, Proceedings of the 39th International
+Conference on Machine Learning, volume 162 of Proceedings of Machine Learning Research,
+pages 16784–16804. PMLR, 17–23 Jul 2022. URL https://proceedings.mlr.press/v162/
+nichol22a.html.
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-
+resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Confer-
+ence on Computer Vision and Pattern Recognition (CVPR), pages 10684–10695, June 2022.
+Junsong Chen, Jincheng Yu, Chongjian Ge, Lewei Yao, Enze Xie, Zhongdao Wang, James Kwok,
+Ping Luo, Huchuan Lu, and Zhenguo Li. PixArt-α: Fast training of diffusion transformer for
+photorealistic text-to-image synthesis. In International conference on learning representations,
+volume 2024, pages 57611–57640, 2024a.
+Zeyue Xue, Guanglu Song, Qiushan Guo, Boxiao Liu, Zhuofan Zong, Yu Liu, and Ping
+Luo.
+Raphael: Text-to-image generation via large mixture of diffusion paths.
+In A. Oh,
+10
+
+
+T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine, editors, Advances in
+Neural Information Processing Systems, volume 36, pages 41693–41706. Curran Associates,
+Inc., 2023.
+URL https://proceedings.neurips.cc/paper_files/paper/2023/file/
+821655c7dc4836838cd8524d07f9d6fd-Paper-Conference.pdf.
+Yuheng Li, Haotian Liu, Qingyang Wu, Fangzhou Mu, Jianwei Yang, Jianfeng Gao, Chunyuan Li,
+and Yong Jae Lee. Gligen: Open-set grounded text-to-image generation. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 22511–22521,
+June 2023a.
+Lvmin Zhang, Anyi Rao, and Maneesh Agrawala. Adding conditional control to text-to-image
+diffusion models. In Proceedings of the IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 3836–3847, October 2023.
+Jinheng Xie, Yuexiang Li, Yawen Huang, Haozhe Liu, Wentian Zhang, Yefeng Zheng, and
+Mike Zheng Shou. Boxdiff: Text-to-image synthesis with training-free box-constrained dif-
+fusion. In Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV),
+pages 7452–7461, October 2023.
+Xudong Wang, Trevor Darrell, Sai Saketh Rambhatla, Rohit Girdhar, and Ishan Misra. Instancediffu-
+sion: Instance-level control for image generation. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), pages 6232–6242, June 2024a.
+Phillip Y. Lee, Taehoon Yoon, and Minhyuk Sung. Groundit: Grounding diffusion transformers via
+noisy patch transplantation. In Advances in Neural Information Processing Systems, 2024.
+Zhennan Chen, Yajie Li, Haofan Wang, Zhibo Chen, Zhengkai Jiang, Jun Li, Qian Wang, Jian Yang,
+and Ying Tai. Ragd: Regional-aware diffusion model for text-to-image generation. In Proceedings
+of the IEEE/CVF International Conference on Computer Vision, pages 19331–19341, 2025.
+Xi Chen, Zhifei Zhang, He Zhang, Yuqian Zhou, Soo Ye Kim, Qing Liu, Yijun Li, Jianming Zhang,
+Nanxuan Zhao, Yilin Wang, Hui Ding, Zhe Lin, and Hengshuang Zhao. Unireal: Universal image
+generation and editing via learning real-world dynamics, 2024b. URL https://arxiv.org/
+abs/2412.07774.
+Zhenxiong Tan, Songhua Liu, Xingyi Yang, Qiaochu Xue, and Xinchao Wang. Ominicontrol:
+Minimal and universal control for diffusion transformer, 2025. URL https://arxiv.org/abs/
+2411.15098.
+Canyu Zhao, Yanlong Sun, Mingyu Liu, Huanyi Zheng, Muzhi Zhu, Zhiyue Zhao, Hao Chen, Tong
+He, and Chunhua Shen. Diception: A generalist diffusion model for visual perceptual tasks, 2025.
+URL https://arxiv.org/abs/2502.17157.
+Lital Binyamin, Yoad Tewel, Hilit Segev, Eran Hirsch, Royi Rassin, and Gal Chechik. Make it count:
+Text-to-image generation with an accurate number of objects. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition (CVPR), pages 13242–13251, June 2025.
+Zhengyuan Yang, Jianfeng Wang, Zhe Gan, Linjie Li, Kevin Lin, Chenfei Wu, Nan Duan, Zicheng
+Liu, Ce Liu, Michael Zeng, and Lijuan Wang. Reco: Region-controlled text-to-image generation.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR),
+pages 14246–14255, June 2023.
+Divyansh Srivastava, Akshay Mehra, Pranav Maneriker, Debopam Sanyal, Vishnu Raj, Vijay Ka-
+marshi, Fan Du, and Joshua Kimball. Dpar: Dynamic patchification for efficient autoregressive
+visual generation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pages 23215–23226, June 2026.
+Dewei Zhou, Ji Xie, Zongxin Yang, and Yi Yang. 3dis: Depth-driven decoupled instance synthesis
+for text-to-image generation. arXiv preprint arXiv:2410.12669, 2024a.
+Dewei Zhou, Ji Xie, Zongxin Yang, and Yi Yang. 3dis-flux: simple and efficient multi-instance
+generation with dit rendering. arXiv preprint arXiv:2501.05131, 2025.
+11
+
+
+Hui Zhang, Dexiang Hong, Yitong Wang, Jie Shao, Xinglong Wu, Zuxuan Wu, and Yu-Gang Jiang.
+Creatilayout: Siamese multimodal diffusion transformer for creative layout-to-image generation,
+2025a. URL https://arxiv.org/abs/2412.03859.
+Hong Zhang, Zhongjie Duan, Xingjun Wang, Yingda Chen, and Yu Zhang. Eligen: Entity-level
+controlled image generation with regional attention, 2025b. URL https://arxiv.org/abs/
+2501.01097.
+Dewei Zhou, You Li, Fan Ma, Xiaoting Zhang, and Yi Yang. Migc: Multi-instance generation
+controller for text-to-image synthesis, 2024b. URL https://arxiv.org/abs/2402.05408.
+Yang Song and Stefano Ermon. Generative modeling by estimating gradients of the data distribution.
+Advances in neural information processing systems, 32, 2019.
+Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. Advances in
+neural information processing systems, 33:6840–6851, 2020.
+Jiaming Song, Chenlin Meng, and Stefano Ermon. Denoising diffusion implicit models. arXiv
+preprint arXiv:2010.02502, 2020.
+Prafulla Dhariwal and Alexander Nichol. Diffusion models beat gans on image synthesis. Advances
+in neural information processing systems, 34:8780–8794, 2021.
+Jonathan Ho and Tim Salimans. Classifier-free diffusion guidance. arXiv preprint arXiv:2207.12598,
+2022.
+Aditya Ramesh, Prafulla Dhariwal, Alex Nichol, Casey Chu, and Mark Chen. Hierarchical text-
+conditional image generation with clip latents. arXiv preprint arXiv:2204.06125, 1(2):3, 2022.
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas Müller, Harry Saini, Yam
+Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, et al. Scaling rectified flow transformers for
+high-resolution image synthesis. In Forty-first International Conference on Machine Learning,
+2024.
+Divyansh Srivastava, Xiang Zhang, He Wen, Chenru Wen, and Zhuowen Tu. Lay-your-scene: Natural
+scene layout generation with diffusion transformers, 2025. URL https://arxiv.org/abs/
+2505.04718.
+Christoph Schuhmann, Romain Beaumont, Richard Vencu, Cade Gordon, Ross Wightman, Mehdi
+Cherti, Theo Coombes, Aarush Katta, Clayton Mullis, Mitchell Wortsman, Patrick Schramowski,
+Srivatsa Kundurthy, Katherine Crowson, Ludwig Schmidt, Robert Kaczmarczyk, and Jenia Jitsev.
+Laion-5b: An open large-scale dataset for training next generation image-text models, 2022. URL
+https://arxiv.org/abs/2210.08402.
+Samir Yitzhak Gadre, Gabriel Ilharco, Alex Fang, Jonathan Hayase, Georgios Smyrnis, Thao
+Nguyen, Ryan Marten, Mitchell Wortsman, Dhruba Ghosh, Jieyu Zhang, Eyal Orgad, Rahim
+Entezari, Giannis Daras, Sarah Pratt, Vivek Ramanujan, Yonatan Bitton, Kalyani Marathe, Stephen
+Mussmann, Richard Vencu, Mehdi Cherti, Ranjay Krishna, Pang Wei Koh, Olga Saukh, Alexander
+Ratner, Shuran Song, Hannaneh Hajishirzi, Ali Farhadi, Romain Beaumont, Sewoong Oh, Alex
+Dimakis, Jenia Jitsev, Yair Carmon, Vaishaal Shankar, and Ludwig Schmidt. Datacomp: In search
+of the next generation of multimodal datasets, 2023. URL https://arxiv.org/abs/2304.
+14108.
+Minwoo Byeon, Beomhee Park, Haecheon Kim, Sungjun Lee, Woonhyuk Baek, and Saehoon Kim.
+Coyo-700m: Image-text pair dataset.
+https://github.com/kakaobrain/coyo-dataset,
+2022.
+Black Forest Labs.
+Announcing black forest labs.
+https://blackforestlabs.ai/
+announcing-black-forest-labs, August 2024. Accessed: November 14, 2025.
+William Peebles and Saining Xie. Scalable diffusion models with transformers. In Proceedings of
+the IEEE/CVF International Conference on Computer Vision (ICCV), pages 4195–4205, October
+2023.
+12
+
+
+Bingnan Li, Chen-Yu Wang, Haiyang Xu, Xiang Zhang, Ethan Armand, Divyansh Srivastava, Xiaojun
+Shan, Zeyuan Chen, Jianwen Xie, and Zhuowen Tu. Overlaybench: A benchmark for layout-to-
+image generation with dense overlaps, 2025. URL https://arxiv.org/abs/2509.19282.
+Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr
+Dollár, and C Lawrence Zitnick. Microsoft coco: Common objects in context. In European
+Conference on Computer Vision, pages 740–755. Springer, 2014.
+Shuai Shao, Zeming Li, Tianyuan Zhang, Chao Peng, Gang Yu, Xiangyu Zhang, Jing Li, and Jian
+Sun. Objects365: A large-scale, high-quality dataset for object detection. In Proceedings of the
+IEEE/CVF international conference on computer vision, pages 8430–8439, 2019.
+Bryan A Plummer, Liwei Wang, Chris M Cervantes, Juan C Caicedo, Julia Hockenmaier, and
+Svetlana Lazebnik. Flickr30k entities: Collecting region-to-phrase correspondences for richer
+image-to-sentence models. In Proceedings of the IEEE international conference on computer
+vision, pages 2641–2649, 2015.
+Zhiliang Peng, Wenhui Wang, Li Dong, Yaru Hao, Shaohan Huang, Shuming Ma, and Furu Wei.
+Kosmos-2: Grounding multimodal large language models to the world. ArXiv, abs/2306.14824,
+2023.
+Shilong Liu, Zhaoyang Zeng, Tianhe Ren, Feng Li, Hao Zhang, Jie Yang, Chunyuan Li, Jianwei
+Yang, Hang Su, Jun Zhu, et al. Grounding dino: Marrying dino with grounded pre-training for
+open-set object detection. arXiv preprint arXiv:2303.05499, 2023.
+Peng Wang, Shuai Bai, Sinan Tan, Shijie Wang, Zhihao Fan, Jinze Bai, Keqin Chen, Xuejing Liu,
+Jialin Wang, Wenbin Ge, et al. Qwen2-vl: Enhancing vision-language model’s perception of the
+world at any resolution. arXiv preprint arXiv:2409.12191, 2024b.
+Omer Bar-Tal, Lior Yariv, Yaron Lipman, and Tali Dekel. Multidiffusion: Fusing diffusion paths for
+controlled image generation. 2023.
+Yunji Kim, Jiyoung Lee, Jin-Hwa Kim, Jung-Woo Ha, and Jun-Yan Zhu. Dense text-to-image
+generation with attention modulation. In Proceedings of the IEEE/CVF International Conference
+on Computer Vision, pages 7701–7711, 2023.
+Hila Chefer, Yuval Alaluf, Yael Vinker, Lior Wolf, and Daniel Cohen-Or.
+Attend-and-excite:
+Attention-based semantic guidance for text-to-image diffusion models. ACM transactions on
+Graphics (TOG), 42(4):1–10, 2023.
+Hanan Gani, Shariq Farooq Bhat, Muzammal Naseer, Salman Khan, and Peter Wonka.
+Llm
+blueprint: Enabling text-to-image generation with complex and detailed prompts. arXiv preprint
+arXiv:2310.10640, 2023.
+Ling Yang, Zhaochen Yu, Chenlin Meng, Minkai Xu, Stefano Ermon, and Bin Cui. Mastering text-
+to-image diffusion: Recaptioning, planning, and generating with multimodal llms. In Forty-first
+International Conference on Machine Learning, 2024.
+Anthony Chen, Jianjin Xu, Wenzhao Zheng, Gaole Dai, Yida Wang, Renrui Zhang, Haofan Wang,
+and Shanghang Zhang. Training-free regional prompting for diffusion transformers. arXiv preprint
+arXiv:2411.02395, 2024c.
+Bo Cheng, Yuhang Ma, Liebucha Wu, Shanyuan Liu, Ao Ma, Xiaoyu Wu, Dawei Leng, and Yuhui
+Yin. Hico: Hierarchical controllable diffusion model for layout-to-image generation, 2024. URL
+https://arxiv.org/abs/2410.14324.
+Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-net: Convolutional networks for biomedical
+image segmentation. In International Conference on Medical image computing and computer-
+assisted intervention, pages 234–241. Springer, 2015.
+Youcai Zhang, Xinyu Huang, Jinyu Ma, Zhaoyang Li, Zhaochuan Luo, Yanchun Xie, Yuzhuo Qin,
+Tong Luo, Yaqian Li, Shilong Liu, et al. Recognize anything: A strong image tagging model. In
+2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW),
+pages 1724–1732. IEEE, 2024a.
+13
+
+
+Tianhe Ren, Shilong Liu, Ailing Zeng, Jing Lin, Kunchang Li, He Cao, Jiayu Chen, Xinyu Huang,
+Yukang Chen, Feng Yan, et al. Grounded sam: Assembling open-world models for diverse visual
+tasks. arXiv preprint arXiv:2401.14159, 2024.
+Junnan Li, Dongxu Li, Caiming Xiong, and Steven Hoi. Blip: Bootstrapping language-image pre-
+training for unified vision-language understanding and generation. In International conference on
+machine learning, pages 12888–12900. PMLR, 2022.
+Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi. Blip-2: Bootstrapping language-image
+pre-training with frozen image encoders and large language models. In International conference
+on machine learning, pages 19730–19742. PMLR, 2023b.
+Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete
+Xiao, Spencer Whitehead, Alexander C. Berg, Wan-Yen Lo, Piotr Dollár, and Ross Girshick.
+Segment anything. arXiv:2304.02643, 2023.
+Yuan Yao, Tianyu Yu, Ao Zhang, Chongyi Wang, Junbo Cui, Hongji Zhu, Tianchi Cai, Haoyu Li,
+Weilin Zhao, Zhihui He, et al. Minicpm-v: A gpt-4v level mllm on your phone. arXiv preprint
+arXiv:2408.01800, 2024.
+Zijie J Wang, Evan Montoya, David Munechika, Haoyang Yang, Benjamin Hoover, and Duen Horng
+Chau. Diffusiondb: A large-scale prompt gallery dataset for text-to-image generative models. In
+Proceedings of the 61st annual meeting of the association for computational linguistics (volume 1:
+Long papers), pages 893–911, 2023.
+Shuai Bai, Yuxuan Cai, Ruizhe Chen, Keqin Chen, Xionghui Chen, Zesen Cheng, Lianghao
+Deng, Wei Ding, Chang Gao, Chunjiang Ge, et al. Qwen3-vl technical report. arXiv preprint
+arXiv:2511.21631, 2025a.
+Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization, 2019. URL https:
+//arxiv.org/abs/1711.05101.
+Qiang Xiang, Shuang Sun, Binglei Li, Dejia Song, Huaxia Li, Nemo Chen, Xu Tang, Yao Hu,
+and Junping Zhang. Instanceassemble: Layout-aware image generation via instance assembling
+attention. arXiv preprint arXiv:2509.16691, 2025.
+Yutong Feng, Biao Gong, Di Chen, Yujun Shen, Yu Liu, and Jingren Zhou. Ranni: Taming text-to-
+image diffusion for accurate instruction following. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition (CVPR), pages 4744–4753, June 2024.
+Omer Dahary, Or Patashnik, Kfir Aberman, and Daniel Cohen-Or. Be yourself: Bounded attention
+for multi-subject text-to-image generation, 2024. URL https://arxiv.org/abs/2403.16990.
+Martin Heusel, Hubert Ramsauer, Thomas Unterthiner, Bernhard Nessler, and Sepp Hochre-
+iter. Gans trained by a two time-scale update rule converge to a local nash equilibrium. In
+I. Guyon, U. Von Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Gar-
+nett, editors, Advances in Neural Information Processing Systems, volume 30. Curran Asso-
+ciates, Inc., 2017. URL https://proceedings.neurips.cc/paper_files/paper/2017/
+file/8a1d694707eb0fefe65871369074926d-Paper.pdf.
+Tim Salimans, Ian Goodfellow, Wojciech Zaremba, Vicki Cheung, Alec Radford, and Xi Chen.
+Improved techniques for training gans. Advances in neural information processing systems, 29,
+2016.
+Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, Sibo Song, Kai Dang, Peng Wang,
+Shijie Wang, Jun Tang, Humen Zhong, Yuanzhi Zhu, Mingkun Yang, Zhaohai Li, Jianqiang Wan,
+Pengfei Wang, Wei Ding, Zheren Fu, Yiheng Xu, Jiabo Ye, Xi Zhang, Tianbao Xie, Zesen Cheng,
+Hang Zhang, Zhibo Yang, Haiyang Xu, and Junyang Lin. Qwen2.5-vl technical report. arXiv
+preprint arXiv:2502.13923, 2025b.
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever.
+Learning transferable visual models from natural language supervision. In Marina Meila and Tong
+14
+
+
+Zhang, editors, Proceedings of the 38th International Conference on Machine Learning, volume
+139 of Proceedings of Machine Learning Research, pages 8748–8763. PMLR, 18–24 Jul 2021.
+URL https://proceedings.mlr.press/v139/radford21a.html.
+Beichen Zhang, Pan Zhang, Xiaoyi Dong, Yuhang Zang, and Jiaqi Wang. Long-clip: Unlocking the
+long-text capability of clip. In European conference on computer vision, pages 310–325. Springer,
+2024b.
+15
+
+
+A
+Technical appendices and supplementary material
+A.1
+Prompts
+To construct OverLay++, we employ Qwen3-VL-32B [Bai et al., 2025a] throughout the dataset
+curation pipeline for object detection, scene filtering, and hierarchical caption generation.
+The prompts are designed to encourage dense and overlap-aware annotations while seeking to reduce
+hallucinated object annotations and provide rich semantic descriptions. Specifically, the object
+detection prompt explicitly encourages overlapping bounding boxes and detailed object-centric
+descriptions, while the scene filtering stage performs per-object validation to remove hallucinated
+detections. In addition, we generate both global and local captions at long and short granularities
+to support different Layout-to-Image architectures with varying text encoder capacities. The exact
+prompts used in each stage are provided below.
+Object Detection
+Analyze this image and detect ALL objects that are present in the image.
+For
+each detected object, provide:
+1.
+The object name/category
+2.
+A bounding box [x1, y1, x2, y2] indicating where the object is located in
+the image
+3.
+A detailed local_prompt description that describes the object’s appearance,
+attributes, style, and visual characteristics
+IMPORTANT REQUIREMENTS:
+• Detect objects that are ACTUALLY present in the image
+• CRITICAL: Each object’s bounding box MUST have some overlap area with at least
+one other object’s bounding box
+• Bounding boxes must NOT be very small –- each bounding box should have a
+minimum width and height of at least 5% of the image resolution
+• Minimum bounding box dimensions:
+width ≥51 pixels, height ≥51 pixels
+• Overlapping means the bounding boxes should share at least some common area
+(intersection over union > 0 or at least partial overlap)
+• Include various types of objects:
+foreground objects, background objects,
+parts of larger objects, etc.
+• The local_prompt should be a detailed text description that includes:
+* Visual appearance
+* Size and proportions
+* Style and design details
+* Any specific attributes or features
+* Contextual details relevant to the scene
+Response in JSON format:
+{
+"detections":
+[
+{
+"category":
+"object_category",
+"bbox":
+[x1, y1, x2, y2],
+"local_prompt":
+"detailed description of the object’s appearance, style,
+and visual characteristics"
+},
+...
+]
+}
+The bounding box coordinates should be in the range [0, 1024] where (0, 0) is the
+top-left corner.
+The image dimensions are:
+width= 1024, height= 1024.
+CRITICAL: Ensure all bounding boxes have overlapping areas with at least one
+other bounding box.
+CRITICAL: Do not create very small bounding boxes.
+Strictly follow the JSON format without any additional text.
+16
+
+
+Scene Filtering
+Look at this cropped image region.
+Is the following object present in this
+image?
+Object:
+{category}.
+{local_prompt}.
+Answer with only ‘yes’ or ‘no’.
+No additional explanation.
+Global Caption
+Describe this image in one or two sentences, including the main objects,
+activities, and setting.
+Short Global Caption
+Describe this image with a short global caption.
+Requirements:
+• Summarize the overall scene.
+• Include the key object(s) and setting.
+• Keep it under 20 words.
+Return only the caption text with no additional explanation.
+Short Local Prompt
+You are given a full image and object detections.
+Use the image content to answer (not detections text alone).
+For each detection, return:
+1) short_local_prompt:
+less than 20 words
+IMPORTANT:
+• Keep the same order and number of detections.
+• Each short_local_prompt must include color and any other visual attributes.
+• Each short_local_prompt must be less than 20 words.
+• Return only JSON in this format:
+{
+"detections":
+[
+{"short_local_prompt":
+"..."},
+...
+]
+}
+Detections input:
+<JSON-serialized list of detections>
+A.2
+Long Local Captions with a Long-Context Text Encoder
+The degraded performance with long local prompts in Table 5 may reflect truncation in EliGen-SD3’s
+local-prompt encoder path. The CLIP path has a 77-token limit [Radford et al., 2021], while long
+local captions average 89.70 words, making truncation plausible. This is a hypothesis rather than a
+direct measurement of truncation’s effect.
+To test long local captions directly, we fine-tune the released EliGen-FLUX model, whose local
+prompts use a longer-context T5 path, on the OverLay++ dataset with long local captions. Due to
+limited compute, we train for 5K steps with a batch size of 8. The FLUX results are consistent with
+the possibility that a longer-context local-prompt path can use more of the caption detail. As shown
+in Table 6, our model improves over the EliGen-FLUX baseline on nearly every metric across all
+three OverLayBench splits, with large gains on region-aware metrics (e.g., SRE improves by up to
+11.54% on the Complex split) as well as better FID. The only exception is a marginal drop in CLIPG
+on the Regular split. Table 7 shows the same trend on LayoutSAM-Eval: our model improves over
+EliGen-FLUX on all region-wise metrics (Spatial, Color, Texture, Shape) as well as on FID and IS.
+17
+
+
+Table 6: FLUX results on OverLayBench. We fine-tune the released EliGen-FLUX model for 5K
+steps (batch size 8) on OverLay++ with long local captions. Our model improves over the baseline
+on nearly every metric across all complexity settings. Improvements over the baseline are shown in
+green, and bold indicates the best result in each column within each split.
+Method
+mIoU(%) ↑
+O-mIoU(%) ↑
+SRE(%) ↑
+SRR(%) ↑
+CLIPG ↑
+CLIPL ↑
+FID ↓
+OverLayBench-Simple
+EliGen-FLUX [Zhang et al., 2025b]
+68.17
+43.72
+86.50
+89.67
+36.65
+28.29
+28.87
+EliGen-FLUX (Ours)
+69.32 (+1.69%)
+47.21 (+7.98%)
+91.32 (+5.57%)
+91.31 (+1.83%)
+36.81 (+0.44%)
+29.77 (+5.23%)
+26.42 (-8.49%)
+OverLayBench-Regular
+EliGen-FLUX [Zhang et al., 2025b]
+58.56
+32.62
+80.85
+84.42
+36.27
+27.05
+45.65
+EliGen-FLUX (Ours)
+60.36 (+3.07%)
+35.72 (+9.50%)
+88.64 (+9.64%)
+87.13 (+3.21%)
+36.20
+28.70 (+6.10%)
+43.51 (-4.69%)
+OverLayBench-Complex
+EliGen-FLUX [Zhang et al., 2025b]
+52.53
+26.19
+74.03
+84.09
+36.18
+25.92
+50.41
+EliGen-FLUX (Ours)
+54.74 (+4.21%)
+29.03 (+10.84%)
+82.57 (+11.54%)
+86.81 (+3.23%)
+36.21 (+0.08%)
+27.84 (+7.41%)
+47.53 (-5.71%)
+Table 7: FLUX results on LayoutSAM-Eval. Comparison of region-wise and global quality for
+FLUX-based methods. Our model improves over EliGen-FLUX on all region-wise metrics while
+also improving global quality. Improvements over EliGen-FLUX are shown in green, and bold and
+underline denote the best and second-best results among all compared methods.
+Region-wise Quality
+Global Quality
+Model
+Spatial(%) ↑
+Color(%) ↑
+Texture(%) ↑
+Shape(%) ↑
+FID ↓
+IS ↑
+FLUX [Black Forest Labs, 2024]
+79.61
+62.54
+64.41
+62.90
+20.78
+22.15
+EliGen-FLUX [Zhang et al., 2025b]
+93.25
+79.95
+82.96
+82.99
+28.99
+18.23
+EliGen-FLUX (Ours)
+96.18 (+3.14%) 90.81 (+13.58%) 93.23 (+12.38%) 92.79 (+11.81%) 15.98 (-44.88%) 20.58 (+12.89%)
+A.3
+Global Alignment with Long-CLIP
+The global prompts in OverLayBench average 79.66, 86.81, and 82.91 words on the Simple, Regular,
+and Complex splits, respectively, exceeding the 77-token input limit of CLIP. We therefore reevaluate
+global text–image alignment with Long-CLIP [Zhang et al., 2024b], which supports up to 248 tokens.
+As shown in Table 8, the OverLay++-trained EliGen-SD3 model has slightly higher Long-CLIPG
+scores than its baseline on all three splits. This comparison changes the evaluation encoder; it does
+not test a change to the generation model’s local-prompt encoder.
+A.4
+Source of the Improvements
+We examine the effects of object count and local caption length using two ablations on the SD3
+backbone, each trained for 2K steps. For the 450K-image ablation subset, we remove the 50K
+OverLay++ images with the highest nearest-neighbor IoU, reducing its mean from 0.31 in the full
+dataset to 0.27, close to EliGen’s 0.26. Dataset composition and object count are not identical
+across all settings, so these comparisons do not isolate either factor perfectly. Results on the three
+OverLayBench splits (Simple, Regular, Complex) are reported in Table 9.
+We compare EliGen-SD3, trained on the EliGen dataset (2.56 objects/layout, 2.12-word local cap-
+tions), against EliGen-SD3 (Ours, incr. objects), trained on the OverLay++ dataset with local captions
+restricted to a brief object description (mean 1.88 words, shorter than EliGen’s). The settings differ
+in object count (6.68 vs. 2.56 objects/layout), caption length, and potentially other dataset properties;
+Table 1 reports different nearest-neighbor IoU values for the full datasets. Despite using shorter
+captions, training on OverLay++ consistently outperforms EliGen on all local instruction-following
+metrics (mIoU, O-mIoU, SRE, SRR, and CLIPL) across all three OverLayBench splits.
+We then train EliGen-SD3 (Ours, incr. caption len), which replaces the brief object descriptions
+above (mean 1.88 words) with the short local captions of the OverLay++ dataset (mean 15.89
+words), with a slightly different mean object count (6.59 rather than 6.68). The longer-caption setting
+improves mIoU, O-mIoU, and SRE across all three splits. SRR improves on Simple and Regular but
+decreases on Complex; CLIPL decreases across all three. Both settings use 2K training steps, so
+these differences cannot be attributed to fewer steps.
+18
+
+
+Table 8: Global text–image alignment with Long-CLIP on OverLayBench. Higher scores indicate
+stronger alignment. These scores use a different encoder from CLIPG in the main tables and are not
+directly comparable in magnitude.
+Split
+Model
+Long-CLIPG ↑
+Simple
+EliGen-SD3
+0.2564
+EliGen-SD3 (Ours)
+0.2573
+Regular
+EliGen-SD3
+0.2556
+EliGen-SD3 (Ours)
+0.2559
+Complex
+EliGen-SD3
+0.2563
+EliGen-SD3 (Ours)
+0.2570
+Table 9: Ablation of object count and local caption length on OverLayBench. All models use the
+SD3 backbone and are trained for 2K steps on OverLay++ subsets with matched mean IoU. “Obj.”
+and “Cap.” denote the mean number of objects per layout and the mean local caption length (in
+words) of the training data. Improvements over the EliGen-SD3 baseline are shown in green, and
+bold and underline indicate the best and second-best results in each column.
+Method
+Obj.
+Cap.
+mIoU(%) ↑
+O-mIoU(%) ↑
+SRE(%) ↑
+SRR(%) ↑
+CLIPG ↑
+CLIPL ↑
+FID ↓
+OverLayBench-Simple
+EliGen-SD3 [Zhang et al., 2025b]
+2.56
+2.12
+58.70
+32.54
+80.32
+86.01
+36.88
+28.04
+31.16
+EliGen-SD3 (Ours, incr. objects)
+6.68
+1.88
+66.30 (+12.95%)
+39.58 (+21.63%)
+90.36 (+12.50%)
+89.98 (+4.62%)
+36.51
+29.66 (+5.78%)
+32.05
+EliGen-SD3 (Ours, incr. caption len)
+6.59
+15.89
+68.72 (+17.07%)
+43.97 (+35.13%)
+91.62 (+14.07%)
+90.28 (+4.96%)
+36.19
+29.21 (+4.17%)
+36.31
+OverLayBench-Regular
+EliGen-SD3 [Zhang et al., 2025b]
+2.56
+2.12
+49.04
+22.38
+76.19
+81.41
+36.54
+26.55
+49.07
+EliGen-SD3 (Ours, incr. objects)
+6.68
+1.88
+58.74 (+19.78%)
+31.56 (+41.02%)
+88.09 (+15.62%)
+85.74 (+5.32%)
+35.88
+28.56 (+7.57%)
+50.99
+EliGen-SD3 (Ours, incr. caption len)
+6.59
+15.89
+60.72 (+23.82%)
+33.53 (+49.82%)
+89.66 (+17.68%)
+85.93 (+5.55%)
+35.35
+28.18 (+6.14%)
+59.65
+OverLayBench-Complex
+EliGen-SD3 [Zhang et al., 2025b]
+2.56
+2.12
+42.87
+16.87
+67.22
+79.75
+36.44
+25.62
+53.52
+EliGen-SD3 (Ours, incr. objects)
+6.68
+1.88
+54.15 (+26.31%)
+26.06 (+54.48%)
+82.33 (+22.48%)
+84.83 (+6.37%)
+35.66
+27.63 (+7.85%)
+55.65
+EliGen-SD3 (Ours, incr. caption len)
+6.59
+15.89
+56.00 (+30.63%)
+27.91 (+65.44%)
+83.66 (+24.46%)
+84.27 (+5.67%)
+35.14
+27.27 (+6.44%)
+64.30
+CLIPG decreases and FID worsens in the longer-caption 2K-step setting; for example, FID rises from
+50.99 to 59.65 on Regular. These results do not establish the cause of the global-metric changes.
+The longer training runs in Table 2 and Table 3, and the FLUX ablation in Section A.2, report better
+global metrics, but these comparisons do not isolate which change is responsible.
+For completeness, Table 10 reports LayoutSAM-Eval scores at 5K and 10K steps for the main
+EliGen-SD3 training runs. OverLay++ improves the region-wise metrics and FID relative to EliGen
+at both checkpoints, while IS is comparable. These runs use the main training data and captions, so
+they do not extend the overlap-matched 2K-step ablation or identify the individual contribution of
+object count, overlap, and caption detail.
+A.5
+Human Evaluation of Local Layout and Instruction Following
+To directly evaluate local layout and instruction-following quality, we conduct a human yes/no
+evaluation using the EliGen method. We compare images generated by models trained on the EliGen
+dataset (baseline) and on our proposed OverLay++ dataset.
+We sample 60 layouts from the OverLayBench Simple, Regular, and Complex splits, spanning 780
+bounding boxes in total. The boxes are rated by 12 raters, with an average of 2.37 ratings per box. For
+each box, raters judge whether the generated region satisfies the constraint imposed by its bounding
+box and corresponding local prompt, answering yes or no. We report the fraction of “yes” ratings for
+each model, overall and per split, in Table 11.
+The model trained on OverLay++ receives a higher fraction of “yes” ratings than the baseline, both
+overall (+11.80 percentage points) and within every difficulty split, with gains of +9.30, +13.10, and
++11.80 points on Simple, Regular, and Complex, respectively. This provides direct human-judgment
+19
+
+
+Table 10: LayoutSAM-Eval during EliGen-SD3 training. The pretrained SD3 backbone is shown
+for context. These 5K- and 10K-step runs use the main training settings and are separate from the
+2K-step, overlap-matched ablation in Table 9.
+Model
+Steps
+Spatial ↑
+Color ↑
+Texture ↑
+Shape ↑
+FID ↓
+IS ↑
+SD3 (pretrained)
+–
+78.78
+65.94
+68.43
+67.07
+20.68
+21.74
+EliGen-SD3
+5K
+93.14
+82.13
+86.60
+86.15
+25.88
+19.20
+EliGen-SD3 (Ours)
+5K
+95.61
+90.86
+93.12
+92.94
+19.54
+19.94
+EliGen-SD3
+10K
+93.04
+82.96
+86.73
+86.35
+25.17
+19.21
+EliGen-SD3 (Ours)
+10K
+95.45
+90.03
+93.14
+92.81
+19.61
+19.54
+Table 11: Human preference study on local layout and instruction following. Percentage of
+bounding boxes whose generated region was judged to satisfy both the box and its local prompt (“yes”
+rate). Improvements over the baseline are shown in green, and bold indicates the best result in each
+row.
+Split
+EliGen-SD3 ↑
+EliGen-SD3 (Ours) ↑
+Difference (pp)
+All
+69.90
+81.70
++11.80
+Simple
+73.70
+83.00
++9.30
+Regular
+69.70
+82.80
++13.10
+Complex
+68.20
+80.00
++11.80
+evidence, complementing the automatic benchmarks in the main text, that training on OverLay++
+substantially improves local layout and instruction-following capability.
+A.6
+Dataset Composition
+Existing Layout-to-Image datasets are largely adapted from object detection or grounding datasets,
+and therefore come with explicit class labels drawn from a fixed set of categories. In contrast,
+OverLay++ is open-domain: object categories are generated directly by Qwen3-VL-32B as free-form
+text during detection, rather than selected from a predefined class list.
+To give a sense of the dataset’s composition, we perform zero-shot classification of the short local
+prompts into 26 broad semantic groups. Table 12 reports the number of bounding boxes in each
+group, where count refers to the number of bounding boxes belonging to that group, along with
+its share of all boxes. The dataset covers a broad range of content, from furniture and home decor,
+clothing and accessories, and hair and hairstyles to surfaces (walls and floors) and natural scenery
+(sky and clouds, flowers and gardens, mountains and landscape), with a long tail of less frequent
+categories such as musical instruments, weapons and armor, and vehicles.
+20
+
+
+Table 12: Composition of OverLay++ by semantic group. Short local prompts are zero-shot
+classified into 26 broad semantic groups. Count is the number of bounding boxes in each group, and
+% is its share of all bounding boxes.
+Group
+Count
+%
+Group
+Count
+%
+Furniture and home decor
+499,498
+15.2
+Fences and stairs
+71,097
+2.2
+Hair and hairstyles
+346,341
+10.5
+Weapons and armor
+66,173
+2.0
+Clothing and accessories
+316,170
+9.6
+Signs and text
+64,401
+2.0
+Sky and clouds
+287,859
+8.7
+Food and drinks
+59,890
+1.8
+Flowers and gardens
+209,013
+6.3
+Musical instruments
+58,097
+1.8
+Walls and floors
+169,690
+5.2
+Snow and ice
+49,853
+1.5
+Trees and plants
+166,339
+5.1
+Electronics and screens
+47,520
+1.4
+Buildings and architecture
+157,008
+4.8
+Roads and streets
+31,766
+1.0
+Mountains and landscape
+147,946
+4.5
+Birds and insects
+31,573
+1.0
+People and faces
+142,364
+4.3
+Animals and pets
+24,086
+0.7
+Water and ocean
+105,980
+3.2
+Fire and smoke
+21,836
+0.7
+Sports equipment
+97,876
+3.0
+Books and papers
+20,771
+0.6
+Art and sculptures
+78,429
+2.4
+Vehicles and transport
+20,414
+0.6
+21
