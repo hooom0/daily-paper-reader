@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-09</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-10</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 12 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 11 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>1</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-09 23:26:52 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-10 22:32:32 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日精读1篇、速读11篇，共12篇，重点聚焦图像生成与扩散模型优化。最值得看的是精读8.0分的《OverLay++》密集重叠布局生成数据集，以及速读中扩散引导与是否跳过扩散的讨论。普通读者可优先了解布局到图像生成的新数据基础，再关注扩散效率与引导策略的实用进展。</p>
+<p>今日速读 11 篇，聚焦文生图与扩散模型前沿。最值得关注 NegT2IBench 提出的文本到图像极性基准（7.0），以及 VAE 潜空间颜色对齐与高效扩散池化表示两项工作（各 7.0）。普通读者可优先了解否定提示对生成效果的影响，这最贴近日常使用体验。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -78,12 +78,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">1 篇</strong>
+    <strong class="dpr-home-dashboard-count">0 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="OverLay++: Dense-Overlap Layout-to-Image Generation Dataset">OverLay++: Dense-Overlap Layout-to-Image Generation Dataset</span></li></ul>
+<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>1</strong></span></div>
+
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -94,7 +94,7 @@
     <strong class="dpr-home-dashboard-count">11 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="CACFG: Curvature-Aware Classifier-Free Guidance and Optimal Control">CACFG: Curvature-Aware Classifier-Free Guidance and Optimal Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="Should We Skip Diffusion?">Should We Skip Diffusion?</span></li><li><span class="dpr-home-dashboard-paper-title" title="Internalizing Agent Experience into Diffusion Model Weights via On-Policy Context Distillation">Internalizing Agent Experience into Diffusion Model Weights via On-Policy Context Distillation</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models">NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="On Color Alignment in VAE Latent Spaces and Its Applications">On Color Alignment in VAE Latent Spaces and Its Applications</span></li><li><span class="dpr-home-dashboard-paper-title" title="Pooling Representation Autoencoders for Efficient Diffusion">Pooling Representation Autoencoders for Efficient Diffusion</span></li></ul>
   </div>
   <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
 </section>

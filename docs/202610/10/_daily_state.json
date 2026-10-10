@@ -1,0 +1,185 @@
+{
+  "date": "20261010",
+  "date_label": "",
+  "generated_at": "2026-10-10 22:32:32 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.03084v1",
+      "route": "202610/10/2610.03084v1-negt2ibench-when-negation-changes-the-picture-a-polarity-benchmark-for-text-to-image-models",
+      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向文本到图像模型的极性基准",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.07072v1",
+      "route": "202610/10/2610.07072v1-on-color-alignment-in-vae-latent-spaces-and-its-applications",
+      "title": "On Color Alignment in VAE Latent Spaces and Its Applications",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "分析文本到图像模型的VAE潜空间",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.09242v1",
+      "route": "202610/10/2610.09242v1-pooling-representation-autoencoders-for-efficient-diffusion",
+      "title": "Pooling Representation Autoencoders for Efficient Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "池化表示自编码器加速扩散图像生成",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.12230v1",
+      "route": "202610/10/2610.12230v1-from-prompting-to-composing-a-spatial-canvas-interface-for-poster-generation",
+      "title": "From Prompting to Composing: A Spatial Canvas Interface for Poster Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向可控文本驱动海报生成的空间画布接口",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.12307v1",
+      "route": "202610/10/2610.12307v1-budgetpix-compute-adaptive-tokenization-for-pixel-space-image-diffusion",
+      "title": "BudgetPix: Compute-Adaptive Tokenization for Pixel-Space Image Diffusion",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向像素空间图像扩散生成的自适应分词",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.03846v1",
+      "route": "202610/10/2610.03846v1-probability-flow-odes-in-score-based-and-reflected-diffusion-models",
+      "title": "Probability flow ODEs in score-based and reflected diffusion models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散生成模型的确定性PF-ODE采样理论",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.04454v1",
+      "route": "202610/10/2610.04454v1-one-step-generation-via-riemannian-wasserstein-gradient-flows",
+      "title": "One-Step Generation via Riemannian Wasserstein Gradient Flows",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向快速图像生成的单步生成器",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.06334v1",
+      "route": "202610/10/2610.06334v1-spin-image-immunization-against-diffusion-editing-via-single-step-projection-in-stochastic-neighborhoods",
+      "title": "SPIN: Image Immunization Against Diffusion Editing via Single-Step Projection in Stochastic Neighborhoods",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "针对指令引导扩散编辑的图像免疫",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.06844v1",
+      "route": "202610/10/2610.06844v1-learning-to-read-the-contextual-tokens-in-diffusion-transformers",
+      "title": "Learning to Read the Contextual Tokens in Diffusion Transformers",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "理解多模态扩散Transformer中的文本令牌处理",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.06847v1",
+      "route": "202610/10/2610.06847v1-s2pd-serial-to-parallel-diffusion-for-physically-and-logically-consistent-video-generation",
+      "title": "S2PD: Serial-to-Parallel Diffusion for Physically and Logically Consistent Video Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向一致性视频生成的自回归扩散",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    },
+    {
+      "paper_id": "2610.09780v1",
+      "route": "202610/10/2610.09780v1-relational-abstractions-for-spatial-reasoning-with-diffusion-models",
+      "title": "Relational Abstractions for Spatial Reasoning with Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "扩散模型的空间推理与可控约束",
+      "first_seen_at": "2026-10-10 22:32:32 UTC",
+      "updated_at": "2026-10-10 22:32:32 UTC"
+    }
+  ]
+}

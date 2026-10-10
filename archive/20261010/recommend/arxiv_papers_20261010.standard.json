@@ -1,0 +1,454 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-10T22:31:06.719354+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 15,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2610.03084v1",
+      "source": "arxiv",
+      "title": "NegT2IBench: When Negation Changes the Picture. A Polarity Benchmark for Text-to-Image Models",
+      "abstract": "Text-to-image (T2I) models are judged by benchmarks that measure whether requested content appears, but these benchmarks largely overlook the complementary ability to satisfy negated constraints, for example, generating \"a non-red cup.\" Measuring negation raises challenges not faced by affirmation-based benchmarks and requires careful prompt and evaluation design. We introduce NegT2IBench, a benchmark of 4,800 prompts covering two attribute types and four relation categories. Prompts are organized by polarity: the number of positive statements that must hold and negated statements that must not, each ranging from 0 to 2. Varying the two independently separates the effect of negation from the effect of prompt complexity. Our detector-based scoring is reproducible, auditable, and pinpoints which requirement failed. On 600 images with three-annotator labels, it agrees with humans as closely as vision-language judges up to 30x larger, while using only a fraction of their GPU memory. Across eleven T2I models and 211,200 images, nine score lower on a single negated statement than on a single positive one. Per-statement scoring reveals that the loss is largest for color and near zero for proximity, and that 41.5% of failed statements render exactly what the prompt forbids. Rendering what a prompt asks for and withholding what it forbids are distinct capabilities that an aggregate compositional score cannot distinguish. NegT2IBench measures the latter directly, providing a controlled testbed for diagnosing negation failures and developing methods to overcome them.",
+      "authors": [
+        "Omar Elfatairy",
+        "Maria A. Bravo",
+        "Jessica Bader",
+        "Zeynep Akata"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-10-02T10:03:56+00:00",
+      "link": "https://arxiv.org/pdf/2610.03084v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "polarity benchmark for text-to-image models",
+      "llm_evidence_cn": "面向文本到图像模型的极性基准",
+      "llm_evidence": "面向文本到图像模型的极性基准",
+      "canonical_evidence": "面向文本到图像模型的极性基准",
+      "llm_tldr_en": "This paper introduces NegT2IBench, a 4800-prompt benchmark evaluating whether text-to-image models satisfy negated constraints, separating negation effects from prompt complexity.",
+      "llm_tldr_cn": "现有文本到图像模型评测多关注请求内容是否出现，却忽视了对否定约束（如生成非红色杯子）的满足能力。作者提出NegT2IBench基准，包含4800条提示，覆盖两类属性和四类关系，并按正负极性独立控制正向与否定陈述数量，从而将否定效应与提示复杂度分离。该基准配合检测方法，系统评估T2I模型的否定理解能力，为更全面的文本到图像生成评测提供了新工具。",
+      "llm_tldr": "现有文本到图像模型评测多关注请求内容是否出现，却忽视了对否定约束（如生成非红色杯子）的满足能力。作者提出NegT2IBench基准，包含4800条提示，覆盖两类属性和四类关系，并按正负极性独立控制正向与否定陈述数量，从而将否定效应与提示复杂度分离。该基准配合检测方法，系统评估T2I模型的否定理解能力，为更全面的文本到图像生成评测提供了新工具。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.03846v1",
+      "source": "arxiv",
+      "title": "Probability flow ODEs in score-based and reflected diffusion models",
+      "abstract": "Probability-flow ordinary differential equations (PF-ODEs) are widely used as deterministic samplers for score-based diffusion models. Their usual justification is that the Fokker--Planck equation of a diffusion can be rewritten as a continuity equation driven by the score function of the forward diffusion. This identity does not, however, guarantee that the resulting velocity field generates a well-posed flow. We provide theoretical insights into the design of such deterministic samplers for generative models based on diffusions and reflected diffusions. We identify sufficient conditions for a regular Lagrangian PF-ODE flow to exist; reverse sampling and invertibility require two-sided divergence control. For learned scores, sampler stability is controlled by an unweighted velocity error, exposing a mismatch with density-weighted score matching and motivating architectural control of Jacobians, divergence, growth, and compression. Under the manifold hypothesis, positive-time regularization justifies an early-stopped PF-ODE while constants deteriorate near the data endpoint; an explicit sphere example shows that the exact deterministic flow becomes singular as the noise level vanishes even though the diffusion marginals remain well defined.   These theoretical insights translate into concrete design principles for stable, invertible, and constraint-preserving diffusion samplers. We illustrate the practical relevance of these design principles using controlled numerical experiments.",
+      "authors": [
+        "Rama CONT"
+      ],
+      "primary_category": "stat.ML",
+      "categories": [
+        "stat.ML",
+        "cs.LG",
+        "math.PR"
+      ],
+      "published": "2026-10-02T16:28:32+00:00",
+      "link": "https://arxiv.org/pdf/2610.03846v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "theory of deterministic PF-ODE samplers for diffusion generative models",
+      "llm_evidence_cn": "扩散生成模型的确定性PF-ODE采样理论",
+      "llm_evidence": "扩散生成模型的确定性PF-ODE采样理论",
+      "canonical_evidence": "扩散生成模型的确定性PF-ODE采样理论",
+      "llm_tldr_en": "Analyzes probability-flow ODEs used as deterministic samplers for score-based diffusion models, identifying sufficient conditions for well-posed flows and requiring two-sided divergence control for invertibility.",
+      "llm_tldr_cn": "概率流常微分方程被广泛用作基于分数扩散模型的确定性采样器，其合理性来自Fokker-Planck方程可改写为由分数驱动的连续性方程，但该恒等式并不保证速度场生成良定义的流。本文给出理论分析，识别出正则拉格朗日PF-ODE流存在的充分条件，并指出逆向采样与可逆性需要双侧散度控制。研究为设计稳定、可逆的扩散采样器提供了理论依据，对扩散图像生成的实际采样具有重要意义。",
+      "llm_tldr": "概率流常微分方程被广泛用作基于分数扩散模型的确定性采样器，其合理性来自Fokker-Planck方程可改写为由分数驱动的连续性方程，但该恒等式并不保证速度场生成良定义的流。本文给出理论分析，识别出正则拉格朗日PF-ODE流存在的充分条件，并指出逆向采样与可逆性需要双侧散度控制。研究为设计稳定、可逆的扩散采样器提供了理论依据，对扩散图像生成的实际采样具有重要意义。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.07072v1",
+      "source": "arxiv",
+      "title": "On Color Alignment in VAE Latent Spaces and Its Applications",
+      "abstract": "Variational autoencoders (VAEs) are a key part of modern text-to-image models, which generate images within their latent space. VAEs are known to disentangle the main factors of variation in the data, and color is known to be one of the most structured of these in natural images: decorrelating it yields one luminance axis and two opponent-color axes. Color should therefore be expected to emerge as a distinct factor in the VAE latent space. Yet how these latent spaces represent color remains largely unexplored. In this work, we show that the VAEs of text-to-image models share a color subspace aligned with brightness and opponent-colors. Through a linear approximation of the encoder and targeted latent steering, we find this subspace consistently across a broad range of VAEs, from SD1.5 to FLUX.2 and Z-Image. Building on this characterization, we propose three applications: ColorTuning, which achieves state-of-the-art in precise numerical color generation on the fine-grained CSS3/X11 system of GenColorBench, saturation control, to adjust the global chromatic intensity, and color transfer, to change the palette to match a reference. The code and models are publicly available at https://julian075.github.io/Color_Subspace/",
+      "authors": [
+        "Julian D. Santamaria",
+        "Kai Wang",
+        "Jesús Malo",
+        "Javier Vazquez-Corral",
+        "Alexandra Gómez-Villa"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-10-05T08:53:58+00:00",
+      "link": "https://arxiv.org/pdf/2610.07072v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "analyzes VAE latent spaces in text-to-image models",
+      "llm_evidence_cn": "分析文本到图像模型的VAE潜空间",
+      "llm_evidence": "分析文本到图像模型的VAE潜空间",
+      "canonical_evidence": "分析文本到图像模型的VAE潜空间",
+      "llm_tldr_en": "This work studies how VAEs of text-to-image models represent color in latent space, showing a shared brightness and opponent-color subspace that can be steered for controllable image edits.",
+      "llm_tldr_cn": "文本到图像模型依赖VAE潜空间生成图像，但其对颜色的表征尚不清楚。本文通过编码器线性近似与潜空间定向操控，发现这些VAE共享一个与亮度和对立色对齐的颜色子空间。该发现为理解并控制生成图像的颜色提供了新工具。",
+      "llm_tldr": "文本到图像模型依赖VAE潜空间生成图像，但其对颜色的表征尚不清楚。本文通过编码器线性近似与潜空间定向操控，发现这些VAE共享一个与亮度和对立色对齐的颜色子空间。该发现为理解并控制生成图像的颜色提供了新工具。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.04454v1",
+      "source": "arxiv",
+      "title": "One-Step Generation via Riemannian Wasserstein Gradient Flows",
+      "abstract": "Recently, Drifting Models and Wasserstein Gradient Flows have attracted substantial attention because they move iterative distributional refinement to training and amortize it into a generator, enabling fast inference. However, existing formulations have been developed largely for continuous Euclidean domains, such as image spaces, where particles admit unconstrained additive updates. On constrained spaces, these updates can leave the valid domain or ignore its geometry, making them unsuitable targets for training. Recent work has adapted updates to these spaces, but has focused on particular fields or offered limited empirical comparison. We derive and compare several geometry-aware fields within a common training framework for one-step generators. We test the method on data with different structures and obtain competitive one-step results in each setting. The best-performing field varies by task, showing why the choice of objective matters in practice.",
+      "authors": [
+        "David Li",
+        "Chanhyuk Lee",
+        "Jaehoon Yoo",
+        "Nikita Gushchin",
+        "Floor Eijkelboom",
+        "Eric Moulines",
+        "Maxim Panov",
+        "Alexander Korotin",
+        "Seunghoon Hong",
+        "Jinwoo Kim"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-10-03T11:42:19+00:00",
+      "link": "https://arxiv.org/pdf/2610.04454v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "one-step generators for fast image generation",
+      "llm_evidence_cn": "面向快速图像生成的单步生成器",
+      "llm_evidence": "面向快速图像生成的单步生成器",
+      "canonical_evidence": "面向快速图像生成的单步生成器",
+      "llm_tldr_en": "Derives and compares geometry-aware Wasserstein gradient flow fields for training one-step generators on constrained spaces, enabling fast inference and image generation.",
+      "llm_tldr_cn": "现有基于漂移模型与Wasserstein梯度流的单步生成方法大多针对连续欧氏空间（如图像空间），在带约束的空间上粒子更新可能越出有效域或忽略几何结构。本文在统一训练框架下推导并比较了若干几何感知的梯度场，用于训练单步生成器。实验在受约束空间上验证了不同几何感知场的表现。该工作为在非欧氏约束空间上实现快速一步生成提供了通用思路。",
+      "llm_tldr": "现有基于漂移模型与Wasserstein梯度流的单步生成方法大多针对连续欧氏空间（如图像空间），在带约束的空间上粒子更新可能越出有效域或忽略几何结构。本文在统一训练框架下推导并比较了若干几何感知的梯度场，用于训练单步生成器。实验在受约束空间上验证了不同几何感知场的表现。该工作为在非欧氏约束空间上实现快速一步生成提供了通用思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.09242v1",
+      "source": "arxiv",
+      "title": "Pooling Representation Autoencoders for Efficient Diffusion",
+      "abstract": "Representation Autoencoders (RAEs) generate images from pre-trained visual fea- tures, but their dense token grids make generative modeling expensive. Motivated by local feature correlations, we introduce PoolDINO, a learned affine pooling operator that merges neighboring tokens. Training the pooling operator jointly with the RGB decoder preserves the standard two-stage RAE procedure without a separate feature auto-encoder. On ImageNet-256, 4x token compression retains comparable generation quality under internal guidance, while 16x compression trades some quality for greater efficiency. At a fixed budget of 100 sampling steps, latent-sampling throughput increases by 3.7x and 9.0x, respectively, relative to the unpooled baseline. Classification and dense prediction evaluations show that comparable guided generation quality can coexist with weaker performance on other tasks.",
+      "authors": [
+        "Ramón Calvo-González",
+        "Youssef Saied",
+        "François Fleuret"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-07T00:13:29+00:00",
+      "link": "https://arxiv.org/pdf/2610.09242v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "efficient diffusion image generation via pooled representation autoencoders",
+      "llm_evidence_cn": "池化表示自编码器加速扩散图像生成",
+      "llm_evidence": "池化表示自编码器加速扩散图像生成",
+      "canonical_evidence": "池化表示自编码器加速扩散图像生成",
+      "llm_tldr_en": "Representation autoencoders generate images from pretrained features but suffer dense token grids; PoolDINO learns an affine pooling operator that merges tokens, raising latent-sampling throughput up to 9x.",
+      "llm_tldr_cn": "表示自编码器能够利用预训练视觉特征生成图像，但其密集的token网格使生成建模代价高昂。受局部特征相关性启发，本文提出PoolDINO，一种可学习的仿射池化算子，用于合并相邻token，并与RGB解码器联合训练，从而保持标准两阶段流程而无需额外特征自编码器。在ImageNet-256上，4倍压缩保持生成质量，16倍压缩以少量质量换取效率，固定采样步数下潜空间采样吞吐提升最高达9倍。",
+      "llm_tldr": "表示自编码器能够利用预训练视觉特征生成图像，但其密集的token网格使生成建模代价高昂。受局部特征相关性启发，本文提出PoolDINO，一种可学习的仿射池化算子，用于合并相邻token，并与RGB解码器联合训练，从而保持标准两阶段流程而无需额外特征自编码器。在ImageNet-256上，4倍压缩保持生成质量，16倍压缩以少量质量换取效率，固定采样步数下潜空间采样吞吐提升最高达9倍。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "latent diffusion models for high-resolution image synthesis",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.06334v1",
+      "source": "arxiv",
+      "title": "SPIN: Image Immunization Against Diffusion Editing via Single-Step Projection in Stochastic Neighborhoods",
+      "abstract": "Diffusion models have greatly advanced instruction-guided image editing, while also raising concerns about unauthorized image manipulation. Image immunization addresses this risk by adding imperceptible perturbations to an input image to disrupt subsequent edits. Since editing requests are unknown at image release, protection should remain effective beyond the instruction used to construct the perturbation. Existing immunization methods either require costly full-trajectory backpropagation or use intermediate objectives whose effects may be weakened by subsequent denoising. Meanwhile, a single inference path provides limited feedback about alternative denoising continuations. To address these challenges, we propose \\textsc{SPIN}, a framework for image immunization via one-step projection over local stochastic trajectory neighborhoods. Starting from an early denoising state, \\textsc{SPIN} generates stochastic neighboring states under the same instruction and predicts their clean latents through one-step projection without full unrolling. We then optimize a bounded input perturbation to maximize the average deviation of these predictions from a clean-edit reference, encouraging the perturbation to disrupt multiple possible editing outcomes. Experiments on two image editors demonstrate substantial gains in protection performance, with \\textsc{SPIN} outperforming compared methods across all six metrics under seen instructions and in the more challenging unseen instruction setting.",
+      "authors": [
+        "Fengming Gu",
+        "Jie Zhang",
+        "Zhongqi Wang",
+        "Qiankun Li",
+        "Shiguang Shan",
+        "Xilin Chen"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-05T13:41:52+00:00",
+      "link": "https://arxiv.org/pdf/2610.06334v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "image immunization against instruction-guided diffusion editing",
+      "llm_evidence_cn": "针对指令引导扩散编辑的图像免疫",
+      "llm_evidence": "针对指令引导扩散编辑的图像免疫",
+      "canonical_evidence": "针对指令引导扩散编辑的图像免疫",
+      "llm_tldr_en": "This paper proposes SPIN, a single-step projection immunization method that adds imperceptible perturbations to protect images against unauthorized instruction-guided diffusion editing.",
+      "llm_tldr_cn": "扩散模型推动了指令引导的图像编辑，但也带来未经授权篡改的风险，图像免疫通过加入不可见扰动来破坏后续编辑。然而编辑指令在发布时未知，保护需泛化到多种指令，而现有方法要么依赖昂贵的全轨迹反传，要么因后续去噪削弱中间目标效果。作者提出SPIN，在随机邻域内进行单步投影，用更高效的优化产生跨指令鲁棒的扰动。实验表明该方法在保持视觉质量的同时有效抵御多种编辑指令。",
+      "llm_tldr": "扩散模型推动了指令引导的图像编辑，但也带来未经授权篡改的风险，图像免疫通过加入不可见扰动来破坏后续编辑。然而编辑指令在发布时未知，保护需泛化到多种指令，而现有方法要么依赖昂贵的全轨迹反传，要么因后续去噪削弱中间目标效果。作者提出SPIN，在随机邻域内进行单步投影，用更高效的优化产生跨指令鲁棒的扰动。实验表明该方法在保持视觉质量的同时有效抵御多种编辑指令。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.12230v1",
+      "source": "arxiv",
+      "title": "From Prompting to Composing: A Spatial Canvas Interface for Poster Generation",
+      "abstract": "Text prompting is an indirect interface for poster generation, requiring users to encode inherently two-dimensional composition intent into a one-dimensional sequence of words. We introduce a Spatial Canvas Interface that enables users to directly compose generation intent in space through four complementary binding types: semantic, identity, text, and pixel, together with Text Specifications for individual elements and global appearance. Based on this interface, we develop Compo, a poster generation model adapted from a pretrained image editing model to understand Spatial Canvas inputs and Text Specifications. Compo supports both direct inference, where users explicitly construct the canvas, and agentic mode, where a high-level request is automatically translated into a planned Spatial Canvas. To train Compo, we develop a scalable pipeline that automatically constructs supervision data for different binding types and their combinations, enabling efficient adaptation without training a specialized poster generator from scratch. We further introduce a benchmark that evaluates adherence to individual binding types and their joint composition. Experiments show that Compo achieves stronger compositional controllability than both general-purpose image generation models and dedicated poster generation systems while maintaining high visual quality. By decoupling intent specification from visual generation, our work shifts poster generation from prompting toward composing.",
+      "authors": [
+        "Yitong Wang",
+        "Fangyun Wei",
+        "Jinjing Zhao",
+        "Sirui Zhang",
+        "Hongyang Zhang",
+        "Dong Chen",
+        "Bo Dai",
+        "Yan Lu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-10-08T16:16:06+00:00",
+      "link": "https://arxiv.org/pdf/2610.12230v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "spatial canvas interface for controllable text-driven poster generation",
+      "llm_evidence_cn": "面向可控文本驱动海报生成的空间画布接口",
+      "llm_evidence": "面向可控文本驱动海报生成的空间画布接口",
+      "canonical_evidence": "面向可控文本驱动海报生成的空间画布接口",
+      "llm_tldr_en": "Argues text prompting is an indirect interface for 2D composition, introducing a Spatial Canvas Interface with four binding types and the Compo model for controllable poster generation.",
+      "llm_tldr_cn": "文本提示是一种间接的生成接口，用户需把本质二维的构图意图压缩成一维词序列，难以实现精确控制。本文提出空间画布接口，通过语义、身份、文本与像素四类绑定，以及针对元素和全局外观的文本规格，让用户直接在空间中编排生成意图。基于该接口构建了Compo模型，改造自预训练图像编辑模型以理解画布输入，支持用户显式构造画布的直接推理与高层请求驱动的智能体模式，提升了海报生成的可控性。",
+      "llm_tldr": "文本提示是一种间接的生成接口，用户需把本质二维的构图意图压缩成一维词序列，难以实现精确控制。本文提出空间画布接口，通过语义、身份、文本与像素四类绑定，以及针对元素和全局外观的文本规格，让用户直接在空间中编排生成意图。基于该接口构建了Compo模型，改造自预训练图像编辑模型以理解画布输入，支持用户显式构造画布的直接推理与高层请求驱动的智能体模式，提升了海报生成的可控性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.06844v1",
+      "source": "arxiv",
+      "title": "Learning to Read the Contextual Tokens in Diffusion Transformers",
+      "abstract": "Multimodal Diffusion Transformers (MM-DiTs) jointly process visual and textual representations throughout generation. These models repeatedly update the text tokens through multimodal attention, forming dynamic contextual tokens whose function is not well understood. In this work, we introduce a framework for reading this contextual space through natural-language interrogation. We train a lightweight bottleneck network that maps intermediate contextual tokens into the input space of a frozen Large Language Model (LLM), allowing the LLM to answer questions about the emerging image directly from these hidden representations. Our reader reveals that contextual tokens encode a rich, global representation of the emerging scene: generation-specific semantics, including attributes left underspecified by the prompt, are accessible surprisingly early in denoising, while increasingly fine-grained details become readable over time. Remarkably, this information remains decodable even when the MM-DiT receives an empty prompt, showing that contextual tokens accumulate substantial image-specific information from the evolving visual representation itself. We further find that generations with more readable contextual representations tend to receive higher human-preference scores. Building on these observations, we introduce Contextual Alignment, a training technique that explicitly reinforces the visual-semantic information encoded in the contextual tokens, improving generation quality and distributional coverage. Together, our results establish contextual tokens as both an interpretable view into the internal dynamics of MM-DiTs and an effective target for improving generative models.",
+      "authors": [
+        "Omer Dahary",
+        "Etai Sella",
+        "Hadar Averbuch-Elor",
+        "Daniel Cohen-Or",
+        "Or Patashnik"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.GR",
+        "cs.LG"
+      ],
+      "published": "2026-10-05T17:59:17+00:00",
+      "link": "https://arxiv.org/pdf/2610.06844v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "understanding text token processing in multimodal diffusion transformers",
+      "llm_evidence_cn": "理解多模态扩散Transformer中的文本令牌处理",
+      "llm_evidence": "理解多模态扩散Transformer中的文本令牌处理",
+      "canonical_evidence": "理解多模态扩散Transformer中的文本令牌处理",
+      "llm_tldr_en": "This work probes how multimodal diffusion transformers process text during generation. A lightweight bottleneck maps intermediate contextual tokens into a frozen LLM input space, revealing that these tokens encode rich global scene semantics.",
+      "llm_tldr_cn": "该文关注多模态扩散Transformer在生成中如何反复更新文本令牌，以及这些动态上下文令牌究竟编码了什么。作者训练一个轻量瓶颈网络，把中间层上下文令牌映射到冻结大语言模型的输入空间，使其能用自然语言回答关于生成图像的问题。结果显示上下文令牌编码了正在生成场景的丰富全局表示，包含生成特定的语义信息。该工作为理解文本提示如何驱动扩散模型生成图像提供了可解释性分析框架。",
+      "llm_tldr": "该文关注多模态扩散Transformer在生成中如何反复更新文本令牌，以及这些动态上下文令牌究竟编码了什么。作者训练一个轻量瓶颈网络，把中间层上下文令牌映射到冻结大语言模型的输入空间，使其能用自然语言回答关于生成图像的问题。结果显示上下文令牌编码了正在生成场景的丰富全局表示，包含生成特定的语义信息。该工作为理解文本提示如何驱动扩散模型生成图像提供了可解释性分析框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.12307v1",
+      "source": "arxiv",
+      "title": "BudgetPix: Compute-Adaptive Tokenization for Pixel-Space Image Diffusion",
+      "abstract": "Most image generation models rely on uniform tokenization, allocating the exact same computational budget to equally-sized image patches. This static paradigm cannot adapt to different resource constraints at inference time, and yields suboptimal quality-cost tradeoff by devoting the same effort to both plain backgrounds and intricate details. We propose BudgetPix, an adaptive tokenization framework that dynamically allocates compute based on visual complexity and spatial layout, enabling flexible computational budgeting at inference time. BudgetPix comprises three key components: (1) an adaptive encoder that maps a fixed-size image to a variable-length token sequence using an entropy-guided quadtree alongside a multi-scale patch embedder; (2) a scale-aware decoder reconstructs fixed-resolution images from multi-scale token sets; and (3) a flexible training and sampling schedule that enables pixel-space denoisers to operate across variable token counts. BudgetPix seamlessly integrates with existing pixel-space diffusion architectures, enabling a single checkpoint to be operated at a wide range of compute budgets. Evaluated on text-to-image generation, BudgetPix matches the fidelity of MiniT2I-L at $512^2$ and PixelDiT at $1024^2$ using just 25% of the original compute budget. In class-conditional generation using a MeanFlow backbone, BudgetPix requires merely 60% of the full compute budget to produce images with near-zero quality degradation, observing a marginal 0.8-point increase in FID. Comprehensive assessments by human and VLM judges confirm that BudgetPix establishes a significantly improved quality-efficiency tradeoff over prior budget-adaptive baselines. More details are available at our project page: https://karaozgur.com/BudgetPix",
+      "authors": [
+        "Ozgur Kara",
+        "Yujia Chen",
+        "Daniel Watson",
+        "David Forsyth",
+        "James Matthew Rehg",
+        "Wen-Sheng Chu",
+        "Du Tran"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-08T16:54:40+00:00",
+      "link": "https://arxiv.org/pdf/2610.12307v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "adaptive tokenization for pixel-space image diffusion generation",
+      "llm_evidence_cn": "面向像素空间图像扩散生成的自适应分词",
+      "llm_evidence": "面向像素空间图像扩散生成的自适应分词",
+      "canonical_evidence": "面向像素空间图像扩散生成的自适应分词",
+      "llm_tldr_en": "This paper proposes BudgetPix, an adaptive tokenization framework for pixel-space image diffusion that allocates compute by visual complexity, enabling flexible inference-time budgeting.",
+      "llm_tldr_cn": "多数图像生成模型采用统一分词，对等大图像块分配相同算力，无法在推理时适应不同资源约束，也难以在简单背景与复杂细节间取得最优质量成本权衡。作者提出BudgetPix自适应分词框架，通过熵引导四叉树与多尺度块嵌入将图像映射为可变长token序列，并按视觉复杂度与空间布局动态分配算力。实验表明该方法支持灵活的推理时算力预算，在多种资源约束下改善生成质量与成本折衷。",
+      "llm_tldr": "多数图像生成模型采用统一分词，对等大图像块分配相同算力，无法在推理时适应不同资源约束，也难以在简单背景与复杂细节间取得最优质量成本权衡。作者提出BudgetPix自适应分词框架，通过熵引导四叉树与多尺度块嵌入将图像映射为可变长token序列，并按视觉复杂度与空间布局动态分配算力。实验表明该方法支持灵活的推理时算力预算，在多种资源约束下改善生成质量与成本折衷。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.06847v1",
+      "source": "arxiv",
+      "title": "S2PD: Serial-to-Parallel Diffusion for Physically and Logically Consistent Video Generation",
+      "abstract": "Bidirectional video diffusion models denoise entire videos in parallel, yet when trained on effectively unlimited in-distribution data from procedural generators, continue to violate physical laws and simple symbolic rules. We introduce Serial-to-Parallel Diffusion (S2PD), which performs autoregressive diffusion at high noise before switching to parallel diffusion at low noise. The autoregressive phase provides the serial computation needed to coordinate interdependent events and produce valid state transitions while the parallel phase jointly refines the entire video and reduces sampling time relative to fully serial generation. We implement S2PD with two architectures: a pixel-space diffusion transformer trained from scratch and a pretrained video model adapted through LoRA fine-tuning with causal attention. Across games, physical simulations, and real video, S2PD follows rules more reliably than matched bidirectional baselines and generates videos with greater temporal stability and sampling efficiency than other serial methods.",
+      "authors": [
+        "Jeffrey Hu",
+        "Daniel Olmeda Reino",
+        "Ayush Tewari"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-05T17:59:35+00:00",
+      "link": "https://arxiv.org/pdf/2610.06847v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "autoregressive diffusion for consistent video generation",
+      "llm_evidence_cn": "面向一致性视频生成的自回归扩散",
+      "llm_evidence": "面向一致性视频生成的自回归扩散",
+      "canonical_evidence": "面向一致性视频生成的自回归扩散",
+      "llm_tldr_en": "Introduces Serial-to-Parallel Diffusion, using autoregressive diffusion at high noise then parallel diffusion at low noise to produce physically and logically consistent video generation.",
+      "llm_tldr_cn": "双向视频扩散模型并行去噪整段视频，却仍会违反物理规律与符号规则。本文提出串行到并行扩散S2PD，在高噪声阶段进行自回归扩散以协调相互依赖的事件，在低噪声阶段切换为并行扩散以联合精修并加速采样。作者用像素空间扩散Transformer等两种架构实现该方法。结果在物理与逻辑一致性上取得提升，为一致性视频生成提供了新范式。",
+      "llm_tldr": "双向视频扩散模型并行去噪整段视频，却仍会违反物理规律与符号规则。本文提出串行到并行扩散S2PD，在高噪声阶段进行自回归扩散以协调相互依赖的事件，在低噪声阶段切换为并行扩散以联合精修并加速采样。作者用像素空间扩散Transformer等两种架构实现该方法。结果在物理与逻辑一致性上取得提升，为一致性视频生成提供了新范式。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.09780v1",
+      "source": "arxiv",
+      "title": "Relational Abstractions for Spatial Reasoning with Diffusion Models",
+      "abstract": "Diffusion models excel at image synthesis, but they remain limited in their ability to reliably satisfy structured spatial reasoning constraints. In conditional data distribution modeling tasks with implicit logical structure, such as puzzles defined by visible clues paired with consistent solutions, state-of-the-art generative models tend to approximate pixel-space distributions without learning the underlying logical rules required for inference. To address this limitation, we present a novel framework for spatial reasoning with diffusion models that leverages unsupervised object discovery and abstractions of object relations. We show that the relational knowledge derived from object-centric representations enriches diffusion models with structural primitives, allowing them to effectively guide the generative representation space during both training and inference, and enabling conditional image generation that satisfies reasoning constraints. Additionally, we introduce a large-scale generative spatial reasoning benchmark with four datasets inspired by human-solvable puzzles. Our results show that relational abstractions significantly improve reasoning capabilities of diffusion models on a variety of complex reasoning tasks, while enabling robust generalization in out-of-distribution settings.",
+      "authors": [
+        "Ana Ezquerro",
+        "Ozan Özdenizci"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-07T10:00:40+00:00",
+      "link": "https://arxiv.org/pdf/2610.09780v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "spatial reasoning and controllable constraints with diffusion models",
+      "llm_evidence_cn": "扩散模型的空间推理与可控约束",
+      "llm_evidence": "扩散模型的空间推理与可控约束",
+      "canonical_evidence": "扩散模型的空间推理与可控约束",
+      "llm_tldr_en": "This paper addresses diffusion models' weak satisfaction of structured spatial reasoning constraints, proposing a framework that uses unsupervised object discovery and relational abstractions.",
+      "llm_tldr_cn": "扩散模型擅长图像合成，却难以可靠满足结构化空间推理约束，常只逼近像素分布而未学到底层逻辑规则。本文提出一种空间推理框架，利用无监督物体发现和物体关系抽象来增强扩散模型。实验表明关系知识为扩散模型注入了结构性先验，提升了条件生成中空间约束的满足能力。",
+      "llm_tldr": "扩散模型擅长图像合成，却难以可靠满足结构化空间推理约束，常只逼近像素分布而未学到底层逻辑规则。本文提出一种空间推理框架，利用无监督物体发现和物体关系抽象来增强扩散模型。实验表明关系知识为扩散模型注入了结构性先验，提升了条件生成中空间约束的满足能力。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
