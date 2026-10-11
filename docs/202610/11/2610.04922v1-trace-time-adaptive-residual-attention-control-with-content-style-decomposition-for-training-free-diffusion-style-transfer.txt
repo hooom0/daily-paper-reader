@@ -1,0 +1,2086 @@
+TRACE: Time-Adaptive Residual Attention
+Control with Content–Style Decomposition for
+Training-Free Diffusion Style Transfer
+Khoan Duc Le1,2, Ngoc Kim Tran1,2, Nhat Minh Le1,2, An Thanh Tran1,2,
+Toan Viet Nguyen1,2, An Khanh Lay1,2, Son Thai Tran1,2, and Hoang Minh
+Pham1,2
+1 Faculty of Information Technology, University of Science,
+Ho Chi Minh City, Vietnam
+2 Vietnam National University, Ho Chi Minh City, Vietnam
+Abstract. Reference-guided style transfer aims to preserve the seman-
+tic structure of a content image while transferring the visual appear-
+ance of a style reference. Recent diffusion-based methods achieve im-
+pressive stylization quality by exploiting strong pretrained generative
+priors. However, training-free approaches still face a difficult trade-off
+among style fidelity, content preservation, and content leakage. Direct
+style injection may unintentionally transfer semantic content from the
+style image, while fixed guidance schedules often ignore the time- and
+state-dependent nature of diffusion sampling. To address these limita-
+tions, we propose TRACE, a training-free diffusion style transfer frame-
+work with Time-adaptive Residual Attention Control and Content-Style
+dEcomposition. TRACE first performs offline CLIP-based subspace anal-
+ysis to separate content and style directions from paired data. During in-
+ference, it removes content-related components from the style reference
+and style-related components from the content reference to reduce leak-
+age. It then injects style information through residual cross-attention
+and applies uncertainty-aware guidance to adapt the guidance signal
+at each denoising step. Experiments show that TRACE achieves a fa-
+vorable trade-off between stylization and preservation. Compared with
+optimal-control-based baselines, TRACE substantially improves style fi-
+delity (+17.28 CSD and +34.10 SRA). While, compared with styliza-
+tion methods, it better preserves content structure (+12.80 DINO, +5.52
+CLIP-I, and -8.19 LPIPS) and reduces directional semantic leakage by
+29.5% in DCL. Our code is publicly available at TRACE.
+Keywords: Style Transfer · Content-Style Decomposition · Time-Adaptive
+Guidance
+1
+Introduction
+Image style transfer aims to synthesize an image that preserves the semantic
+structure of a content image while adopting the visual appearance of a style ref-
+erence. Early neural style transfer methods demonstrated that deep features can
+arXiv:2610.04922v1  [cs.CV]  4 Oct 2026
+
+
+2
+D.K Le et al.
+separate and recombine content and style representations [10], while arbitrary
+style transfer methods improved efficiency through feature-statistics matching,
+whitening-and-coloring transforms, attention matching, and transformer-based
+fusion [8,17,20,22]. More recently, diffusion models have provided strong gener-
+ative priors for high-fidelity image synthesis and editing [14,26,30], motivating
+diffusion-based style transfer methods based on inversion, attention manipula-
+tion, reference feature injection, or training-free guidance [6,19,33,37].
+Despite this progress, training-free diffusion style transfer still faces a difficult
+trade-off among style fidelity, content preservation, and content leakage suppres-
+sion. A style reference image is not a pure style signal: it often contains colors,
+textures, object identity, semantic content, and spatial layout. Directly injecting
+such features may therefore transfer undesired content from the style reference
+to the generated image, a problem observed in recent reference-guided stylization
+and personalization methods [27,33]. In addition, strong attention replacement
+or feature injection can improve stylization but may overwrite the original con-
+tent trajectory and distort object structure [6]. Finally, most guidance strategies
+still rely on fixed or heuristic schedules [2,15,34,35], despite the time-dependent
+and state-dependent nature of diffusion sampling. Recent uncertainty-aware dif-
+fusion studies show that uncertainty can identify unreliable denoising regions by
+estimating generation confidence or score variance under perturbations [7, 18].
+This motivates using uncertainty as a state-dependent signal to adapt guidance
+along the reverse trajectory.
+Motivated by these observations, we propose TRACE, a training-free frame-
+work for diffusion-based style transfer. TRACE treats stylization as a controlled
+denoising process instead of a static feature-transfer operation. First, TRACE
+performs an offline CLIP-based content-style subspace decomposition from paired
+content-style data. At inference time, the learned subspaces remove content-
+related components from the style reference and style-related components from
+the content reference, reducing reference-induced leakage before sampling. Sec-
+ond, TRACE introduces residual attention control, which injects the cleaned
+style signal as an additive residual rather than directly replacing attention fea-
+tures. This preserves the content trajectory while allowing style cues to interact
+with content geometry. Third, TRACE formulates style guidance as a time-
+dependent control signal and adapts it according to the uncertainty of the cur-
+rent denoising state, strengthening corrective guidance in unstable states while
+avoiding excessive perturbation in stable ones. Our contributions are summa-
+rized as follows:
+– We propose a CLIP-based content-style decomposition mechanism that re-
+duces reference-induced content leakage before diffusion sampling.
+– A residual style injection is introduced to control the injection of style infor-
+mation additively without directly overwriting the content generation tra-
+jectory.
+– We also formulate training-free diffusion style transfer as a time-dependent
+control problem and develop an uncertainty-aware adaptive guidance strat-
+egy for state-dependent stylization control.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+3
+– Extensive quantitative, qualitative, and ablation studies show that TRACE
+achieves a favorable balance among style fidelity, content preservation, and
+leakage suppression.
+2
+Related Work
+2.1
+Training-free Diffusion Style Transfer
+Diffusion models have become powerful generative priors for image synthesis and
+editing through iterative denoising [14,30,31], while Latent Diffusion Models im-
+prove efficiency by operating in a compressed latent space with flexible attention-
+based conditioning [26]. These advances have motivated diffusion-based style
+transfer methods that exploit pretrained diffusion models. InST [37] learns a
+style representation from a single painting through inversion, and DiffuseIT [19]
+performs image-guided translation with disentangled content and style repre-
+sentations. More recent training-free methods avoid fine-tuning by manipulating
+attention or reference features. StyleID [6] injects style information through self-
+attention feature manipulation, while InstantStyle [33] emphasizes the need to
+decouple style and content information in feature space.
+Despite their effectiveness, training-free reference-guided methods still face
+a difficult trade-off between stylization strength and content preservation. A
+style image often contains not only colors, textures, and artistic patterns, but
+also object identity, spatial layout, and scene semantics. Directly injecting such
+entangled features may cause content leakage, where undesired semantic struc-
+tures from the style reference appear in the output [27, 33]. Existing methods
+reduce this issue through feature statistics, attention matching, or feature decou-
+pling [16, 17, 19, 22, 33]. However, most training-free methods do not explicitly
+remove content-related components from the style reference before sampling.
+TRACE addresses this limitation by learning CLIP-based content and style
+subspaces, which are used to clean both references before attention-based style
+injection.
+2.2
+Attention Control and Adaptive Guidance
+Attention layers provide an effective interface for controlling diffusion genera-
+tion. Prompt-to-Prompt [12] shows that cross-attention maps are closely related
+to spatial layout, and subsequent works exploit attention features for editing,
+personalization, and style transfer [6,21,32]. However, direct attention replace-
+ment or key-value injection can overwrite the content trajectory, especially when
+the style reference contains strong semantic structures. This motivates residual
+attention control, where style information is injected additively while preserving
+the original content generation path.
+Guidance is another important mechanism for steering diffusion sampling.
+Classifier-free guidance [15] modifies the denoising trajectory to improve condi-
+tion adherence, while training-free guidance methods use external objectives or
+
+
+4
+D.K Le et al.
+energy functions without updating model weights [2, 5, 34, 35]. However, most
+guidance strategies rely on fixed scales or heuristic schedules, which do not fully
+account for the time-dependent and state-dependent nature of reverse diffusion.
+Recent works interpret diffusion sampling as trajectory optimization or stochas-
+tic optimal control [1, 27], suggesting that guidance should be treated as a dy-
+namic control signal. Motivated by this view, TRACE introduces uncertainty-
+aware time-dependent guidance that adapts the control strength according to
+the stability of each denoising state.
+3
+Preliminaries
+3.1
+Diffusion Sampling
+Diffusion models generate samples by iteratively reversing a noising process.
+However, many guidance objectives are naturally defined on clean images rather
+than noisy intermediate states. Given a noisy latent xt at timestep t, a pretrained
+denoising network ϵθ(xt, t) can be used to estimate the corresponding clean latent
+under DDIM sampling [30]:
+ \ha t { x }_ { 0|t} = \f ra
+c { 
+x_t - \sqrt {1-\bar {\alpha }_t}\epsilon _{\theta }(x_t,t) }{ \sqrt {\bar {\alpha }_t} }. \label {eq:clean_estimate} 
+(1)
+Here, ¯αt denotes the cumulative noise schedule. The estimated clean latent ˆx0|t
+serves as an intermediate prediction of the final sample and provides a conve-
+nient representation for computing style objectives and guiding the denoising
+trajectory.
+3.2
+Optimal Control Problem
+Optimal control (OC) provides a mathematical framework for finding an optimal
+strategy to steer a dynamical system while minimizing a cost functional. Starting
+from an initial state x0 ∈Rd, consider the following controlled continuous-time
+dynamics:
+  d
+x _ t^u =
+ \ le f t ( b(
+x _ t^u ,t ) + \si
+gm
+a _t u(x_t^u,t) \right )dt + \sigma _t dB_t, \quad x_0^u=x_0, \label {eq:controlled_sde} 
+(2)
+where b : Rd ×[0, 1] →Rd is the drift term, σt ∈R is the diffusion coefficient, Bt
+denotes Brownian motion, and u : Rd × [0, 1] →Rd is the additive control term.
+The corresponding optimal control problem aims to find u that minimizes
+  \
+beg
+i
+n {
+a
+li
+gned} 
+\ m in _ { u\in
+ \ ma
+t
+hc a l {U
+}}
+ 
+\qua
+d &
+ \ mathb
+b {E } \left
+ [ \i nt _0^1 \
+le
+f t ( \frac {1}{2} \|u(x_t^u,t)\|^2 + f(x_t^u,t) \right )dt + g(x_1^u) \right ] \\ \mathrm {s.t.} \quad & dx_t^u = \left ( b(x_t^u,t) + \sigma _t u(x_t^u,t) \right )dt + \sigma _t dB_t, \quad x_0^u=x_0 . \end {aligned} \label {eq:oc_objective} 
+(3)
+Here, f is the running cost and g is the terminal cost. This class of optimal con-
+trol problems has been extensively studied in both deterministic and stochastic
+settings. Classical analytical tools such as the Hamilton-Jacobi-Bellman (HJB)
+equation [9] and Pontryagin’s Maximum Principle (PMP) [24], provide necessary
+and sufficient conditions for optimality.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+5
+3.3
+Uncertainty Estimation
+Uncertainty during diffusion sampling can be estimated by measuring the sensi-
+tivity of the denoising network around the current state. Given the clean latent
+estimate ˆx0|t from Eq. (1), M noisy variants are sampled from the forward nois-
+ing distribution:
+ \ha
+t
+ {x}_{t}^{(m)
+} \s i m q (x_t|\hat {x}_{0|t}), \quad m=1,\ldots ,M. 
+(4)
+The denoising network is then evaluated on these perturbed samples:
+  e_
+t
+^ {(m)} = 
+\
+e psilon _{\theta }(\hat {x}_{t}^{(m)},t). 
+(5)
+Let Et denote the tensor obtained by stacking the predicted scores {e(m)
+t
+}M
+m=1,
+and let ¯Et be their mean. The timestep uncertainty is estimated as the variance
+of the predicted scores:
+  \ Sig m a _t = ( E _t-\bar {E}_t)^{\top } (E_t-\bar {E}_t) , \label {eq:uncertainty} 
+(6)
+Large values in Σt indicate regions or channels where the denoising prediction
+is unstable under small perturbations. Here, Σt uses a diagonal approximation,
+computing uncertainty independently per latent element without cross-element
+covariance. Thus, Σt serves as a local reliability measure at timestep t. Further
+implementation details and computational analyses of the uncertainty estimator
+are provided in Appendix B.1 and E.4, respectively.
+4
+Methodology
+4.1
+Overview
+Given a content image Ic and a style reference Is, TRACE generates a stylized
+image Ics in a training-free manner by reusing a pretrained diffusion model
+(StableCascade [23]) without updating its parameters. TRACE first performs
+an offline CLIP-based content-style decomposition, where paired content-style
+embeddings are used to estimate a content subspace Qcontent and a style subspace
+Qstyle via Singular Value Decomposition (SVD) [11].
+During inference, these subspaces are used to remove style-related compo-
+nents from the content representation and content-related components from the
+style representation, yielding cleaned embeddings that reduce reference-induced
+leakage. The cleaned style signal is then injected through residual attention, pre-
+serving the content generation trajectory while transferring style information.
+Finally, TRACE applies uncertainty-aware adaptive guidance at each denoising
+step, where the style guidance direction gt is modulated by the denoising uncer-
+tainty Σt to provide stronger correction in unstable states and more conservative
+updates in reliable states.
+
+
+6
+D.K Le et al.
+Fig. 1: Overview of our approach (TRACE). TRACE first learns content and style
+subspaces from paired CLIP embeddings in an offline stage. During inference, it cleans
+the content and style representations through subspace projection, injects the cleaned
+style signal via residual style injection, and applies uncertainty-aware time-dependent
+guidance to control the reverse diffusion trajectory. A detailed TRACE sampling algo-
+rithm is provided in Appendix B.2.
+4.2
+Offline Content-Style Decomposition
+A style reference image is usually not a pure style signal. Besides color, texture,
+and brush patterns, it may also contain object identity, layout, and semantic
+structures. Directly using such a reference can therefore introduce undesired
+content leakage. To reduce this issue, TRACE learns content and style subspaces
+offline from a paired content-style dataset.
+Let D = {(In, cn, sn)}N
+n=1 denote a paired dataset, where In is an image,
+and cn and sn are its content and style indices. We extract normalized image
+embeddings using a frozen CLIP image encoder Eϕ:
+  z _n = E _ {\phi }(I_n) \in \mathbb {R}^{D}. 
+(7)
+We assume that each embedding can be approximated by an additive content-
+style model:
+  z _ n = \ mu + a_{c_n} + b_{s_n} + \epsilon _n, \label {eq:additive_decomposition} 
+(8)
+where µ is the global mean embedding, acn denotes the content-specific effect,
+bsn denotes the style-specific effect, and ϵn captures the residual variation.
+We estimate the additive effects by solving the following least-squares prob-
+lem:
+  \
+min _{\mu ,
+\
+{
+a_i
+\}, \ { b _j\ } } \su
+m _{n=1}^{N} \left \| z_n - \mu - a_{c_n} - b_{s_n} \right \|_2^2 , \label {eq:additive_lsq} 
+(9)
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+7
+where acn and bsn denote the content and style effects of image n, respectively.
+Since the content and style effects are coupled, we optimize Eq. (9) using an
+alternating iterative procedure. At iteration ℓ, the updates are given by
+  a_
+i
+^
+{
+\ell
+ 
++1} 
+=
+ \ f r a c 
+{1
+}
+{
+|\ O me g a _ i|} \sum _{n\in \Omega _i} \left ( z_n-\mu -b_{s_n}^{\ell } \right ), \quad \Omega _i=\{n\mid c_n=i\}, 
+(10)
+  b_
+j
+^
+{
+\ell
+ 
++1} 
+=
+ \ f r a c {1
+}{
+|
+\
+Ga m ma _j | } \sum _{n\in \Gamma _j} \left ( z_n-\mu -a_{c_n}^{\ell +1} \right ), \quad \Gamma _j=\{n\mid s_n=j\}. 
+(11)
+After each update, we center the effects for identifiability:
+  a_
+i
+^ {\el
+l
+ +
+1}
+ \
+l
+eft
+arro
+w
+ 
+a_i^
+{
+\ ell 
++
+1 }
+ -
+ \
+f
+rac
+ {1}
+{
+N_c} \sum _{k=1}^{N_c} a_k^{\ell +1}, \quad b_j^{\ell +1} \leftarrow b_j^{\ell +1} - \frac {1}{N_s} \sum _{k=1}^{N_s} b_k^{\ell +1}. 
+(12)
+After convergence, we collect the learned content and style effects into matrices
+  A = [ a _ 1 ,\ldo t s ,a_{
+N _ c}]^ { \ t o p } \ i n \mathbb {R}^{N_c \times D}, \quad B = [b_1,\ldots ,b_{N_s}]^{\top } \in \mathbb {R}^{N_s \times D}. 
+(13)
+We first build the content subspace by applying SVD to the row-normalized
+content matrix:
+  \ tilde 
+{ A
+} = U_c \ Sigma _ c V _ c^{\top }, \quad Q_{\mathrm {content}} = V_c[:,1:r_c] \in \mathbb {R}^{D \times r_c}. 
+(14)
+To avoid content information leaking into the style basis, we remove the content
+subspace from the style effects:
+  B _{ \ perp } = \ti
+lde {B} - \tilde {B} Q_{\mathrm {content}} Q_{\mathrm {content}}^{\top }, 
+(15)
+where ˜B is the row-normalized style-effect matrix. We then apply SVD to the
+content-removed style matrix:
+  B _{\pe r
+p 
+} = U_ s \Sig m a _s V_s^{\top }, \quad Q_{\mathrm {style}} = V_s[:,1:r_s] \in \mathbb {R}^{D \times r_s}. 
+(16)
+The resulting subspaces Qcontent and Qstyle are computed once in the offline
+stage and kept fixed during inference. We provide a pseudocode in Appendix
+B.3.
+At inference time, we extract CLIP embeddings from the content and style
+images:
+  z_{\te x t {cont
+ent}} = E_{\phi }(I_c), \quad z_{\text {style}} = E_{\phi }(I_s). 
+(17)
+Using the learned subspaces, we define projection operators:
+  P_{Q_\text {content}}
+(z) = Q_{
+\text {con t ent}}Q_{
+\text {content}}^{\top }z, \quad P_{Q_\text {style}}(z) = Q_{\text {style}}Q_{\text {style}}^{\top }z. 
+(18)
+To remove undesired entanglement, TRACE cleans the style reference by sub-
+tracting its content-related component and cleans the content reference by sub-
+tracting its style-related component:
+  z_{\
+text { style} } ^{\text {clean}} = 
+z_{\te
+xt {sty l e}} - \a l pha P_{Q_\text {content}}(z_{\text {style}}), \quad z_{\text {content}}^{\text {clean}} = z_{\text {content}} - \beta P_{Q_\text {style}}(z_{\text {content}}), (19)
+where α and β control the strength of decomposition. The subspace rank analysis
+is provided in Appendix C.2. Further analyses of style disentanglement and held-
+out style-family generalization are provided in Appendix E.6.
+
+
+8
+D.K Le et al.
+4.3
+Residual Style Injection
+After content-style cleaning, TRACE injects the cleaned style signal into the
+diffusion model by making use of cross-attention. Let zt
+[base,content] denote the
+latent feature at timestep t obtained by cross-attention using the base query
+and K, V constructed from the self-attention feature and the content represen-
+tation. This branch mainly preserves the spatial structure of the current diffusion
+trajectory while injecting content information into the latent representation. To
+extract the stylization effect, TRACE compares two cleaned attention outputs:
+zclean
+[style,content], obtained by jointly using the cleaned style and content represen-
+tations, and zclean
+content, obtained from the cleaned content representation alone.
+Their difference gives a residual style signal:
+  \Delt a z^{\t
+ext {clean}} = z ^{\tex
+t {clean}}_{[\text {style},\text {content}]} - z^{\text {clean}}_{\text {content}} . 
+(20)
+This residual captures the style information that is injected when the style rep-
+resentation interacts with the content structure. Using both content and style in
+the attention computation is important because injecting style alone may break
+the spatial layout or object structure, while the joint content-style attention
+keeps the stylization aligned with the content geometry.
+The final latent feature is updated as
+  z ^{
+t} = z^{t}_{[\ t ext {base},\text {content}]} + \lambda _t \Delta z^{\text {clean}}, \label {eq:residual_injection} 
+(21)
+where λt controls the strength of residual style injection. To balance the magni-
+tudes of content and style information, we compute λt according to the relative
+norm between the base content latent and the residual style signal:
+  \
+lambd
+a _t = \frac {
+ \l
+e
+ft \| z^{t } _ {[\text {base},\text {content}]} \right \|_2 }{ \left \| \Delta z^{\text {clean}} \right \|_2 + \epsilon } . 
+(22)
+This normalization scales the residual style signal to a comparable magnitude
+with the content latent, preventing the style residual from being dominated by
+the content trajectory. As a result, TRACE can inject visible style information
+while still preserving the spatial structure and semantic content of the input
+image.
+4.4
+Uncertainty-Time Adaptive Guidance
+As discussed above, while existing methods typically rely on a fixed guidance
+scale, TRACE treats style guidance as an uncertainty-shaped control signal.
+Following the optimal control formulation in Sec. 3.2, the aim of this problem is
+to seek an additional control u⋆
+t that minimizes the style distance between the
+style image and the generated image while keeping the control effort small.
+For style transfer, we define the uncertainty-shaped control objective as
+  \
+beg
+i
+n {
+a
+l
+ign
+e d} 
+\
+mi n _ {u\in
+ \ma thc
+a
+l {U}} \quad & \mathbb {E} \left [ \int _0^1 \frac {1}{2} u_t^{\top }\Sigma _t^{-1}u_t \,dt + \mathcal {L}_{\mathrm {s}}(x_{0|t}^u; I_s) \right ], \end {aligned} \label {eq:trace_oc_objective} 
+(23)
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+9
+where Ls is the style objective and Σt ≻0 is the uncertainty-shaped control gain
+at timestep t.
+Let ˆx0|t denote the predicted clean latent at timestep t. We define the timestep
+guidance direction as
+  g _t = \nabla _{\ hat {x}_{0|t}} \mathcal {L}_{\mathrm {s}}(\hat {x}_{0|t}; I_s). \label {eq:guidance_direction} 
+(24)
+To obtain a tractable update, we locally approximate the style objective around
+ˆx0|t. For a small control perturbation ut, the first-order Taylor expansion gives
+  \mathc a l { L}_ { \mathrm { s}} ( \h
+a t {x}_{0|t}+u_t; I_s) \approx \mathcal {L}_{\mathrm {s}}(\hat {x}_{0|t}; I_s) + g_t^{\top }u_t . \label {eq:local_style_approx} 
+(25)
+Since Ls(ˆx0|t; Is) is constant with respect to ut, the local one-step control prob-
+lem becomes
+  \
+mi
+n
+ _{
+u _t}
+ 
+\q u ad
+ \frac {1}{2} u_t^{\top }\Sigma _t^{-1}u_t + g_t^{\top }u_t , \label {eq:local_control_problem} 
+(26)
+where the first term penalizes the uncertainty-modulated control effort and the
+second term encourages reducing the style objective. Taking the derivative with
+respect to ut yields
+  \
+na
+bla
+ _{u
+_
+t} \l
+e ft
+ 
+( \f
+r
+ac {1}{2} u_t^{\top }\Sigma _t^{-1}u_t + g_t^{\top }u_t \right ) = \Sigma _t^{-1}u_t + g_t . \label {eq:local_derivative} 
+(27)
+Setting Eq. (27) to zero yields the closed-form local control:
+  
+u _ t^\star = -\Sigma _t g_t . \label {eq:closed_form_control} 
+(28)
+This control term is applied to the predicted clean latent ˆx0|t, producing the
+uncertainty-guided clean estimate:
+ \wi d etild e {
+x } _{0|t } = \hat {x}_{0|t} + u_t^\star = \hat {x}_{0|t} - \Sigma _t g_t . \label {eq:trace_clean_update} 
+(29)
+The updated clean estimate ex0|t is then used in the DDIM transition to obtain
+the next latent state:
+  x_ { t-1}
+ 
+= \mat hr
+m
+ {DDIM} \left ( \widetilde {x}_{0|t}, x_t \right ). \label {eq:trace_ddim_update} 
+(30)
+This update allows TRACE to strengthen corrective guidance in uncertain
+states while keeping the update conservative when the denoising trajectory is
+already stable. The derivation of this objective and the corresponding closed-
+form control update are provided in Appendix A.
+5
+Experimental Setups
+5.1
+Baselines
+TRACE is compared with two groups of representative training-free diffusion
+baselines. Stylization methods, including StyleID [6], AttenST [16], DiffuseIT
+[19], and InstantStyle [33], mainly focus on transferring visual style through fea-
+ture, attention, or reference-guided manipulation. OC-based methods, including
+RB-Modulation [27] and ITOC [4], emphasize controlled reverse diffusion and
+source preservation. Detailed descriptions of all methods and implementation
+settings of TRACE are provided in Appendix D.1 and D.2, respectively.
+
+
+10
+D.K Le et al.
+5.2
+Dataset
+For inference-time style transfer evaluation, we use 15 style reference images from
+the StyleAligned benchmark [13] and 13 content images from DreamBooth [28].
+For the offline content-style decomposition stage, we use the paired content-style
+data from RB-Modulation [27]. Detailed statistics and analysis of the decompo-
+sition dataset are provided in Appendix C.1.
+5.3
+Evaluation Metrics
+We evaluate TRACE from three aspects: style fidelity, content preservation,
+and content leakage.
+– Style fidelity is measured by CSD style similarity (CSD) [29] and Style Re-
+trieval Accuracy (SRA).
+– Content preservation is measured by CLIP image similarity (CLIP-I) [25],
+DINO image similarity (DINO) [3], and Learned Perceptual Image Patch
+Similarity (LPIPS) [36].
+– Content leakage is measured by Directional Content Leakage (DCL).
+Detailed metric definitions are provided in Appendix D.3.
+6
+Results
+The parameters for main experiment are selected based on Sec. 7, while the
+subspace rank analysis is provided in Appendix C.2.
+6.1
+Qualitative Results
+Figure 2 shows qualitative comparisons between TRACE and existing training-
+free baselines. OC-based methods such as ITOC and RB-Modulation generally
+preserve the content structure and produce visually stable images, but their
+stylization strength is relatively weak, especially when the target style requires
+more than simple color transfer. In contrast, stylization-oriented methods such
+as AttenST, StyleID, InstantStyle, and DiffuseIT often produce stronger style
+effects, but they may distort the object structure or introduce semantic content
+from the style reference. This is mainly because strong attention manipulation
+or AdaIN can act as a direct information transfer between the content and style
+images, which improves style fidelity but also increases the risk of content leak-
+age. TRACE achieves a more balanced result. It preserves the main object layout
+and spatial structure while injecting visible style patterns into the generated im-
+age. The advantage is particularly clear for styles that involve structural changes
+(samples 3, 4) rather than only color shifts (samples 1, 2). These results demon-
+strate that the proposed content-style decomposition, residual style injection,
+and uncertainty-time adaptive guidance jointly improve stylization quality with-
+out severely damaging the content structure. Additional qualitative comparisons
+and diverse stylization results are provided in Appendix E.8.
+6.2
+Quantitative Results
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+11
+Fig. 2: Qualitative comparison with training-free style transfer methods. Red, purple,
+and cyan boxes denote TRACE, OC-based methods, and stylization methods, respec-
+tively. More visualizations are provided in Appendix E.4.
+Fig. 3: Style fidelity and content leakage
+trade-off. The y-axis shows CSD, and the
+x-axis shows DCL. TRACE achieves ef-
+fective stylization while maintaining lower
+leakage than most stylization baselines.
+Additional Pareto trade-off analyses are
+provided in Appendix E.7.
+Figure 3 visualizes the trade-off be-
+tween style fidelity and content leakage.
+Stylization methods such as StyleID,
+AttenST,
+and
+InstantStyle
+achieve
+higher SRA scores, but they also in-
+troduce larger DCL values, indicating
+stronger semantic leakage from the style
+reference. In contrast, OC-based meth-
+ods such as RB-Modulation and ITOC
+obtain low DCL scores, but their CSD
+values remain lower, suggesting insuf-
+ficient stylization. TRACE achieves a
+more balanced trade-off: it sacrifices a
+small amount of style fidelity compared
+with the strongest stylization baselines,
+but better preserves content structure
+and substantially reduces directional
+content leakage.
+Comparison with Stylization Methods: Table 1 compares TRACE with
+representative diffusion-based stylization methods. StyleID and AttenST achieve
+the highest style scores in terms of CSD and SRA, showing that strong attention-
+based stylization can effectively transfer visual appearance. However, these meth-
+ods provide weaker content preservation than TRACE, as reflected by lower
+DINO and CLIP-I scores. DiffuseIT and InstantStyle also show noticeable degra-
+dation in content consistency, especially on DINO, CLIP-I, and LPIPS. In con-
+trast, TRACE achieves the best content preservation on DINO and CLIP-I,
+
+
+12
+D.K Le et al.
+Table 1: Quantitative comparison with stylization and OC-based methods. ↑indicates
+higher is better, while ↓indicates lower is better. Best results are shown in bold, and
+second-best results are underlined within each group.
+Model
+Style Fidelity
+Content Preservation
+Leakage
+CSD ↑SRA ↑DINO ↑CLIP-I ↑LPIPS ↓
+DCL ↓
+Stylization Methods
+TRACE
+34.920
+69.744
+65.543
+77.271
+39.532
+21.568
+StyleID
+44.998 93.333
+60.798
+74.418
+42.633
+26.415
+AttenST
+42.876
+88.718
+62.115
+74.757
+38.538
+25.699
+DiffuseIT
+26.468
+62.051
+42.908
+70.109
+51.083
+38.193
+InstantStyle
+39.485
+87.692
+45.148
+67.740
+58.646
+32.048
+OC-based Methods
+TRACE
+34.920 69.744
+65.543
+77.271
+39.532
+21.568
+RB-Modulation 18.369
+34.359
+75.212
+85.168
+34.406
+14.526
+ITOC
+16.918
+36.923
+70.826
+83.996
+34.396
+19.866
+while maintaining competitive style fidelity. Although TRACE does not obtain
+the highest style scores, it significantly reduces semantic leakage from the style
+reference, achieving the lowest DCL among all compared stylization methods.
+This indicates that TRACE better preserves the semantic structure of the con-
+tent image while avoiding undesired transfer of object identity or layout from
+the style image.
+Comparison with OC-based Methods: Table 1 compares our approach with
+optimal-control-based methods, including RB-Modulation and ITOC. These meth-
+ods achieve strong content preservation, as shown by higher DINO and CLIP-I
+scores and lower LPIPS and DCL values. This indicates that OC-based methods
+are effective at maintaining the source structure and reducing semantic leak-
+age from the style reference. However, their stylization strength is limited, with
+substantially lower CSD and SRA scores than TRACE. In contrast, TRACE sig-
+nificantly improves style fidelity over both RB-Modulation and ITOC, achiev-
+ing the best CSD and SRA scores among this group. Although TRACE has
+slightly weaker content-preservation and leakage scores than these conservative
+OC-based baselines, it provides much stronger stylization while still maintain-
+ing reasonable content consistency. These results show that TRACE provides a
+better style-content trade-off for reference-guided style transfer.
+7
+Ablation Study
+7.1
+Effect of Content-Style Decomposition
+We first analyze the effect of content-style decomposition by comparing E0 with
+E1 and E2 in Tab. 2. Without decomposition, E1 achieves the highest style
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+13
+Table 2: Unified ablation study of TRACE. E0 denotes the full TRACE model, while
+E1-E8 denote different ablation settings. Ds denotes the content-style decomposition
+strength, where 0, 0.6, and 1 indicate no decomposition, soft decomposition, and full
+decomposition, respectively. R denotes residual attention control, where ✓indicates
+residual style injection and × indicates the original cross-attention injection without
+residual control. G denotes the guidance strategy, where Ada., No, C1, and C2 indicate
+uncertainty-time adaptive guidance, no adaptive guidance, constant guidance with λ =
+1, and constant guidance with λ = 2, respectively. ρ denotes the noise level, where 0.5,
+0.7, and 1.0 correspond to low-noise, ours, and high-noise settings. ↑indicates higher
+is better, while ↓indicates lower is better.
+Exp Ds R
+G
+ρ
+Style Fidelity
+Content Preservation
+Leakage
+CSD ↑SRA ↑DINO ↑CLIP-I ↑LPIPS ↓
+DCL ↓
+E0
+0.6 ✓Ada. 0.7 34.920
+69.744
+65.543
+77.271
+39.532
+21.568
+E1
+0
+✓Ada. 0.7 53.020
+90.769
+51.586
+69.538
+44.768
+34.098
+E2
+1
+✓Ada. 0.7 26.848
+56.410
+69.295
+78.048
+38.002
+17.634
+E3
+0.6 × Ada. 0.7 17.874
+32.821
+75.491
+84.742
+34.489
+14.441
+E4
+0.6 ✓
+No
+0.7 20.111
+34.359
+65.539
+79.208
+37.444
+19.585
+E5
+0.6 ✓
+C1
+0.7 33.383
+68.718
+64.465
+77.431
+38.823
+21.157
+E6
+0.6 ✓
+C2
+0.7 42.195
+78.974
+60.507
+74.344
+43.206
+24.049
+E7
+0.6 ✓Ada. 1.0 55.837
+94.872
+38.774
+64.528
+68.934
+43.805
+E8
+0.6 ✓Ada. 0.5 27.574
+56.410
+74.785
+82.139
+28.345
+14.642
+scores, but its content preservation drops significantly and its DCL becomes
+much higher. This indicates that directly using the style reference can transfer
+strong visual appearance, but it also introduces semantic leakage from the style
+image. In contrast, full decomposition in E2 improves content preservation and
+reduces leakage, but it also removes useful style information, leading to weaker
+stylization. The soft decomposition used in TRACE provides a better balance
+between these two extremes, maintaining effective style transfer while reducing
+content leakage.
+7.2
+Effect of Residual Style Injection
+We then evaluate the effect of residual style injection by comparing E0 with E3.
+The original cross-attention variant in E3 preserves content well, as shown by
+higher DINO and CLIP-I scores and lower leakage. However, its style fidelity is
+much weaker, suggesting that the style signal is insufficiently injected into the
+denoising trajectory. By contrast, the residual style injection in TRACE substan-
+tially improves CSD and SRA while still keeping reasonable content preservation.
+This confirms that adding a content-aligned stylization residual is more effective
+than conservative attention fusion for reference-guided style transfer. The detail
+of original cross-attention is provided in Appendix E.1.
+
+
+14
+D.K Le et al.
+7.3
+Effect of Time-adaptive Guidance
+To study the effect of guidance strength, we compare E0 with E4-E6. From
+no adaptive guidance in E4 to constant guidance with λ = 1 in E5, stronger
+guidance improves stylization, indicating that an appropriate control signal is
+necessary for transferring style effectively. However, further increasing the fixed
+guidance scale to λ = 2 in E6 leads to overly aggressive stylization, which weak-
+ens content preservation and increases leakage. This trend shows that a fixed
+guidance value is difficult to balance across different denoising states. In contrast,
+TRACE uses uncertainty-time adaptive guidance to adjust the control strength
+along the reverse trajectory, achieving a better balance between style fidelity
+and content preservation. Additional analyses of timestep-wise uncertainty and
+adaptive guidance are provided in Appendices E.2 and E.5.
+7.4
+Effect of Noise-level Scheduling
+To study the effect of the starting noise level, we compare different values of ρ.
+Instead of starting from pure noise, TRACE starts sampling from a fixed inter-
+mediate noising step, which helps preserve the pose and spatial structure of the
+content image. When ρ = 1.0, the trajectory starts from a highly noisy state,
+it allows stronger stylization but causes noticeable content distortion and leak-
+age. When ρ = 0.5, more content information is retained, leading to better pose
+preservation but weaker style transfer. We therefore use ρ = 0.7 in TRACE,
+which provides a better balance between preserving the content pose and en-
+abling sufficient stylization. Additional visual results under different noise levels
+are provided in Appendix E.3.
+8
+Conclusion
+In this paper, we presented TRACE, a training-free diffusion framework for
+reference-guided style transfer. TRACE integrates content-style decomposition,
+residual style injection, and uncertainty-time adaptive guidance to balance style
+fidelity, content preservation, and leakage suppression. Experiments show that
+TRACE better preserves content structure and reduces semantic leakage com-
+pared with stylization methods while achieving stronger stylization than OC-
+based baselines. However, TRACE still has limitations when the style reference
+contains strong structural patterns or shape-dominant elements. In such cases,
+the transferred style may affect the pose, contour, or fine geometry of the content
+object, leading to imperfect shape preservation. In future work, we will explore
+more explicit structure- and pose-preserving mechanisms to further protect the
+spatial layout of the content image during style injection.
+Acknowledgement
+This research is funded by University of Science, VNU-HCM, Vietnam under
+grant number CNTT 2025-12.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+15
+References
+1. Azangulov, I., Potaptchik, P., Li, Q., Aamari, E., Deligiannidis, G., Rousseau, J.:
+Adaptive diffusion guidance via stochastic optimal control. In: Khan, E., Li, Y.,
+Solin, A., Ramdas, A. (eds.) Proceedings of The 29th International Conference on
+Artificial Intelligence and Statistics. Proceedings of Machine Learning Research,
+vol. 300, pp. 4087–4095. PMLR (02–05 May 2026), https://proceedings.mlr.
+press/v300/azangulov26a.html 4
+2. Bansal, A., Chu, H.M., Schwarzschild, A., Sengupta, R., Goldblum, M., Geiping, J.,
+Goldstein, T.: Universal guidance for diffusion models. In: International Conference
+on Learning Representations. vol. 2024, pp. 51304–51323 (2024) 2, 4
+3. Caron, M., Touvron, H., Misra, I., Jégou, H., Mairal, J., Bojanowski, P., Joulin,
+A.: Emerging properties in self-supervised vision transformers. In: Proceedings of
+the IEEE/CVF international conference on computer vision. pp. 9650–9660 (2021)
+10
+4. Chang, J., Kim, J., Ye, J.C.: Training-free reward-guided image editing via trajec-
+tory optimal control. arXiv preprint arXiv:2509.25845 (2025) 9, 27
+5. Chung, H., Kim, J., Mccann, M.T., Klasky, M.L., Ye, J.C.: Diffusion posterior sam-
+pling for general noisy inverse problems. arXiv preprint arXiv:2209.14687 (2022)
+4
+6. Chung, J., Hyun, S., Heo, J.P.: Style injection in diffusion: A training-free approach
+for adapting large-scale diffusion models for style transfer. In: Proceedings of the
+IEEE/CVF conference on computer vision and pattern recognition. pp. 8795–8805
+(2024) 2, 3, 9, 27
+7. De Vita, M., Belagiannis, V.: Diffusion model guided sampling with pixel-wise
+aleatoric uncertainty estimation. arXiv preprint arXiv:2412.00205 (2024) 2
+8. Deng, Y., Tang, F., Dong, W., Ma, C., Pan, X., Wang, L., Xu, C.: Stytr2: Image
+style transfer with transformers. In: Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition. pp. 11326–11336 (2022) 2
+9. Fleming, W.H., Rishel, R.W.: Deterministic and Stochastic Optimal Control, vol. 1.
+Springer Science & Business Media (2012) 4
+10. Gatys, L.A., Ecker, A.S., Bethge, M.: Image style transfer using convolutional
+neural networks. In: Proceedings of the IEEE Conference on Computer Vision and
+Pattern Recognition (CVPR) (June 2016) 2
+11. Golub, G.H., Reinsch, C.H.: Singular value decomposition and least squares
+solutions.
+Numerische
+Mathematik
+14,
+403–420
+(1970),
+https : / / api .
+semanticscholar.org/CorpusID:123532178 5
+12. Hertz, A., Mokady, R., Tenenbaum, J., Aberman, K., Pritch, Y., Cohen-Or,
+D.: Prompt-to-prompt image editing with cross attention control. arXiv preprint
+arXiv:2208.01626 (2022) 3
+13. Hertz, A., Voynov, A., Fruchter, S., Cohen-Or, D.: Style aligned image generation
+via shared attention. In: Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition. pp. 4775–4785 (2024) 10
+14. Ho, J., Jain, A., Abbeel, P.: Denoising diffusion probabilistic models. Advances in
+neural information processing systems 33, 6840–6851 (2020) 2, 3
+15. Ho,
+J.,
+Salimans,
+T.:
+Classifier-free
+diffusion
+guidance.
+arXiv
+preprint
+arXiv:2207.12598 (2022) 2, 3
+16. Huang, B., Xu, W., Han, Q., Jing, H., Li, Y.: Attenst: A training-free attention-
+driven style transfer framework with pre-trained diffusion models (2025), https:
+//arxiv.org/abs/2503.07307 3, 9, 27
+
+
+16
+D.K Le et al.
+17. Huang, X., Belongie, S.: Arbitrary style transfer in real-time with adaptive instance
+normalization. In: Proceedings of the IEEE international conference on computer
+vision. pp. 1501–1510 (2017) 2, 3
+18. Kou, S., Gan, L., Wang, D., Li, C., Deng, Z.: Bayesdiff: Estimating pixel-wise
+uncertainty in diffusion via bayesian inference. In: International Conference on
+Learning Representations. vol. 2024, pp. 17046–17063 (2024) 2
+19. Kwon, G., Ye, J.C.: Diffusion-based image translation using disentangled style and
+content representation. arXiv preprint arXiv:2209.15264 (2022) 2, 3, 9, 27
+20. Li, Y., Fang, C., Yang, J., Wang, Z., Lu, X., Yang, M.H.: Universal style transfer via
+feature transforms. Advances in neural information processing systems 30 (2017)
+2
+21. Mokady, R., Hertz, A., Aberman, K., Pritch, Y., Cohen-Or, D.: Null-text inver-
+sion for editing real images using guided diffusion models. In: Proceedings of the
+IEEE/CVF conference on computer vision and pattern recognition. pp. 6038–6047
+(2023) 3
+22. Park, D.Y., Lee, K.H.: Arbitrary style transfer with style-attentional networks. In:
+proceedings of the IEEE/CVF conference on computer vision and pattern recog-
+nition. pp. 5880–5888 (2019) 2, 3
+23. Pernias, P., Rampas, D., Richter, M.L., Pal, C.J., Aubreville, M.: Wuerstchen: An
+efficient architecture for large-scale text-to-image diffusion models (2023) 5, 27
+24. Pontryagin, L.: Mathematical Theory of Optimal Processes. Classics of Soviet
+Mathematics, Taylor & Francis (1987), https://books.google.com.vn/books?
+id=kwzq0F4cBVAC 4
+25. Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G.,
+Askell, A., Mishkin, P., Clark, J., et al.: Learning transferable visual models from
+natural language supervision. In: International conference on machine learning. pp.
+8748–8763. PmLR (2021) 10
+26. Rombach, R., Blattmann, A., Lorenz, D., Esser, P., Ommer, B.: High-resolution
+image synthesis with latent diffusion models. In: Proceedings of the IEEE/CVF
+conference on computer vision and pattern recognition. pp. 10684–10695 (2022) 2,
+3
+27. Rout, L., Chen, Y., Ruiz, N., Kumar, A., Caramanis, C., Shakkottai, S., Chu, W.S.:
+Rb-modulation: Training-free personalization of diffusion models using stochastic
+optimal control. arXiv preprint arXiv:2405.17401 (2024) 2, 3, 4, 9, 10, 27
+28. Ruiz, N., Li, Y., Jampani, V., Pritch, Y., Rubinstein, M., Aberman, K.: Dream-
+booth: Fine tuning text-to-image diffusion models for subject-driven generation. In:
+Proceedings of the IEEE/CVF conference on computer vision and pattern recog-
+nition. pp. 22500–22510 (2023) 10
+29. Somepalli, G., Gupta, A., Gupta, K., Palta, S., Goldblum, M., Geiping, J., Shri-
+vastava, A., Goldstein, T.: Measuring style similarity in diffusion models. arXiv
+preprint arXiv:2404.01292 (2024) 10
+30. Song, J., Meng, C., Ermon, S.: Denoising diffusion implicit models. arXiv preprint
+arXiv:2010.02502 (2020) 2, 3, 4
+31. Song, Y., Sohl-Dickstein, J., Kingma, D.P., Kumar, A., Ermon, S., Poole, B.: Score-
+based generative modeling through stochastic differential equations. arXiv preprint
+arXiv:2011.13456 (2020) 3
+32. Tumanyan, N., Geyer, M., Bagon, S., Dekel, T.: Plug-and-play diffusion features
+for text-driven image-to-image translation. In: Proceedings of the IEEE/CVF con-
+ference on computer vision and pattern recognition. pp. 1921–1930 (2023) 3
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+17
+33. Wang, H., Spinelli, M., Wang, Q., Bai, X., Qin, Z., Chen, A.: Instantstyle:
+Free lunch towards style-preserving in text-to-image generation. arXiv preprint
+arXiv:2404.02733 (2024) 2, 3, 9, 27
+34. Ye, H., Lin, H., Han, J., Xu, M., Liu, S., Liang, Y., Ma, J., Zou, J., Ermon, S.: Tfg:
+Unified training-free guidance for diffusion models. Advances in Neural Information
+Processing Systems 37, 22370–22417 (2024) 2, 4
+35. Yu, J., Wang, Y., Zhao, C., Ghanem, B., Zhang, J.: Freedom: Training-free energy-
+guided conditional diffusion model. In: Proceedings of the IEEE/CVF International
+Conference on Computer Vision. pp. 23174–23184 (2023) 2, 4
+36. Zhang, R., Isola, P., Efros, A.A., Shechtman, E., Wang, O.: The unreasonable
+effectiveness of deep features as a perceptual metric. In: Proceedings of the IEEE
+conference on computer vision and pattern recognition. pp. 586–595 (2018) 10
+37. Zhang, Y., Huang, N., Tang, F., Huang, H., Ma, C., Dong, W., Xu, C.: Inversion-
+based style transfer with diffusion models. In: Proceedings of the IEEE/CVF con-
+ference on computer vision and pattern recognition. pp. 10146–10156 (2023) 2,
+3
+
+
+18
+D.K Le et al.
+Appendix
+A
+Derivation of Uncertainty-aware Optimal Control . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+A.1
+From Stochastic Optimal Control to Uncertainty-shaped Control . . . . 19
+A.2
+Closed-form Solution of the Local Control Problem . . . . . . . . . . . . . . . . . . 20
+A.3
+TRACE Guidance Update . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+B
+Pseudocode . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+B.1
+Uncertainty Estimation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+B.2
+TRACE Sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+B.3
+Offline Content-Style Decomposition . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+C
+Additional Details of Content-Style Decomposition . . . . . . . . . . . . . . . . . . . . . . . . . 25
+C.1
+Construction of Paired Content-Style Dataset . . . . . . . . . . . . . . . . . . . . . . . 25
+C.2
+Rank Selection . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+D
+Detailed Experimental Setups . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+D.1
+Baseline Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+D.2
+Configuration of TRACE . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+D.3
+Evaluation Metrics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+E
+Extended Result Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+E.1
+Residual Style Injection vs. Original Attention . . . . . . . . . . . . . . . . . . . . . . . 28
+E.2
+Timestep-wise Uncertainty Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+E.3
+Analysis of the Starting Noise Step . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+E.4
+Uncertainty Sample Sensitivity and Computational Cost . . . . . . . . . . . . . 30
+E.5
+Adaptive Guidance vs. Handcrafted Schedules . . . . . . . . . . . . . . . . . . . . . . . 31
+E.6
+Style Disentanglement and Held-out Style Generalization . . . . . . . . . . . . 32
+E.7
+Trade-off Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34
+E.8
+Additional Qualitative Results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34
+Our appendix is organized into five sections:
+– Section A derives the uncertainty-aware optimal control formulation, its
+closed-form local controller, and the resulting TRACE guidance update.
+– Section B provides pseudocode for uncertainty estimation, TRACE sam-
+pling, and the offline content-style decomposition procedure.
+– Section C provides additional details of the CLIP-based content-style decom-
+position, including paired dataset construction and subspace rank selection.
+– Section D describes the experimental setup, including baseline methods,
+TRACE configurations, and evaluation metrics.
+– Section E presents extended experimental analyses, including residual style
+injection, timestep-wise uncertainty, starting noise level, uncertainty effi-
+ciency, adaptive guidance, style disentanglement and generalization, Pareto
+trade-offs, and additional qualitative results.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+19
+A
+Derivation of Uncertainty-aware Optimal Control
+This section derives the uncertainty-aware guidance update used in TRACE. We
+first formulate diffusion guidance as an uncertainty-shaped stochastic optimal
+control problem, derive the corresponding global optimality condition, and then
+obtain a tractable local controller used in our sampling procedure.
+A.1
+From Stochastic Optimal Control to Uncertainty-shaped
+Control
+Following the optimal control formulation in Sec. 3.2, we view guided reverse
+diffusion as a controlled stochastic process:
+  d
+x _ t^u =
+ \ le f t ( b (x _ t^u,t)
+ +
+ \ si gma _t u_t \right )dt + \sigma _t dB_t, \qquad x_T^u=x_T , \label {eq:app_controlled_sde} 
+(31)
+where b(xu
+t , t) is the base reverse drift, σt is the diffusion coefficient, and ut is an
+additional control term. The goal is to steer the reverse trajectory toward the
+target style while keeping the control effort small.
+A standard stochastic optimal control objective can be written as
+  \
+min 
+_{ u
+\
+i
+n \mat
+h ca l { U}}
+ \ mat
+h
+bb {E} \left [ \int _T^1 \frac {1}{2} \|u_t\|_2^2 \,dt + \mathcal {L}_{\mathrm {s}} \left ( x_1^u; I_s \right ) \right ], \label {eq:app_standard_oc} 
+(32)
+subject to Eq. (31). However, the isotropic penalty 1
+2∥ut∥2
+2 treats all latent direc-
+tions equally, although diffusion states have different reliability across timesteps
+and latent dimensions.
+To account for this heterogeneity, TRACE replaces the isotropic control
+penalty with an uncertainty-shaped Mahalanobis cost:
+ 
+ \frac
+ 
+{1
+}
+{2}
+ \|u
+_
+t\|_2^2 \quad \longrightarrow \quad \frac {1}{2} u_t^\top \Sigma _t^{-1} u_t , \label {eq:app_uncertainty_penalty} 
+(33)
+where Σt ≻0 is an uncertainty-shaped control gain. Large values in Σt corre-
+spond to uncertain directions, making the corresponding entries of Σ−1
+t
+smaller.
+Thus, control along uncertain directions is penalized less, while control along
+stable directions remains more conservative.
+The uncertainty-shaped optimal control problem becomes
+  \
+min 
+_{ u
+\
+i
+n \
+m ath
+c
+al { U }} \m
+at hbb
+ 
+{E} \left [ \int _T^1 \frac {1}{2} u_t^\top \Sigma _t^{-1} u_t \,dt + \mathcal {L}_{\mathrm {s}} \left ( x_1^u; I_s \right ) \right ], \label {eq:app_uncertainty_oc} 
+(34)
+subject to Eq. (31). In the diagonal approximation, the uncertainty-shaped gain
+is defined element-wise as
+  \S i g m a _{t,
+i } = 1 + \ bar {U}_{t,i}, \qquad i=1,\ldots ,d, \label {eq:app_sigma_construction} 
+(35)
+where the unit offset preserves the baseline guidance, while ¯Ut provides uncertainty-
+dependent amplification along individual latent directions.
+
+
+20
+D.K Le et al.
+To derive the global optimality condition, we define the Hamiltonian:
+  H(x _t, u_t ,p _ t,
+t ) = p_ t^ \ top \ l e
+ft 
+( b(
+x
+_t,t) + \sigma _t u_t \right ) + \frac {1}{2} u_t^\top \Sigma _t^{-1} u_t , \label {eq:app_hamiltonian} 
+(36)
+where pt denotes the adjoint state. According to Pontryagin’s Maximum Princi-
+ple, the optimal control satisfies
+  
+u _ t^\ sta
+r = \a
+r g \m in
+ _ {u_t} H(x_t^\star ,u_t,p_t^\star ,t). \label {eq:app_pmp_min} 
+(37)
+Taking the derivative of the Hamiltonian with respect to ut gives
+  \n a bla 
+_ { u_t
+}
+H = \sigma _t p_t^\star + \Sigma _t^{-1}u_t . \label {eq:app_hamiltonian_derivative} 
+(38)
+Setting the derivative to zero yields
+  \
+S
+ig
+m a _t^{
+- 1}u_t^\star = - \sigma _t p_t^\star . \label {eq:app_global_stationary} 
+(39)
+Therefore, the global optimal control takes the form
+  
+u _ t^\star
+ = - \Sigma _t \sigma _t p_t^\star . \label {eq:app_global_control} 
+(40)
+This global solution shows that uncertainty directly shapes the geometry
+of the optimal control. Larger uncertainty increases the corresponding entries
+of Σt, allowing stronger corrective updates in unreliable directions. However,
+computing p⋆
+t requires solving a coupled state-adjoint system over the whole
+reverse trajectory, which is intractable for high-dimensional diffusion sampling.
+Therefore, TRACE adopts a local one-step approximation.
+A.2
+Closed-form Solution of the Local Control Problem
+Instead of solving the full global control problem, TRACE derives a local con-
+troller at each denoising step. Let ˆx0|t denote the predicted clean latent at
+timestep t. Since style objectives are naturally evaluated on clean latent esti-
+mates, TRACE applies the control directly to ˆx0|t.
+The timestep guidance direction is defined as
+  g _t = \na
+b
+la _{\ ha
+t
+ {x}_{0|t}} \mathcal {L}_{\mathrm {s}} \left ( \hat {x}_{0|t}; I_s \right ). \label {eq:app_guidance_direction} 
+(41)
+For a small local perturbation ut, we approximate the style objective by first-
+order Taylor expansion:
+  
+\
+mathc a l { L}
+_
+{ \m
+a
+thrm { s}
+}
+ \l
+e ft ( \hat {x}_{0|t}+u_t; I_s \right ) \approx \mathcal {L}_{\mathrm {s}} \left ( \hat {x}_{0|t}; I_s \right ) + g_t^\top u_t . \label {eq:app_style_taylor} 
+(42)
+Since the first term is constant with respect to ut, the local one-step control
+problem becomes
+  \
+mi
+n
+ _{
+u _t}
+ 
+\q u ad
+ \frac {1}{2} u_t^\top \Sigma _t^{-1} u_t + g_t^\top u_t . \label {eq:app_local_control_problem} 
+(43)
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+21
+Because Σt ≻0, the objective in Eq. (43) is strictly convex and has a unique
+minimizer. Taking the derivative with respect to ut gives
+  \
+na
+bla
+ _{u
+_
+t} \l
+e ft
+ 
+( \f
+r
+ac {1}{2} u_t^\top \Sigma _t^{-1} u_t + g_t^\top u_t \right ) = \Sigma _t^{-1}u_t + g_t . \label {eq:app_local_derivative} 
+(44)
+Setting the derivative to zero yields
+  \
+S
+ig
+m a _ t ^{-1}u_t^\star + g_t = 0 . \label {eq:app_local_stationary} 
+(45)
+Thus,
+  \
+S
+ig
+m a _t^{-1}u_t^\star = - g_t . \label {eq:app_local_solve} 
+(46)
+Multiplying both sides by Σt, we obtain the closed-form local control:
+  
+u _ t^\star = - \Sigma _t g_t . \label {eq:app_closed_form_control} 
+(47)
+This local controller can be viewed as a tractable one-step approximation
+of the global uncertainty-shaped control in Eq. (40). The adjoint direction in
+the global solution is replaced by the instantaneous style gradient gt, while the
+uncertainty-shaped gain Σt is retained to modulate the control strength.
+A.3
+TRACE Guidance Update
+TRACE applies the closed-form local control in Eq. (47) to the predicted clean
+latent:
+ \wi d etild e {
+x } _{0|t } = \hat {x}_{0|t} + u_t^\star = \hat {x}_{0|t} - \Sigma _t g_t . \label {eq:app_trace_clean_update} 
+(48)
+The updated clean estimate ex0|t is then used in the DDIM transition:
+  x_ { t-1}
+ 
+= \mat hr
+m
+ {DDIM} \left ( \widetilde {x}_{0|t}, x_t \right ). \label {eq:app_trace_ddim_update} 
+(49)
+Therefore, the TRACE update is a local uncertainty-shaped control step
+applied during reverse diffusion. When the denoising state is uncertain, Σt in-
+creases the effective guidance strength and allows stronger corrective updates.
+When the state is reliable, the update remains more conservative, helping pre-
+serve the content trajectory.
+
+
+22
+D.K Le et al.
+B
+Pseudocode
+B.1
+Uncertainty Estimation
+The uncertainty approximation procedure is summarized in Algorithm 1. The
+M re-noised samples are evaluated in a single batch, and their element-wise
+variance provides a diagonal uncertainty estimate. After percentile normalization
+and tanh bounding, this adds only one extra denoising-network forward pass per
+timestep.
+Algorithm 1 Uncertainty Estimation
+Require: Current latent xt, timestep t, denoising network ϵθ, cumulative noise sched-
+ule ¯αt, number of perturbations M, small constant ε
+Ensure: Normalized uncertainty map ¯Ut
+1: Estimate the clean latent:
+ \ha t { x }_ { 0|t} = \f ra
+c { 
+x_t - \sqrt {1-\bar {\alpha }_t}\epsilon _{\theta }(x_t,t) }{ \sqrt {\bar {\alpha }_t} } . 
+2: for m = 1, . . . , M do
+3:
+Sample Gaussian noise ξ(m) ∼N(0, I).
+4:
+Re-noise the clean estimate:
+ \ha
+t
+ {x}_{t}^{ (
+m
+) } = \sqrt {\bar {\alpha }_t}\hat {x}_{0|t} + \sqrt {1-\bar {\alpha }_t}\xi ^{(m)} . 
+5:
+Compute the perturbed denoising prediction:
+  e_
+t
+^ {(m)} = 
+\
+e psilon _{\theta }(\hat {x}_{t}^{(m)},t). 
+6: end for
+7: Compute the element-wise uncertainty across perturbations:
+  U_
+t
+^ {\ma
+th
+rm {
+r
+aw
+}} 
+=
+ \operatorname {Var}_{m} \left ( \left \{ e_t^{(m)} \right \}_{m=1}^{M} \right ), 
+8: Compute the 90-th percentile:
+  q_{0 . 9,t} = \ope ra tor
+n
+a me {Quantile}_{0.9} \left ( U_t^{\mathrm {raw}} \right ). 
+9: Normalize and bound the uncertainty:
+  \ b ar {
+U
+} _t 
+=
+ \tanh \
+l
+eft ( \frac { U_t^{\mathrm {raw}} }{ q_{0.9,t}+\varepsilon } \right ). 
+10: return ¯Ut
+B.2
+TRACE Sampling
+The complete TRACE sampling procedure, including content-style cleaning,
+residual style injection, uncertainty estimation, and adaptive guidance, is sum-
+marized in Algorithm 2.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+23
+Algorithm 2 TRACE Sampling
+Require: Content image Ic, style image Is, pretrained diffusion model ϵθ, image en-
+coder E, image decoder D, CLIP image encoder Eϕ, learned subspaces Qcontent
+and Qstyle, decomposition strengths α, β, starting noise level ρ, denoising timesteps
+{Tρ, . . . , 1}, number of local guidance steps N, uncertainty parameters (M, ε)
+Ensure: Stylized image Ics
+1: Extract CLIP embeddings:
+  z_{\ma t hrm {co
+ntent} } = E_{\phi }(I_c), \qquad z_{\mathrm {style}} = E_{\phi }(I_s). 
+2: Clean the content and style representations:
+  z_{\
+mathrm { content} } ^{\mathrm {clean}} 
+= z_{\
+mathr m {cont e nt}} - \beta P_{Q_{\mathrm {style}}}(z_{\mathrm {content}}), \qquad z_{\mathrm {style}}^{\mathrm {clean}} = z_{\mathrm {style}} - \alpha P_{Q_{\mathrm {content}}}(z_{\mathrm {style}}). 
+3: Encode the content image into the latent space and initialize the starting latent:
+  
+x _ 0^{c} 
+= \ m athcal 
+{ E
+}
+( I _c), \
+q q uad x_{T_{\rho }} = \sqrt {\bar {\alpha }_{T_{\rho }}}x_0^{c} + \sqrt {1-\bar {\alpha }_{T_{\rho }}}\xi , \qquad \xi \sim \mathcal {N}(0,I). 
+This initialization starts from a noised content latent instead of pure random noise,
+helping preserve the pose and spatial structure of the content image.
+4: for t = Tρ, . . . , 1 do
+5:
+Predict the noise and estimate the predicted clean latent:
+  \ epsilo n _
+t = \ e ps i lo n _{\t
+heta
+ }(x_t,t), \qquad \hat {x}_{0|t} = \frac { x_t - \sqrt {1-\bar {\alpha }_t}\epsilon _t }{ \sqrt {\bar {\alpha }_t} }. 
+6:
+Apply residual style injection:
+  \Delt
+a
+ z_t^{\
+mathrm {clean}} = z_{[
+\mathrm 
+{s t yl
+e},\mathrm {co n tent}]}^{
+\
+mathrm {clean}} - z_{\mathrm {content}}^{\mathrm {clean}}, \qquad z^t = z^t_{[\mathrm {base},\mathrm {content}]} + \lambda _t \Delta z_t^{\mathrm {clean}}. 
+7:
+Estimate the normalized element-wise uncertainty map ¯Ut using Algorithm 1.
+8:
+Construct the diagonal uncertainty-shaped control gain Σt using Eq. (35).
+9:
+Initialize the locally guided clean latent:
+ \wi
+det i lde {x}_{0|t}^{(0)} = \hat {x}_{0|t}. 
+10:
+for n = 1, . . . , N do
+11:
+Compute the style guidance direction:
+  g_
+t
+^ {(n)} = 
+\na
+bl
+a
+ _{\wid
+eti
+l de
+ 
+{x}_{0|t}^{(n-1)}} \mathcal {L}_{\mathrm {s}} \left ( \widetilde {x}_{0|t}^{(n-1)}; I_s \right ). 
+12:
+Apply uncertainty-aware control:
+ \wi
+det i lde {x}
+_{0
+| t}^{(n
+)
+} = \widetilde {x}_{0|t}^{(n-1)} - \Sigma _t g_t^{(n)} . 
+13:
+end for
+14:
+Set the final guided clean estimate and update the next latent using DDIM:
+ \wi d etild
+e { x
+}_{0 | t} =
+ 
+\widet il
+d
+e {x}_{0|t}^{(N)}, \qquad x_{t-1} = \mathrm {DDIM} \left ( \widetilde {x}_{0|t}, x_t \right ). 
+15: end for
+16: Decode the final latent:
+  I _ {cs} = \mathcal {D}(x_0). 
+17: return Ics
+
+
+24
+D.K Le et al.
+B.3
+Offline Content-Style Decomposition
+The offline decomposition procedure is summarized in Algorithm 3.
+Algorithm 3 Offline Content-Style Decomposition
+Require: Paired dataset D = {(In, cn, sn)}N
+n=1, CLIP encoder Eϕ, ranks rc, rs, itera-
+tions L
+Ensure: Content subspace Qcontent and style subspace Qstyle
+1: Extract and normalize CLIP embeddings:
+  z
+_n \le
+ftarrow \ f
+r a c { E _ { \phi }(I_n)}{\|E_{\phi }(I_n)\|_2}, \quad n=1,\ldots ,N . 
+2: Compute global mean µ =
+1
+N
+PN
+n=1 zn and initialize a0
+i = 0, b0
+j = 0.
+3: for ℓ= 0, . . . , L −1 do
+4:
+Update content effects:
+  a_
+i
+^
+{
+\ell
+ 
++1} 
+\le f t a rr
+ow \
+fr a c { 1} { |\Omega _i|} \sum _{n\in \Omega _i} (z_n-\mu -b_{s_n}^{\ell }), \quad \Omega _i=\{n:c_n=i\}. 
+5:
+Center aℓ+1
+i
+←aℓ+1
+i
+−
+1
+Nc
+PNc
+k=1 aℓ+1
+k
+.
+6:
+Update style effects:
+  b_
+j
+^
+{
+\ell
+ 
++1} 
+\le f t a rrow
+ \ fr
+ac {1 } {| \ Gamma _j|} \sum _{n\in \Gamma _j} (z_n-\mu -a_{c_n}^{\ell +1}), \quad \Gamma _j=\{n:s_n=j\}. 
+7:
+Center bℓ+1
+j
+←bℓ+1
+j
+−
+1
+Ns
+PNs
+k=1 bℓ+1
+k
+.
+8: end for
+9: Form effect matrices:
+  A=[a _ 1 , \ ldots 
+, a _{N_ c } ] ^ \top , \quad B=[b_1,\ldots ,b_{N_s}]^\top . 
+10: Row-normalize A and B to obtain e
+A and eB.
+11: Compute content subspace:
+ 
+ \ widet i
+l d
+e {A}=U_ c \Sigm a _cV_c^\top , \quad Q_{\mathrm {content}}=V_c[:,1:r_c]. 
+12: Remove content directions from style effects:
+  B _{ \ perp } = \wi
+detilde {B} - \widetilde {B}Q_{\mathrm {content}}Q_{\mathrm {content}}^\top . 
+13: Compute style subspace:
+  B _{\pe r
+p 
+}=U_s\ S igma _ s V_s^\top , \quad Q_{\mathrm {style}}=V_s[:,1:r_s]. 
+14: return Qcontent, Qstyle
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+25
+C
+Additional Details of Content-Style Decomposition
+C.1
+Construction of Paired Content-Style Dataset
+Fig. 4: Representative paired content-style samples used for decomposition analysis.
+Rows show content identities and columns show style references.
+To estimate the offline content and style subspaces, we construct a paired content-
+style dataset from 350 content images and 100 style images. Instead of exhaus-
+tively combining all content and style references, we randomly sample 10 style
+images for each content image, producing 3,500 stylized pairs in total. Each gen-
+erated pair is associated with a content index and a style index, allowing us
+to analyze content-specific and style-specific variations in the CLIP embedding
+space. We split the 3,500 paired samples into 3,150 pairs for offline subspace
+estimation and 350 held-out pairs for decomposition analysis and validation. No
+parameters of the pretrained diffusion model or the CLIP image encoder are
+updated during this process. Moreover, the paired data used for subspace con-
+struction and decomposition analysis is kept separate from the inference-time
+evaluation pairs. Therefore, TRACE remains training-free with respect to the
+diffusion backbone and uses the offline dataset only to estimate reusable content
+and style directions.
+The content set covers common objects, animals, people, vehicles, buildings,
+landscapes, food, and fantasy objects. The style set covers illustration, painting,
+3D rendering, logo, poster, photography, abstract art, and printmaking styles.
+Representative examples are shown in Tab. 3 and Fig. 4.
+
+
+26
+D.K Le et al.
+Table 3: Representative content and style prompts used for constructing the paired
+content-style dataset.
+Category
+Representative examples
+Objects
+A chair; A teapot; A laptop; A vintage camera; A pocket watch
+Animals
+A dog; A lion; A fox; A penguin; A panda
+People and actions
+A child running in the park; A person dancing; A woman reading in the park; A man skiing down the hill
+Vehicles
+A train; A racing car; A bicycle; A helicopter; A sailboat
+Buildings and scenes
+A house; A temple; Golden Gate Bridge; A village; A snowy cabin
+Nature and food
+Flowers; A sunflower; A watermelon; A bowl with apples; A mushroom
+Fantasy and symbolic objects A dragon; An elf; A crown; A magician’s hat; A crystal ball
+Illustration styles
+Sticker style; Line drawing style; Cartoon line drawing style; Flat cartoon illustration style
+Painting styles
+Watercolor painting style; Oil painting style; Japanese ukiyo-e style; Hawaiian sunset painting style
+3D and rendering styles
+3D rendering style; Glowing 3D rendering style; Realistic 3D render; Enchanted 3D rendering style
+Poster and logo styles
+Vintage poster style; Vintage travel poster style; Minimalist round BW logo style; Cafe logo style
+Abstract and modern styles
+Abstract geometric style; Digital glitch art style; Psychedelic art style; Neo-futurism style
+Print and craft styles
+Woodblock print style; Papercut art style; Origami style; Woodcut print style
+Photography styles
+Macro photography style; Professional food photography style; Bokeh photography style;
+C.2
+Rank Selection
+Table 4: Top-10 retrieval analysis before and after content-style decomposition. Raw
+denotes retrieval before decomposition, while Clean denotes retrieval after decomposi-
+tion. SG indicates style gain and CR indicates content reduction. All values are reported
+in percentage.
+rc
+rs
+Raw Style Clean Style SG ↑Clean Content CR ↑
+32 8/16/32
+8.86
+15.12
+6.26
+32.37
+21.98
+64 8/16/32
+8.86
+18.55
+9.69
+21.84
+47.37
+96 8/16/32
+8.86
+20.53
+11.68
+14.13
+65.95
+128 8/16/32
+8.86
+21.13
+12.27
+9.25
+77.70
+Table 4 shows that content-style decomposition consistently improves style re-
+trieval and reduces content retrieval as the content rank rc increases. Starting
+from the same Raw Style value of 8.86%, Clean Style increases from 15.12% at
+rc = 32 to 21.13% at rc = 128, with the style gain improving from 6.26% to
+12.27%. At the same time, Clean Content decreases from 32.37% to 9.25%, and
+content reduction increases from 21.98% to 77.70%. These results indicate that
+a larger content subspace more effectively removes content-related information
+and makes the cleaned representation more style-discriminative. The results are
+stable across the tested style ranks rs ∈{8, 16, 32}, suggesting that the lead-
+ing style components already capture the dominant style directions. Therefore,
+we use rc = 128 for strong content removal and choose the compact style rank
+rs = 8 for the main experiments.
+D
+Detailed Experimental Setups
+D.1
+Baseline Details
+We compare TRACE with two groups of diffusion-based baselines: Stylization
+methods and OC-based methods.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+27
+Stylization methods: This group focuses on transferring visual appearance
+from a style reference. StyleID [6] transfers style by manipulating diffusion fea-
+tures and attention representations between the content and style images. At-
+tenST [16] injects style information through attention-based manipulation. Dif-
+fuseIT [19] performs diffusion-based image translation and stylization using iter-
+ative guidance. InstantStyle [33] uses reference-guided style injection to transfer
+style information while reducing content interference.
+OC-based methods: This group focuses on controlling the reverse diffusion
+trajectory. RB-Modulation [27] modulates the reverse sampling process to pre-
+serve the source image while steering generation toward the target condition.
+ITOC [4] formulates diffusion sampling as a trajectory optimization problem
+and controls the reverse process during inference.
+D.2
+Configuration of TRACE
+The configuration of TRACE used in the main experiments is summarized in
+Tab. 5.
+Table 5: Configuration of TRACE used in the main experiments.
+Component
+Setting
+Diffusion backbone
+Stable Cascade [23]
+Content rank
+rc = 128
+Style rank
+rs = 8
+Decomposition strength
+α = β = 0.6
+Residual style injection
+✓
+Adaptive guidance
+✓
+Uncertainty samples
+M = 4
+Local guidance steps
+N = 2
+Starting noise level
+ρ = 0.7
+D.3
+Evaluation Metrics
+Evaluation Metrics We evaluate style transfer from three aspects: style fi-
+delity, content preservation, and content leakage. The metrics used in our ex-
+periments are summarized in Tab. 6. We further provide detailed definitions of
+SRA and DCL, which are used to evaluate style retrieval accuracy and direc-
+tional content leakage, respectively.
+Table 6: Evaluation metrics used in our experiments.
+Aspect
+Metric
+Interpretation
+Style fidelity
+CSD ↑
+Style similarity to the target style reference
+Style fidelity
+SRA ↑
+Top-1 retrieval accuracy of the target style
+Content preservation DINO ↑Semantic similarity to the content image
+Content preservation CLIP-I ↑Image-level similarity to the content image
+Content preservation LPIPS ↓Perceptual distance from the content image
+Content leakage
+DCL ↓
+Semantic leakage from the style reference
+
+
+28
+D.K Le et al.
+Style Retrieval Accuracy (SRA). SRA evaluates whether the generated
+image can be correctly retrieved as the target style from a style reference gallery.
+For each generated image Ii
+cs, we extract its CSD style embedding and compare
+it with the CSD embeddings of all style reference images using cosine similarity.
+The retrieved style is defined as the nearest style reference in the gallery. SRA
+is computed as:
+  \ m a
+t
+h
+r
+m {
+S
+R
+A} = \
+f
+rac
+ 
+{1}{N} 
+\sum _{i=1}
+^{
+N
+} \
+m
+a
+thbf {1} \left [ \arg \max _{j} \cos \left ( \phi _{\mathrm {CSD}}(I_{cs}^{i}), \phi _{\mathrm {CSD}}(I_s^{j}) \right ) = y_s^{i} \right ], 
+(50)
+where ϕCSD denotes the CSD style encoder, Ij
+s denotes a style reference image in
+the gallery, and yi
+s is the target style label of the i-th generated image. A higher
+SRA indicates that the generated image is more recognizable as the target style.
+Directional Content Leakage (DCL). DCL evaluates whether the generated
+image moves toward the semantic structure of the style reference. We compute
+DCL in a content/structure feature space using DINO features extracted from
+grayscale images, which reduces the influence of color and low-level style statis-
+tics. Let fc, fs, and fg denote the normalized DINO features of the content
+image, style image, and generated image, respectively. DCL is defined as:
+  \ m athrm {DC
+L} = \operat o rna
+me { clip
+} _ {
+[
+0,1]} \left ( \frac { (f_g - f_c)^\top (f_s - f_c) }{ \|f_s - f_c\|_2^2 + \epsilon } \right ). 
+(51)
+A larger DCL indicates that the generated image moves more strongly from
+the content image toward the style reference in the structure feature space,
+suggesting stronger content leakage. Therefore, lower DCL is better.
+E
+Extended Result Analysis
+E.1
+Residual Style Injection vs. Original Attention
+(a) Residual style injection
+(b) Original attention
+Fig. 5: Comparison between residual style injection and original attention.
+As shown in Fig. 5, the original attention strategy combines multiple attention
+outputs by simple averaging. Specifically, the outputs obtained from base-content
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+29
+attention, style-content attention, and content-only attention are averaged to
+produce the final representation. Although this strategy mixes style and content
+information, it treats all branches equally and may dilute the style signal or
+disturb the content trajectory.
+In contrast, the residual style injection used in TRACE keeps the base-
+content attention output as the main trajectory and injects style only through
+an additive residual. The residual is computed by subtracting the content-only
+attention output from the style-content attention output and then adding the
+scaled difference to the base-content representation. This way allows us to pre-
+serve the original content trajectory while injecting only the style-related residual
+information.
+E.2
+Timestep-wise Uncertainty Analysis
+Figure 6 visualizes the estimated uncertainty maps across denoising steps. At
+early timesteps, the predicted clean preview ex0|t is still ambiguous, and the un-
+certainty is high and spatially diffuse. As denoising progresses, the object struc-
+ture becomes clearer and the uncertainty gradually decreases. In particular, the
+regions corresponding to the main object, where the style has been injected,
+become more stable in the later timesteps. This can be observed from the un-
+certainty maps becoming less noisy and more concentrated, while the predicted
+clean previews show a more consistent object shape and appearance. These re-
+sults indicate that uncertainty provides a useful reliability signal for adaptive
+guidance: stronger intervention is applied when the generation is unstable, while
+weaker intervention is used once the stylized object becomes stable.
+Fig. 6: Timestep-wise uncertainty visualization during reverse diffusion. For each ex-
+ample, the top row shows the estimated uncertainty map at different denoising steps,
+while the bottom row shows the corresponding predicted clean-latent preview ex0|t.
+E.3
+Analysis of the Starting Noise Step
+Figure 7 visualizes the predicted clean-latent previews ex0|t across denoising steps.
+At early high-noise steps, the previews are highly ambiguous and the object
+
+
+30
+D.K Le et al.
+structure is not yet reliable. Starting from this region provides more freedom
+for style transfer, but it also increases the risk of changing the content layout
+or object identity. In contrast, very late steps already contain a stable content
+structure, which helps preserve the original image but leaves limited room for
+injecting the target style. Therefore, we choose an intermediate starting noise
+level ρ = 0.7, which avoids the most unstable early region while still keeping
+enough flexibility for stylization.
+Fig. 7: Analysis of the starting noise step. Each row shows the predicted clean-latent
+previews ex0|t along the reverse diffusion trajectory for one example. Early high-noise
+steps produce ambiguous structures, while later steps become increasingly stable and
+content-specific.
+E.4
+Uncertainty Sample Sensitivity and Computational Cost
+We further analyze the effect of the number of perturbations M on generation
+quality and computational cost. For each denoising step, the M perturbed sam-
+ples are processed jointly in a single batch. Therefore, uncertainty estimation
+introduces only one additional denoising-network forward pass per timestep, in-
+dependent of M. Consequently, TRACE requires 28 NFE compared with 14 NFE
+for constant guidance, while increasing M mainly affects runtime and memory
+through the larger batch size.
+Table 7: Effect of uncertainty samples M on generation quality and computational
+cost over 8 styles and 13 content images. Runtime is reported as mean ± standard
+deviation over 30 runs. The experiments are conducted on an A100 GPU 40GB.
+Generation Quality
+Efficiency
+Method
+M
+CSD↑
+DINO↑
+DCL↓
+Time (s)↓
+VRAM (GB)↓
+NFE↓
+Const
+–
+32.386
+66.689
+20.913
+15.448 ± 0.180
+18.499
+14
+TRACE
+2
+32.292
+70.713
+18.838
+31.019 ± 0.441
+18.486
+28
+TRACE
+4
+37.394
+67.582
+17.975
+33.923 ± 0.386
+18.707
+28
+TRACE
+8
+34.883
+70.241
+18.890
+41.682 ± 0.145
+20.061
+28
+As shown in Tab. 7, increasing M does not increase NFE because all per-
+turbations are evaluated in parallel. At M = 4, TRACE requires 33.923 s and
+18.707 GB while achieving the highest CSD and lowest DCL among the tested
+settings. We therefore use M = 4 as the default setting.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+31
+E.5
+Adaptive Guidance vs. Handcrafted Schedules
+Cross-style ranking analysis. To examine whether a single handcrafted guid-
+ance configuration generalizes across styles, we rank fixed, linear, and cosine
+schedules for each style according to their generation-quality trade-offs. As shown
+in Fig. 8, the ranking varies substantially across styles, indicating that a globally
+fixed schedule is difficult to tune consistently. In contrast, TRACE adapts its
+guidance from the uncertainty of the current denoising state without requiring
+style-specific schedule selection.
+Fig. 8: Cross-style ranking of fixed and handcrafted guidance configurations.
+Guidance trade-off analysis. We further compare fixed, linear, and cosine
+schedules under different guidance strengths. As shown in Fig. 9, their preferred
+operating points vary across schedules and styles, whereas TRACE adaptively
+modulates the guidance along the denoising trajectory.
+Fig. 9: Trade-offs of fixed, linear, cosine, and uncertainty-adaptive guidance under
+different guidance strengths.
+
+
+32
+D.K Le et al.
+Qualitative comparison. The qualitative results in Fig. 10 show that uncertainty-
+adaptive guidance produces fewer visible artifacts than constant and handcrafted
+time-dependent schedules in the shown examples.
+Fig. 10: Qualitative comparison of uncertainty-adaptive, constant, and handcrafted
+time-dependent guidance.
+E.6
+Style Disentanglement and Held-out Style Generalization
+We further evaluate whether the learned content-style subspaces capture reusable
+style directions rather than memorizing the style families used during offline de-
+composition. We additionally construct a style-disentanglement setting in which
+reference images share the same visual style but contain different semantic con-
+tent.
+Table 8: Generalization and style-disentanglement analysis. Held-out evaluation uses
+6 styles × 13 contents, while style disentanglement uses 4 styles with 3 references each
+× 13 contents.
+Style
+Content
+Leakage
+Setting / Method
+CSD↑
+SRA↑
+DINO↑CLIP-I↑LPIPS↓
+DCL↓
+Held-out Style-Family Generalization
+Full-data
+43.213
+96.875
+68.909
+81.269
+36.040
+19.333
+Held-out Style Family 43.292 96.875
+69.552
+80.684
+36.128
+19.162
+Style Disentanglement
+No Decomposition
+62.819 66.333
+55.170
+75.449
+38.674
+36.307
+TRACE
+46.256
+63.333
+71.374
+84.238
+32.643
+20.301
+Rb-Modulation
+34.785
+43.333
+78.369
+91.382
+27.427
+15.170
+AttenST
+38.906
+58.333
+65.869
+81.762
+30.048
+23.923
+StyleID
+37.798
+65.000
+67.564
+84.073
+32.220
+22.218
+Style disentanglement. We first evaluate whether the proposed content-style
+decomposition can suppress semantic information carried by the style reference.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+33
+To this end, we construct a same-style, different-semantics setting, where mul-
+tiple reference images share a similar visual style but depict different semantic
+content. As shown in Tab. 8, removing the decomposition substantially degrades
+content preservation and increases semantic leakage. In particular, TRACE im-
+proves DINO from 55.170 to 71.374 and reduces DCL from 36.307 to 20.301 com-
+pared with the variant without decomposition, while retaining higher CSD than
+AttenST and StyleID. This indicates that the decomposition reduces reference-
+induced semantic leakage while preserving the desired visual style.
+Fig. 11: Style disentanglement under semantically different references sharing the same
+visual style.
+Held-out style-family generalization. We further examine whether the learned
+content-style subspaces generalize beyond the style families used during offline
+decomposition. For this evaluation, the target style family is excluded from the
+offline subspace construction and used only at inference time. As shown in Tab. 8,
+performance remains nearly unchanged when the target style family is held out:
+CSD changes from 43.213 to 43.292, DINO from 68.909 to 69.552, and DCL
+from 19.333 to 19.162. These results suggest that the learned subspaces capture
+reusable content and style directions rather than relying on the presence of the
+target style family during offline estimation.
+Fig. 12: Qualitative result on an unseen origami-style reference.
+
+
+34
+D.K Le et al.
+E.7
+Trade-off Analysis
+Style transfer involves competing objectives among style fidelity, content preser-
+vation, and semantic leakage. We therefore examine pairwise Pareto trade-offs
+among representative methods rather than relying on a single aggregate cri-
+terion. As shown in Fig. 13, different methods occupy different regions of the
+trade-off space, highlighting the balance achieved by TRACE across the com-
+peting objectives.
+Fig. 13: Pairwise Pareto trade-offs among representative style-transfer methods.
+E.8
+Additional Qualitative Results
+Fig. 14: Additional qualitative comparison with baseline methods using a texture-
+dominant style reference. TRACE transfers local texture patterns while better pre-
+serving the main content structure.
+
+
+TRACE: Time-Adaptive Attention Control for Style Transfer
+35
+Additional qualitative Comparison. Figure 14 and Fig. 15 provide ad-
+ditional qualitative comparisons under different style characteristics. For the
+texture-dominant style reference, baseline methods may transfer strong local
+patterns but can also introduce structural distortion or semantic leakage. For
+the color-dominant style reference, some baselines capture the global color dis-
+tribution but may weaken content identity or object boundaries. In contrast,
+TRACE better preserves the main content structure while still transferring the
+target visual appearance, showing a more balanced style-content trade-off.
+To further illustrate the qualitative performance of TRACE, we provide ad-
+ditional stylization results on diverse content-style pairs in Fig. 16.
+Background preservation. Our evaluation primarily uses StyleAligned and
+DreamBooth images, which are predominantly object-centric. Therefore, our
+preservation claims mainly concern foreground structure and semantic content
+rather than strict background fidelity. In some examples, strong stylization may
+still alter or wash out background appearance.
+Fig. 15: Additional qualitative comparison with baseline methods using a color-
+dominant style reference. TRACE captures the target color distribution while main-
+taining the semantic structure of the content image.
+
+
+36
+D.K Le et al.
+Fig. 16: Representative stylization results of TRACE on different content and style
+pairs. Each example shows how the target style is transferred while preserving the
+main content structure.

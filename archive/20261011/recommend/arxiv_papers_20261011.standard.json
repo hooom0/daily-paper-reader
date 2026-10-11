@@ -1,0 +1,461 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-11T23:06:31.581728+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 11,
+    "quick_skim_target": 11,
+    "quick_selected": 11
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2610.04922v1",
+      "source": "arxiv",
+      "title": "TRACE: Time-Adaptive Residual Attention Control with Content-Style Decomposition for Training-Free Diffusion Style Transfer",
+      "abstract": "Reference-guided style transfer aims to preserve the semantic structure of a content image while transferring the visual appearance of a style reference. Recent diffusion-based methods achieve impressive stylization quality by exploiting strong pretrained generative priors. However, training-free approaches still face a difficult trade-off among style fidelity, content preservation, and content leakage. Direct style injection may unintentionally transfer semantic content from the style image, while fixed guidance schedules often ignore the time- and state-dependent nature of diffusion sampling. To address these limitations, we propose TRACE, a training-free diffusion style transfer framework with Time-adaptive Residual Attention Control and Content-Style Decomposition. TRACE first performs offline CLIP-based subspace analysis to separate content and style directions from paired data. During inference, it removes content-related components from the style reference and style-related components from the content reference to reduce leakage. It then injects style information through residual cross-attention and applies uncertainty-aware guidance to adapt the guidance signal at each denoising step. Experiments show that TRACE achieves a favorable trade-off between stylization and preservation. Compared with optimal-control-based baselines, TRACE substantially improves style fidelity (+17.28 CSD and +34.10 SRA). While, compared with stylization methods, it better preserves content structure (+12.80 DINO, +5.52 CLIP-I, and -8.19 LPIPS) and reduces directional semantic leakage by 29.5% in DCL. Our code is publicly available at https://github.com/pixelchemy-research/TRACE.",
+      "authors": [
+        "Duc Khoan Le",
+        "Kim Ngoc Tran",
+        "Minh Nhat Le",
+        "Thanh An Tran",
+        "Viet Toan Nguyen",
+        "Khanh An Lay",
+        "Tran Thai Son",
+        "Hoang Pham Minh"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-04T04:06:30+00:00",
+      "link": "https://arxiv.org/pdf/2610.04922v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "training-free diffusion style transfer with time-adaptive residual attention control",
+      "llm_evidence_cn": "免训练扩散风格迁移与时序自适应残差注意力控制",
+      "llm_evidence": "免训练扩散风格迁移与时序自适应残差注意力控制",
+      "canonical_evidence": "免训练扩散风格迁移与时序自适应残差注意力控制",
+      "llm_tldr_en": "TRACE tackles training-free diffusion style transfer by proposing time-adaptive residual attention control with content-style decomposition to balance style fidelity, content preservation and leakage.",
+      "llm_tldr_cn": "参考引导的风格迁移需在保持内容图像语义结构的同时迁移风格外观，现有免训练扩散方法在风格保真、内容保持与内容泄漏之间难以权衡。本文提出TRACE框架，通过内容-风格解耦与时间自适应残差注意力控制，动态调节扩散采样中的引导强度。实验表明该方法在多种风格迁移任务上缓解了内容泄漏并提升了风格一致性。该工作为免训练可控图像生成提供了新的时序控制思路。",
+      "llm_tldr": "参考引导的风格迁移需在保持内容图像语义结构的同时迁移风格外观，现有免训练扩散方法在风格保真、内容保持与内容泄漏之间难以权衡。本文提出TRACE框架，通过内容-风格解耦与时间自适应残差注意力控制，动态调节扩散采样中的引导强度。实验表明该方法在多种风格迁移任务上缓解了内容泄漏并提升了风格一致性。该工作为免训练可控图像生成提供了新的时序控制思路。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.04326v1",
+      "source": "arxiv",
+      "title": "LyapuFlow: Controlling Generative Flows with Lyapunov Feedback for Inverse Problems",
+      "abstract": "Pretrained flow models are now widely used as generative priors in science and vision, where inference-time guidance enables test-time constraints without retraining. Existing methods use projection, posterior sampling, or iterative optimization of the generative trajectory. We propose LyapuFlow, an alternative based on Lyapunov feedback control. At each sampling step, LyapuFlow predicts the terminal sample towards which the current flow is evolving, and evaluates the constraint violation on this prediction. Then, we compute the minimum-norm control that satisfies a prescribed Lyapunov decrease condition. The resulting control remains inactive when the uncontrolled dynamics already reduce the constraint violation at the prescribed rate. Otherwise, it provides a corrective update within a feedback trust region that prevents the control from dominating the pretrained dynamics. We demonstrate LyapuFlow in both data and latent spaces, outperforming alternatives spanning different mechanisms for test-time constraint enforcement in scientific machine learning and image inverse problems.",
+      "authors": [
+        "Minseon Gwak",
+        "Hans Hao-Hsun Hsu",
+        "Danielle C. Maddix",
+        "N. Benjamin Erichson"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "stat.ML"
+      ],
+      "published": "2026-10-03T06:41:54+00:00",
+      "link": "https://arxiv.org/pdf/2610.04326v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "controlling generative flows with inference-time guidance for constraints",
+      "llm_evidence_cn": "控制生成流并做推理时引导以满足约束",
+      "llm_evidence": "控制生成流并做推理时引导以满足约束",
+      "canonical_evidence": "控制生成流并做推理时引导以满足约束",
+      "llm_tldr_en": "LyapuFlow controls pretrained generative flow models at inference time using Lyapunov feedback, computing minimum-norm control to satisfy constraint decrease without retraining.",
+      "llm_tldr_cn": "预训练流模型常作为生成先验，需要推理时引导在不重训的前提下满足约束。该文提出 LyapuFlow，用李雅普诺夫反馈控制，在每步采样预测终端样本并计算满足约束下降条件的最小范数控制。该方法在无控制动力学已满足约束时保持不激活，为可控生成提供了新的理论化引导途径。",
+      "llm_tldr": "预训练流模型常作为生成先验，需要推理时引导在不重训的前提下满足约束。该文提出 LyapuFlow，用李雅普诺夫反馈控制，在每步采样预测终端样本并计算满足约束下降条件的最小范数控制。该方法在无控制动力学已满足约束时保持不激活，为可控生成提供了新的理论化引导途径。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.09876v1",
+      "source": "arxiv",
+      "title": "Think Before You Paint: Recursive Latent Reasoning for Diffusion Models",
+      "abstract": "Diffusion models generate realistic images but often fail on visual reasoning tasks, such as filling in a Sudoku or drawing the path through a maze. When a discrete symbolic representation is available, recursive methods such as the Tiny Recursive Model (TRM) solve even hard instances of these puzzles. We ask how such reasoning can be carried over to pixels, where no symbolic representation is available. We propose Painter-Thinker (PaTh): a small recursive network (the Thinker) reasons over a grid of learned tokens that encode the noisy image and the conditioning, refines a latent state within every denoising step, and steers a frozen diffusion model (the Painter) through ControlNet adapters. The Thinker is trained with the standard reconstruction loss alone, without symbolic targets, a solver, or a verifier. PaTh solves 92.5% of hard MNIST Sudoku puzzles (prior best 75%) and 71.2% of extreme ones (prior best 4.1%), with 10M parameters against 82M for a standard diffusion model. It also improves on mazes, Queens, and CLEVR scenes with specified spatial relations, and its advantage grows with problem size. Diagnostic experiments show that PaTh recovers from injected mistakes that the diffusion model cannot repair, especially when many cells are wrong. Together, these results show that reasoning mechanisms developed for symbolic data can be integrated into pixel-space diffusion without symbolic supervision, opening a path toward generating data under increasingly complex constraints.",
+      "authors": [
+        "Paweł Skierś",
+        "Małgorzata Grzanka",
+        "Wojciech Masarczyk",
+        "Jan-Willem van de Meent",
+        "Kamil Deja"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-10-07T11:36:56+00:00",
+      "link": "https://arxiv.org/pdf/2610.09876v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "recursive latent reasoning steering diffusion via ControlNet",
+      "llm_evidence_cn": "递归潜变量推理经ControlNet引导扩散模型",
+      "llm_evidence": "递归潜变量推理经ControlNet引导扩散模型",
+      "canonical_evidence": "递归潜变量推理经ControlNet引导扩散模型",
+      "llm_tldr_en": "Diffusion models struggle with visual reasoning tasks requiring symbolic structure. PaTh adds a small recursive Thinker that refines a latent state each denoising step and steers a frozen diffusion Painter via ControlNet adapters, enabling reasoning in pixel space.",
+      "llm_tldr_cn": "扩散模型虽能生成逼真图像，却在数独、迷宫等需要视觉推理的任务上表现不佳。作者提出Painter-Thinker（PaTh），用一个小的递归网络在每次去噪步骤中精炼潜状态，并通过ControlNet适配器引导冻结的扩散模型。该方法将符号式递归推理迁移到像素空间，使扩散生成具备更强的可控性与推理能力。这为可控图像生成与视觉推理开辟了新方向。",
+      "llm_tldr": "扩散模型虽能生成逼真图像，却在数独、迷宫等需要视觉推理的任务上表现不佳。作者提出Painter-Thinker（PaTh），用一个小的递归网络在每次去噪步骤中精炼潜状态，并通过ControlNet适配器引导冻结的扩散模型。该方法将符号式递归推理迁移到像素空间，使扩散生成具备更强的可控性与推理能力。这为可控图像生成与视觉推理开辟了新方向。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.06831v1",
+      "source": "arxiv",
+      "title": "UniSlider: Perceptually Uniform Sliders for Continuous Image Editing",
+      "abstract": "Sliders provide an intuitive interface for continuous image editing. In current generative approaches, however, the slider is simply a rescaling of the method's strength parameter, such as an adapter coefficient, a prompt weight, or an interpolation factor. This strength relates poorly to perceptual change. The image can partially revert as the slider moves, long stretches of the range produce no visible difference, and short intervals transform the image abruptly. Remapping the strength could fix this uneven pace, but only if the trajectory is monotone, which current methods do not enforce. We therefore distinguish the slider from the strength, and require perceptual distance from the input to grow linearly with the slider value. We introduce UniSlider, a lightweight LoRA trained on a few-step editing backbone so that its strength approximates this ideal slider. Few-step sampling lets us impose this objective in pixel space without intermediate ground truth, and the backbone's output is preserved at full strength. However, a low-rank adapter cannot make the strength fully uniform. Our slider is thus an inference-time remapping of the strength, obtained by adaptive sampling. Since training optmizes to make the trajectory monotone, this remapping closes the remaining gap without extra training or parameters. On a new benchmark of 300 continuous edits evaluating uniformity, monotonicity, edit fidelity, and identity preservation, UniSlider outperforms all prior methods and is preferred in a user study.",
+      "authors": [
+        "David Serrano-Lozano",
+        "Duygu Ceylan",
+        "Yannick Hold-Geoffroy",
+        "Iliyan Georgiev",
+        "Javier Vazquez-Corral",
+        "Anna Frühstück"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.GR"
+      ],
+      "published": "2026-10-05T17:58:11+00:00",
+      "link": "https://arxiv.org/pdf/2610.06831v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Perceptually uniform slider control for continuous controllable image editing",
+      "llm_evidence_cn": "面向连续可控图像编辑的感知均匀滑块控制",
+      "llm_evidence": "面向连续可控图像编辑的感知均匀滑块控制",
+      "canonical_evidence": "面向连续可控图像编辑的感知均匀滑块控制",
+      "llm_tldr_en": "Current generative sliders just rescale a strength parameter and relate poorly to perceptual change, causing reversion and uneven edits; UniSlider separates slider from strength and enforces monotone, linear perceptual distance, enabling smooth continuous image editing.",
+      "llm_tldr_cn": "现有生成式图像编辑中的滑块只是对强度参数的重新缩放，与感知变化关系很差，导致图像回退、区间无变化或突变。本文提出UniSlider，将滑块与强度解耦，要求感知距离随滑块值线性增长，并约束轨迹单调。该方法实现了连续且感知均匀的可控图像编辑，使用户操作更符合直觉，为可控图像生成提供了更自然的交互控制手段。",
+      "llm_tldr": "现有生成式图像编辑中的滑块只是对强度参数的重新缩放，与感知变化关系很差，导致图像回退、区间无变化或突变。本文提出UniSlider，将滑块与强度解耦，要求感知距离随滑块值线性增长，并约束轨迹单调。该方法实现了连续且感知均匀的可控图像编辑，使用户操作更符合直觉，为可控图像生成提供了更自然的交互控制手段。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.10990v1",
+      "source": "arxiv",
+      "title": "Omni-Diffusion-Distill: Few-Step Distillation of Unified Multimodal Diffusion Large Language Models",
+      "abstract": "Unified multimodal diffusion large language models (dLLMs) offer a single architecture for both image generation and multimodal understanding, but their iterative decoding requires tens to hundreds of forward passes. Existing few-step distillation methods largely focus on either image generation or text generation, making it unclear how to compress a fully discrete multimodal dLLM into a single efficient student while preserving both generation and understanding. We introduce Omni-Diffusion-Distill, a unified two-stage distillation framework that retains strong generation and understanding capabilities while substantially reducing the inference cost of a unified multimodal dLLM. Omni-Diffusion-Distill aligns the distillation of both generation and understanding, for both images and text, in the discrete token space. In the first stage, the student is trained to skip decoding steps by replaying cached teacher trajectories, and in the second stage the student is refined on intermediate states along its own rollouts. We further remedy two sources of degradation in unified distillation with a pairwise collision penalty that reduces repetition under parallel text decoding, and entropy-matched guidance that prevents entropy collapse caused by fitting the sharpened teacher distribution in image generation. Omni-Diffusion-Distill achieves state-of-the-art trade-offs between decoding efficiency and generation and understanding performance for multimodal dLLMs, reducing image generation from 128 to 8 decoding steps and multimodal understanding from 512 to 64, giving 18.2x and 21.2x wall-clock speedups. Under these budgets, it scores 0.828 on GenEval and 83.0 on DPG-Bench for text-to-image generation, while reaching GPT judge scores of 20.0 on MM-Vet and 57.2 on COCO captioning (twice the teacher's 28.4 at the same steps) for multimodal understanding.",
+      "authors": [
+        "Hong Huang",
+        "Chenhongyi Yang",
+        "Junzhe Sun",
+        "Animesh Sinha",
+        "Wuyang Chen",
+        "Yifan Jiang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.LG"
+      ],
+      "published": "2026-10-07T23:24:16+00:00",
+      "link": "https://arxiv.org/pdf/2610.10990v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "unified multimodal diffusion LLM for image generation with few-step distillation",
+      "llm_evidence_cn": "统一多模态扩散大模型做图像生成与少步蒸馏",
+      "llm_evidence": "统一多模态扩散大模型做图像生成与少步蒸馏",
+      "canonical_evidence": "统一多模态扩散大模型做图像生成与少步蒸馏",
+      "llm_tldr_en": "Omni-Diffusion-Distill is a unified two-stage distillation framework that compresses a multimodal diffusion LLM while retaining image generation and understanding.",
+      "llm_tldr_cn": "统一多模态扩散大语言模型可用单一架构同时做图像生成与多模态理解，但迭代解码需要数十至数百次前向。该文提出 Omni-Diffusion-Distill，一个统一的两阶段蒸馏框架，将完全离散的多模态扩散大模型压缩为高效学生模型。结果在显著降低推理成本的同时保留生成与理解能力，为高效统一图像生成模型提供方案。",
+      "llm_tldr": "统一多模态扩散大语言模型可用单一架构同时做图像生成与多模态理解，但迭代解码需要数十至数百次前向。该文提出 Omni-Diffusion-Distill，一个统一的两阶段蒸馏框架，将完全离散的多模态扩散大模型压缩为高效学生模型。结果在显著降低推理成本的同时保留生成与理解能力，为高效统一图像生成模型提供方案。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.06945v1",
+      "source": "arxiv",
+      "title": "Beyond the Linear Representation Hypothesis: Non-Linear Activation Steering in Text-to-Image Models",
+      "abstract": "Mechanistic interpretability often relies on the Linear Representation Hypothesis (LRH), which assumes that high-level concepts are encoded as linear directions in activation space. Yet a natural visual concept does not necessarily require a linear visual transition: between sunny and stormy lies an intermediate weather state such as a sky with a few white clouds, not simply a weaker storm; between a caterpillar and a butterfly, the progression is not a caterpillar with continuously growing wings. This raises the question of whether such true intermediate states are also represented nonlinearly by the model. Indeed, when we prompt text-to-image models directly for intermediate attributes, their activations rarely fall along the straight direction connecting the endpoints. Therefore, we propose KANSteer, which models concept traversal as a curve passing through its intermediate states. Seeking a representation that is both simple and interpretable, we propose to use Kolmogorov-Arnold Networks (KANs), which provide a one-dimensional coordinate whose learned functions define the trajectory. This allows the steering direction to vary along the concept while preserving an interpretable representation. Across several concepts and text-to-image diffusion transformers, we find that their activation trajectories substantially deviate from straight lines, and that KANSteer provide a closer fit and smoother traversal of intermediate attributes than linear steering.",
+      "authors": [
+        "Muhammad Atif Butt",
+        "Paweł Skierś",
+        "Joost Van De Weijer",
+        "Kamil Deja"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-03T10:32:28+00:00",
+      "link": "https://arxiv.org/pdf/2610.06945v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "non-linear activation steering for controlling text-to-image models",
+      "llm_evidence_cn": "面向文本到图像模型的非线性激活引导",
+      "llm_evidence": "面向文本到图像模型的非线性激活引导",
+      "canonical_evidence": "面向文本到图像模型的非线性激活引导",
+      "llm_tldr_en": "Challenging the Linear Representation Hypothesis, this paper shows that intermediate visual concepts are encoded non-linearly in text-to-image models and proposes non-linear activation steering for control.",
+      "llm_tldr_cn": "机制可解释性常依赖线性表征假设，认为高层概念在激活空间中以线性方向编码，但许多自然视觉概念的中间状态并非线性过渡。本文探究文本到图像模型是否以非线性方式表征这些真实中间状态，并提出非线性激活引导方法。实验表明直接提示中间属性时激活很少落在单一线性方向上，非线性引导能更准确地控制生成。该工作拓展了生成模型的可控性与可解释性研究。",
+      "llm_tldr": "机制可解释性常依赖线性表征假设，认为高层概念在激活空间中以线性方向编码，但许多自然视觉概念的中间状态并非线性过渡。本文探究文本到图像模型是否以非线性方式表征这些真实中间状态，并提出非线性激活引导方法。实验表明直接提示中间属性时激活很少落在单一线性方向上，非线性引导能更准确地控制生成。该工作拓展了生成模型的可控性与可解释性研究。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.11216v1",
+      "source": "arxiv",
+      "title": "The Lattice of Transition Laws",
+      "abstract": "Diffusion and autoregression (AR) have long been seen as different categories of generative models, with diffusion specialising in continuous fields and AR specialising in discrete tokens. Recent work seeks to combine the advantages of the two models, and each hybrid fixes its decoding schedule by design. In this paper, we ask whether the performance of decoding schedules of one model can be predicted before decoding at a fixed number of steps. We describe diffusion, AR, and models in between as paths on one corruption lattice, and define the cost of a schedule as the dependence its parallel steps discard. The cost shows that the fewest steps of a zero-cost schedule are set by the geometry of the data, in the same way for tokens and for continuous fields. In particular, for data that are Markov on a graph and dependent along its paths, the fewest steps equal the graph's treedepth, which is logarithmic in the length of a sequence and linear in the side length of a grid. With fewer steps than the treedepth, every schedule pays a positive cost, whose ranking we predict before decoding with a kernel of pairwise dependence estimated from pretrained weights. Across text generation, image generation, and video generation, we verify most of the predictions about the rankings of different schedules under different metrics and benchmarks. This work therefore provides a design principle for decoding for future AR models, diffusion models, and anything in between. Our code is available at https://github.com/TSUITUENYUE/The-Lattice-of-Transition-Laws.",
+      "authors": [
+        "T. Y. Tsui",
+        "Jiatao Gu",
+        "Lingjie Liu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-10-08T04:13:05+00:00",
+      "link": "https://arxiv.org/pdf/2610.11216v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "unifying diffusion and autoregressive decoding schedules on a corruption lattice",
+      "llm_evidence_cn": "在腐蚀格上统一扩散与自回归解码调度",
+      "llm_evidence": "在腐蚀格上统一扩散与自回归解码调度",
+      "canonical_evidence": "在腐蚀格上统一扩散与自回归解码调度",
+      "llm_tldr_en": "The paper unifies diffusion, autoregression and hybrid generative models as paths on a corruption lattice, defining schedule cost as discarded dependence to predict decoding performance before decoding.",
+      "llm_tldr_cn": "扩散与自回归长期被视为两类不同的生成模型，近期混合模型虽融合二者优势，但其解码步数需事先设定而无法预判。本文将扩散、自回归及其混合形式刻画为腐蚀格上的路径，并以并行步骤所丢弃的依赖定义调度代价。分析表明零代价调度的最少步数由数据几何决定，且对离散标记与连续场同样成立。该工作为统一理解与设计生成模型的解码调度提供了理论框架。",
+      "llm_tldr": "扩散与自回归长期被视为两类不同的生成模型，近期混合模型虽融合二者优势，但其解码步数需事先设定而无法预判。本文将扩散、自回归及其混合形式刻画为腐蚀格上的路径，并以并行步骤所丢弃的依赖定义调度代价。分析表明零代价调度的最少步数由数据几何决定，且对离散标记与连续场同样成立。该工作为统一理解与设计生成模型的解码调度提供了理论框架。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.10400v1",
+      "source": "arxiv",
+      "title": "Self-correction Optimization for Interleaved Multimodal Generation",
+      "abstract": "Multimodal large language models (MLLMs) have made significant progress in visual understanding and generation. However, generating interleaved image--text content remains challenging, as it requires tightly integrated multimodal understanding and generation capabilities. Although existing MLLMs provide promising solutions, most rely on additional training with augmented data, which is computationally expensive and remains limited in preserving visual subjects, temporal consistency, and physical plausibility. In this work, we propose self-correction optimization (SCO), an effective training-free method for consistent interleaved generation. SCO treats the classifier-free guidance update as a reference and performs minimal self-correction under two complementary constraints, including new-event and state-preserving constraints. Specifically, the new-event constraint promotes temporal consistency across image--text sequences, while the state-preserving constraint maintains the coherence of visual subjects throughout subsequent generation steps. Experiments on challenging interleaved multimodal generation benchmarks demonstrate significant improvements in temporal coherence and visual-subject preservation. Furthermore, SCO can be extended to video generation and improves the modeling of physically grounded processes, including robot manipulation and long-horizon handcrafting.",
+      "authors": [
+        "Xin You",
+        "Zhiwei Ning",
+        "Zukai Chen",
+        "Minghui Zhang",
+        "Xuanke Shi",
+        "Hanxiao Zhang",
+        "Jingsong Liu",
+        "Jie Yang",
+        "Quan Wang",
+        "Yun Gu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-07T16:51:02+00:00",
+      "link": "https://arxiv.org/pdf/2610.10400v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "training-free self-correction for interleaved image-text generation",
+      "llm_evidence_cn": "面向图文交错生成的免训练自纠正",
+      "llm_evidence": "面向图文交错生成的免训练自纠正",
+      "canonical_evidence": "面向图文交错生成的免训练自纠正",
+      "llm_tldr_en": "SCO is a training-free method for consistent interleaved image-text generation that treats the classifier-free guidance update as a reference and applies minimal self-correction to preserve subjects, temporal consistency and plausibility.",
+      "llm_tldr_cn": "多模态大模型在图文交错生成上仍难兼顾主体保持、时序一致与物理合理性，且多依赖昂贵的数据增强训练。本文提出自纠正优化SCO，一种免训练方法，将无分类器引导更新视为参考，在两个互补约束下进行最小自纠正。方法无需额外训练即可提升交错生成的一致性。",
+      "llm_tldr": "多模态大模型在图文交错生成上仍难兼顾主体保持、时序一致与物理合理性，且多依赖昂贵的数据增强训练。本文提出自纠正优化SCO，一种免训练方法，将无分类器引导更新视为参考，在两个互补约束下进行最小自纠正。方法无需额外训练即可提升交错生成的一致性。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.11238v1",
+      "source": "arxiv",
+      "title": "Attributing HOW, Not Just WHICH: Counterfactual Response Trajectories for Diffusion Models",
+      "abstract": "Diffusion models have achieved remarkable success in image generation, yet tracing their outputs to individual training examples remains challenging. Existing attribution methods often compress factor-specific effects into scalar responses, making distinct internal changes indistinguishable. This is particularly limiting for diffusion models, where semantic factors emerge through evolving representation dynamics during denoising. We therefore reformulate diffusion data attribution as attributing factor-induced internal response trajectories. In this paper, we propose a novel Concept Attribution method through Dynamic Trajectories(CADT). We argue that attribution should therefore ask not only \\emph{which} examples matter, but also \\emph{how} their influence unfolds during generation. Specifically, we construct matched counterfactual pairs at identical noisy states to isolate factor-specific representation displacements, and model their directional and magnitude evolution across denoising as dynamic attribution signatures. For each training example and generated query, CADT extracts stage-wise feature vectors and integrates them along the denoising process to form a trajectory descriptor. Applying the same construction across the training set yields a bank of factor-specific trajectory descriptors. The covariance statistics of this bank are then used to construct . CADT uses this covariance-aware positive-semidefinite kernel to calibrate the query and training representations, and compares the calibrated query trajectory with each training trajectory to produce the final training-sample attribution scores. Experiments on multiple public datasets show consistent improvements over existing diffusion attribution baselines across hierarchical, compositional, and style attribution.",
+      "authors": [
+        "Haoqian Zhang",
+        "Ziyuan Yang",
+        "Zerui Shao",
+        "Yi Zhang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.GR"
+      ],
+      "published": "2026-10-08T04:40:24+00:00",
+      "link": "https://arxiv.org/pdf/2610.11238v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "data attribution for diffusion image generation via internal response trajectories",
+      "llm_evidence_cn": "面向扩散图像生成的数据归因，追踪内部响应轨迹",
+      "llm_evidence": "面向扩散图像生成的数据归因，追踪内部响应轨迹",
+      "canonical_evidence": "面向扩散图像生成的数据归因，追踪内部响应轨迹",
+      "llm_tldr_en": "Diffusion models generate images well, yet tracing outputs to training examples remains hard. Existing attribution compresses factor effects into scalars; CADT instead attributes factor-induced internal response trajectories during denoising, better explaining how semantics emerge.",
+      "llm_tldr_cn": "扩散模型在图像生成上表现优异，但将输出追溯到具体训练样本仍具挑战。现有归因方法把因子效应压缩成标量响应，使不同内部变化难以区分。论文提出CADT概念归因方法，将扩散数据归因重新表述为对因子诱导的内部响应轨迹的归因，从而刻画去噪过程中语义因素的动态演化。该工作主张归因不仅要问哪些样本重要，还要问如何产生影响，为扩散模型可解释性提供新范式。",
+      "llm_tldr": "扩散模型在图像生成上表现优异，但将输出追溯到具体训练样本仍具挑战。现有归因方法把因子效应压缩成标量响应，使不同内部变化难以区分。论文提出CADT概念归因方法，将扩散数据归因重新表述为对因子诱导的内部响应轨迹的归因，从而刻画去噪过程中语义因素的动态演化。该工作主张归因不仅要问哪些样本重要，还要问如何产生影响，为扩散模型可解释性提供新范式。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.11286v1",
+      "source": "arxiv",
+      "title": "When Scene Text Hijacks the Scene: Uncovering, Exploiting, and Mitigating Rendered-Text Semantic Leakage in Image Generation Models",
+      "abstract": "The reliability and accountability of image generative models (IGMs) are essential for building responsible and trustworthy AI systems. Recent IGMs, such as Nano Banana and GPT-Image, now support complex instruction following, realistic image synthesis, and controllable scene-text rendering. As these capabilities expand, safety analysis must also account for new control channels introduced by complex prompts. In this work, we study rendered-text semantic leakage, a largely overlooked phenomenon in open-domain text rendering. Although rendered text is intended to serve as a local visual constraint that should be reproduced verbatim in the generated image, it also carries linguistic semantics that may be interpreted by the model as part of the input instruction. This makes rendered text a potential semantic control channel whose safety implications remain insufficiently understood. We systematically characterize this phenomenon by decoupling the main visual prompt from the rendered text and measuring their individual and compositional effects on generated images. We quantify semantic leakage and rendering fidelity, and further analyze how leakage emerges from intermediate model evidence. We then show that harmful semantics embedded in scene text can persist through LLM-based prompt enhancement pipelines and steer non-text image regions, even when the main visual prompt remains benign. Finally, we propose a preliminary mitigation approach that reduces unsafe semantic transfer from rendered text to non-text regions while preserving the intended text-rendering behavior on FLUX-2-dev. Our findings reveal rendered text as a dual-use carrier of visible data and latent semantics, exposing a text-centric cross-modal attack surface in modern IGMs.",
+      "authors": [
+        "Feifei Li",
+        "Runjie Wang",
+        "Xiaohan Zhang",
+        "Zhenxing Qian",
+        "Mi Wen",
+        "Mi Zhang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-08T05:50:40+00:00",
+      "link": "https://arxiv.org/pdf/2610.11286v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "controllable scene-text rendering leakage in image generation models",
+      "llm_evidence_cn": "图像生成模型中可控场景文本渲染的语义泄漏",
+      "llm_evidence": "图像生成模型中可控场景文本渲染的语义泄漏",
+      "canonical_evidence": "图像生成模型中可控场景文本渲染的语义泄漏",
+      "llm_tldr_en": "This paper uncovers, exploits and mitigates rendered-text semantic leakage in image generation models, showing that scene text intended as a local visual constraint also carries linguistic semantics that hijack the scene.",
+      "llm_tldr_cn": "图像生成模型现已支持复杂指令跟随与可控场景文本渲染，但新增的控制通道也带来安全隐患。本文研究渲染文本语义泄漏现象，发现本应作为局部视觉约束逐字复现的场景文本还携带语言语义，会干扰整体场景。工作系统揭示了该现象并给出利用与缓解方法，推动生成模型的安全与可信。",
+      "llm_tldr": "图像生成模型现已支持复杂指令跟随与可控场景文本渲染，但新增的控制通道也带来安全隐患。本文研究渲染文本语义泄漏现象，发现本应作为局部视觉约束逐字复现的场景文本还携带语言语义，会干扰整体场景。工作系统揭示了该现象并给出利用与缓解方法，推动生成模型的安全与可信。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.11479v1",
+      "source": "arxiv",
+      "title": "Conditional Residual Prediction: Improving Autoregressive Video Diffusion without a Bidirectional Teacher",
+      "abstract": "Causal video diffusion models generate video autoregressively, which suits streaming, interactive, and long-video generation. Under standard training, however, they often yield lower generation quality than bidirectional models of the same size. Many existing approaches address this gap by initializing from or distilling a pretrained bidirectional teacher. We instead train a causal model from an image-model initialization, with no bidirectional video model at any stage. Because this path requires neither a large bidirectional teacher nor a complex distillation pipeline, it is simpler and more scalable. On this path, we find that a causal model trained on ground-truth history becomes strongly dependent on it, so that at inference errors in its own generated history propagate forward. We hypothesize that much of this dependence is unnecessary, because the current input already determines much of what the history provides. We propose Conditional Residual Prediction (CRP), a simple recipe for reducing a model's reliance on a condition: the model first predicts the target without the condition, and the condition may only add a residual on top of this prediction. Applied to history, CRP makes the model predict each chunk from the present as far as it can and use the past only for what the present cannot supply. In controlled experiments, CRP nearly closes the 6.14-point gap to a bidirectional model trained under the same setup. Scaling this recipe, we train Optica, a 2B-parameter causal video model that autoregressively generates 5-second 480p videos and reaches 82.78 on VBench with only about 15M training videos.",
+      "authors": [
+        "Bowen Zheng",
+        "Zhiguang Liu",
+        "Jiarong Ou",
+        "Rui Chen",
+        "Tianyang Hu"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-10-08T08:25:41+00:00",
+      "link": "https://arxiv.org/pdf/2610.11479v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "autoregressive diffusion generation improving causal video model quality",
+      "llm_evidence_cn": "自回归扩散生成，提升因果视频模型质量",
+      "llm_evidence": "自回归扩散生成，提升因果视频模型质量",
+      "canonical_evidence": "自回归扩散生成，提升因果视频模型质量",
+      "llm_tldr_en": "Conditional residual prediction improves autoregressive causal video diffusion by training from image-model initialization without a bidirectional teacher.",
+      "llm_tldr_cn": "因果视频扩散模型以自回归方式生成视频，适合流式与长视频，但标准训练下质量常低于同规模双向模型。该文提出条件残差预测，从图像模型初始化训练因果模型，全程不使用双向教师或蒸馏。研究发现因果模型对真实历史依赖过强，该方法缓解此问题并提升自回归生成质量，为可扩展的自回归生成提供更简路径。",
+      "llm_tldr": "因果视频扩散模型以自回归方式生成视频，适合流式与长视频，但标准训练下质量常低于同规模双向模型。该文提出条件残差预测，从图像模型初始化训练因果模型，全程不使用双向教师或蒸馏。研究发现因果模型对真实历史依赖过强，该方法缓解此问题并提升自回归生成质量，为可扩展的自回归生成提供更简路径。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "autoregressive models for image generation",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

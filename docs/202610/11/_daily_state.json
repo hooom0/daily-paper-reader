@@ -1,0 +1,185 @@
+{
+  "date": "20261011",
+  "date_label": "",
+  "generated_at": "2026-10-11 23:08:22 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.04922v1",
+      "route": "202610/11/2610.04922v1-trace-time-adaptive-residual-attention-control-with-content-style-decomposition-for-training-free-diffusion-style-transfer",
+      "title": "TRACE: Time-Adaptive Residual Attention Control with Content-Style Decomposition for Training-Free Diffusion Style Transfer",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "免训练扩散风格迁移与时序自适应残差注意力控制",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.09876v1",
+      "route": "202610/11/2610.09876v1-think-before-you-paint-recursive-latent-reasoning-for-diffusion-models",
+      "title": "Think Before You Paint: Recursive Latent Reasoning for Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "递归潜变量推理经ControlNet引导扩散模型",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.10990v1",
+      "route": "202610/11/2610.10990v1-omni-diffusion-distill-few-step-distillation-of-unified-multimodal-diffusion-large-language-models",
+      "title": "Omni-Diffusion-Distill: Few-Step Distillation of Unified Multimodal Diffusion Large Language Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "统一多模态扩散大模型做图像生成与少步蒸馏",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.11216v1",
+      "route": "202610/11/2610.11216v1-the-lattice-of-transition-laws",
+      "title": "The Lattice of Transition Laws",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "在腐蚀格上统一扩散与自回归解码调度",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.04326v1",
+      "route": "202610/11/2610.04326v1-lyapuflow-controlling-generative-flows-with-lyapunov-feedback-for-inverse-problems",
+      "title": "LyapuFlow: Controlling Generative Flows with Lyapunov Feedback for Inverse Problems",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "控制生成流并做推理时引导以满足约束",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.06831v1",
+      "route": "202610/11/2610.06831v1-unislider-perceptually-uniform-sliders-for-continuous-image-editing",
+      "title": "UniSlider: Perceptually Uniform Sliders for Continuous Image Editing",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向连续可控图像编辑的感知均匀滑块控制",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.06945v1",
+      "route": "202610/11/2610.06945v1-beyond-the-linear-representation-hypothesis-non-linear-activation-steering-in-text-to-image-models",
+      "title": "Beyond the Linear Representation Hypothesis: Non-Linear Activation Steering in Text-to-Image Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向文本到图像模型的非线性激活引导",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.10400v1",
+      "route": "202610/11/2610.10400v1-self-correction-optimization-for-interleaved-multimodal-generation",
+      "title": "Self-correction Optimization for Interleaved Multimodal Generation",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向图文交错生成的免训练自纠正",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.11238v1",
+      "route": "202610/11/2610.11238v1-attributing-how-not-just-which-counterfactual-response-trajectories-for-diffusion-models",
+      "title": "Attributing HOW, Not Just WHICH: Counterfactual Response Trajectories for Diffusion Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向扩散图像生成的数据归因，追踪内部响应轨迹",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.11286v1",
+      "route": "202610/11/2610.11286v1-when-scene-text-hijacks-the-scene-uncovering-exploiting-and-mitigating-rendered-text-semantic-leakage-in-image-generation-models",
+      "title": "When Scene Text Hijacks the Scene: Uncovering, Exploiting, and Mitigating Rendered-Text Semantic Leakage in Image Generation Models",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "图像生成模型中可控场景文本渲染的语义泄漏",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    },
+    {
+      "paper_id": "2610.11479v1",
+      "route": "202610/11/2610.11479v1-conditional-residual-prediction-improving-autoregressive-video-diffusion-without-a-bidirectional-teacher",
+      "title": "Conditional Residual Prediction: Improving Autoregressive Video Diffusion without a Bidirectional Teacher",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "image-gen"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "自回归扩散生成，提升因果视频模型质量",
+      "first_seen_at": "2026-10-11 23:08:22 UTC",
+      "updated_at": "2026-10-11 23:08:22 UTC"
+    }
+  ]
+}
