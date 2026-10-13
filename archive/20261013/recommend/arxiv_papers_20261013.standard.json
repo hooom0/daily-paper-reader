@@ -1,12 +1,12 @@
 {
   "mode": "standard",
-  "generated_at": "2026-10-13T01:13:23.361982+00:00",
+  "generated_at": "2026-10-13T23:52:13.515989+00:00",
   "stats": {
     "mode": "standard",
     "tag_count": 1,
-    "deep_divecandidates": 2,
+    "deep_divecandidates": 1,
     "deep_cap": 6,
-    "deep_selected": 2,
+    "deep_selected": 1,
     "quick_candidates": 6,
     "quick_skim_target": 11,
     "quick_selected": 6
@@ -38,139 +38,24 @@
         "keyword:image-gen",
         "query:image-gen"
       ],
-      "llm_score": 9.0,
-      "llm_evidence_en": "improving instruction following in few-step text-to-image generation",
-      "llm_evidence_cn": "提升少步文本到图像生成的指令遵循能力",
-      "llm_evidence": "提升少步文本到图像生成的指令遵循能力",
-      "canonical_evidence": "提升少步文本到图像生成的指令遵循能力",
-      "llm_tldr_en": "Few-step text-to-image generators struggle with complex prompts. This work adds a small velocity corrector to a frozen 6B generator, adjusting residuals at selected sampling steps to improve instruction following without extra forward passes.",
-      "llm_tldr_cn": "少步文本到图像生成器虽能以极少前向次数产出高质量图像，但在涉及多主体、交互、空间关系、计数与属性绑定的复杂提示上表现不佳。作者提出轻量速度校正框架，在不改动冻结的60亿参数生成器、也不增加前向次数的情况下，用不到2000万参数的校正器在选定采样步上学习速度残差调整，并考虑早期校正对后续状态的轨迹影响。实验表明该方法显著改善复杂提示的指令遵循能力，为文本到图像生成提供低成本增强路径。",
-      "llm_tldr": "少步文本到图像生成器虽能以极少前向次数产出高质量图像，但在涉及多主体、交互、空间关系、计数与属性绑定的复杂提示上表现不佳。作者提出轻量速度校正框架，在不改动冻结的60亿参数生成器、也不增加前向次数的情况下，用不到2000万参数的校正器在选定采样步上学习速度残差调整，并考虑早期校正对后续状态的轨迹影响。实验表明该方法显著改善复杂提示的指令遵循能力，为文本到图像生成提供低成本增强路径。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "synthesizing images from textual descriptions",
-      "matched_requirement_id": "req-2",
-      "selection_source": "fresh_fetch"
-    },
-    {
-      "id": "2610.13941v1",
-      "source": "arxiv",
-      "title": "Images Talk Back: Guiding MMDiTs by Suppressing Image-to-Text Feedback",
-      "abstract": "Multimodal diffusion transformers (MMDiTs) allow the evolving image to update internal text representations through joint attention. These representations then guide subsequent image updates, raising a question: does this feedback help correct deviations from the prompt, or preserve them? We find that image-to-text (I2T) feedback can preserve the objects and attributes already represented in the evolving image, including errors. Transplanting I2T messages can rescue failures or disrupt successes. At matched intervention strengths, suppressing the influence of I2T feedback improves generation, whereas opposite controls degrade it. These findings motivate Semantic Feedback Guidance (SFG), which suppresses the influence of I2T feedback by guiding away from an auxiliary branch that strengthens this feedback and weakens text-to-image conditioning. The in-place variant, iSFG, directly suppresses I2T feedback and strengthens text-to-image conditioning, requiring no extra model evaluations. Temporal interventions motivate running the SFG branch during the first 20% of image sampling steps, requiring about $1.2\\times$ the base NFE without classifier-free guidance (CFG). Experiments across three image-generation backbones show gains in alignment and preference-model scores. On FLUX, adding SFG to CFG raises GenEval from $0.6661$ to $0.7479$; on SD3.5M, iSFG adds $+1.33$ HPSv2.1 over CFG at zero extra NFE. The control also transfers to text-to-video and image-to-video generation, improving VBench scores. Code is available at https://github.com/yyc1215lll-creator/SFG.",
-      "authors": [
-        "Yucheng Yang",
-        "Xiaoxiao Sun",
-        "Shusheng Yang",
-        "Jiakang Chen",
-        "Serena Yeung-Levy"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV"
-      ],
-      "published": "2026-10-09T17:58:15+00:00",
-      "link": "https://arxiv.org/pdf/2610.13941v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
       "llm_score": 8.0,
-      "llm_evidence_en": "guiding text-to-image diffusion transformers by suppressing image-to-text feedback",
-      "llm_evidence_cn": "通过抑制图到文反馈引导文生图扩散Transformer",
-      "llm_evidence": "通过抑制图到文反馈引导文生图扩散Transformer",
-      "canonical_evidence": "通过抑制图到文反馈引导文生图扩散Transformer",
-      "llm_tldr_en": "MMDiTs let the evolving image update text representations via joint attention; the authors find this image-to-text feedback preserves errors and propose Semantic Feedback Guidance to suppress it.",
-      "llm_tldr_cn": "多模态扩散Transformer允许演化中的图像通过联合注意力更新文本表示，进而影响后续图像更新，但其作用是好是坏尚不明确。本文发现图到文反馈会保留图像中已有的物体与属性，包括错误。作者据此提出语义反馈引导SFG，通过抑制图到文反馈的影响来纠正偏差。实验表明在匹配干预强度下抑制该反馈能改善生成，为文生图扩散模型的引导机制提供了新见解。",
-      "llm_tldr": "多模态扩散Transformer允许演化中的图像通过联合注意力更新文本表示，进而影响后续图像更新，但其作用是好是坏尚不明确。本文发现图到文反馈会保留图像中已有的物体与属性，包括错误。作者据此提出语义反馈引导SFG，通过抑制图到文反馈的影响来纠正偏差。实验表明在匹配干预强度下抑制该反馈能改善生成，为文生图扩散模型的引导机制提供了新见解。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "How do diffusion models generate images from text prompts?",
-      "matched_requirement_id": "req-5",
-      "selection_source": "fresh_fetch"
-    }
-  ],
-  "quick_skim": [
-    {
-      "id": "2610.13316v1",
-      "source": "arxiv",
-      "title": "ThinkDrag: Semantic Drag-Based Image Editing with Visual Reasoning",
-      "abstract": "Drag-based image editing provides an intuitive interface for spatially controlled image manipulation by allowing users to specify handle and target points. Existing methods have made substantial progress through optimization-based, one-step, and feed-forward formulations, but they often interpret drag instructions as geometric displacements. This limits their effectiveness when the desired edit depends on interpreting image content and inferring a plausible semantic transformation from sparse point constraints. We introduce ThinkDrag, a unified multimodal framework for drag-based image editing with visual reasoning. ThinkDrag is trained to associate point constraints with meaningful object- and scene-level transformations, and can optionally produce an explicit reasoning trace that interprets the intended edit before image generation. This reasoning trace improves interpretability, particularly for ambiguous drags. Drag Endpoint Markers, motivated by an analysis of cross-image attention, provide an explicit correspondence signal that grounds each drag in image space. To support this framework, we construct a supervised dataset of semantic drag transformations paired with reasoning traces and introduce DragBench++, a benchmark targeting challenging drag-based editing scenarios with reference edit solutions. Experiments show that ThinkDrag achieves state-of-the-art performance, improving generation quality and plausibility while maintaining competitive point-following precision.",
-      "authors": [
-        "Armando Fortes",
-        "Tianyi Wei",
-        "Chindanai Trakantannarong",
-        "Shangchen Zhou",
-        "Xingang Pan"
-      ],
-      "primary_category": "cs.CV",
-      "categories": [
-        "cs.CV"
-      ],
-      "published": "2026-10-09T09:58:10+00:00",
-      "link": "https://arxiv.org/pdf/2610.13316v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 7.0,
-      "llm_evidence_en": "drag-based controllable image editing with visual reasoning",
-      "llm_evidence_cn": "带视觉推理的拖拽式可控图像编辑",
-      "llm_evidence": "带视觉推理的拖拽式可控图像编辑",
-      "canonical_evidence": "带视觉推理的拖拽式可控图像编辑",
-      "llm_tldr_en": "Drag-based image editing often treats drags as geometric displacements, failing on semantically driven edits. ThinkDrag learns to map point constraints to object- and scene-level transformations with visual reasoning.",
-      "llm_tldr_cn": "拖拽式图像编辑通过用户指定起点与终点提供直观的空间操控接口，但现有优化式、一步式与前馈式方法多把拖拽指令当作几何位移，当编辑依赖对图像内容的理解与语义变换推断时效果受限。作者提出ThinkDrag，一个统一的多模态拖拽编辑框架，训练模型将点约束与有意义的物体级和场景级变换相关联，并可选地生成编辑解释。该框架使稀疏点约束驱动的编辑更具语义合理性，扩展了可控图像生成与编辑的能力边界。",
-      "llm_tldr": "拖拽式图像编辑通过用户指定起点与终点提供直观的空间操控接口，但现有优化式、一步式与前馈式方法多把拖拽指令当作几何位移，当编辑依赖对图像内容的理解与语义变换推断时效果受限。作者提出ThinkDrag，一个统一的多模态拖拽编辑框架，训练模型将点约束与有意义的物体级和场景级变换相关联，并可选地生成编辑解释。该框架使稀疏点约束驱动的编辑更具语义合理性，扩展了可控图像生成与编辑的能力边界。",
+      "llm_evidence_en": "controllable text-to-image via lightweight velocity correction",
+      "llm_evidence_cn": "通过轻量速度修正实现可控文生图",
+      "llm_evidence": "通过轻量速度修正实现可控文生图",
+      "canonical_evidence": "通过轻量速度修正实现可控文生图",
+      "llm_tldr_en": "A lightweight corrector improves instruction following of frozen few-step text-to-image generators without changing parameters or adding forward passes.",
+      "llm_tldr_cn": "少步文生图生成器虽能用少量前向生成高质量图像，但在涉及多主体、交互、空间关系、计数与属性绑定的复杂提示上表现不佳。本文提出一种轻量修正框架，在不改变生成器参数、不增加前向次数的情况下提升指令遵循能力。生成器预测决定图像表示更新的速度，作者用不足20M参数的修正器在选定采样步学习残差调整，并考虑早期修正影响后续状态的轨迹依赖。该框架为可控文生图提供了低成本方案。",
+      "llm_tldr": "少步文生图生成器虽能用少量前向生成高质量图像，但在涉及多主体、交互、空间关系、计数与属性绑定的复杂提示上表现不佳。本文提出一种轻量修正框架，在不改变生成器参数、不增加前向次数的情况下提升指令遵循能力。生成器预测决定图像表示更新的速度，作者用不足20M参数的修正器在选定采样步学习残差调整，并考虑早期修正影响后续状态的轨迹依赖。该框架为可控文生图提供了低成本方案。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
       "matched_query_text": "What are the methods for controllable image generation?",
       "matched_requirement_id": "req-6",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "7"
-    },
-    {
-      "id": "2610.11380v1",
-      "source": "arxiv",
-      "title": "Equal Path Cost, Unequal Output Effects: Understanding Perturbation Propagation in Diffusion Models",
-      "abstract": "Diffusion models have achieved remarkable success in generative modeling, with their sampling procedures routinely modified to control generation and improve efficiency. These modifications introduce perturbations along the sampling trajectory, raising a central question: how do such perturbations affect generated output? To address this question, we develop a theoretical framework to investigate perturbation propagation, combining dynamical analysis of the sampling process with an information-theoretic characterization of output responses. Within this framework, we quantify perturbation strength using the Kullback--Leibler (KL) divergence between perturbed and reference trajectory distributions, termed as path cost, which is shown to bound, but do not determine, changes in the output distribution. Building on this analysis, we derive a response identity that connects the propagation and accumulation of local perturbations with the information captured by a selected feature mean, explaining why changes in the output distribution can remain undetected by its first-order response. We test our theoretical analysis through controlled interventions at equal path cost in pretrained diffusion models, revealing distinct patterns of output sensitivity across sampling stages and spatial frequencies. To assess whether our framework can diagnose perturbations arising from practical approximations, we apply it to cache-based acceleration and show that our propagation analysis reliably identifies sampling intervals where caching causes larger image errors.",
-      "authors": [
-        "Wei Guo",
-        "Yaowen Zhang",
-        "Xingtong Ge",
-        "Jun Zhang"
-      ],
-      "primary_category": "cs.AI",
-      "categories": [
-        "cs.AI"
-      ],
-      "published": "2026-10-08T07:12:36+00:00",
-      "link": "https://arxiv.org/pdf/2610.11380v1",
-      "tags": [
-        "keyword:image-gen",
-        "query:image-gen"
-      ],
-      "llm_score": 6.0,
-      "llm_evidence_en": "theory of perturbation propagation in diffusion sampling for controlled generation",
-      "llm_evidence_cn": "扩散采样中扰动传播的理论及可控生成",
-      "llm_evidence": "扩散采样中扰动传播的理论及可控生成",
-      "canonical_evidence": "扩散采样中扰动传播的理论及可控生成",
-      "llm_tldr_en": "Sampling procedures of diffusion models are modified to control generation. This work builds a theoretical framework quantifying perturbation propagation via path cost, explaining why equal cost yields unequal output effects.",
-      "llm_tldr_cn": "扩散模型常通过修改采样过程来控制生成与提升效率，但这些扰动如何影响输出尚不清楚。本文提出理论框架，结合采样过程的动力学分析与输出的信息论刻画，用KL散度定义路径代价来量化扰动强度。研究揭示路径代价相同却产生不同输出效果的机理，为扩散生成过程的可控干预提供了理论依据。",
-      "llm_tldr": "扩散模型常通过修改采样过程来控制生成与提升效率，但这些扰动如何影响输出尚不清楚。本文提出理论框架，结合采样过程的动力学分析与输出的信息论刻画，用KL散度定义路径代价来量化扰动强度。研究揭示路径代价相同却产生不同输出效果的机理，为扩散生成过程的可控干预提供了理论依据。",
-      "llm_tags": [
-        "query:image-gen"
-      ],
-      "matched_query_tag": "query:image-gen",
-      "matched_query_text": "diffusion probabilistic models for image generation",
-      "matched_requirement_id": "req-1",
-      "selection_source": "fresh_fetch",
-      "quick_tier": "6"
-    },
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
     {
       "id": "2610.13337v1",
       "source": "arxiv",
@@ -197,12 +82,12 @@
       ],
       "llm_score": 7.0,
       "llm_evidence_en": "attention sinks in text-to-image transformers across diffusion and autoregressive models",
-      "llm_evidence_cn": "扩散与自回归文生图Transformer中的注意力汇聚",
-      "llm_evidence": "扩散与自回归文生图Transformer中的注意力汇聚",
-      "canonical_evidence": "扩散与自回归文生图Transformer中的注意力汇聚",
-      "llm_tldr_en": "This work explores attention sinks in text-to-image transformers across bidirectional diffusion and causal autoregressive models, analyzing where they emerge and how they influence generation.",
-      "llm_tldr_cn": "注意力汇聚指持续获得过多注意力却缺乏语义依据的令牌或位置，此前主要在语言模型中研究，在文生图Transformer中尚属空白。本文跨双向扩散模型与因果自回归模型系统探究文生图Transformer的注意力汇聚现象，考察其是否存在、出现位置及对生成的功能影响。通过注意力分析与定向干预，作者揭示了注意力路由规律，为理解和改进文生图生成机制提供了依据。",
-      "llm_tldr": "注意力汇聚指持续获得过多注意力却缺乏语义依据的令牌或位置，此前主要在语言模型中研究，在文生图Transformer中尚属空白。本文跨双向扩散模型与因果自回归模型系统探究文生图Transformer的注意力汇聚现象，考察其是否存在、出现位置及对生成的功能影响。通过注意力分析与定向干预，作者揭示了注意力路由规律，为理解和改进文生图生成机制提供了依据。",
+      "llm_evidence_cn": "扩散与自回归文本到图像Transformer中的注意力汇",
+      "llm_evidence": "扩散与自回归文本到图像Transformer中的注意力汇",
+      "canonical_evidence": "扩散与自回归文本到图像Transformer中的注意力汇",
+      "llm_tldr_en": "Explores attention sinks in text-to-image transformers across diffusion and autoregressive models, analyzing how attention routing affects image generation.",
+      "llm_tldr_cn": "注意力汇在大语言模型中已被广泛研究，但在文本到图像Transformer中的行为与功能尚不清楚。本文系统分析双向扩散模型与因果自回归模型中的注意力汇现象，考察其是否存在、在何处出现以及如何影响生成。通过注意力分析与针对性干预，揭示注意力路由机制对文本到图像生成的作用，增进了对扩散与自回归图像生成模型内部机理的理解。",
+      "llm_tldr": "注意力汇在大语言模型中已被广泛研究，但在文本到图像Transformer中的行为与功能尚不清楚。本文系统分析双向扩散模型与因果自回归模型中的注意力汇现象，考察其是否存在、在何处出现以及如何影响生成。通过注意力分析与针对性干预，揭示注意力路由机制对文本到图像生成的作用，增进了对扩散与自回归图像生成模型内部机理的理解。",
       "llm_tags": [
         "query:image-gen"
       ],
@@ -213,41 +98,41 @@
       "quick_tier": "7"
     },
     {
-      "id": "2610.13690v1",
+      "id": "2610.13316v1",
       "source": "arxiv",
-      "title": "Transformer-based In-Context Score Operator Learning for Diffusion Models",
-      "abstract": "Diffusion models typically learn the generative dynamics of a single target distribution or a family of distributions indexed by conditioning variables fixed during training. This limits their ability to adapt to a previously unseen distribution from only a small set of examples. We introduce an in-context solution operator learning framework for diffusion models, in which each target distribution is treated as a task drawn from a meta-distribution and is specified at inference time by an empirical context set. Our method learns an in-context score operator that maps the context samples, a noisy query point, and the diffusion time to the task-dependent score, enabling reverse-diffusion sampling on unseen tasks without retraining or parameter updates. A key observation is that the task-dependent score admits a Gaussian-kernel conditional-mean representation. Its empirical Nadaraya--Watson approximation can be represented exactly by a model in our constructed transformer class, providing a principled foundation for the proposed query-dependent attention architecture. The operator is trained through amortized denoising score matching across task distributions. We establish generalization-error bounds that quantify the effects of the context size, the numbers of training tasks and within-task samples, model complexity, and intrinsic and ambient dimensions. Numerically, we evaluate the method on a range of scientific and visual datasets, including Navier-Stokes, ERA5 climate data, QuickDraw sketches, and Food-101. The results show that the proposed method performs well on relatively simple task families, while its performance degrades as task complexity increases, thereby illustrating both the promise and the limitations of in-context learning for diffusion models.",
+      "title": "ThinkDrag: Semantic Drag-Based Image Editing with Visual Reasoning",
+      "abstract": "Drag-based image editing provides an intuitive interface for spatially controlled image manipulation by allowing users to specify handle and target points. Existing methods have made substantial progress through optimization-based, one-step, and feed-forward formulations, but they often interpret drag instructions as geometric displacements. This limits their effectiveness when the desired edit depends on interpreting image content and inferring a plausible semantic transformation from sparse point constraints. We introduce ThinkDrag, a unified multimodal framework for drag-based image editing with visual reasoning. ThinkDrag is trained to associate point constraints with meaningful object- and scene-level transformations, and can optionally produce an explicit reasoning trace that interprets the intended edit before image generation. This reasoning trace improves interpretability, particularly for ambiguous drags. Drag Endpoint Markers, motivated by an analysis of cross-image attention, provide an explicit correspondence signal that grounds each drag in image space. To support this framework, we construct a supervised dataset of semantic drag transformations paired with reasoning traces and introduce DragBench++, a benchmark targeting challenging drag-based editing scenarios with reference edit solutions. Experiments show that ThinkDrag achieves state-of-the-art performance, improving generation quality and plausibility while maintaining competitive point-following precision.",
       "authors": [
-        "Wuzhe Xu",
-        "Zhaiming Shen",
-        "Yulong Lu",
-        "Wenjing Liao",
-        "Rongjie Lai"
+        "Armando Fortes",
+        "Tianyi Wei",
+        "Chindanai Trakantannarong",
+        "Shangchen Zhou",
+        "Xingang Pan"
       ],
-      "primary_category": "cs.LG",
+      "primary_category": "cs.CV",
       "categories": [
-        "cs.LG"
+        "cs.CV"
       ],
-      "published": "2026-10-09T14:53:49+00:00",
-      "link": "https://arxiv.org/pdf/2610.13690v1",
+      "published": "2026-10-09T09:58:10+00:00",
+      "link": "https://arxiv.org/pdf/2610.13316v1",
       "tags": [
         "keyword:image-gen",
         "query:image-gen"
       ],
       "llm_score": 6.0,
-      "llm_evidence_en": "in-context score operator learning for diffusion models",
-      "llm_evidence_cn": "面向扩散模型的上下文评分算子学习",
-      "llm_evidence": "面向扩散模型的上下文评分算子学习",
-      "canonical_evidence": "面向扩散模型的上下文评分算子学习",
-      "llm_tldr_en": "Diffusion models usually learn one fixed distribution and cannot adapt to unseen ones without retraining. This work learns an in-context score operator mapping context samples and noisy queries to task-dependent scores for training-free adaptation.",
-      "llm_tldr_cn": "扩散模型通常只学习单一目标分布或训练时固定条件变量下的分布族，难以仅凭少量样本适配未见分布。作者提出上下文解算子学习框架，把每个目标分布视为从元分布中抽取的任务，在推理时由经验上下文集指定，并学习将上下文样本、含噪查询点与扩散时间映射为任务相关评分算子。这样无需重训练或参数更新即可在新任务上执行反向扩散采样，为扩散模型提供了通用可迁移的条件化机制。",
-      "llm_tldr": "扩散模型通常只学习单一目标分布或训练时固定条件变量下的分布族，难以仅凭少量样本适配未见分布。作者提出上下文解算子学习框架，把每个目标分布视为从元分布中抽取的任务，在推理时由经验上下文集指定，并学习将上下文样本、含噪查询点与扩散时间映射为任务相关评分算子。这样无需重训练或参数更新即可在新任务上执行反向扩散采样，为扩散模型提供了通用可迁移的条件化机制。",
+      "llm_evidence_en": "semantic drag-based image editing with visual reasoning",
+      "llm_evidence_cn": "带视觉推理的语义拖拽式图像编辑",
+      "llm_evidence": "带视觉推理的语义拖拽式图像编辑",
+      "canonical_evidence": "带视觉推理的语义拖拽式图像编辑",
+      "llm_tldr_en": "ThinkDrag reframes drag-based editing as semantic transformation inference, enabling content-aware controllable image manipulation beyond geometric displacement.",
+      "llm_tldr_cn": "拖拽式图像编辑通过指定起点与目标点提供直观的空间控制，但现有方法多将拖拽指令理解为几何位移，当编辑需要理解图像内容并推断合理语义变换时效果受限。本文提出ThinkDrag，一个带视觉推理的统一多模态框架，训练其将点约束与有意义的物体及场景级变换关联，并可输出解释。该工作将拖拽编辑从几何操作提升为语义变换推断，为可控图像编辑提供了更强的内容感知能力。",
+      "llm_tldr": "拖拽式图像编辑通过指定起点与目标点提供直观的空间控制，但现有方法多将拖拽指令理解为几何位移，当编辑需要理解图像内容并推断合理语义变换时效果受限。本文提出ThinkDrag，一个带视觉推理的统一多模态框架，训练其将点约束与有意义的物体及场景级变换关联，并可输出解释。该工作将拖拽编辑从几何操作提升为语义变换推断，为可控图像编辑提供了更强的内容感知能力。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "diffusion probabilistic models for image generation",
-      "matched_requirement_id": "req-1",
+      "matched_query_text": "What are the methods for controllable image generation?",
+      "matched_requirement_id": "req-6",
       "selection_source": "fresh_fetch",
       "quick_tier": "6"
     },
@@ -271,19 +156,94 @@
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "constraint-grounded refinement over frozen text-to-image generators",
-      "llm_evidence_cn": "在冻结文生图生成器上进行约束驱动精炼",
-      "llm_evidence": "在冻结文生图生成器上进行约束驱动精炼",
-      "canonical_evidence": "在冻结文生图生成器上进行约束驱动精炼",
-      "llm_tldr_en": "Stride is a constraint-grounded multi-agent framework that refines infographics over any frozen text-to-image generator, separating constraint evaluation from visual grounding to route global and local edits.",
-      "llm_tldr_cn": "信息图生成要求单张图像同时满足大量视觉、文本与语义约束，而现有迭代精炼方法存在尺度错配：局部编辑难以修正全局构图错误，整体重生成又会破坏已正确区域。本文提出Stride，一个约束驱动的多智能体框架，将约束评估与视觉定位分离，并把全局修改与局部修正分别路由给不同子智能体。该框架可作用于任意冻结的生成器，实现历史感知的演化式精炼。",
-      "llm_tldr": "信息图生成要求单张图像同时满足大量视觉、文本与语义约束，而现有迭代精炼方法存在尺度错配：局部编辑难以修正全局构图错误，整体重生成又会破坏已正确区域。本文提出Stride，一个约束驱动的多智能体框架，将约束评估与视觉定位分离，并把全局修改与局部修正分别路由给不同子智能体。该框架可作用于任意冻结的生成器，实现历史感知的演化式精炼。",
+      "llm_evidence_en": "text-to-image infographic generation with constraint-grounded multi-agent refinement",
+      "llm_evidence_cn": "基于约束的多智能体文本到图像信息图生成精炼",
+      "llm_evidence": "基于约束的多智能体文本到图像信息图生成精炼",
+      "canonical_evidence": "基于约束的多智能体文本到图像信息图生成精炼",
+      "llm_tldr_en": "Infographic generation requires a single image to satisfy many visual, textual and semantic constraints. Stride separates constraint evaluation from visual grounding, routing global revisions and local corrections to different subagents over any frozen generator.",
+      "llm_tldr_cn": "信息图生成要求单张图像同时满足大量视觉、文本与语义约束，使文本到图像模型面临挑战；现有迭代精炼方法存在尺度错配，局部编辑难以修正全局构图，而整体重生成又会破坏已正确区域。本文提出Stride，一个约束驱动的多智能体框架，将约束评估与视觉定位分离，把全局修订路由给合成子智能体、局部修正交给精炼子智能体。该框架可作用于任意冻结生成器，实现历史感知的演化式精炼。",
+      "llm_tldr": "信息图生成要求单张图像同时满足大量视觉、文本与语义约束，使文本到图像模型面临挑战；现有迭代精炼方法存在尺度错配，局部编辑难以修正全局构图，而整体重生成又会破坏已正确区域。本文提出Stride，一个约束驱动的多智能体框架，将约束评估与视觉定位分离，把全局修订路由给合成子智能体、局部修正交给精炼子智能体。该框架可作用于任意冻结生成器，实现历史感知的演化式精炼。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "What are the methods for controllable image generation?",
-      "matched_requirement_id": "req-6",
+      "matched_query_text": "synthesizing images from textual descriptions",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.13851v1",
+      "source": "arxiv",
+      "title": "Finite-Sample Guarantees for Fully Discrete Conditional Diffusion Models",
+      "abstract": "We establish finite-sample guarantees for conditional diffusion models learned from data and implemented with finitely many denoising steps. Our approach aligns the score-training objective with the sampling grid, allowing statistical estimation and numerical discretization errors to be analyzed together. Under a smooth conditional density model, we derive high-probability bounds on the generated distribution's error and quantify the required number of score evaluations. For every smoothness index $β>0$, a suitable grid yields averaged conditional Kullback--Leibler (KL) divergence $\\widetilde O_p(n^{-2β/(d_x+d_y+2β)})$ relative to the original target with or without early stopping. Both the full and early-stopped samplers attain average target total-variation (TV) error $\\widetilde O_p(n^{-β/(d_x+d_y+2β)})$. Here $n$ is the sample size, $d_x,d_y$ are the data and conditioning dimensions, and errors are averaged over the conditioning variable. The total-variation bound matches the rate established in existing conditional distribution-estimation theory, up to logarithmic factors.",
+      "authors": [
+        "Qiuyun Zhu"
+      ],
+      "primary_category": "stat.ML",
+      "categories": [
+        "stat.ML",
+        "cs.LG"
+      ],
+      "published": "2026-10-09T16:59:18+00:00",
+      "link": "https://arxiv.org/pdf/2610.13851v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "conditional diffusion models with finite-sample guarantees for generation",
+      "llm_evidence_cn": "条件扩散模型的有限样本生成理论保证",
+      "llm_evidence": "条件扩散模型的有限样本生成理论保证",
+      "canonical_evidence": "条件扩散模型的有限样本生成理论保证",
+      "llm_tldr_en": "Establishes finite-sample guarantees for conditional diffusion models with finite denoising steps, aligning score training with the sampling grid to bound generated distribution error.",
+      "llm_tldr_cn": "针对条件扩散模型在有限去噪步数下缺乏统计保证的问题，本文将分数训练目标与采样网格对齐，使统计估计误差与数值离散误差可联合分析。在光滑条件密度假设下，推导出生成分布与目标分布之间条件KL散度的高概率上界，并量化所需分数评估次数。结果表明对任意光滑度指数都能找到合适网格达到该收敛率，为条件扩散生成提供了严格的理论支撑。",
+      "llm_tldr": "针对条件扩散模型在有限去噪步数下缺乏统计保证的问题，本文将分数训练目标与采样网格对齐，使统计估计误差与数值离散误差可联合分析。在光滑条件密度假设下，推导出生成分布与目标分布之间条件KL散度的高概率上界，并量化所需分数评估次数。结果表明对任意光滑度指数都能找到合适网格达到该收敛率，为条件扩散生成提供了严格的理论支撑。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "diffusion probabilistic models for image generation",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.13941v1",
+      "source": "arxiv",
+      "title": "Images Talk Back: Guiding MMDiTs by Suppressing Image-to-Text Feedback",
+      "abstract": "Multimodal diffusion transformers (MMDiTs) allow the evolving image to update internal text representations through joint attention. These representations then guide subsequent image updates, raising a question: does this feedback help correct deviations from the prompt, or preserve them? We find that image-to-text (I2T) feedback can preserve the objects and attributes already represented in the evolving image, including errors. Transplanting I2T messages can rescue failures or disrupt successes. At matched intervention strengths, suppressing the influence of I2T feedback improves generation, whereas opposite controls degrade it. These findings motivate Semantic Feedback Guidance (SFG), which suppresses the influence of I2T feedback by guiding away from an auxiliary branch that strengthens this feedback and weakens text-to-image conditioning. The in-place variant, iSFG, directly suppresses I2T feedback and strengthens text-to-image conditioning, requiring no extra model evaluations. Temporal interventions motivate running the SFG branch during the first 20% of image sampling steps, requiring about $1.2\\times$ the base NFE without classifier-free guidance (CFG). Experiments across three image-generation backbones show gains in alignment and preference-model scores. On FLUX, adding SFG to CFG raises GenEval from $0.6661$ to $0.7479$; on SD3.5M, iSFG adds $+1.33$ HPSv2.1 over CFG at zero extra NFE. The control also transfers to text-to-video and image-to-video generation, improving VBench scores. Code is available at https://github.com/yyc1215lll-creator/SFG.",
+      "authors": [
+        "Yucheng Yang",
+        "Xiaoxiao Sun",
+        "Shusheng Yang",
+        "Jiakang Chen",
+        "Serena Yeung-Levy"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-10-09T17:58:15+00:00",
+      "link": "https://arxiv.org/pdf/2610.13941v1",
+      "tags": [
+        "keyword:image-gen",
+        "query:image-gen"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "text-to-image diffusion via multimodal diffusion transformers",
+      "llm_evidence_cn": "基于多模态扩散Transformer的文生图",
+      "llm_evidence": "基于多模态扩散Transformer的文生图",
+      "canonical_evidence": "基于多模态扩散Transformer的文生图",
+      "llm_tldr_en": "The paper studies image-to-text feedback in multimodal diffusion transformers and proposes Semantic Feedback Guidance to improve text-to-image generation quality.",
+      "llm_tldr_cn": "多模态扩散Transformer允许演化中的图像通过联合注意力更新内部文本表示，进而引导后续图像更新，但该反馈究竟纠正还是保留偏差尚不明确。作者发现图像到文本的反馈会保留图像中已存在的物体与属性，包括错误，且移植该信息可挽救失败或破坏成功。据此提出语义反馈引导SFG，抑制图像到文本反馈的影响。实验表明在同等干预强度下抑制该反馈能改善文生图质量，为理解与调控文生图扩散机制提供了新视角。",
+      "llm_tldr": "多模态扩散Transformer允许演化中的图像通过联合注意力更新内部文本表示，进而引导后续图像更新，但该反馈究竟纠正还是保留偏差尚不明确。作者发现图像到文本的反馈会保留图像中已存在的物体与属性，包括错误，且移植该信息可挽救失败或破坏成功。据此提出语义反馈引导SFG，抑制图像到文本反馈的影响。实验表明在同等干预强度下抑制该反馈能改善文生图质量，为理解与调控文生图扩散机制提供了新视角。",
+      "llm_tags": [
+        "query:image-gen"
+      ],
+      "matched_query_tag": "query:image-gen",
+      "matched_query_text": "How do diffusion models generate images from text prompts?",
+      "matched_requirement_id": "req-5",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     },
@@ -313,19 +273,19 @@
         "query:image-gen"
       ],
       "llm_score": 7.0,
-      "llm_evidence_en": "shared latent interface for heterogeneous diffusion image generators",
-      "llm_evidence_cn": "面向异构扩散图像生成器的共享潜在接口",
-      "llm_evidence": "面向异构扩散图像生成器的共享潜在接口",
-      "canonical_evidence": "面向异构扩散图像生成器的共享潜在接口",
-      "llm_tldr_en": "InstantFusion uncovers cross-model compatibility between independently trained image generators and proposes a lightweight shared latent interface to connect heterogeneous diffusion and flow models.",
-      "llm_tldr_cn": "针对现代图像生成器架构与表示日益异构、跨模型潜在表示对齐不足的问题，本文发现独立训练的生成器具有相似的潜在空间组织且中间状态可部分互通。据此提出InstantFusion，一种轻量级共享潜在接口，用于连接异构的扩散与流模型。实验表明该接口可在模型间传递并保持粗略视觉内容，为跨模型生成与组合提供了新途径。",
-      "llm_tldr": "针对现代图像生成器架构与表示日益异构、跨模型潜在表示对齐不足的问题，本文发现独立训练的生成器具有相似的潜在空间组织且中间状态可部分互通。据此提出InstantFusion，一种轻量级共享潜在接口，用于连接异构的扩散与流模型。实验表明该接口可在模型间传递并保持粗略视觉内容，为跨模型生成与组合提供了新途径。",
+      "llm_evidence_en": "shared latent interface connecting heterogeneous diffusion image generators",
+      "llm_evidence_cn": "连接异构扩散图像生成器的共享潜在接口",
+      "llm_evidence": "连接异构扩散图像生成器的共享潜在接口",
+      "canonical_evidence": "连接异构扩散图像生成器的共享潜在接口",
+      "llm_tldr_en": "InstantFusion observes cross-model compatibility of latent representations in diffusion/flow image generators and proposes a lightweight shared latent interface connecting heterogeneous models.",
+      "llm_tldr_cn": "针对扩散与流模型图像生成器架构与表示日益异构、跨模型潜在表示对齐与去噪动力学一致性缺乏研究的问题，本文发现独立训练的生成器具有相似的潜在空间组织，且中间状态直接交接仍可保留粗略视觉内容。基于此提出InstantFusion轻量共享潜在接口，连接不同架构的生成器。实验表明该接口可实现跨模型的表示对齐与生成衔接。这为异构图像生成器的互操作提供了新思路。",
+      "llm_tldr": "针对扩散与流模型图像生成器架构与表示日益异构、跨模型潜在表示对齐与去噪动力学一致性缺乏研究的问题，本文发现独立训练的生成器具有相似的潜在空间组织，且中间状态直接交接仍可保留粗略视觉内容。基于此提出InstantFusion轻量共享潜在接口，连接不同架构的生成器。实验表明该接口可实现跨模型的表示对齐与生成衔接。这为异构图像生成器的互操作提供了新思路。",
       "llm_tags": [
         "query:image-gen"
       ],
       "matched_query_tag": "query:image-gen",
-      "matched_query_text": "diffusion probabilistic models for image generation",
-      "matched_requirement_id": "req-1",
+      "matched_query_text": "latent diffusion models for high-resolution image synthesis",
+      "matched_requirement_id": "req-3",
       "selection_source": "fresh_fetch",
       "quick_tier": "7"
     }

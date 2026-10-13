@@ -1,0 +1,2297 @@
+Title: Finite-Sample Guarantees for Fully Discrete Conditional Diffusion Models
+
+URL Source: https://arxiv.org/pdf/2610.13851v1
+
+Published Time: Mon, 12 Oct 2026 01:36:02 GMT
+
+Number of Pages: 31
+
+Markdown Content:
+# Finite-Sample Guarantees for Fully Discrete Conditional Diffusion Models 
+
+Qiuyun Zhu 
+
+Department of Statistics and Actuarial Science University of Iowa 
+
+qiuyun-zhu@uiowa.edu 
+
+Abstract 
+
+We establish finite-sample guarantees for conditional diffusion models learned from data and implemented with finitely many denoising steps. Our approach aligns the score-training objective with the sampling grid, allowing statistical estimation and numerical discretization errors to be analyzed together. Under a smooth conditional density model, we derive high-probability bounds on the generated distribution’s error and quantify the required number of score evaluations. For every smoothness index β > 0, a suitable grid yields averaged conditional Kullback–Leibler (KL) divergence ˜Op(n−2β/ (dx+dy +2 β)) relative to the original target with or without early stopping. Both the full and early-stopped samplers attain average target total-variation (TV) error ˜Op(n−β/ (dx+dy +2 β)). Here n is the sample size, dx, d y are the data and conditioning dimensions, and errors are averaged over the conditioning variable. The total-variation bound matches the rate established in existing conditional distribution-estimation theory, up to logarithmic factors. 
+
+# 1 Introduction 
+
+Score-based diffusion models learn to reverse a process that gradually adds noise to data (Ho et al., 2020; Song et al., 2021). A neural network estimates the score, the gradient of the noisy log-density, and a numerical sampler uses this estimate to transform Gaussian noise into an observation (Vincent, 2011). A guarantee for the generated distribution must therefore account for both learning and finite-step sampling. In conditional generation, each observation is paired with side information, such as a class label or covariates. The diffusion perturbs the observation while keeping its condition fixed. In this work, we study how the training sample size, conditional network complexity, and number of score evaluations jointly determine the accuracy of this procedure. 
+
+1.1 Prior Art 
+
+Score Learning and Statistical Guarantees. Score matching avoids the density normalizing constant (Hyvärinen, 2005), while denoising score matching provides an observable perturbation score for training (Vincent, 2011). For unconditional diffusion, Oko et al. (2023) establish nearly minimax distribution-estimation rates over smoothness classes, and Zhang et al. (2024) remove density-lower-bound assumptions. Complementary analyses address neural training-sample complexity (Gupta et al., 2024), gradient-based optimization and generalization (Han et al., 2024), and optimal score estimation by empirical Bayes smoothing under sub-Gaussian tails and score regularity (Wibisono et al., 2024). These works clarify how data determine score accuracy. For a fully discrete conditional 1arXiv:2610.13851v1 [stat.ML] 9 Oct 2026 generator, that accuracy must be controlled at the particular times used by the numerical sampler. As such, we analyze a conditional score network fitted by minimizing a step-weighted denoising loss on the sampling grid, directly connecting its finite-sample error to the updates that generate an observation. 
+
+Conditional Distribution Estimation. Li et al. (2022) provide a classical statistical benchmark for conditional density estimation, deriving minimax rates for a kernel-based estimator under smoothness in the generated variable and total-variation smoothness in the conditioning variable. Their results motivate accounting for regularity in both variables when analyzing conditional diffusion. In the diffusion setting, Fu et al. (2024) obtain smoothness-dependent TV rates under a positive Gaussian-factor density assumption, while Tang et al. (2025) allow different smoothness levels in the two variables and establish conditional TV rates under compact-support and density-lower-bound assumptions, together with manifold-adaptive Wasserstein guarantees. Tian and Shen (2026) establish conditional TV and square-root-KL guarantees under a positive Gaussian-factor model, including time-zero generation for smoothness greater than one. These statistical guarantees concern continuous-time conditional diffusion: in Tian and Shen (2026), the reverse process is continuous before a final interval with a fixed score evaluation. In contrast, we provide a finite-sample guarantee for a fully discrete conditional generator, with learning and sampling analyzed on the same finite grid. This distinction is essential because an error bound integrated over diffusion time does not, by itself, control the score at the sampler’s selected evaluation times. We retain the corresponding smoothness-dependent statistical exponent while explicitly accounting for every numerical update and the number of score evaluations. Moreover, our early-stopped guarantee controls the KL divergence from the original conditional data distribution, rather than only its smoothed version, for every β > 0 (including the low-smoothness range 0 < β ≤ 1). 
+
+Sampling with Estimated Scores. Given an accurate score estimate, Lee et al. (2023); Chen et al. (2023b) establish convergence guarantees for diffusion samplers. Chen et al. (2023a) bound the KL divergence between the data distribution (or its Gaussian-smoothed version) and the generated distribution by three sources of error: initializing from a Gaussian rather than the exact terminal distribution, using an estimated score, and approximating the reverse process with finite time steps. Refined dimension and step bounds are obtained by Benton et al. (2024); Li and Yan (2025). Chen et al. (2026) develop alternative algorithms with polylogarithmic dependence on inverse accuracy, given sufficiently accurate scores. These results quantify sampling error in terms of prescribed score accuracy, rather than the training sample size. Huang et al. (2026) connect learning and discrete sampling for unconditional residual score networks and Euler–Maruyama updates, including an explicit optimization gap. For conditional generation, an essential question is how to translate improved learning accuracy into improved output accuracy without letting numerical error dominate. We address this question by choosing the conditional network class and exponential-integrator grid together, so that finite-step sampling preserves the smoothness-dependent statistical rate. For a given number of training pairs, our bound specifies how many denoising steps suffice to attain this accuracy, with one score-network evaluation per step. The guarantee applies to both early-stopped and full sampling. 
+
+1.2 Motivation and Challenges 
+
+Our motivation is to determine whether fully discrete conditional generation can retain the statistical accuracy of continuous-time models. From Section 1.1, we see that prior work establishes smoothness-dependent statistical rates for continuous-time conditional diffusion (Fu et al., 2024; Tang et al., 22025; Tian and Shen, 2026), while numerical sampling analyses bound the output error given a prescribed score accuracy (Chen et al., 2023a). The continuous-time guarantees do not account for discretization of the full reverse trajectory, and prescribed-score bounds do not establish the training sample size needed to achieve that accuracy. This motivates a conditional generation theory that connects finite training data to output accuracy and quantifies how many denoising steps suffice to preserve the statistical rate. Achieving this goal requires overcoming three challenges. Connecting learning to generation requires score-error control at the sampler’s actual evaluation times, and an integrated-time bound alone does not ensure this control. The sampling grid must also keep numerical error within the statistical error bound. Finally, we must compare both early-stopped and full outputs with the original conditional distribution, rather than only a smoothed law, even in the low-smoothness range 0 < β ≤ 1. These challenges lead to our central research question: 
+
+Can a fully discrete conditional diffusion model learned from training data attain smoothness-dependent accuracy relative to the original conditional data distribution with an explicit denoising-step count, while satisfying the same KL error bound with and without early stopping? 
+
+1.3 Main Contribution 
+
+We establish that fully discrete conditional diffusion can attain smoothness-dependent statistical accuracy, with an explicit sampling budget determined by the training sample size. For every smoothness index β > 0, both early-stopped and full sampling satisfy the same averaged conditional KL error bound relative to the original conditional data distribution. Specifically, our contribution is detailed as follows. 1. Learning guarantees for finite-step generation. We replace prescribed score accuracy with a finite-sample guarantee for the conditional score actually learned on the sampling grid (cf. Theorem 4). This resolves the mismatch between integrated-time learning guarantees and finite-step generation, bringing the score evaluations used by the sampler under direct statistical control. 2. Guarantees for the original conditional data distribution. We establish KL error bounds against the original conditional data distribution for both early-stopped and full sampling, covering every β > 0 (cf. Proposition 7). In particular, our early-stopping guarantee controls the unsmoothed conditional data distribution even in the low-smoothness regime 0 < β ≤ 1, rather than merely a Gaussian-smoothed approximation. 3. Statistical accuracy preserved under full discretization. We prove that numerical sampling need not degrade the smoothness-dependent statistical accuracy of the learned model. Both stopping rules achieve the same KL error bound and TV convergence rate, and we specify the denoising-step budget sufficient to attain these guarantees as the training sample grows (cf. Theorem 8). 
+
+Notation. We use ∥ · ∥ 2 and ∥ · ∥ ∞ for the Euclidean and maximum norms of vectors, respectively, and ⟨· , ·⟩ for the Euclidean inner product. The symbols Id, N (μ, Σ), and 1{E} denote the d-dimensional identity matrix, the Gaussian law with mean μ and covariance Σ, and the indicator of an event E. For nonnegative quantities U, V , U ≲ V means U ≤ CV for an absolute constant 
+
+C > 0 for fixed model parameters, and U ≍ V means that both U ≲ V and V ≲ U hold. Constants 
+
+C, c > 0 may change between occurrences. Unless stated otherwise, they may depend on fixed model parameters but not on the sample size, network complexity, or time discretization. 3For densities p and q, we write KL( p∥q) := 
+
+> ∫
+
+p(x) log p(x)
+
+q(x) dx, TV( p, q ) := 12
+
+> ∫
+
+|p(x) − q(x)| dx.
+
+For a positive deterministic sequence bn, Zn = Op(bn) means that Zn/b n is bounded in probability with respect to the training sample. The notation ˜O or ˜Op suppresses factors that are powers of log n.
+
+# 2 Problem Setup 
+
+Let ( x0, y) be a random pair with x0 ∈ Rdx and y ∈ Y , where Y ⊂ Rdy is compact. For each y, let 
+
+q0(· | y) denote the conditional density of the data. 
+
+2.1 Forward and Reverse Processes 
+
+Our analysis adopts the Ornstein–Uhlenbeck (OU) forward diffusion dxt = −xt dt + √2 d ωt, x0 ∼ q0(· | y), (1) where {ωt}t≥0 is a standard Brownian motion. Conditional on y, the dynamics in (1) induce the marginal law qt(· | y) of xt. Moreover, the explicit OU solution yields the Gaussian transition kernel 
+
+qt|0(· | x0) = N (μtx0, σ 2 
+
+> t
+
+Idx ), μt := e−t, σ2 
+
+> t
+
+:= 1 − e−2t. (2) Thus, qt(· | y) converges to N (0, Idx ) as t → ∞ .Because the transition kernel is Gaussian, both score matching and initialization are tractable. Generating data, however, requires reversal of the forward dynamics. Accordingly, for a terminal time T , the time-reversed process zu := xT −u satisfies dzu = [ zu + 2 ∇ log qT −u(zu | y)] d u + √2 d¯ ωu, z0 ∼ qT (· | y),
+
+where, conditional on y, {¯ωu}0≤u≤T is a standard dx-dimensional Brownian motion with respect to the reverse-time filtration, and ∇ log qt(· | y) denotes the conditional score. Here u := T − t increases from 0 to T as the process evolves from the noised law qT (· | y) toward the data law q0(· | y). The gradient ∇ log qt(x | y) is taken with respect to x, holding y fixed. With the exact score and initialization from qT (· | y), the reverse process has marginal qT −u(· | y) at reverse time u. In practice, we use a learned score, initialize from a standard Gaussian, and discretize the reverse dynamics. Our analysis bounds the resulting sampling error through these three contributions: score estimation, initialization, and time discretization. 
+
+2.2 Discretization and Implementation 
+
+The exact reverse process depends on the unknown score at every time. Therefore, an implementable algorithm replaces this score by a learned approximation evaluated on a finite grid. Let 
+
+t0 := 0 < t 1 < · · · < t N := T, hk := tk − tk−1.
+
+The sampler traverses the forward-time grid in reverse, from tN = T to t0 = 0, with ̂ xk denoting its state at noise level tk. At each tk, let ̂ s(x, y, t k) be the estimated conditional score and define ̂
+
+stk (x, y) := ̂ s(x, y, t k). We discretize the reverse dynamics using an exponential integrator that 4integrates the linear component of the reverse drift exactly. The score is held fixed over each interval. Conditional on y, initialize ̂
+
+xT ∼ N (0, Idx ),
+
+and set ̂
+
+xtk−1 := ehk̂ xtk + 2( ehk − 1) ̂ stk (̂xtk , y) + √
+
+e2hk − 1 ξk,
+
+ξk
+
+> i.i.d.
+
+∼ N (0, Idx ), k = N, N − 1, . . . , 1,
+
+(3) Note that the Gaussian noises {ξk}Nk=1 are independent of the initialization and training data. The full sampler performs all N steps and returns ̂ x0 at forward time 0, while early stopping omits the final step and returns ̂ x1 at forward time t1. Generating one sample requires N score evaluations for the full sampler and N − 1 for its early-stopped version. Given y, we let ̂ pT −t(· | y) denote the conditional distribution of ̂ xt at forward time t. Equivalently, for each k = 1 , . . . , N , on the reverse-time interval [ T − tk, T − tk−1], the process solves d̂zu = [ ̂ zu + 2 ̂ stk (̂ zT −tk , y)] d u + √2 d¯ ωu.
+
+Both the early-stopped and full samplers aim to recover the target conditional law q0(· | y). 
+
+# 3 Learning the Conditional Score from Data 
+
+We first recall the conditional-score approximation under our density assumptions, and then analyze a denoising objective on the sampling grid. 
+
+3.1 Score Approximation 
+
+This subsection specifies the conditional density and network classes and recalls the score-approximation result of Fu et al. (2024), which provides the score estimation rate in our statistical analysis. We first specify the smoothness class. For a multi-index α = ( α1, . . . , α d) of nonnegative integers, write ∥α∥1 := ∑dj=1 αj and ∂α := ∂α1 
+
+> 1
+
+· · · ∂αd 
+
+> d
+
+.
+
+Definition 1 (Hölder class) . Let β > 0, and set r := ⌊β⌋ and η := β − r ∈ [0 , 1). For f : Rd → R,define 
+
+∥f ∥Hβ := max  
+
+> ∥α∥1≤r
+
+sup 
+
+> x
+
+|∂αf (x)| + 1{η > 0} max  
+
+> ∥α∥1=r
+
+sup 
+
+> x̸=z
+
+|∂αf (x) − ∂αf (z)|∥x − z∥η
+
+> ∞
+
+,
+
+where the associated Hölder ball of radius B is denoted by Hβ (Rd, B ). 
+
+Assumption 1 (Conditional density model) . Fix a smoothness index β > 0 and assume there exist a constant Ry > 0, a compact set Y ⊂ [−Ry, R y]dy , constants C1, C 2, B > 0, and a function f on 
+
+Rdx × Y such that 
+
+f (x, y) ≥ C1, q0(x | y) = exp 
+
+(
+
+− C2
+
+2 ∥x∥22
+
+)
+
+f (x, y). (4) 
+
+Moreover, f admits an extension ¯f ∈ H β (Rdx+dy , B ) satisfying ¯f = f on Rdx × Y and ¯f ≥ C1 on 
+
+Rdx+dy .
+
+5Assumption 1 implies C1e−C2∥x∥22/2 ≤ q0(x | y) ≤ Be −C2∥x∥22/2, uniformly over x ∈ Rdx and 
+
+y ∈ Y . As a result, all conditional moments of x0 are uniformly bounded in y. Joint Hölder smoothness of ¯f in ( x, y) accounts for the dimension D := dx + dy in the approximation rate, and no density assumption is imposed on the marginal distribution of y.Let F(Mt, W, κ, L, S ) be the class of vector-valued ReLU networks s(x, y, t ) with depth L,maximal width W , at most S nonzero parameters, parameter magnitudes bounded by κ, and the time-dependent output envelope sup 
+
+> x,y
+
+∥s(x, y, t )∥∞ ≤ Mt
+
+at every time t in the approximation range. Each network takes ( x, y, t ) as input. We let K denote the network complexity parameter and N the number of reverse steps. The following lemma records Theorem 3.4 of Fu et al. (2024) in a compact space Y.
+
+Lemma 2 (Conditional-score approximation; Fu et al., 2024) . Suppose Assumption 1 holds, and fix constants C−, C + > 0. For sufficiently large K, there exists ˜s ∈ F (Mt, W, κ, L, S ) such that, uniformly over y ∈ Y and t ∈ [K−C− , C + log K],
+
+Eqt(·| y)∥˜st(xt, y) − ∇ log qt(xt | y)∥22 ≤ C K−2β/D (log K)β+1 
+
+σ2
+
+> t
+
+, (5) 
+
+where the network parameters satisfy 
+
+Mt ≲
+
+√log Kσt
+
+, W ≲ K log 7 K, L ≲ log 4 K, S ≲ K log 9 K, log κ ≲ log 4 K. 
+
+All implicit constants in this lemma depend only on dx, d y, β, C 1, C 2, B, R y, C −, C +.
+
+The uniformity in Lemma 2 allows a single conditional network to approximate the score at every time on the sampling grid. 
+
+3.2 Denoising Score Matching and Statistical Guarantee 
+
+We now use the approximation result in Section 3.1 to analyze score estimation from a finite training sample. We introduce a denoising loss whose population excess risk equals the weighted squared score error. Combining the approximation bound in Lemma 2 with a concentration argument then yields a finite-sample guarantee for the empirical risk minimizer. To distinguish the unknown target from a candidate network, we denote the true conditional score at time t by s0 
+
+> t
+
+, defined as 
+
+s0 
+
+> t
+
+(x, y) := ∇ log qt(x | y).
+
+We measure a candidate score’s discrepancy from s0 by the weighted squared L2 error ρ2(s, s0), which sums the mean squared errors at grid times with weights equal to the reverse-step lengths: 
+
+ρ2(s, s0) := 
+
+> N
+
+∑
+
+> k=1
+
+hk Extk ,y∥stk (xtk , y) − s0 
+
+> tk
+
+(xtk , y)∥22. (6) The expectation in (6) averages over the noisy data xtk and the marginal distribution of y.The unknown true score s0 prevents direct minimization of the error ρ2(s, s0). Instead, we use the denoising loss for an observed pair ( x0, y): 
+
+ℓ(x0, y; s) := 
+
+> N
+
+∑
+
+> k=1
+
+hk Extk |x0
+
+∥∥stk (xtk , y) − ∇ log qtk |0(xtk | x0)∥∥22. (7) 6The denoising loss ℓ(x0, y; s) compares the estimated score stk with the known Gaussian transition score ∇ log qtk |0, averaging over artificial Gaussian noise introduced in (2), at each k. Conditioning on ( xtk , y) shows that ∇ log qtk |0 has conditional mean s0 
+
+> tk
+
+(xtk , y). Consequently, the excess risk is exactly the weighted score error: 
+
+Eℓ(x0, y; s) − Eℓ(x0, y; s0) = ρ2(s, s0). (8) For n i.i.d. training pairs {(xi
+
+> 0
+
+, yi)}ni=1 , let ̂ Ln be the empirical average loss. The fitted score ̂ s is any measurable minimizer over the network class F:̂
+
+s ∈ arg min 
+
+> s∈F
+
+̂ Ln(s),̂ Ln(s) := 1
+
+n
+
+> n
+
+∑
+
+> i=1
+
+ℓ(xi
+
+> 0
+
+, yi; s). (9) The objective in (9) is empirical in the observed pairs but takes the exact expectation over the artificial noise. Note from the forward kernel: 
+
+∇ log qtk |0(xtk | x0) = − xtk − μtk x0
+
+σ2
+
+> tk
+
+.
+
+Thus the empirical loss ̂ Ln is available without evaluating the unknown conditional density or its score. Next, we will introduce a bound on the score estimation error ρ(̂s, s0). As we shall see, the bound depends on the grid through the deterministic factor 
+
+An := 
+
+> N
+
+∑
+
+> k=1
+
+hk
+
+σ2
+
+> tk
+
+,
+
+which captures the greater sensitivity of score estimation at small noise levels. The following lemma provides both lower and upper bounds on An.
+
+Lemma 3 (Bounds on the grid factor An). Let 0 = t0 < t 1 < · · · < t N = T , with step lengths 
+
+hk = tk − tk−1 and noise variances σ2 
+
+> tk
+
+= 1 − e−2tk . Then 
+
+max {T, 1/2} ≤ An ≤ C[1 + T + log +(1 /t 1)], (10) 
+
+where log +(a) := max {0, log a} and C is a universal constant independent of the grid. In particular, if the positive grid times lie in the approximation window [K−C− , C + log K] of Lemma 2, then 
+
+An ≍ log K. 
+
+Proof: See Appendix A. The following theorem bounds the score estimation error in terms of the sample size, network complexity, and grid factor An.
+
+Theorem 4 (Score-estimation rate) . Suppose Assumption 1 holds and the positive grid times 
+
+t1, . . . , t N lie in the approximation range of Lemma 2. For sufficiently large n, choose the network class whose parameters satisfy the bounds in Lemma 2, with complexity parameter K satisfying 
+
+K ≍ nD/ (D+2 β). (11) 
+
+Define 
+
+m := max {9, (β + 1) /2} and εn := CA 1/2 
+
+> n
+
+n−β/ (D+2 β) log m n. 
+
+7For every fixed M > 0, there exist constants C, c > 0, depending only on M and the fixed model parameters, we have 
+
+P{ρ(̂ s, s0) > ε n} ≤ 4 exp 
+
+{
+
+−c nD/ (D+2 β) log 2m−2 nAn
+
+}
+
++ CnK −M , (12) 
+
+where probability is taken over the n observed training pairs. Therefore by Lemma 3, within the approximation window [K−C− , C + log K], we have 
+
+ρ(̂ s, s0) = Op
+
+(
+
+n−β/ (D+2 β) log m+1 /2 n
+
+)
+
+. (13) 
+
+Proof Idea. We first bound how accurately a single network can approximate the conditional score over the sampling grid (cf. Lemma 2). We next establish a concentration bound for the complete weighted denoising loss, accounting for the reuse of each training pair across all grid times. Combining these results with empirical risk minimization and the denoising identity (8) bounds the learned score error by the sum of the network approximation error and the finite-sample estimation error. Finally, balancing these errors through the network size in (11) gives the probability bound (12), and the grid-factor bound (cf. Lemma 3) yields the rate (13). For the full proof, see Appendix A. 
+
+# 4 From Score Learning to Discrete Sampling 
+
+We use Theorem 4 to derive distributional guarantees for the full and early-stopped samplers. We first decompose the KL error into several components, then we choose a sampling grid that balances the discretization error with the number of score evaluations. 
+
+4.1 KL Error Bound Decomposition 
+
+Consider any sampling grid 0 = t0 < t 1 < · · · < t N = T , with N ≥ 2 and T ≥ 1. We have the following lemma. 
+
+Lemma 5 (KL error bound decomposition) . Fix the training sample and suppose that the fitted scores {̂stk }Nk=1 are bounded and measurable. Then we have the following: 
+
+(a) For u ∈ { T − t1, T },
+
+Ey KL( qT −u∥̂pu) ≤ Ey KL( qT ∥N (0, Idx )) 
+
+︸ ︷︷ ︸
+
+> initialization error
+
++ 2ρ2(̂ s, s0)
+
+︸ ︷︷ ︸
+
+> score-estimation error
+
++ 2 
+
+> N
+
+∑
+
+> k=1
+
+∫ tk
+
+> tk−1
+
+E∥s0 
+
+> t
+
+(xt, y) − s0 
+
+> tk
+
+(xtk , y)∥22 dt
+
+︸ ︷︷ ︸
+
+> discretization error
+
+. (14) (b) In addition, assume the conditional density has the form 
+
+q0(x | y) = e−C2∥x∥22/2f (x, y), C1 ≤ f (x, y) ≤ B, 
+
+for some constants C1, C 2, B > 0, and let 
+
+M∗ := max  
+
+> k≥2
+
+sup 
+
+> x,y
+
+∥̂stk (x, y)∥2.
+
+8For sufficiently small 0 < t 1 ≤ ¯t1,
+
+Ey KL( q0∥̂pT −t1 ) ≤ CEy KL( qt1 ∥̂ pT −t1 ) + CEyχ2(q0∥qt1 ) + C(1 + T )(1 + M 2 
+
+> ∗
+
+)e−c/t 1 . (15) 
+
+Here the constants C, c > 0 and the threshold ¯t1 depend only on C1, C 2, B and dx, but not on the interior grid or the training sample. 
+
+In fact, Part (a) follows from Proposition C.3 of Chen et al. (2023a), with u = T obtained by lower semicontinuity. Part (b) results from our new bound on the KL error between qt1 and q0,which is based on a localized density-ratio argument and a grid-independent lower bound on the sampler density. Note that Lemma 5 requires no smoothness of f as in Assumption 1. That said, smoothness is needed when we bound the small-time error, as shown below. 
+
+Lemma 6 (Small-time error) . Suppose Assumption 1 holds with β > 0, and set rβ := min {2, β }.For sufficiently small t1 > 0, we have 
+
+∫ t1
+
+> 0
+
+E∥s0 
+
+> t
+
+(xt, y) − s0 
+
+> t1
+
+(xt1 , y)∥22 dt + Eyχ2(q0∥qt1 ) ≤ Ct rβ 
+
+> 1
+
+. (16) 
+
+Proof. See Appendix B. 
+
+Geometric–linear sampling scheme. From Chen et al. (2023a), we know that for arbitrary sampling grid, the discretization error from k = 2 can be bounded by Cd 2
+
+> x
+
+Π, where Π := 
+
+> N
+
+∑
+
+> k=2
+
+h2
+
+> k
+
+σ4
+
+> tk−1
+
+.
+
+For sufficiently large n, choose 
+
+t1 := n− 2β 
+
+> (D+2 β)rβ
+
+, cn := c0n− 2βD+2 β , T := 2βD + 2 β log n, (17) where c0 > 0 is a fixed sufficiently small constant. Starting at t1, set 
+
+tk =
+
+{min {T, t k−1/(1 − cn)}, tk−1 < 1 − cn,
+
+min {T, t k−1 + cn}, tk−1 ≥ 1 − cn, (18) and stop at tN = T . Except for a shortened last interval, the steps satisfy hk = cn min {tk, 1}, giving geometric spacing near zero and linear spacing thereafter. Following Chen et al. (2023a), the sampling schedule in (18) minimizes Π up to constants for fixed endpoints and number of retained steps, which gives Π ≍ {log(1 /t 1) + T }2
+
+N − 1 ≲ cn
+
+(
+
+log 1
+
+t1
+
++ T
+
+)
+
+. (19) Now, combining the Lemmas 5 and 6 with this sampling grid yields the following proposition. 
+
+Proposition 7 (KL error bound on the geometric–linear grid) . Under the setting of Theorem 4, let 
+
+C− > 2β/ (Dr β ) and C+ > 2β/D . On the sampling grid (18) , for sufficiently large n, we have 
+
+max    
+
+> v∈{ T−t1,T }
+
+Ey KL( q0∥̂ pv) ≲ e−T + ρ2 + trβ 
+
+> 1
+
++ d2
+
+> x
+
+cn
+
+(
+
+log 1
+
+t1
+
++ T
+
+)
+
+. (20) 
+
+Proof idea. The initialization error is bounded by Ce −T . The network envelope gives M 2 
+
+> ∗
+
+≲ (log n)/t 1,so the exponential remainder in Lemma 5(b) is o(trβ 
+
+> 1
+
+). Apply Lemmas 5 and 6, bound the retained score-estimation error by ρ2, and insert (19). Appendix B.5 gives the details. The score-estimation theorem then provides ρ2 on the same training-sample event for both outputs. 94.2 Finite-Sample KL Guarantees With and Without Early Stopping 
+
+We now combine Theorem 4 with Proposition 7 on the sampling grid in (18). The following theorem gives the same KL error bound for both outputs from the full sampler and its early stopped version. 
+
+Theorem 8 (Convergence with and without early stopping) . Suppose Assumption 1 holds with any fixed β > 0. Use the sampling grid in (18) . Under the setting of Theorem 4 with C− > 2β/ (Dr β )
+
+and C+ > 2β/D , we have 
+
+N = O
+
+> (
+
+n 2βD+2 β log n
+
+> )
+
+(21) 
+
+In addition, for every fixed M > 0, there exist constants C, c > 0 such that with probability at least 
+
+1 − 4 exp {− cn D/ (D+2 β) log 2m−3 n} − CnK −M , (22) 
+
+we have 
+
+max    
+
+> u∈{ T−t1,T }
+
+Ey KL( q0(· | y) ∥̂ pu(· | y)) ≤ Cn − 2βD+2 β log 2m+1 n, (23) 
+
+where 2m + 1 = max {19 , β + 2 }.
+
+Proof Idea. We first obtain a finite-sample bound on the learned score (cf. Theorem 4). We then use the sampling error decomposition to pass from score accuracy to KL error control relative to the original conditional data distribution, for both the full and early-stopped samplers (cf. Proposition 7). Finally, the grid calibration (17) keeps initialization, small-time, and discretization errors within the statistical error bound while giving the explicit step count. Combining these results proves the common KL error bound for both outputs with the stated probability. For the full proof, see Appendix B.6. 
+
+Remark 1 (TV error bound) . Applying Pinsker’s inequality conditionally on y and then Jensen’s inequality to Theorem 8 gives, for both stopping rules, max    
+
+> u∈{ T−t1,T }
+
+Ey TV( q0(· | y),̂ pu(· | y)) = Op
+
+> (
+
+n−β/ (D+2 β) log m+1 /2 n
+
+> )
+
+.
+
+Up to logarithmic factors, the rate matches those of Fu et al. (2024) and Tian and Shen (2026) under similar assumptions. It also matches that in Tang et al. (2025) when q0(x|y) has the same Hölder smoothness in x and y. Crucially, these statistical guarantees concern continuous-time conditional diffusion models, whereas our bound applies to the fully discrete sampler. Thus, our result explicitly accounts for time-discretization errors while retaining the same statistical rate, for both the early-stopped and full sampler. 
+
+# 5 Discussion 
+
+We established finite-sample guarantees for fully discrete conditional diffusion by analyzing score learning and numerical sampling within a single framework. The resulting bounds relate the amount of training data to both generation accuracy and an explicit denoising step count. Under the stated density assumptions, the full and early-stopped samplers achieve the same averaged conditional KL error bound relative to the original conditional data distribution for every smoothness index 
+
+β > 0. Thus, the analysis shows how to preserve statistical accuracy from score estimation through finite-step generation. 10 This framework opens several directions for further development. Incorporating optimization and artificial-noise Monte Carlo errors would extend the analysis to practical training procedures. Data-adaptive time grids and higher-order integrators could further reduce sampling effort at a prescribed statistical accuracy. Exploiting low-dimensional or factorizable conditional structure is another promising direction for sharpening the dependence on dimension. 
+
+AI Use Statement 
+
+Generative AI tools were used to assist with literature search, language editing, manuscript orga-nization, LaTeX formatting, and the development and checking of mathematical arguments. The authors independently reviewed the cited primary sources and verified every mathematical statement and proof. The authors take full responsibility for the final content of this work, including all text and mathematical claims produced with the aid of generative AI. 
+
+# References 
+
+Benton, J., De Bortoli, V., Doucet, A., and Deligiannidis, G. (2024). Nearly d-linear convergence bounds for diffusion models via stochastic localization. In International Conference on Learning Representations .Chen, F., Chewi, S., Daskalakis, C., and Rakhlin, A. (2026). High-accuracy sampling for diffusion models and log-concave distributions. arXiv preprint arXiv:2602.01338 .Chen, H., Lee, H., and Lu, J. (2023a). Improved analysis of score-based generative modeling: User-friendly bounds under minimal smoothness assumptions. In Proceedings of the 40th International Conference on Machine Learning , volume 202 of Proceedings of Machine Learning Research , pages 4735–4763. PMLR. Chen, S., Chewi, S., Li, J., Li, Y., Salim, A., and Zhang, A. R. (2023b). Sampling is as easy as learning the score: Theory for diffusion models with minimal data assumptions. In International Conference on Learning Representations .Fu, H., Yang, Z., Wang, M., and Chen, M. (2024). Unveil conditional diffusion models with classifier-free guidance: A sharp statistical theory. arXiv preprint arXiv:2403.11968 .Gupta, S., Parulekar, A., Price, E., and Xun, Z. (2024). Improved sample complexity bounds for diffusion model training. In Advances in Neural Information Processing Systems , volume 37, pages 40976–41012. Han, Y., Razaviyayn, M., and Xu, R. (2024). Neural network-based score estimation in diffusion models: Optimization and generalization. In International Conference on Learning Representa-tions .Ho, J., Jain, A., and Abbeel, P. (2020). Denoising diffusion probabilistic models. In Advances in Neural Information Processing Systems , volume 33, pages 6840–6851. Huang, J., Jiang, Y., and Wu, C. (2026). From score learning to discretized sampling: An end-to-end generalization analysis of diffusion models. arXiv preprint arXiv:2607.23226 .Hyvärinen, A. (2005). Estimation of non-normalized statistical models by score matching. Journal of Machine Learning Research , 6(24):695–709. 11 Lee, H., Lu, J., and Tan, Y. (2023). Convergence of score-based generative modeling for general data distributions. In Proceedings of the 34th International Conference on Algorithmic Learning Theory , volume 201 of Proceedings of Machine Learning Research , pages 946–985. Li, G. and Yan, Y. (2025). O(d/T ) convergence theory for diffusion probabilistic models under minimal assumptions. Journal of Machine Learning Research , 26(292):1–55. Li, M., Neykov, M., and Balakrishnan, S. (2022). Minimax optimal conditional density estimation under total variation smoothness. Electronic Journal of Statistics , 16(2):3937–3972. Nishiyama, T. and Sason, I. (2020). On relations between the relative entropy and χ2-divergence, generalizations and applications. Entropy , 22(5):563. Oko, K., Akiyama, S., and Suzuki, T. (2023). Diffusion models are minimax optimal distribution estimators. In Proceedings of the 40th International Conference on Machine Learning , volume 202 of Proceedings of Machine Learning Research , pages 26517–26582. PMLR. Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A., Ermon, S., and Poole, B. (2021). Score-based generative modeling through stochastic differential equations. In International Conference on Learning Representations .Tang, R., Lin, L., and Yang, Y. (2025). Conditional diffusion models are minimax-optimal and manifold-adaptive for conditional distribution estimation. In International Conference on Learning Representations .Tian, X. and Shen, X. (2026). Enhancing accuracy in generative models via knowledge transfer. 
+
+Journal of Machine Learning Research , 27(79):1–58. Vincent, P. (2011). A connection between score matching and denoising autoencoders. Neural Computation , 23(7):1661–1674. Wibisono, A., Wu, Y., and Yang, K. Y. (2024). Optimal score estimation via empirical bayes smoothing. In Proceedings of Thirty Seventh Conference on Learning Theory , volume 247 of 
+
+Proceedings of Machine Learning Research , pages 4958–4991. Zhang, K., Yin, H., Liang, F., and Liu, J. (2024). Minimax optimality of score-based diffusion models: Beyond the density lower bound assumptions. In Proceedings of the 41st International Conference on Machine Learning , volume 235 of Proceedings of Machine Learning Research , pages 60134–60178. PMLR. 12 Appendix 
+
+# A Proof of Theorem 4 
+
+The proof has four parts: score and loss envelopes, localization and covering entropy, a finite-cover concentration inequality, and its application to the fitted score. All constants are uniform in the conditioning variable and the number of grid points; they may depend on the fixed model and network parameters and the prescribed tail exponent. 
+
+A.1 Proof of Lemma 2 
+
+We obtain Lemma 2 from Theorem 3.4 of Fu et al. (2024), which is stated for y ∈ [0 , 1] dy . The compact set Y in Assumption 1 is contained in [ −Ry, R y]dy . The extended factor need not define a normalized density outside Y. Define its normalizing function by 
+
+Z(y) := 
+
+∫
+
+> Rdx
+
+e−C2∥x∥22/2 ¯f (x, y) d x.
+
+The bounds on ¯f give C1(2 π/C 2)dx/2 ≤ Z ≤ B(2 π/C 2)dx/2, and Z = 1 on Y. Gaussian integration preserves the required Hölder regularity, so ¯f /Z is positive and Hölder with fixed bounds and defines normalized conditional densities on the containing cube. These densities agree with q0 on Y.Rescaling this cube to [0 , 1] dy and applying Theorem 3.4 of Fu et al. (2024) yields Lemma 2, with constants also depending on Ry. The same construction permits the cited small-time estimate used below. 
+
+A.2 Basic Score and Tail Bounds 
+
+Localization and concentration rely on deterministic and moment bounds. The Gaussian envelope in Assumption 1 yields Gaussian tail bounds, while the score exhibits inverse-variance growth. 
+
+Lemma 9 (Gaussian tails and score envelope) . Under Assumption 1, for every integer j ≥ 1 there are constants c, C j > 0 such that, uniformly over y,
+
+E[∥x0∥2j 
+
+> 2
+
+1{∥ x0∥∞ > R } | y] ≤ Cj e−cR 2
+
+. (24) 
+
+Moreover, for every t > 0,
+
+∥∇ log qt(x | y)∥2 ≤ C
+
+(
+
+∥x∥2 + 1
+
+σt
+
+)
+
+. (25) 
+
+Proof. The Hölder norm bounds f from above. Hence (4) implies, uniformly in y,
+
+q0(x | y) ≤ B exp( −C2∥x∥22/2) .
+
+For R ≥ 0, let AR := {x : ∥x∥∞ > R }. On this set, ∥x∥2 ≥ ∥ x∥∞ > R , so 
+
+e−C2∥x∥22/2 = e−C2∥x∥22/4e−C2∥x∥22/4 ≤ e−C2R2/4e−C2∥x∥22/4.
+
+Consequently, 
+
+E[∥x0∥2j 
+
+> 2
+
+1{∥ x0∥∞ > R } | y]
+
+≤ B
+
+∫
+
+> AR
+
+∥x∥2j 
+
+> 2
+
+e−C2∥x∥22/2 dx
+
+≤ Be −C2R2/4
+
+∫
+
+> Rdx
+
+∥x∥2j 
+
+> 2
+
+e−C2∥x∥22/4 dx = Cj e−cR 2
+
+,
+
+13 where c := C2/4 and the integral defining Cj is a finite Gaussian moment. These constants are independent of R and y, proving (24) without a polynomial prefactor. Lemma B.9 of Fu et al. (2024), expressed under the OU normalization (1), gives the score estimate (25). For a network s ∈ F , let 
+
+Rs(x0, y) := 
+
+> N
+
+∑
+
+> k=1
+
+hk Extk |x0 ∥stk (xtk , y) − s0 
+
+> tk
+
+(xtk , y)∥22.
+
+Then ERs = ρ2(s, s0). The discrete-time denoising score-matching loss retains all cross-time covariance terms and therefore does not require an independence assumption across discretization times. 
+
+Lemma 10 (Discrete-time loss inequalities) . Let 
+
+∆s(x0, y) := ℓ(x0, y; s) − ℓ(x0, y; s0).
+
+Uniformly over s ∈ F ,
+
+|∆s|2 ≤ 2Rs{ℓ(x0, y; s) + ℓ(x0, y; s0)}, (26) 
+
+ℓ(x0, y; s) ≤ CA n log K, (27) 
+
+and 
+
+ℓ(x0, y; s0) ≤ CA n(1 + ∥x0∥22). (28) 
+
+Proof. Set Uk := ∇ log qtk |0(xtk | x0) and S0 
+
+> k
+
+:= s0 
+
+> tk
+
+(xtk , y). Expanding the difference of two squares gives ∆s =
+
+> N
+
+∑
+
+> k=1
+
+hk Extk |x0 ⟨stk − S0 
+
+> k
+
+, stk + S0 
+
+> k
+
+− 2Uk⟩.
+
+Cauchy–Schwarz over the product of the discrete time measure and the conditional transition laws yields 
+
+|∆s|2 ≤ Rs
+
+> N
+
+∑
+
+> k=1
+
+hkE∥stk + S0 
+
+> k
+
+− 2Uk∥22,
+
+where the second factor is at most 2 ℓ(x0, y; s) + 2 ℓ(x0, y; s0), proving (26). This argument is applied to the full sum over discretization times and therefore automatically includes all cross-time covariance terms. From (2), 
+
+Ext|x0 ∥∇ log qt|0(xt | x0)∥22 = dx
+
+σ2
+
+> t
+
+.
+
+Using also ∥st∥∞ ≲ √log K/σ t proves (27). For (28), use (25), E(∥xt∥22 | x0) = μ2 
+
+> t
+
+∥x0∥22 + dxσ2 
+
+> t
+
+, and 
+
+∑ 
+
+> k
+
+hk ≤ An.
+
+A.3 Localization and Entropy 
+
+The network-covering result applies on bounded input domains, whereas both x0 and the noised variables xtk are unbounded. Both sets of inputs are therefore truncated at logarithmic radii; tail bounds quantify the discarded regions, and a cover of the network class transfers to the loss class. For the empirical-process arguments below, let P be the joint law of one training pair and 
+
+Pn its empirical measure. For an integrable function g, write P g := E[g(x0, y)] and Png := 14 n−1 ∑ni=1 g(xi
+
+> 0
+
+, yi). The norm ∥g∥L2(P ) := ( P |g|2)1/2 measures population size, while ∥ · ∥ ∞ for a function denotes its supremum norm over the specified domain, using the maximum norm for vector-valued outputs. We write N (u, G, ∥ · ∥ ) for the covering number at radius u, and 
+
+H∞(u, G) := log N (u, G, ∥ · ∥ ∞) for the sup-norm covering entropy. Fix an arbitrary M > 0. Choose constants C0, C x sufficiently large and set 
+
+R0 := C0
+
+√log K, Rx := Cx
+
+√log K. 
+
+Define the localized loss 
+
+ℓR(x0, y; s) := 1{∥ x0∥∞ ≤ R0}
+
+> N
+
+∑
+
+> k=1
+
+hk Extk |x0
+
+[∥stk − ∇ log qtk |0∥221{∥ xtk ∥∞ ≤ Rx}].
+
+Lemma 11 (Localization error) . For every prescribed M > 0, the constants C0, C x can be chosen to satisfy 
+
+P(∥x0∥∞ > R 0) ≤ CK −M . (29) 
+
+Moreover, uniformly over s ∈ F ,
+
+E|ℓ(x0, y; s) − ℓR(x0, y; s)| ≤ ηK , ηK ≤ CA n log K K −M , (30) 
+
+and the same bound holds with s replaced by s0. Finally, on {∥ x0∥∞ ≤ R0},
+
+0 ≤ ℓ(x0, y; s) − ℓR(x0, y; s) ≤ rK , rK ≤ CA n log K K −M , (31) 
+
+uniformly over s ∈ F .Proof. Choose C0 large enough that (24) gives both (29) and the required moment-tail bound outside R0. On {∥ x0∥∞ ≤ R0}, write xt = μtx0 + σtZ, where Z ∼ N (0, Idx ). Since μt, σ t ≤ 1, the event ∥xt∥∞ > R x implies 
+
+∥Z∥∞ > (Cx − C0)√log K. 
+
+The transition score is exactly −Z/σ t. The network envelope therefore gives 
+
+∥st(xt, y) − ∇ log qt|0(xt | x0)∥22 ≤ Cσ2
+
+> t
+
+(log K + ∥Z∥22).
+
+The same bound holds for s0, using (25) and ∥xt∥22 ≤ C(log K + ∥Z∥22) on the localized data region. Choose Cx > C 0 sufficiently large that Gaussian tail integration gives 
+
+E
+
+[
+
+(log K + ∥Z∥22)1{∥ Z∥∞ > (Cx − C0)√log K}
+
+]
+
+≤ C log K K −M .
+
+Multiplying by hk/σ 2 
+
+> tk
+
+and summing proves (31), and its true-score analogue, with bound 
+
+CA n log K K −M independent of N . On {∥ x0∥∞ > R 0}, the full-loss envelopes in Lemma 10 and the Gaussian moment-tail bound give the same population order. Combining the two regions proves (30) for both the network and the true score. Let 
+
+BK := √log K
+
+> N
+
+∑
+
+> k=1
+
+hk
+
+σtk
+
+.
+
+For every grid in the approximation range, the endpoint estimate (10) and 0 < σ t ≤ 1 give 
+
+BK ≤ √log K A n = O((log K)3/2).
+
+15 This bound is uniform in the number of grid points. Once localization is in place, the loss becomes Lipschitz in the network output on a bounded domain. Consequently, the sparse-network covering bound transfers to the excess-loss class for the discrete-time objective. 
+
+Lemma 12 (Covering entropy of the localized loss class) . Let 
+
+GR := {ℓR(·; s) − ℓR(·; ˜s) : s ∈ F} .
+
+For 0 < u ≤ 1, its sup-norm covering entropy satisfies 
+
+H∞(u, GR) ≤ CK log 17 K + CK log 9 K log 
+
+> (
+
+1 + CB K
+
+u
+
+> )
+
+. (32) 
+
+In particular, if u−1 is bounded by a fixed power of K, then 
+
+H∞(u, GR) ≤ CK log 17 K. (33) 
+
+Proof. Suppose ∥s1 − s2∥∞ ≤ δ on the localized input domain. The difference-of-squares identity and the transition-score moment imply 
+
+|ℓR(x0, y; s1) − ℓR(x0, y; s2)| ≤ Cδ 
+
+> N∑
+> k=1
+
+hk
+
+> (
+
+Mtk + 1
+
+σtk
+
+> )
+
+≤ CB K δ. 
+
+Outside {∥ x0∥∞ ≤ R0} both localized losses vanish, so this bound holds over the entire training-pair domain. Subtracting the fixed approximant’s loss does not change distances. A network cover at radius δ := min {1, u/ (CB K )} therefore induces a sup-norm u-cover of GR, after a harmless adjustment of C.Lemma D.8 of Fu et al. (2024) states that, on an input domain of radius R,log N (δ, F, ∥ · ∥ ∞) ≤ CS 
+
+> {
+
+L log κ + ( L + 1) log W + log[ L2(W R + 2)] + log 1
+
+δ
+
+> }
+
+,
+
+where R = O(log K) after the time coordinate is included. If a covering ball for the larger parameter-bounded network class meets the prescribed output-envelope subclass, select a center from that intersection. Re-centering doubles the radius but does not increase the number of balls; hence the same entropy order holds with centers satisfying the output envelope used above. Substituting 
+
+S ≲ K log 9 K, L ≲ log 4 K, W ≲ K log 7 K, and log κ ≲ log 4 K gives log N (δ, F, ∥ · ∥ ∞) ≤ CK log 17 K + CK log 9 K log 1
+
+δ .
+
+Substituting the chosen δ proves (32). If u−1 is at most a fixed power of K, the bound on BK gives log(1 + CB K /u ) = O(log K). The second term is then dominated by the first, proving (33). The constants depend on the fixed polynomial exponent, but not on N .
+
+A.4 A Localized Empirical-Risk Inequality 
+
+We now combine the variance and covering estimates in a direct concentration argument. As in the risk-slicing approach of Proposition 1 of Tian and Shen (2026), candidates are grouped by their population excess risk. Here bounded localized losses and a sup-norm cover allow scalar Bernstein inequalities and finite union bounds, with explicit constants. No bracketing maximal inequality is needed. 16 Lemma 13 (Localized ERM bound by finite covers) . Let Pn be the empirical measure of n i.i.d. observations with law P . Suppose the full loss has nonnegative excess risk Rγ := P {l(γ) − l(γ0)} for every γ ∈ Γ, and let lR be a localized loss. Fix an approximating element ˜γ ∈ Γ and a measurable estimator ̂ γ ∈ Γ. For constants r, η ≥ 0, assume that, on an event An,
+
+PnlR(̂ γ) ≤ PnlR(˜γ) + r, (34) 
+
+that 
+
+sup 
+
+> γ∈Γ∪{ γ0}
+
+|P {l(γ) − lR(γ)}| ≤ η, (35) 
+
+and write ∆R,γ := lR(γ) − lR(γ0). Assume there are constants cv ≥ 1 and cb > 0 such that, for every 
+
+γ ∈ Γ,
+
+P ∆2 
+
+> R,γ
+
+≤ cvRγ (36) 
+
+and the localized excess loss is uniformly bounded: 
+
+∥∆R,γ ∥∞ ≤ cb. (37) 
+
+Let H∞(u) denote the sup-norm covering entropy of {lR(γ) − lR(˜γ) : γ ∈ Γ}. The constants cv, c b
+
+may depend on n.For any ε > 0 satisfying 
+
+ε2 ≥ 4R˜γ + 32 η + 8 r (38) 
+
+and 
+
+H∞(ε2/128) + log 2 ≤ nε 2
+
+80( cv + cb) , (39) 
+
+the estimator obeys 
+
+P{R ̂γ > ε 2, An} ≤ 2 exp 
+
+> {
+
+− nε 2
+
+80( cv + cb)
+
+> }
+
+. (40) 
+
+Proof. We track separately the deterministic risk gap, finite-cover approximation, and stochastic deviation. 
+
+Step 1: a deviation is necessary on each risk range. For each integer j ≥ 0, set sj := 2 j ε2 and define the risk range 
+
+Sj := {γ ∈ Γ : sj ≤ R γ < 2sj }.
+
+Write Gγ := lR(γ) − lR(˜γ). The population localization error in (35) gives 
+
+P G γ ≥ R γ − R ˜γ − 2η. 
+
+Condition (38) implies R˜γ ≤ ε2/4, 2 η ≤ ε2/16, and r ≤ ε2/8. Thus every γ ∈ S j satisfies 
+
+P G γ − r ≥ sj − 716 ε2 ≥ 916 sj .
+
+On An, empirical optimality (34) gives PnĜγ ≤ r. Consequently, {̂γ ∈ S j , An} implies ( P −Pn)Ĝγ ≥
+
+9sj /16. 
+
+Step 2: reduce to a finite cover with centers in the same risk range. Take a deterministic sup-norm cover of the full loss-difference class with radius ε2/128. For each covering ball that meets 
+
+{Gγ : γ ∈ S j }, select a representative from that intersection. The resulting finite set Tj covers this restricted class with radius ε2/64 and satisfies 
+
+|T j | ≤ exp {H∞(ε2/128) }.
+
+17 Re-centering in this way ensures that every representative has risk below 2 sj , as needed for the variance bound. Since |(P − Pn)( G − H)| ≤ 2∥G − H∥∞, the event from Step 1 implies that some 
+
+H ∈ T j satisfies (P − Pn)H ≥ 916 sj − ε2
+
+32 ≥ 12 sj .
+
+Step 3: apply Bernstein’s inequality with explicit constants. For a representative H = Gγ with 
+
+γ ∈ S j , the variance condition yields Var( H) ≤ P H 2 ≤ 2P ∆2 
+
+> R,γ
+
++ 2 P ∆2
+
+> R, ˜γ
+
+≤ 2cv(2 sj + ε2/4) ≤ 92 cvsj .
+
+The envelope condition gives ∥H − P H ∥∞ ≤ 4cb. The one-sided scalar Bernstein inequality for the original i.i.d. observations therefore gives 
+
+P{(P − Pn)H ≥ sj /2} ≤ exp 
+
+> {
+
+− n(sj /2) 2
+
+2{(9 /2) cvsj + 4 cb(sj /2) /3}
+
+> }
+
+= exp 
+
+> {
+
+− ns j
+
+36 cv + (16 /3) cb
+
+> }
+
+≤ exp 
+
+> {
+
+− ns j
+
+40( cv + cb)
+
+> }
+
+.
+
+This probability is not conditioned on An: the localization event is used only for the deterministic implication in Step 1, so the observations remain i.i.d. in the concentration calculation. 
+
+Step 4: sum over representatives and risk ranges. Set Λ := nε 2/[80( cv + cb)]. By (39), the covering entropy is at most Λ and Λ ≥ log 2. Finite union bounds and then a countable union bound give 
+
+P{R ̂γ > ε 2, An} ≤ ∑
+
+> j≥0
+
+exp {H∞(ε2/128) − 2j+1 Λ}≤ ∑
+
+> j≥0
+
+e−2j Λ ≤ e−Λ
+
+1 − e−Λ ≤ 2e−Λ.
+
+The penultimate inequality uses 2 j ≥ j + 1. All numerical constants are explicit and remain valid when cv and cb grow with n, proving (40). For the present model, the generic excess risk is Rs = ρ2(s, s0) by the denoising identity. Define the localized excess loss by ∆R, s(x0, y) := ℓR(x0, y; s) − ℓR(x0, y; s0).
+
+The discrete-time Cauchy–Schwarz argument of Lemma 10, now with the localization indicators included, gives 
+
+E∆2 
+
+> R, s
+
+≤ CA n log K ρ 2(s, s0). (41) Indeed, the localized analogue of Rs(x0, y) is bounded above by Rs(x0, y), while both localized losses are O(An log K). Their support restricts ∥x0∥∞ to R0 = O(√log K), making the true-score loss bound in (28) uniform there. Thus the variance condition holds with 
+
+cv ≍ An log K. (42) Both localized losses are nonnegative and bounded by CA n log K. Their difference therefore satisfies (37), with 
+
+cb ≍ An log K, 
+
+18 after choosing fixed multiplicative constants. Since An ≥ 1/2, these choices give cv ≥ 1 for large K
+
+and cv + cb ≍ An log K. By (10), the latter is O(log 2 K) for every admissible grid. The concentration bound keeps this dependence explicit; it does not treat these quantities as numerical constants. Let 
+
+An := 
+
+> n
+
+⋂
+
+> i=1
+
+{∥ xi
+
+> 0
+
+∥∞ ≤ R0}.
+
+By (31) and the empirical optimality of ̂ s for the full loss, 
+
+PnℓR(̂s) ≤ Pnℓ(̂s) ≤ Pnℓ(˜s) ≤ PnℓR(˜s) + rK
+
+on An. Furthermore, 
+
+P(Acn) ≤ CnK −M (43) by (29) and a union bound. These observations verify the structural conditions of Lemma 13 with 
+
+r := rK and η := ηK . Its radius and covering conditions are checked next, before the localization failure probability is added. 
+
+A.5 Proof of Lemma 3 
+
+Proof. We first establish the lower bounds. Since σ2 
+
+> tk
+
+≤ 1, 
+
+An ≥
+
+> N
+
+∑
+
+> k=1
+
+hk = T. 
+
+Moreover, h1 = t1 and 1 − e−2t1 ≤ 2t1, so the first interval gives 
+
+An ≥ t1
+
+1 − e−2t1 ≥ 12 .
+
+Thus An ≥ max {T, 1/2}.For the upper bound, the function g(t) := (1 − e−2t)−1 is decreasing on (0 , ∞). Therefore, for each k ≥ 2, 
+
+hkg(tk) ≤
+
+∫ tk
+
+> tk−1
+
+g(t) d t. 
+
+Separating the first interval and summing yields 
+
+An ≤ t1
+
+1 − e−2t1 +
+
+∫ Tt1
+
+dt
+
+1 − e−2t
+
+= t1
+
+1 − e−2t1 + 12 log e2T − 1
+
+e2t1 − 1 .
+
+The first term satisfies t1
+
+1 − e−2t1 = t1 + t1
+
+e2t1 − 1 ≤ t1 + 12 .
+
+Rewriting the logarithmic term consequently gives 
+
+An ≤ T + 12 + 12 log 1 − e−2T
+
+1 − e−2t1
+
+≤ T + 12 + 12 log 11 − e−2t1 .
+
+19 By concavity on [0 , 1] and monotonicity thereafter, 1 − e−2t1 ≥ (1 − e−2) min {t1, 1}.
+
+Hence 
+
+An ≤ T + 12 + 12 log 11 − e−2 + 12 log +(1 /t 1)
+
+≤ C[1 + T + log +(1 /t 1)],
+
+which proves (10). Finally, the assumptions on the endpoints imply 
+
+An ≥ T ≥ cT log K
+
+and An ≤ C[1 + ( C+ + C−) log K]
+
+≤ C′ log K, 
+
+where the last inequality uses K ≥ e. All estimates depend only on the endpoints and fixed constants, not on N or the interior grid points. This proves An ≍ log K.
+
+A.6 Proof of Theorem 4 
+
+Proof of Theorem 4. The measurable minimizer in (9) is well defined. For each fixed n, the bounded-parameter, bounded-width, bounded-depth network class with at most S nonzero parameters has a compact parameterization; the output-envelope restrictions are closed. The integrated loss is continuous in these parameters by dominated convergence, using the prescribed output bound and the Gaussian transition-score moments, and is measurable in the observations. Compactness and the measurable minimum theorem therefore give a measurable empirical minimizer. We verify the approximation, localization, and finite-cover conditions separately. By Lemma 2, 
+
+ρ2(˜s, s0) ≤ CA nK−2β/D log β+1 K, 
+
+so the approximation radius is 
+
+δK := CA 1/2 
+
+> n
+
+K−β/D log (β+1) /2 K. (44) The covering condition requires nε 2 to dominate ( cv + cb) times the logarithm of the cover size. Accordingly, define the stochastic scale by 
+
+ζK := C 
+
+> (
+
+AnKn
+
+> )1/2
+
+log 9 K. (45) Choose the network size as in (11), which balances the polynomial factors in δK and ζK . To verify the cover condition for any ε ≥ C(δK + ζK ), use monotonicity of covering numbers and set 
+
+u := min {ε2/128 , 1}. The bound An ≥ 1/2 gives 
+
+ε2 ≳ Kn log 18 K ≍ K−2β/D log 18 K. 
+
+Thus u−1 is bounded by a fixed power of K. Lemma 12 and the bound BK = O((log K)3/2) imply 
+
+H∞(ε2/128 , GR) ≤ H∞(u, GR) ≤ CK log 17 K. 
+
+20 On the other hand, cv + cb ≤ CA n log K and the stochastic scale give 
+
+nε 2
+
+cv + cb
+
+≳ nε 2
+
+An log K .
+
+Taking the multiplicative constant in ε ≥ C(δK + ζK ) sufficiently large makes this quantity exceed 80 {H∞(ε2/128 , GR) + log 2 }, because nζ 2 
+
+> K
+
+/(An log K) ≍ K log 17 K. This proves (39), with constants independent of n and N .For a prescribed tail exponent M , apply Lemma 11 with an internal exponent Mloc >
+
+max {M, 2β/D }. Then ηK + rK ≤ CA n log K K −Mloc = o(δ2 
+
+> K
+
++ ζ2 
+
+> K
+
+), and nK −Mloc ≤ nK −M . The approximation bound and a further fixed enlargement of ε verify (38). Both conditions therefore hold at the threshold in Theorem 4, 
+
+εn = CA 1/2 
+
+> n
+
+n−β/ (D+2 β) log m n, m = max 
+
+> {
+
+9, β + 1 2
+
+> }
+
+,
+
+for sufficiently large fixed C. Adding the localization failure probability to (40) yields the stronger intermediate estimate 
+
+P{ρ(̂ s, s0) > ε n} ≤ 2 exp 
+
+> {
+
+−c nε 2
+
+> n
+
+An log K
+
+> }
+
++ CnK −M ≤ 2 exp {− cn D/ (D+2 β) log 2m−1 n} + CnK −M .
+
+The tail stated in (12) is a convenient weaker consequence: since An ≥ 1/2 and log K ≍ log n, for sufficiently large n the last exponential term is at most 4 exp 
+
+> {
+
+−c nD/ (D+2 β) log 2m−2 nAn
+
+> }
+
+.
+
+This establishes (12), with the dependence on the growing variance and envelope constants made explicit. Under the permitted approximation window, (10) and (11) give An = O(log K) = O(log n). Substituting this bound into the score-error threshold yields the rate in (13), with logarithmic exponent m + 1 /2. The exponential remainder in (12) tends to zero, and choosing M > (D + 2 β)/D 
+
+also gives nK −M → 0. Thus (13) holds for every grid satisfying the theorem’s approximation-window condition, without an additional assumption on An.
+
+# B Proofs of Lemmas 5 and 6, Proposition 7, and Theorem 8 
+
+We first establish the reverse-process comparison, the small-time and remaining-step estimates, and the grid bounds. We then prove Lemma 5(b), including the grid-independent transfer from the smoothed law to the original target for early stopping, and specialize it in Proposition 7. The proof of Theorem 8 follows by inserting the score-estimation bound. Throughout this section, the training sample is fixed except when the final training-sample probability is invoked. 21 B.1 Proof of Lemma 5(a) 
+
+Throughout this proof, u denotes reverse time and a = T − u denotes a forward-time cutoff. For use only in the appendix, write 
+
+IT := Ey KL( qT ∥N (0, Idx )) ,ek := E∥̂stk (xtk , y) − s0 
+
+> tk
+
+(xtk , y)∥22,dk(t) := E∥s0 
+
+> t
+
+(xt, y) − s0 
+
+> tk
+
+(xtk , y)∥22,E(a) := ∑ 
+
+> k:tk>a
+
+(tk − max {tk−1, a })ek,D(a) := ∑ 
+
+> k:tk>a
+
+∫ tk
+
+> max {tk−1,a }
+
+dk(t) d t. 
+
+These expectations are under the true forward OU coupling and the marginal law of y, with the training sample fixed. In particular, 
+
+E(0) = ρ2(̂ s, s0), E(t1) =: ρ2es ≤ ρ2(̂ s, s0), D(0) = 
+
+∫ t1
+
+> 0
+
+d1(t) d t + D(t1).
+
+All integrals starting at zero are over positive times. The comparison is understood in the extended-real sense; it does not require a separate moment or smoothness assumption on q0.
+
+Proof. Step 1: finite initialization KL and positive-time comparison. If IT = ∞, the asserted inequality is immediate. Suppose therefore that IT < ∞. The variational inequality for relative entropy, applied conditionally to truncated versions of ∥x∥22/4 and then averaged over y, gives 
+
+E∥xT ∥22 ≤ 4IT + 2 dx log 2 < ∞.
+
+Here the Gaussian exponential moment is EZ∼N (0,Idx )e∥Z∥22/4 = 2 dx/2. The forward coupling 
+
+xT = e−T x0 + σT Z consequently implies 
+
+E∥x0∥22 ≤ 2e2T (E∥xT ∥22 + dxσ2
+
+> T
+
+) < ∞.
+
+Thus the conditional second moment is finite for almost every y. This is a consequence of finite initialization KL, not an additional assumption. Fix such a y and a positive forward cutoff a. At positive times the OU densities are smooth and strictly positive. Apply the conditional transition comparison and KL chain rule from Proposition C.3 of Chen et al. (2023a) on forward times [ a, T ]. Their OU process has drift −x/2 and unit diffusion. Under the time change s = 2 t, the drift difference in our normalization is twice the score difference and the diffusion coefficient is √2; the integrated squared score discrepancy therefore has coefficient one. Averaging over y yields 
+
+Ey KL( qa∥̂ pT −a)
+
+≤ IT + ∑ 
+
+> k:tk>a
+
+∫ tk
+
+> max {tk−1,a }
+
+E∥s0 
+
+> t
+
+(xt, y) −̂ stk (xtk , y)∥22 dt
+
+≤ IT + 2 E(a) + 2 D(a).
+
+(46) The last inequality inserts and subtracts s0 
+
+> tk
+
+(xtk , y) and uses ∥v + w∥22 ≤ 2∥v∥22 + 2 ∥w∥22. For 0 < a < t 1, the law ̂ pT −a in this proof is obtained by running the last frozen-score step for time 
+
+t1 − a; this auxiliary cutoff is used only to pass to the full-sampler endpoint. 22 Step 2: the two output laws. At a = t1, equivalently u = T − t1, equation (46) gives the sharper retained-step comparison 
+
+Ey KL( qt1 ∥̂ pT −t1 ) ≤ IT + 2 ρ2es + 2 D(t1) ≤ IT + 2 ρ2(̂ s, s0) + 2 D(0) . (47) This proves (14) for the early-stopped output. Its common right-hand side includes the omitted first interval, which only enlarges the bound. For the full output, let a ↓ 0. Continuity of the forward OU paths gives qa(· | y) ⇒ q0(· | y). The explicit frozen-score update similarly gives ̂ pT −a(· | y) ⇒̂ pT (· | y). Joint lower semicontinuity of relative entropy and Fatou’s lemma imply 
+
+Ey KL( q0∥̂ pT ) ≤ lim inf  
+
+> a↓0
+
+Ey KL( qa∥̂pT −a)
+
+≤ IT + 2 ρ2(̂ s, s0) + 2 D(0) .
+
+The second inequality follows from E(a) ≤ E(0) and D(a) ≤ D(0). If D(0) = ∞, the upper bound is interpreted accordingly. This proves the u = T case. No score or finite Fisher information at time zero, Gaussian-factor condition, or Hölder regularity has been used. 
+
+Bounding initialization under the density model. The initialization term remains exact in Lemma 5(a). For the later rate calculation, Lemma C.4 of Chen et al. (2023a) gives, for T ≥ 1, 
+
+IT ≤ C(dx + m2)e−T , m2 := E∥x0∥22 < ∞. (48) This follows by applying their estimate conditionally and averaging; a uniform-in-y moment bound is unnecessary. The time rescaling only strengthens the exponential decay. Under the Gaussian-factor bounds in Lemma 5(b), and hence under Assumption 1, m2 is bounded by a constant depending only on B, C 2, d x, so IT ≲ e−T . We use this simplified estimate only under those additional assumptions. 
+
+B.2 Proof of Lemma 6 and Positive-Time Discretization Bounds 
+
+We prove both terms in Lemma 6 under Assumption 1: first the score-increment estimate, then the chi-squared smoothing estimate. Both hold for every fixed β > 0. We separate the interval adjacent to the data from the positive-time discretization error. For 0 < β ≤ 1, a bound on the time integral of the mean squared noisy score suffices; for β > 1, the increment estimate of Tian and Shen (2026) gives the sharper smoothness-dependent power. 
+
+Lemma 14 (Small-time interval) . Suppose Assumption 1 holds with any fixed β > 0. Then, uniformly over y and sufficiently small t1, 
+
+> ∫t1
+> 0
+
+E∥∇ log qt(xt | y) − ∇ log qt1 (xt1 | y)∥22 dt ≤ Ct rβ 
+
+> 1
+
+,
+
+where rβ = min {2, β } and the expectation is under the conditional forward OU coupling. The integral is over t > 0; no score at t = 0 is required. Proof. For β > 1, apply Lemma 17, equation (51), of Tian and Shen (2026) with their smoothness parameter r := β. The normalized extension and affine rescaling in Appendix A give their cube-domain density assumption uniformly in y. Their exponent is 1 + α with α := min {1, β − 1}, hence 1 + α = rβ .23 It remains to prove the bound for 0 < β ≤ 1. Fix y. Under Assumption 1, the positive factor f
+
+is uniformly β-Hölder in the data variable. At β = 1, this follows from the bounded first partial derivatives and the mean value theorem along coordinate directions. In particular, 
+
+|f (x + h, y) − f (x, y)| ≤ C∥h∥β 
+
+> 2
+
+.
+
+To exploit Gaussian smoothing, let φv be the density of N (0, v Idx ), and set v0 := C−12 and 
+
+G := (2 π/C 2)dx/2. Completing the square in the OU convolution gives 
+
+qt(x | y) = Gφ vt (x)Ft(x, y), Ft(x, y) := Ef (btx + τtZ, y), Z ∼ N (0, Idx ),
+
+where the variance and smoothing parameters are 
+
+vt := μ2 
+
+> t
+
+v0 + σ2 
+
+> t
+
+, bt := μtv0
+
+vt
+
+, τ 2 
+
+> t
+
+:= v0σ2
+
+> t
+
+vt
+
+.
+
+For sufficiently small t > 0, these satisfy vt ≍ 1, bt ≍ 1, and τt ≍ √t, with constants depending on the fixed density parameters. Positivity gives Ft ≥ C1. Differentiating the Gaussian kernel, rather than f , is justified by boundedness of f and integrability of the kernel derivative. Since EZ = 0, it yields 
+
+∇xFt(x, y) = bt
+
+τt
+
+E[Z{f (btx + τtZ, y) − f (btx, y)}] ,
+
+∥∇ xFt(x, y)∥2 ≤ Cb tτ β−1 
+
+> t
+
+E∥Z∥β+1 2 ≤ Ct (β−1) /2.
+
+The noisy score is therefore ∇ log qt(x | y) = −x/v t + ∇xFt(x, y)/F t(x, y). The uniform conditional second-moment bound implies that its mean squared norm, denoted by Iy(t), satisfies 
+
+Iy(t) := E
+
+[
+
+∥∇ log qt(xt | y)∥22 | y
+
+]
+
+≤ C(1 + tβ−1).
+
+This bound may diverge at zero when β < 1, but is integrable for every fixed β > 0. Applying the squared-norm inequality to the score difference gives 
+
+∫ t1
+
+> 0
+
+E
+
+[
+
+∥∇ log qt(xt | y) − ∇ log qt1 (xt1 | y)∥22 | y
+
+]
+
+dt
+
+≤ 2
+
+∫ t1
+
+> 0
+
+Iy(t) d t + 2 t1Iy(t1) ≤ C
+
+(
+
+t1 + tβ
+
+> 1
+
+β + tβ
+
+> 1
+
+)
+
+≤ Cβ tβ 
+
+> 1
+
+.
+
+The last step uses t1 ≤ 1 and β ≤ 1. Since rβ = β in this range, the result follows. All constants are uniform in y, but need not remain bounded as β ↓ 0. 
+
+Chi-squared smoothing: completion of Lemma 6. Suppose Assumption 1 holds with 
+
+β > 0. Fix y and suppress it in the densities. Recall the Gaussian representation and parameters 
+
+v0, G, v t, b t, τ t from the proof of Lemma 14. That convolution identity is valid for every β > 0, and gives 
+
+q0(x) = Gφ v0 (x)f (x, y), qt(x) = Gφ vt (x)Ft(x, y),Ft(x, y) = Ef (btx + τtZ, y), Z ∼ N (0, Idx ).
+
+The bounds on the smooth factor imply C1 ≤ Ft ≤ B. Moreover, |vt − v0| + |bt − 1| ≤ Ct and 
+
+τ 2 
+
+> t
+
+≤ Ct for small t. We bound Ft − f separately in the two smoothness ranges, with constants uniform in y.24 The range 0 < β ≤ 1. For 0 < β < 1, Assumption 1 gives Hölder continuity in the data variable. For β = 1, the bounded first partial derivatives give the same increment bound with exponent one, by the mean value theorem along coordinate directions. Thus, in both cases, 
+
+|f (x + h, y) − f (x, y)| ≤ C∥h∥β 
+
+> 2
+
+.
+
+Apply this bound to the Gaussian displacement h = ( bt − 1) x + τtZ. Subadditivity of the power 
+
+β ≤ 1 and the finite Gaussian β-moment give 
+
+|Ft(x, y) − f (x, y)| ≤ C(|bt − 1|β ∥x∥β 
+
+> 2
+
++ τ βt E∥Z∥β
+
+> 2
+
+)
+
+≤ C(tβ ∥x∥β 
+
+> 2
+
++ tβ/ 2) ≤ Ct β/ 2(1 + ∥x∥22).
+
+Here t ≤ 1 and rβ = β, so this is the required trβ /2 estimate without differentiating f when β < 1. 
+
+The range β > 1. The Taylor remainder in the data variable satisfies 
+
+|f (x + h, y) − f (x, y) − ∇ xf (x, y)⊤h| ≤ C∥h∥rβ 
+
+> 2
+
+.
+
+Here the bound follows from Hölder continuity of the gradient when 1 < β < 2, and from bounded second derivatives when β ≥ 2. Apply it with h = ( bt − 1) x + τtZ. The Gaussian linear term has mean zero, so 
+
+|Ft(x, y) − f (x, y)| ≤ C(t∥x∥2 + trβ ∥x∥rβ 
+
+> 2
+
++ trβ /2) ≤ Ct rβ /2(1 + ∥x∥22).
+
+In either smoothness range, therefore, |Ft − f | ≤ Ct rβ /2(1 + ∥x∥22). To translate this estimate into a divergence bound, decompose the density difference as 
+
+q0 − qt = G{(φv0 − φvt )f + φvt (f − Ft)}.
+
+The chi-squared divergence is defined by χ2(P ∥Q) := ∫ (p − q)2/q for densities p, q . The bounds 
+
+f ≤ B and qt ≥ GC 1φvt , together with ( u + v)2 ≤ 2u2 + 2 v2, give 
+
+χ2(q0∥qt) ≤ C
+
+∫ (φv0 − φvt )2
+
+φvt
+
+dx + C
+
+∫
+
+φvt |f − Ft|2 dx.
+
+For sufficiently small t, the variance satisfies 2 vt > v 0, and Gaussian integration gives the first integral as ( v2
+
+> t
+
+v0(2 vt − v0)
+
+)dx/2
+
+− 1 = O(t2),
+
+while the second is O(trβ ) by the preceding bound and uniformly bounded Gaussian fourth moments. Since rβ ≤ 2, we obtain, uniformly in y and for sufficiently small t > 0, 
+
+χ2(q0(· | y) ∥ qt(· | y)) ≤ Ct rβ . (49) This estimate is stronger than the corresponding smoothing bound in KL: the standard inequality KL( P ∥Q) ≤ log {1 + χ2(P ∥Q)} ≤ χ2(P ∥Q) follows, for example, from Nishiyama and Sason (2020, Eq. (16)). Averaging (49) over y and adding Lemma 14 proves Lemma 6. For t ≥ t1, the standard score-increment estimate applies under a relative step-size condition in the normalization of (1). 25 Lemma 15 (Discretization after t1). Suppose the conditional second moment of x0 is finite for almost every y. There is a universal c⋆ > 0 such that, if 
+
+hk
+
+σ2
+
+> tk−1
+
+≤ c⋆
+
+dx
+
+, k = 2 , . . . , N, (50) 
+
+then, for almost every y, with a constant independent of y and expectation under the conditional forward OU coupling,  
+
+> N∑
+> k=2
+> ∫tk
+> tk−1
+
+E
+
+> [
+
+∥∇ log qt(xt | y) − ∇ log qtk (xtk | y)∥22 | y
+
+> ]
+
+dt
+
+≤ Cd 2
+
+> xN∑
+> k=2
+
+h2
+
+> k
+
+σ4
+
+> tk−1
+
+. (51) 
+
+Proof. Fix y with finite conditional second moment and apply Lemma D.2, equivalently the discretization component of Theorem 2.2, of Chen et al. (2023a), after the constant-factor time rescaling used in the proof of Lemma 5(a). The cited estimate requires only the relative step condition and a finite second moment, and its constant does not depend on that moment. This proves (51); averaging over y preserves the bound. The conditional moment condition holds in the finite-initialization case of Lemma 5(a), and in particular under Assumption 1. The estimate applies only for k ≥ 2, because σt0 = 0 and Lemma 14 bounds the error over the small-time interval [0 , t 1]separately. 
+
+B.2.1 Arbitrary positive-time steps 
+
+Consider the nontrivial case IT < ∞ of Lemma 5(a), so that the preceding conditional moment condition holds. A quadratic step-size bound extends the discretization estimate to arbitrary positive-time steps, without a relative-step restriction. For a positive-time interval [ a, a + h], let 
+
+D(a, h ) :=  
+
+> ∫a+ha
+
+E∥s0 
+
+> t
+
+(Xt, Y ) − s0
+
+> a+h
+
+(Xa+h, Y )∥22 dt. 
+
+When h/σ 2 
+
+> a
+
+≤ c⋆/d x, the single-interval estimate used in Lemma 15 yields D(a, h ) ≤ Cd 2
+
+> x
+
+h2/σ 4
+
+> a
+
+. For a larger step, the conditional denoising identity and Jensen’s inequality give E∥s0 
+
+> t
+
+(Xt, Y )∥22 ≤ dx/σ 2 
+
+> t
+
+,and hence 
+
+D(a, h ) ≤ 4dxhσ2
+
+> a
+
+≤ 4d2
+
+> x
+
+h2
+
+c⋆σ4
+
+> a
+
+.
+
+Thus D(t1) ≤ Cd 2
+
+> x
+
+Π with no relative-step condition. Substituting into the sharper retained-step comparison (47) gives 
+
+Ey KL( qt1 (· | y)∥̂ pT −t1 (· | y)) ≤ IT + 2 ρ2es + Cd 2
+
+> x
+
+Π. (52) Under its additional Gaussian-factor assumptions, Lemma 5(b) transfers this positive-time compari-son to the original target. The replacement IT ≲ e−T is justified only when the density parameters, and hence the second moment in (48), are controlled. 26 B.3 Properties of the Nonuniform Time Discretization 
+
+The statistical bound on An already follows from the endpoints by (10). The nonuniform discretiza-tion has a separate numerical purpose: geometric spacing near zero and uniform spacing away from zero enforce the relative step-size condition while controlling the discretization sum and the number of score evaluations. The following lemma records these properties together. 
+
+Lemma 16 (Grid bounds) . For the recursive grid (17) –(18) , if c0 is sufficiently small, then (50) 
+
+holds and 
+
+An =
+
+> N
+
+∑
+
+> k=1
+
+hk
+
+σ2
+
+> tk
+
+≤ C
+
+(
+
+1 + log 1
+
+t1
+
++ T
+
+)
+
+, (53) 
+
+> N
+
+∑
+
+> k=2
+
+h2
+
+> k
+
+σ4
+
+> tk−1
+
+≤ Cc n
+
+(
+
+log 1
+
+t1
+
++ T
+
+)
+
+, (54) 
+
+and 
+
+N ≤ Cc −1
+
+> n
+
+(
+
+1 + log 1
+
+t1
+
++ T
+
+)
+
+. (55) 
+
+Proof. For sufficiently large n, the calibrated cutoff has t1 ≤ 1. The general endpoint estimate (10) immediately gives (53), without using the geometric–linear structure. We therefore check only the numerical properties. For a nonshortened geometric step, the rule gives tk−1 = (1 − cn)tk and hk = cntk. Since these steps remain in [0 , 1] and σ2 
+
+> t
+
+= 1 − e−2t ≍ t on [0 , 1], 
+
+hk
+
+σ2
+
+> tk−1
+
+≲ cn
+
+1 − cn
+
+, h2
+
+> k
+
+σ4
+
+> tk−1
+
+≲ c2
+
+> n
+
+.
+
+The number of geometric steps is O(c−1 
+
+> n
+
+log(1 /t 1)), because log( tk/t k−1) = − log(1 − cn) ≍ cn.Every remaining nonshortened step starts from tk−1 ≥ 1 − cn. Taking cn ≤ 1/2, its forward variance is bounded below by a positive constant, hk = cn, and σ2 
+
+> tk−1
+
+≍ 1. Thus its relative step is 
+
+O(cn) and its contribution to (54) is O(c2
+
+> n
+
+). The first such step crosses time one whenever tk−1 < 1; there are O((1 + T )/c n) steps in this regime. A shortened final step satisfies the same upper bounds and adds at most one to the count. Combining the two regimes proves (54) and (55); the additive constant in the discretization bound is absorbed by log(1 /t 1) + T for the calibrated parameters and large n. The estimates also give hk/σ 2 
+
+> tk−1
+
+≤ Cc n/(1 − cn). Choosing c0 sufficiently small establishes (50). These numerical estimates agree with Lemma D.3 of Chen et al. (2023a), in the present indexing convention. For completeness, we verify the order-optimality in (19), as discussed by Chen et al. (2023a, Theorem 2.2 and Appendix B). Write M = N − 1 for the number of retained intervals and 
+
+L = log(1 /t 1) + T . For any grid with the same endpoints and M retained intervals, Cauchy–Schwarz and the monotonicity of t 7 → 1/σ 2 
+
+> t
+
+give Π = 
+
+> N
+
+∑
+
+> k=2
+
+( hk
+
+σ2
+
+> tk−1
+
+)2
+
+≥ 1
+
+M
+
+( N∑
+
+> k=2
+
+hk
+
+σ2
+
+> tk−1
+
+)2
+
+≥ 1
+
+M
+
+(∫ Tt1
+
+dt
+
+1 − e−2t
+
+)2
+
+,
+
+∫ Tt1
+
+dt
+
+1 − e−2t = 12 log e2T − 1
+
+e2t1 − 1 ≍ L. 
+
+The last comparison holds for the calibrated endpoints and sufficiently large n. For the prescribed grid, counting geometric and linear steps also gives the matching order M ≍ L/c n. Every nonshortened 27 retained step has hk/σ 2 
+
+> tk−1
+
+≍ cn, and the final shortened step has ratio at most Cc n. Consequently, Π ≍ M c 2 
+
+> n
+
+≍ L2
+
+M ≲ cnL. 
+
+This proves (19): the scheme attains, up to constants, the lower bound for grids with the same endpoints and retained-step count. It is an optimality statement for Π, not for the actual KL error. 
+
+B.4 Proof of Lemma 5(b) 
+
+Proof. Fix the training sample and assume the Gaussian-factor bounds in Lemma 5(b), together with its bounded, measurable fitted scores. No Hölder regularity is used in this proof. All constants are uniform in y and independent of the interior grid and the fitted network, except through the displayed score bound. 
+
+Step 1: transfer under a bounded density ratio. Let P, Q, R be probability measures with densities and suppose p/q ≤ H for a fixed constant H > 1. The residual measure S := ( HQ − P )/(H − 1) is then a probability measure and satisfies HQ = P + ( H − 1) S. If KL( Q∥R) = ∞, the claimed upper bound is trivial. Otherwise, p ≤ Hq and s ≤ Hq/ (H − 1) ensure that all terms in the following identity are finite. Expanding the logarithms gives KL( P ∥R) + ( H − 1) KL( S∥R) = H KL( Q∥R) + KL( P ∥Q)+ ( H − 1) KL( S∥Q).
+
+Drop the nonnegative term involving KL( S∥R) and apply the preceding KL–chi-squared inequality to the last two terms. Since s − q = ( q − p)/(H − 1), this yields the transfer bound KL( P ∥R) ≤ H KL( Q∥R) + HH − 1 χ2(P ∥Q). (56) This is a consequence of the mixture identity, not a triangle inequality. The density ratio q0/q t1
+
+need not be globally bounded when C2 < 1. We therefore apply (56) on a large ball and control the omitted tail using a grid-independent lower bound on the sampler density. 
+
+Step 2: a sampler-density bound independent of the grid. Fix y and write U = T − t1. Consider the reference process dZu = Zudu + √2 d Wu, Z0 ∼ N (0 , I dx ), Vu = 2 e2u − 1.
+
+Let 0 = u0 < · · · < u m = U be the reverse partition corresponding to the retained steps, and set 
+
+θi = √2̂ sT −ui (Zui , y ). The bound ∥θi∥2 ≤ √2M∗ ensures that 
+
+L = exp 
+
+> {
+
+I − 12
+
+> ∑
+> i
+
+∥θi∥22 ∆ui
+
+> }
+
+, I = ∑
+
+> i
+
+θ⊤ 
+
+> i
+
+∆Wi,
+
+is a valid Girsanov density. Under the measure with density L, the reference process follows the frozen-score interpolation of the sampler. If ry denotes the early-stopped output density, then 
+
+ry(x)
+
+φVU (x) = E[L | ZU = x]. (57) Set ai = eU −ui , bi = eU −ui+1 , and vi = a2 
+
+> i
+
+− 1. Conditional Gaussian regression gives 
+
+E[∆ Wi | F ui , Z U = x] = 
+
+√2( ai − bi)
+
+vi
+
+(x − aiZui ).
+
+28 Given ZU = x, the residual on the right has mean vix/V U and covariance a2 
+
+> i
+
+Vui viIdx /V U ⪯ viIdx .Since θi is Fui -measurable, this implies 
+
+|E[I | ZU = x]| ≤ 2M∗
+
+
+
+eU − 1
+
+VU
+
+∥x∥2 + √dx
+
+∑
+
+> i
+
+ai − bi
+
+√
+
+a2 
+
+> i
+
+− 1
+
+ .
+
+The decreasing integrand gives the partition-independent estimate 
+
+∑
+
+> i
+
+ai − bi
+
+√
+
+a2 
+
+> i
+
+− 1
+
+≤
+
+∫ eU
+
+> 1
+
+dz
+
+√z2 − 1 = arcosh( eU ).
+
+Conditional Jensen’s inequality in (57) now yields, almost everywhere, 
+
+ry(x) ≥ φVU (x) exp 
+
+{
+
+−2M∗
+
+eU − 1
+
+VU
+
+∥x∥2 − 2M∗
+
+√dx arcosh( eU ) − M 2 
+
+> ∗
+
+U
+
+}
+
+. (58) Using VU ≥ 1, log VU ≤ 2U + log 2, ( eU − 1) /V U ≤ 1, and arcosh( eU ) ≤ U + log 2, together with the upper Gaussian envelope for q0, gives 
+
+[
+
+log q0(x | y)
+
+ry(x)
+
+]
+
+> +
+
+≤ C(1 + T )(1 + M 2 
+
+> ∗
+
+)(1 + ∥x∥22). (59) In particular, this estimate contains neither the number of steps nor the inverse variance of the last retained innovation. 
+
+Step 3: localization and restoration of the target tail. Take t = t1, P = q0(· | y), Q = qt(· | y), and R = ry. Let Bt = {x : ∥x∥22 ≤ 1/t }, δ = P (Bct ), and PB = P (· | Bt). The Gaussian envelope gives ∫
+
+> Bct
+
+(1 + ∥x∥22)p(x) d x ≤ Ce −c/t .
+
+For sufficiently small t, we have δ ≤ 1/2, and the Gaussian convolution identity from the proof of Lemma 14, which requires only bounded, measurable f , gives 
+
+q0(x | y)
+
+qt(x | y) = φv0 (x)f (x, y )
+
+φvt (x)Ft(x, y ) ≤ BC1
+
+( vt
+
+v0
+
+)dx/2
+
+exp 
+
+{ 12
+
+( 1
+
+vt
+
+− 1
+
+v0
+
+)
+
+∥x∥22
+
+}
+
+≤ C exp( Ct ∥x∥22).
+
+Here C1 ≤ Ft ≤ B and |vt − v0| ≤ Ct . Choose ¯ t1 ≤ 1/2 small enough that 2 vt > v 0 and δ ≤ 1/2for all 0 < t ≤ ¯t1. This choice depends only on C1, C 2, B, d x. The Gaussian bounds then imply 
+
+χ2(P ∥Q) < ∞, and pB ≤ Hq for a fixed H > 1 depending only on the same parameters. Moreover, 
+
+χ2(PB ∥Q) ≤ 1 + χ2(P ∥Q)(1 − δ)2 − 1 ≤ 4χ2(P ∥Q) + 8 δ ≤ 4χ2(P ∥Q) + Ce −c/t .
+
+Apply (56) to PB , Q, R and restore the tail using the exact identity KL( P ∥R) = (1 − δ) KL( PB ∥R) + (1 − δ) log(1 − δ) + 
+
+∫
+
+> Bct
+
+p log( p/r y) d x. 
+
+The logarithmic mass term is nonpositive. Bounding the tail integral with (59) proves KL( q0(· | y)∥ry) ≤ C KL( qt(· | y)∥ry) + Cχ 2(q0(· | y)∥qt(· | y)) + C(1 + T )(1 + M 2 
+
+> ∗
+
+)e−c/t .
+
+29 Average over y to obtain (15), with the threshold ¯ t1 and constants specified in Lemma 5(b). The proof retains the chi-squared discrepancy itself and does not invoke Lemma 6 or any smoothness assumption. Combining with (52) further bounds the retained sampling error by initialization, score estimation, and discretization. The localization is only a proof device and does not alter the sampler or introduce a training-sample event. 
+
+B.5 Proof of Proposition 7 
+
+Proof. The setting of Theorem 4 includes Assumption 1. Its Gaussian-factor bounds imply IT ≲ e−T
+
+by (48). Lemma 16 controls Π on the recursive grid, while Lemma 6 gives 
+
+∫ t1
+
+> 0
+
+d1(t) d t ≤ Ct rβ 
+
+> 1
+
+, Eyχ2(q0∥qt1 ) ≤ Ct rβ 
+
+> 1
+
+.
+
+For the full sampler, Lemma 5(a) at reverse time u = T and the decomposition of D(0) give 
+
+Ey KL( q0∥̂ pT ) ≲ e−T + ρ2(̂ s, s0) + trβ 
+
+> 1
+
++ d2
+
+> x
+
+Π.
+
+For early stopping, use the retained-step comparison (52), corresponding to reverse time u = T − t1,and then Lemma 5(b). Since ρ2es ≤ ρ2(̂ s, s0), this yields 
+
+Ey KL( q0∥̂pT −t1 ) ≲ e−T + ρ2(̂ s, s0) + trβ 
+
+> 1
+
++ d2
+
+> x
+
+Π+ (1 + T )(1 + M 2 
+
+> ∗
+
+)e−c/t 1 .
+
+The network envelope Mt ≲ √log K/σ t, after conversion from maximum to Euclidean norm, implies 
+
+M 2 
+
+> ∗
+
+≲ (log n)/t 1. Set λ = 2 β/ (D + 2 β) and ν = λ/r β . Under (17), (1 + T )(1 + M 2 
+
+> ∗
+
+)e−c/t 1 ≤ C(1 + log n)(1 + nν log n)e−cn ν
+
+= o(n−λ) = o(trβ 
+
+> 1
+
+).
+
+For sufficiently large n, the cutoff also satisfies t1 ≤ ¯t1 from Lemma 5(b). Absorb the exponential remainder into the small-time term and substitute (54). This proves (20) for both outputs, for each fixed training sample and fitted network in the prescribed class. Finally, K ≍ nD/ (D+2 β), so the strict conditions DC − > 2β/r β and DC + > 2β ensure 
+
+K−C− ≤ t1 ≤ tk ≤ T ≤ C+ log K
+
+for all positive grid times and sufficiently large n. Thus the approximation window required by Theorem 4 is respected. The endpoint bounds give T ≤ An ≤ C{1 + T + log(1 /t 1)}, hence 
+
+An ≍ log n ≍ log K.
+
+B.6 Proof of Theorem 8 
+
+Proof. With Proposition 7 established, it remains to insert the calibration and the score-estimation event. The choices (17) give 
+
+e−T = n− 2βD+2 β , trβ 
+
+> 1
+
+= n− 2βD+2 β , cn
+
+(
+
+log 1
+
+t1
+
++ T
+
+)
+
+= O
+
+(
+
+n− 2βD+2 β log n
+
+)
+
+. (60) Lemma 16 gives An = O(log n) and the step count (21). Since K ≍ nD/ (D+2 β), the grid lies in the approximation range of Lemma 2 for any fixed C− > 2β/ (Dr β ) and C+ > 2β/D , once n is sufficiently large. Thus Theorem 4 provides an event with probability at least (22) on which 
+
+ρ2(̂s, s0) ≤ Cn − 2βD+2 β log 2m+1 n. (61) 30 On this event, substitute (60) and (61) into Proposition 7. The score-error term dominates the initialization, small-time, and remaining discretization terms, giving the common target-KL bound (23). The proposition’s early-stopping transfer holds for every fitted network in the prescribed class, so no additional training-sample event is needed. The logarithmic exponent satisfies 2 m + 1 = max {19 , β + 2 }. The full sampler uses N score evaluations; omitting its final step uses N − 1, with the same asymptotic order. This completes the proof. 31

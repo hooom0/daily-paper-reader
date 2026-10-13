@@ -51,14 +51,14 @@
       <span class="dpr-home-dashboard-kicker">2026-10-13</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 9 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
-    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>2 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>6</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-13 01:19:33 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-13 23:53:04 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,8 +69,9 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>2026-10-13日报成功收录8篇，精读2篇、速读6篇，主线聚焦少步文生图指令跟随与MMDiT图像反馈引导。</p>
-<p>最值得看精读《A Lightweight Velocity Correction Framework...》（9.</p>
+<p>今天筛出9篇文生图/生成模型论文，精读2篇、速读7篇，精读最高分9.0。</p>
+<p>最值得看的是少步文生图“轻量速度校正”提指令跟随（9.0），以及“抑制图像到文本反馈”引导MMDiT（8.0）；速读还覆盖拖拽编辑、注意力汇和信息图生成。</p>
+<p>普通读者可先读9.0精读抓主线，再按兴趣翻速读里的ThinkDrag或Stride。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -92,12 +93,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">6 篇</strong>
+    <strong class="dpr-home-dashboard-count">7 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
 <ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="ThinkDrag: Semantic Drag-Based Image Editing with Visual Reasoning">ThinkDrag: Semantic Drag-Based Image Editing with Visual Reasoning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Exploring Attention Sinks in Text-to-Image Transformers from Diffusion and Autoregressive Models">Exploring Attention Sinks in Text-to-Image Transformers from Diffusion and Autoregressive Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Stride: Scale-Aware Multi-Agent Evolutionary Refinement for Infographic Generation">Stride: Scale-Aware Multi-Agent Evolutionary Refinement for Infographic Generation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>6</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>7</strong></span></div>
 </section>
 </div>
 

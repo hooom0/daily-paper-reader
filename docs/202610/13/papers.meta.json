@@ -1,8 +1,8 @@
 {
   "label": "2026-10-13",
   "date": "2026-10-13",
-  "generated_at": "2026-10-13T01:19:38",
-  "count": 8,
+  "generated_at": "2026-10-13T23:53:08",
+  "count": 9,
   "papers": [
     {
       "paper_id": "202610/13/2610.12899v1-a-lightweight-velocity-correction-framework-for-improving-instruction-following-in-few-step-text-to-image-generation",
@@ -91,6 +91,21 @@
       "tldr": "扩散/流生成器架构日益异构，跨模型隐空间对齐与去噪动态一致性仍待探索。作者发现独立模型的隐空间组织相似，直接交接中间状态可保留粗粒度内容。为此提出InstantFusion：用模型专属LAE把中间状态投影到共享隐空间，再解码至目标生成器，并用同图同噪声对齐和局部去噪速度同步训练。该接口无需逐对映射即可衔接冻结生成器，在加速、多偏好组合、跨架构在线蒸馏与跨模型组合中表现有竞争力。",
       "tags": "query:image-gen",
       "abstract_en": "Diffusion/flow models have emerged as the de facto paradigms for image generation, giving rise to a diverse family of modern generators with increasingly heterogeneous architectures and representations. Despite their remarkable generation capabilities, the cross-model alignment of latent representations and the consistency of their underlying denoising dynamics remain underexplored. In this work, we uncover an intriguing cross-model compatibility: independently trained generators exhibit similar latent spatial organization, while directly handing off intermediate states between unaligned models can still preserve coarse visual content. Motivated by these observations, we propose InstantFusion, a lightweight shared latent interface that connects the denoising trajectories of heterogeneous image generators. Specifically, to enable flexible cross-model state translation, model-specific Latent AutoEncoders (LAEs) are introduced to project intermediate states from different generators into a shared latent space and decode them into the latent space of a target generator. This shared space is constrained by two complementary objectives: aligning intermediate states derived from the same image at matched noise levels and synchronizing their corresponding local denoising velocities. Once trained, InstantFusion allows denoising to seamlessly transition across frozen generators without requiring a dedicated mapping for every model pair. The versatility of InstantFusion is demonstrated across acceleration, multi-preference composition, cross-architecture on-policy distillation, and cross-model composition, achieving competitive performance across these diverse settings.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202610/13/2610.13851v1-finite-sample-guarantees-for-fully-discrete-conditional-diffusion-models",
+      "section": "quick",
+      "title_en": "Finite-Sample Guarantees for Fully Discrete Conditional Diffusion Models",
+      "authors": "Qiuyun Zhu",
+      "date": "2026-10-09",
+      "pdf": "https://arxiv.org/pdf/2610.13851v1",
+      "score": "6.0",
+      "evidence": "条件扩散模型的有限样本生成理论保证",
+      "tldr": "条件扩散模型的实际采样仅用有限去噪步，但现有有限样本理论常忽略由此产生的离散化误差。本文把分数训练目标与采样网格对齐，联合分析统计估计和数值离散化误差。在光滑条件密度下，对任意β，合适网格使平均条件KL散度达Õ_p(n^{-2β/(d_x+d_y+2β)})，全采样与早停的TV误差均达Õ_p(n^{-β/(d_x+d_y+2β)})。该TV率与条件分布估计理论一致，为完全离散条件扩散提供有限样本保证。",
+      "tags": "query:image-gen",
+      "abstract_en": "We establish finite-sample guarantees for conditional diffusion models learned from data and implemented with finitely many denoising steps. Our approach aligns the score-training objective with the sampling grid, allowing statistical estimation and numerical discretization errors to be analyzed together. Under a smooth conditional density model, we derive high-probability bounds on the generated distribution's error and quantify the required number of score evaluations. For every smoothness index $β>0$, a suitable grid yields averaged conditional Kullback--Leibler (KL) divergence $\\widetilde O_p(n^{-2β/(d_x+d_y+2β)})$ relative to the original target with or without early stopping. Both the full and early-stopped samplers attain average target total-variation (TV) error $\\widetilde O_p(n^{-β/(d_x+d_y+2β)})$. Here $n$ is the sample size, $d_x,d_y$ are the data and conditioning dimensions, and errors are averaged over the conditioning variable. The total-variation bound matches the rate established in existing conditional distribution-estimation theory, up to logarithmic factors.",
       "source": "arxiv",
       "selection_source": "fresh_fetch"
     },
