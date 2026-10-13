@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-11</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-13</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 11 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 8 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>11</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>6</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-11 23:08:22 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-13 01:19:33 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,8 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今日速读11篇扩散模型相关论文，精读挂零，重点集中在免训练风格迁移、扩散模型潜空间推理与多模态扩散蒸馏三个方向。最值得看的是《TRACE》的内容-风格解耦式免训练风格迁移，以及《Think Before You Paint》用递归潜推理提升扩散生成质量，两者均获7.0分。普通读者可优先了解免训练风格迁移的实用思路，无需重训模型即可上手体验。</p>
+<p>2026-10-13日报成功收录8篇，精读2篇、速读6篇，主线聚焦少步文生图指令跟随与MMDiT图像反馈引导。</p>
+<p>最值得看精读《A Lightweight Velocity Correction Framework...》（9.</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -78,12 +79,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">0 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p class="dpr-home-dashboard-empty">今日暂无推荐。</p>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="A Lightweight Velocity Correction Framework for Improving Instruction Following in Few-Step Text-to-Image Generation">A Lightweight Velocity Correction Framework for Improving Instruction Following in Few-Step Text-to-Image Generation</span></li><li><span class="dpr-home-dashboard-paper-title" title="Images Talk Back: Guiding MMDiTs by Suppressing Image-to-Text Feedback">Images Talk Back: Guiding MMDiTs by Suppressing Image-to-Text Feedback</span></li></ul>
   </div>
-
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -91,12 +92,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">11 篇</strong>
+    <strong class="dpr-home-dashboard-count">6 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="TRACE: Time-Adaptive Residual Attention Control with Content-Style Decomposition for Training-Free Diffusion Style Transfer">TRACE: Time-Adaptive Residual Attention Control with Content-Style Decomposition for Training-Free Diffusion Style Transfer</span></li><li><span class="dpr-home-dashboard-paper-title" title="Think Before You Paint: Recursive Latent Reasoning for Diffusion Models">Think Before You Paint: Recursive Latent Reasoning for Diffusion Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Omni-Diffusion-Distill: Few-Step Distillation of Unified Multimodal Diffusion Large Language Models">Omni-Diffusion-Distill: Few-Step Distillation of Unified Multimodal Diffusion Large Language Models</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="ThinkDrag: Semantic Drag-Based Image Editing with Visual Reasoning">ThinkDrag: Semantic Drag-Based Image Editing with Visual Reasoning</span></li><li><span class="dpr-home-dashboard-paper-title" title="Exploring Attention Sinks in Text-to-Image Transformers from Diffusion and Autoregressive Models">Exploring Attention Sinks in Text-to-Image Transformers from Diffusion and Autoregressive Models</span></li><li><span class="dpr-home-dashboard-paper-title" title="Stride: Scale-Aware Multi-Agent Evolutionary Refinement for Infographic Generation">Stride: Scale-Aware Multi-Agent Evolutionary Refinement for Infographic Generation</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>11</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">image-gen <strong>6</strong></span></div>
 </section>
 </div>
 

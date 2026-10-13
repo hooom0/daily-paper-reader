@@ -1,0 +1,4088 @@
+TRANSFORMER-BASED IN-CONTEXT SCORE OPERATOR
+LEARNING FOR DIFFUSION MODELS
+A PREPRINT
+Wuzhe Xu
+South Dakota State University
+wuzhe.xu@sdstate.edu
+Zhaiming Shen
+Georgia Institute of Technology
+zshen49@gatech.edu
+Yulong Lu
+University of Minnesota
+yulonglu@umn.edu
+Wenjing Liao
+Georgia Institute of Technology
+wliao@gatech.edu
+Rongjie Lai
+Purdue University
+lairj@purdue.edu
+October 12, 2026
+ABSTRACT
+Diffusion models typically learn the generative dynamics of a single target distribution or a fam-
+ily of distributions indexed by conditioning variables fixed during training. This limits their ability
+to adapt to a previously unseen distribution from only a small set of examples. We introduce an
+in-context solution operator learning framework for diffusion models, in which each target distri-
+bution is treated as a task drawn from a meta-distribution and is specified at inference time by an
+empirical context set. Our method learns an in-context score operator that maps the context samples,
+a noisy query point, and the diffusion time to the task-dependent score, enabling reverse-diffusion
+sampling on unseen tasks without retraining or parameter updates. A key observation is that the task-
+dependent score admits a Gaussian-kernel conditional-mean representation. Its empirical Nadaraya–
+Watson approximation can be represented exactly by a model in our constructed transformer class,
+providing a principled foundation for the proposed query-dependent attention architecture. The op-
+erator is trained through amortized denoising score matching across task distributions. We establish
+generalization-error bounds that quantify the effects of the context size, the numbers of training
+tasks and within-task samples, model complexity, and intrinsic and ambient dimensions. Numeri-
+cally, we evaluate the method on a range of scientific and visual datasets, including Navier-Stokes,
+ERA5 climate data [12], QuickDraw sketches [20], and Food-101 [3]. The results show that the
+proposed method performs well on relatively simple task families, while its performance degrades
+as task complexity increases, thereby illustrating both the promise and the limitations of in-context
+learning for diffusion models.
+1
+Introduction
+Diffusion models have emerged as a powerful class of generative models, achieving strong empirical performance
+across a broad range of domains. They have been widely adopted in computer vision [42, 13, 43, 21, 2, 36], audio
+generation [23, 32, 18, 19], and reinforcement learning and control [35, 38, 56]. More recently, their applications have
+expanded to scientific and engineering problems, including data purification [34, 48, 49, 52], climate-data downscaling
+[44, 41], and partial differential equation (PDE) problems [17, 15, 51, 29]. Their success has been further enhanced by
+conditional generation techniques such as classifier guidance [8], classifier-free guidance [14], and conditioned latent
+diffusion [39], which provide substantial control over the generated samples.
+Despite this progress, standard diffusion models typically learn the reverse generative dynamics associated with the
+distribution represented by a particular training dataset [42, 13, 43]. Conditional diffusion models extend this for-
+mulation to families of distributions indexed by predefined conditioning variables, such as class labels, classifier
+outputs, text embeddings, or other task-specific signals [8, 14, 39]. Although these models can generate from multi-
+arXiv:2610.13690v1  [cs.LG]  9 Oct 2026
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+ple conditional distributions, the form and semantics of the conditioning mechanism are prescribed during training.
+Consequently, they are not generally designed to infer a previously unseen target distribution solely from a small,
+unordered set of contextual samples. Adapting to such a distribution may therefore require retraining, fine-tuning, or
+the construction of an additional conditioning representation. Recent few-shot and score-operator approaches have
+begun to relax this restriction [11, 27], but learning a general in-context score operator directly from empirical context
+sets remains underexplored.
+Many applications, however, require generative models to operate over an entire family of target distributions. In
+scientific computing, for example, the relevant solution or data distribution may vary with the governing equation,
+physical parameters, forcing terms, initial or boundary conditions, or available observations. This family-level struc-
+ture is central to operator-learning methods such as DeepONet and the Fourier neural operator, which learn mappings
+between problem specifications and their corresponding solutions [28, 26, 24]. Training an independent diffusion
+model for every possible configuration is computationally prohibitive and fails to exploit the structure shared across
+related problems. This motivates a solution-operator perspective for diffusion models: rather than learning the score
+function associated with a single prescribed target distribution, the objective is to learn an operator that maps informa-
+tion specifying a target distribution to its corresponding time-dependent score function [27]. Such an operator should
+generalize across a family of distributions and, ideally, adapt to previously unseen members of that family without
+retraining or parameter updates.
+In this work, we introduce an in-context solution operator learning framework for diffusion models. Each target
+distribution, referred to as a task, is drawn from a meta-distribution over probability measures. More precisely, we
+learn an in-context score operator that maps the empirical context distribution, together with a noisy query point
+and the diffusion time, to the task-dependent score. This formulation casts task adaptation as an operator-evaluation
+problem: the context set identifies the target distribution, while the shared operator captures common structure across
+the task family. It thus extends diffusion modeling from learning a score function for a fixed target distribution to
+learning a reusable score operator over a family of distributions. The solution operator is trained through amortized
+denoising score matching across task distributions, allowing knowledge to be shared across the entire task family.
+Once trained, it can perform reverse diffusion for a previously unseen task directly from its prompt samples, without
+retraining, fine-tuning, or task-specific network parameter updates. This perspective is also closely related to recent
+work on in-context operator learning over probability measures [7].
+Our method operates directly on the empirical context set and constructs score estimates through query-dependent
+interactions among the context samples, the noisy query point, and the diffusion time. A key observation is that the
+task-dependent score can be expressed through a Gaussian-kernel conditional-mean representation. Replacing the
+population conditional mean with its empirical counterpart yields a Nadaraya–Watson estimator based on the context
+samples. We show that this empirical estimator can be represented exactly by a model in our constructed transformer
+class. This connection provides a principled motivation for the proposed transformer-based in-context score operator,
+rather than treating the transformer architecture as an ad hoc design choice.
+Theoretically, We further establish generalization-error bounds for the learned score operator in Section 4. This bounds
+quantify the dependence on the context size n, the number of training tasks K, the number of episodes per task J,
+the number of diffusion samples per episode NT , and the intrinsic and ambient dimensions d and D. The finite-
+context error decays as n−2/(d+6), with the intrinsic dimension governing the exponent and the ambient dimension
+entering only through polynomial and logarithmic factors. This distinction indicates that in-context score estimation is
+governed primarily by the intrinsic geometry of the task distributions, exhibiting a curse of intrinsic rather than ambient
+dimensionality. The statistical error contains terms of order K−1/2, (KJ)−1/2, and (KJNT )−1/2, separating the
+effects of the numbers of tasks, episodes, and diffusion samples. In particular, the task-level persistent K−1/2 term is
+unaffected by J and NT . Thus, within the present upper-bound analysis, increasing within-task sampling alone cannot
+reduce this contribution, highlighting the number and diversity of training tasks as fundamental to generalization..
+We summarize our main contributions as follows:
+• We formulate in-context learning for diffusion models at the level of task distributions. Each task is modeled
+as a probability distribution drawn from a meta-distribution, and a previously unseen task is specified at
+inference time by a small context set represented as an empirical measure.
+• We show that the task-dependent score can be expressed in terms of a Gaussian-kernel conditional mean.
+We further prove that its empirical Nadaraya–Watson approximation, and hence the corresponding empirical
+score estimator, can be represented exactly by a model in our constructed transformer class. This connec-
+tion provides a principled foundation for the proposed transformer-based in-context score operator. Trained
+through amortized denoising score matching across task distributions, the operator enables reverse-diffusion
+sampling on unseen tasks without retraining, fine-tuning, or task-specific parameter updates.
+2
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+• We provide a theoretical analysis of the proposed neural operator and establish a generalization bound under
+suitable assumptions. The bound separates the contributions of finite context, finite meta-training data, and
+model complexity, while making explicit the dependence of the in-distribution generalization error on the
+context size, the numbers of training tasks and samples, and the intrinsic and ambient dimensions of the
+problem.
+• We evaluate the proposed method on diverse scientific and visual datasets, including Navier–Stokes solution
+fields, ERA5 climate data, QuickDraw sketches, and Food-101 images. The results demonstrate strong per-
+formance in low-intrinsic-dimension regimes and reveal a gradual degradation as task complexity increases.
+For low-intrinsic-dimension problems such as Navier–Stokes, the method also exhibits modest generalization
+to out-of-distribution tasks.
+The code is available at https://github.com/woodssss/In-context-learning-for-Diffusion-Models.
+The repository also provides a Lean 4 formalization of Theorem 1.
+1.1
+Related work
+Our framework is closely related to the broader paradigm of in-context learning (ICL), in which a model adapts
+to a new task through contextual demonstrations without updating its parameters. ICL was initially studied exten-
+sively in large language models [4, 31, 55, 30], and related ideas have since been developed for scientific computing
+and operator learning. ICON [54] studies supervised in-context operator learning for differential equations, using
+prompted input-output examples to adapt a single network to previously unseen operators. PROSE-PDE [45] takes
+a complementary multimodal approach, combining numerical solution data with symbolic equation representations
+for multi-operator learning. Self-supervised in-context operator learning in probability-measure spaces has also been
+investigated for optimal transport, mean-field games, and Wasserstein gradient flows [16, 9, 7]. This measure-valued
+task perspective is especially relevant to our formulation, in which each task is itself a target probability distribution.
+In parallel, several works have incorporated contextual demonstrations into diffusion-based image generation. Prompt
+Diffusion [47], iPromptDiff [5], and Context Diffusion [33] demonstrate that diffusion models can use visual examples
+as context for image generation and editing. These methods, however, primarily address visually prompted image-
+to-image generation in paired or query-conditioned settings. They do not formulate diffusion modeling as in-context
+learning of a solution operator over a family of target probability distributions, which is the focus of the present work.
+Other two related directions are Score Neural Operator (SNO) [27] and few-shot diffusion models [11], both of which
+can be viewed as forms of context-conditioned generation. In SNO, the prompt set is first summarized by a distribution-
+level representation, specifically a kernel mean embedding, and the score function is then predicted conditioned on
+this embedding. In few-shot diffusion models, the support set is encoded into a task-dependent feature, for example
+by aggregating patch-level information through an encoder, and diffusion sampling is performed conditioned on this
+feature. In contrast, our method operates directly on the empirical context set and constructs score estimates through
+query-dependent interactions among the context samples, the noisy query point, and the diffusion time, rather than
+conditioning solely on a compressed global representation.
+A growing theoretical literature seeks to explain the mechanisms and generalization properties underlying ICL. Exist-
+ing studies interpret ICL as implicit Bayesian inference [50], characterize the function classes that transformers can
+learn from demonstrations [10], and connect transformer forward passes to gradient-based meta-learning [46]. Other
+works show that transformers can implement statistical learning algorithms in context [1] and study their generaliza-
+tion and stability from an algorithm-learning perspective [25]. The diversity and number of pretraining tasks have also
+been identified as central factors governing the emergence of ICL and its generalization to unseen tasks [37]. In scien-
+tific computing, [6] develops an operator-learning analysis of ICL for linear systems and elliptic PDEs. [7] studies ICL
+directly on probability-measure spaces and establishes generalization-error bounds for in-context operator learning of
+optimal transport maps. Particularly relevant to our analysis is [40], which connects attention mechanisms to kernel
+regression on structured manifolds and establishes generalization guarantees governed by intrinsic rather than ambient
+dimension. Our theory complements these results by analyzing an in-context score operator and separating the effects
+of finite context, the number of meta-training tasks, within-task sampling, model complexity, and intrinsic dimension.
+Organization.
+The remainder of this paper is organized as follows. Section 2 introduces the problem setup and
+notation. Section 3 presents the proposed method, including the training objective and algorithm. Section 4 provides
+a theoretical analysis of the generalization error. Section 5 reports empirical results across a range of datasets. Finally,
+Section 6 concludes with a discussion of limitations and directions for future work.
+3
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+2
+Problem Setup
+In this section, we first review the background of diffusion models [43, 53] and then formalize the in-context score
+operator learning problem.
+2.1
+Background on Diffusion Models
+The score-based diffusion models [43, 53] aim to approximate a target data distribution ρ(x) given a dataset {xi}N
+i=1,
+and it operates in two stages: a forward diffusion process and a reverse generative process.
+Forward Process.
+In the forward process, data is progressively corrupted with noise through a stochastic differential
+equation (SDE), transforming the original data into a standard Gaussian distribution. Specifically, for a task ρ ∈
+P(RD), consider a special case of the VP SDE:
+dx = −1
+2β(t)x dt +
+p
+β(t) dwt,
+(1)
+The perturbed solution of this SDE at time t with initial condition x ∼ρ is:
+x(t) := α(t)x + σ(t)ε,
+ε ∼N(0, I).
+(2)
+where β(t) is a user-specific monotonically increasing function for t ∈[δ, 1],
+α(t) = exp
+
+−1
+2
+Z t
+0
+β(s) ds
+
+,
+σ2(t) = 1 −α2(t).
+And we denote ρt by the law of x(t), pt by the density function of ρt.
+Reverse Process.
+The reverse process is described by the corresponding reverse time SDE that progressively trans-
+forms the standard Gaussian distribution back into the original data distribution.
+dx =
+
+−1
+2β(t)x −β(t)∇x log pt(x)
+
+dt +
+p
+β(t)d ¯w,
+(3)
+where d¯w represents a reverse-time Wiener process and log pt(x) is the score function of the marginal distribution
+of the forward process at time t. Moreover, Song et al. [43] proved the existence of the probability flow (PF) ODE,
+which shares the same marginal distributions as the reverse-time SDE (3):
+dx
+dt = −1
+2β(t)x −1
+2β(t)∇x log pt(x).
+(4)
+In this paper, we let the noise scheduling function be β(t) = β0 + (β1 −β0)t, with β0 = 0.1 and β1 = 20.
+Score matching.
+Before introducing our in-context learning objective, we briefly recall the standard denoising score
+matching formulation. The goal is to learn the time-dependent score field ∇x log pt(x). A standard denoising score
+matching objective trains a score network sθ by minimizing
+Lρ(sθ) = Ex∼ρ, t∼U[δ,1], ε∼N (0,I)
+"sθ(x(t), t) +
+ε
+σ(t)
+
+2
+2
+#
+(5)
+Here we restrict t to [δ, 1] for some fixed δ > 0 to stay away from the zero-noise endpoint t = 0, where the data
+distribution may be singular and the score can become ill-behaved as σ(t) →0. The terminal endpoint t = 1,
+however, does not pose such a difficulty. Although its law is not exactly standard Gaussian, it is well approximated by
+a standard Gaussian when the accumulated noise level
+R 1
+0 β(s) ds is sufficiently large, since α(1) ≈0, σ(1) ≈1 and
+x(1) = α(1)x + σ(1)ε.
+Generation.
+For the generation phase, any black-box ODE solver may be used to integrate (4) initiated at a point
+sampled from the standard Gaussian, making probability flow (PF) ODE sampling computationally efficient. Alterna-
+tively, one may generate samples by integrating the reverse-time SDE (3) with a general SDE solver. In this work, we
+discretize the reverse-time SDE using the Euler–Maruyama scheme.
+4
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+2.2
+In-Context Score Function Learning
+Standard denoising score matching treats a fixed target distribution and learns a single time-dependent score function
+for it. In many applications, however, generation is required not for a single fixed distribution but for a family of
+related task distributions, each corresponding to a different task, condition, or physical parameter. Learning an inde-
+pendent score model for each distribution would fail to exploit shared structure across the family and would provide
+no mechanism for adapting to previously unseen tasks. We therefore amortize score learning across the task family by
+learning a score operator that maps each task distribution to its corresponding score function. More specifically, we
+assume that tasks are sampled from a meta-distribution over task distributions.
+µ ∈P(P(RD)).
+Thus, each task ρ ∼µ is itself a probability distribution on RD. Given a diffusion time interval t ∈[δ, 1] with δ > 0.
+for each task ρ, we define the perturbed sample
+x(t) = α(t)x + σ(t)ε,
+x ∼ρ,
+ε ∼N(0, I),
+and let ρt denote the law of x(t). Denote by pρ,t the density of ρt. The corresponding task-dependent score function
+is then defined as
+Sρ(x, t) := ∇x log pρ,t(x),
+(x, t) ∈RD × [δ, 1].
+In this way, each task distribution ρ gives rise to a score function Sρ, which naturally defines the following operator
+T : P(RD) →
+n
+S : RD × [δ, 1] →RDo
+,
+ρ 7→T(ρ) = Sρ.
+At the continuous level, we seek to learn an optimal score operator by amortized denoising score matching over the
+meta-distribution of tasks. This leads to the population loss
+L(T) := Eρ∼µ [Lρ(T(ρ))] = Eρ∼µ E
+x∼ρ,
+t∼U[δ,1], ε∼N (0,I)
+"T(ρ)
+ x(t), t
+
++
+ε
+σ(t)
+
+2
+2
+#
+,
+(6)
+and we denote T ∗a population-risk minimizer.
+This formulation yields a distribution-level in-context score-learning problem in which the task distribution itself acts
+as the context. In practice, however, the learner does not observe the meta distribution ρ directly; it only receives a
+finite collection of samples drawn from ρ. The corresponding finite-context problem is therefore to infer, from these
+examples, the score function associated with the underlying task distribution and to evaluate it at new noisy inputs
+and diffusion times. A learned approximation to T ∗can consequently adapt to previously unseen task distributions
+through their observed context samples, without requiring task-specific parameter updates. In the next section, we will
+provide details on how to compute this model.
+3
+Methodology
+In Section 2.2, we formulated the in-context score learning problem at the continuous level, where the optimal map is
+defined on the space of task distributions and the learning objective is given by the population loss. To approximate
+this map in practice, we parameterize it by a neural operator Tθ ∈T , where T is the hypothesis space parameterized
+by a deep neural network and will be specified in Section 4.1. Since the underlying task distribution is not directly
+available to the model, we must further replace it by a finite empirical representation. This leads to a sequence of loss
+functions at four successive levels of discretization: the semi-discretized population loss, the task-discretized loss, the
+task- and episode-discretized loss, and the fully discretized loss.
+Semi-discretized Population Loss.
+In practice, however, the underlying task distribution is not directly observed,
+and the model cannot operate on it explicitly. Instead, both during training and at test time, each task is specified
+only through finitely many samples. We therefore now turn to a semi-discretized formulation, in which each task is
+represented by a finite context set and the population-level objective is replaced by a practical training loss that can
+be optimized from sampled tasks. Concretely, for a task ρ ∼µ, we observe a context set (prompt) of n i.i.d. samples
+x(1), . . . , x(n) ∼ρ and represent it by the empirical measure ˆρ := 1
+n
+Pn
+i=1 δx(i) together with a query point (x(t), t)
+that serves as the input of the transformer network. Namely, we have a transformer network:
+Tθ : (RD)n × RD × [δ, 1] →RD,
+(x(1), . . . , x(n); x(t), t) 7→Tθ(ˆρ)(x(t), t)
+(7)
+5
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+where x(t) is provided by equation (2). We write the corresponding score matching loss for the task ρ as
+Ln
+ρ(Tθ) = E
+ˆρ∼ρ⊗n, x∼ρ,
+t∼U[δ,1], ε∼N (0,I)
+"Tθ(ˆρ)
+ x(t), t
+
++
+ε
+σ(t)
+
+2
+2
+#
+,
+(8)
+This leads to the following semi-discretized population operator learning loss:
+Ln(Tθ) := Eρ∼µ[Ln
+ρ(Tθ)] = Eρ∼µE
+ˆρ∼ρ⊗n, x∼ρ,
+t∼U[δ,1], ε∼N (0,I)
+"Tθ(ˆρ)
+ x(t), t
+
++
+ε
+σ(t)
+
+2
+2
+#
+,
+(9)
+Task-discretized loss.
+We next discretize the outer expectation over tasks in (9) by replacing it with the empirical
+average over K training tasks {ρk}K
+k=1, sampled i.i.d. from the meta-distribution µ. This gives
+Ln,K(Tθ) := 1
+K
+K
+X
+k=1
+E ˆρk∼ρ⊗n
+k
+, xk∼ρk,
+t∼U[δ,1], ε∼N (0,I)
+"Tθ(ˆρk)
+ xk(t), t
+
++
+ε
+σ(t)
+
+2
+2
+#
+.
+(10)
+Task- and episode-discretized loss.
+For each sampled task ρk, we further discretize the expectation over context-
+query draws by replacing it with a finite average over J sampled episodes indexed by j. Let ˆρk,j denote the empirical
+measure of the context set in the j-th episode for task k, and let xk,j ∼ρk be the corresponding query sample. For
+each pair (k, j), define
+xk,j(t) := α(t)xk,j + σ(t)ε,
+t ∼U[δ, 1], ε ∼N(0, I).
+Then we define
+Ln,K,J(Tθ) :=
+1
+KJ
+K
+X
+k=1
+J
+X
+j=1
+Et∼U[δ,1], ε∼N (0,I)
+"Tθ(ˆρk,j)
+ xk,j(t), t
+
++
+ε
+σ(t)
+
+2
+2
+#
+.
+(11)
+Fully discretized empirical loss.
+Finally, we introduce the fully discretized empirical loss, which serves as the
+computable training objective in practice. Let {ρk}K
+k=1 be training tasks drawn i.i.d. from the meta-distribution µ. For
+each task ρk, we construct an episodic training set and define
+S := {sk}K
+k=1,
+sk := {sk,j,l}j=1,...,J; l=1,...,NT ,
+(12)
+where j indexes independent context–query pair draws within task k, and l indexes independent draws of diffusion
+time and noise. More precisely, for each triplet (k, j, l), we first draw n + 1 i.i.d. samples from ρk,
+x(1)
+k,j, . . . , x(n)
+k,j , xk,j
+i.i.d.
+∼ρk,
+where x(1)
+k,j, . . . , x(n)
+k,j are used to form the context and xk,j serves as the clean query sample. We then sample a
+diffusion time tk,j,l ∼U[δ, 1] and noise εk,j,l ∼N(0, I), and construct the corresponding noised query
+xk,j(tk,j,l) := α(tk,j,l) xk,j + σ(tk,j,l) εk,j,l.
+The associated empirical context is ˆρk,j := 1
+n
+Pn
+i=1 δx(i)
+k,j. Hence each training episode is represented by the tuple
+sk,j,l =
+n
+ˆρk,j, xk,j(tk,j,l), tk,j,l
+o
+.
+By replacing the remaining expectation over the diffusion time and Gaussian noise in (11) with the empirical average
+over the NT sampled pairs, we obtain the fully discretized objective:
+LS(θ) =
+1
+KJNT
+K
+X
+k=1
+J
+X
+j=1
+NT
+X
+l=1
+Tθ(ˆρk,j)
+ xk,j(tk,j,l), tk,j,l
+
++
+εk,j,l
+σ(tk,j,l)
+
+2
+2
+.
+(13)
+which serves as the computable training loss used in practice. We then define the empirical loss minimizer by
+Tθ∗,S ∈arg min
+Tθ∈T LS(θ).
+In practice, training is performed in an amortized manner across tasks by minimizing the empirical denoising score-
+matching loss. At inference time, given the empirical context of a previously unseen task, the learned neural operator is
+6
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+used as a score estimator in the reverse-time SDE, from which new samples are generated using the Euler–Maruyama
+scheme. The training and sampling procedures are summarized in Algorithms 1 and 2, respectively.
+Algorithm 1 Training of the In-Context Diffusion Model
+Input: training set S = {sk}K
+k=1, neural operator Tθ, number of epochs Nepoch
+where
+sk = {sk,j,l}j=1,...,J; l=1,...,NT ,
+sk,j,l = {ˆρk,j, xk,j(tk,j,l), tk,j,l}.
+1: Initialize θ
+2: for e = 1, . . . , Nepoch do
+3:
+Compute the empirical DSM loss LS(θ) in (13)
+4:
+Update θ using Adam
+5: end for
+6: return trained operator Tθ∗,S
+Algorithm 2 Sampling on a New Task
+Input: empirical context ˆρnew = {x(i)
+new}n
+i=1, trained operator Tθ∗,S, number of reverse steps NT
+1: Set ∆t = (1 −δ)/NT and define tm = δ + m∆t for m = 0, . . . , NT
+2: Sample ˜xtNT ∼N(0, I)
+3: for m = NT −1, NT −2, . . . , 0 do
+4:
+Sample zm ∼N(0, I)
+5:
+˜xtm ←˜xtm+1 +
+
+1
+2β(tm+1) ˜xtm+1
++ β(tm+1)Tθ∗,S(ˆρnew)(˜xtm+1, tm+1)
+
+∆t
++
+p
+β(tm+1) ∆t zm
+6: end for
+7: return generated sample ˜xt0
+4
+Theoretical results
+We now present the theoretical results for the proposed in-context score operator. We begin with the observation
+that the task-dependent population score admits a Gaussian-kernel conditional-mean representation. Replacing the
+unknown task distribution with its empirical context measure naturally yields a vector-valued Nadaraya–Watson es-
+timator and, consequently, an empirical score estimator. This kernel representation observation motivates both our
+transformer architecture and its theoretical analysis: we show that the empirical estimator can be represented exactly
+by a model in our constructed transformer class, revealing a direct correspondence between Gaussian-kernel regres-
+sion and the attention mechanism. Guided by this connection, we learn an in-context score operator through amortized
+denoising score matching across task distributions and analyze its generalization to unseen tasks drawn from the meta-
+distribution. Section 4.1 develops the kernel representation and its exact transformer realization. Section 4.2 then
+presents and interprets the main generalization theorem, followed by Section 4.3, which outlines the corresponding
+error decomposition and the proof strategy.
+4.1
+Understanding the Target Score learning: From Kernel Regression to Transformers
+In this subsection, we connect the task-dependent score function with a kernel regression estimator that can be repre-
+sented by a transformer network. For a fixed task distribution ρ, recall that the perturbed law at time t admits density
+pt. The corresponding score function can be written as
+T ∗(ρ)(x(t), t) = S(x(t), t) = ∇x log pt(x)
+
+x=x(t) = −
+1
+σ2(t)
+h
+x(t) −α(t) E(x | x(t))
+i
+.
+(14)
+Here the conditional expectation is given by
+E(x | x(t)) =
+R
+x exp
+
+−∥x(t)−α(t)x∥2
+2σ2(t)
+
+dρ(x)
+R
+exp
+
+−∥x(t)−α(t)x∥2
+2σ2(t)
+
+dρ(x)
+.
+(15)
+7
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Given context samples ˆρ = {x(1), . . . , x(n)}, we approximate (15) by the empirical kernel regression estimator
+K(s) =
+Pn
+i=1 x(i) exp
+
+−∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+Pn
+i=1 exp
+
+−∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+,
+(16)
+where s = {x(1), . . . , x(n), x(t), t}. We first observe that (15) admits a kernel representation and that its empirical dis-
+cretization, given in (16), is a vector-valued Nadaraya–Watson kernel estimator. Each coordinate of this estimator is a
+scalar-valued kernel regressor and, by Lemma 1 of [40], can be approximated by a transformer network with bounded
+parameters. Applying this construction coordinatewise yields a transformer representation of the vector-valued esti-
+mator. This connection between kernel regression and transformer attention is the key observation motivating our use
+of transformers to approximate the task-dependent score operator. For completeness, we first define the transformer
+class considered in our analysis and then state the representation lemma for the empirical kernel estimator.
+Scalar Transformer Network Class.
+The scalar transformer network architecture that defined in [40] is as follows.
+Given an input s = {x(1), x(2), · · · , x(n); x(t), t}, where x(i)
+h is the h-th component of vector x(i), for h = 1, · · · , D
+and i = 1, · · · , n. We define the output of the transformer network Fθ by
+H = PE + E(s) =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+0
+· · ·
+· · ·
+0
+...
+...
+...
+...
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+Iℓ
+1
+· · ·
+· · ·
+1
+
+
+∈Rdembed×ℓ= R(2D+6)×(n+1).
+(17)
+In matrix H, each column is a token, and each token has dimension dembed = 2D + 6 . The first D rows are data
+terms and the (D + 1)th row to (2D + 3)th row are 0. The (2D + 4)-th and (2D + 5)-th rows contain the well-known
+sinusoidal positional encodings
+Ij =
+
+cos
+jπ
+2ℓ
+
+, sin
+jπ
+2ℓ
+⊤
+,
+which determines how each token will interact with another through the attention mechanism. It is crucial to note that
+the data terms are dynamic, whereas the positional encoding and constant terms remain static. Furthermore,
+B1, · · · , BLT : Rdembed×ℓ→Rdembed×ℓ
+are the transformer blocks which have a residual composition of the form
+B(θ, t; H) = FFN(MHAθ,t(H) + H) + MHAθ,t(H) + H.
+(18)
+where FFN is a feed-forward neural network operating tokenwise on the input, and the multi-head attention (MHA)
+with m heads is given by MHAθ,t(H) = Pm
+j=1 Vθ,j(t)Hϕ((Kθ,j(t)H)⊤Qθ,j(t)H) with ReLU activation from the
+first to the penultimate layers and Softmax activation for the last layer in the attention module (see definition 2 in [40]).
+The final attention mask restricts normalization to the n prompt tokens. The attention matrices use prescribed time
+modulation: for A ∈{Q, K, V }, each matrix has the form
+Aθ,j(t) = A(0)
+θ,j + α(t)A(α)
+j
++ σ(t)−1A(σ)
+j
+.
+(19)
+The block index is suppressed. Here α and σ are the prescribed diffusion schedules, and A(α)
+j
+, A(σ)
+j
+are fixed archi-
+tectural templates, selected before training and shared by all networks in the class. Only the base matrices A(0)
+θ,j are
+trainable within these attention maps. A modulation term may be absent by setting its template to zero. The parameter
+vector θ contains the trainable base matrices and the trainable embedding, decoding, and feed-forward coefficients,
+all shared across time; the fixed templates are excluded from θ. Both the trainable coefficients and the fixed template
+entries are bounded in magnitude by κ. The output bound below is imposed uniformly over t ∈[δ, 1]. Thus “fixed”
+refers to the schedules and templates, while the input time t still varies. Lastly,
+DE : Rdembed×ℓ→R
+8
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+is the decoding layer which outputs the desired element. We then denote a class of bounded scalar-value transformer
+networks as following,
+F(LT , mT , dembed, ℓ, LFFN, wFFN, R, κ)
+=
+n
+Fθ(·)
+ Fθ(·) has the form (17) with LT transformer blocks, at most mT attention heads in
+each block, embedded dimension dembed, number of hidden tokens ℓ, and LFFN layers
+of feed-forward networks with hidden width wFFN, with output ∥Fθ(·)∥L∞(RD) ≤R
+and weight magnitude ∥θ∥∞≤κ
+o
+.
+(20)
+We now extend the above defintion to a vector-valued transformer network class.
+Vector-Valued
+Transformer
+Network
+Class.
+For
+D
+∈
+N1,
+we
+define
+the
+vector-valued
+trans-
+former
+network
+class
+by
+G(LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D),
+whose
+components
+belong
+to
+F(LT , mT , dembed, ℓ, LFFN, wFFN, R, κ).
+That is for Gθ
+∈G(LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D), we
+have
+Gθ(s) = (F1,θ(s), · · · , FD,θ(s))
+where Fi,θ ∈F(LT , mT , dembed, ℓ, LFFN, wFFN, R, κ) for i = 1, · · · , D.
+Using the coordinatewise construction motivated by Lemma 1 of [40], we obtain a transformer network Fθ ∈
+F (LT , mT , dembed, ℓ, LFFN, wFFN, R, κ) that, on the noisy-query region specified below, satisfies
+Fθ(s) =
+Pn
+i=1 x(i)
+j exp
+
+−∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+Pn
+i=1 exp
+
+−∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+.
+(21)
+Note that the (21) represents the j-th component of the kernel regression estimator (16). By stacking D such networks
+componentwise, we can represent the full vector-valued kernel regression estimator in (16), which yields the following
+lemma indicate relation between kernel regression formula and vector-valued network class.
+Let n ≥1, R ≥b ≥1, and let the fixed schedule satisfy Assumption 2. For C > 0, define
+X C
+t := {α(t)x + σ(t)ε : x ∈M, ∥ε∥2 ≤C}.
+(22)
+Lemma 1 (Transformer realization). There exists a network
+Gˆθ ∈G(LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D)
+with parameters
+LT = 5,
+mT = n,
+dembed = 2D + 6,
+ℓ= n + 1,
+LFFN = O(1),
+wFFN = O(D),
+(23)
+whose parameters are independent of the task, prompt, query, and time, such that
+Gˆθ(s) = K(s)
+(x(t) ∈X C
+t ),
+∥Gˆθ(s)∥∞≤b
+(x(t) ∈RD).
+(24)
+A sufficient weight budget is κ = c0D4(n + 1)2M 4, where
+M = max
+
+
+1, R, 1
+2
+ 
+2b
+√
+D
+σ(δ) + C
+!2
+
+.
+(25)
+One may take LFFN = 6 and wFFN = 2D + 6.
+It is worth emphasizing that the transformer parameters are independent of the task distribution. Rather than encoding
+a particular distribution, the network implements the generic computations underlying kernel regression: evaluat-
+ing query–context similarities, normalizing the resulting kernel weights, and aggregating the context samples. All
+task-specific information therefore enters through the empirical context set, while the shared parameters encode a
+distribution-agnostic inference algorithm. Consequently, the same transformer can be applied uniformly to any task
+distribution within the considered class; adapting to a new task requires changing only the prompt, not the network pa-
+rameters. This observation clarifies the operator-learning nature of the construction and provides a theoretical basis for
+generalization to previously unseen task distributions. We defer the constructive proof of Lemma 1 to Appendix B.1.
+9
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Vector-Valued Transformer Network Class for In-Context Score Matching.
+We now define the transformer net-
+work class used to parameterize the task-dependent score function. Recall that the score admits the representation
+S(x(t), t) = −
+1
+σ2(t)
+h
+x(t) −α(t) E(x | x(t))
+i
+.
+Motivated by this identity, we let Gθ ∈G (LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D) be a vector-valued transformer
+network that approximates the conditional expectation term. We then define the corresponding score network
+Tθ ∈T (LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D)
+by
+Tθ
+
+x(1), . . . , x(n), x(t), t
+
+:= −
+1
+σ2(t)
+h
+x(t) −α(t) Gθ
+
+x(1), . . . , x(n), x(t), t
+i
+.
+(26)
+For the analysis, take R ≥b. The componentwise output bound of G implies
+sup
+x(1:n)∈Mn, x(t)∈RD, t∈[δ,1]
+∥Gθ(s)∥∞≤R.
+(27)
+The bound applies to the mean network, not to the score in (26) on all of RD. The mean network uses the prescribed
+time modulation defined in (19). The fixed templates are those of the existing kernel construction; they are independent
+of its coordinate, localization constant, and clipping threshold. Thus the same construction belongs to this parameter
+class. Neither an additional trainable time network nor an additional transformer block is introduced.
+Consequently, the kernel conditional-mean estimator (16) can be represented exactly on X C
+t by a mean network in G.
+Applying (26) yields the corresponding empirical score estimator in T on the same region. This connection establishes
+a direct link between the target score operator, kernel regression, and the attention mechanism.
+4.2
+Generalization Error Analysis
+This subsection analyzes the generalization performance of the empirical risk minimizer Tθ∗;S defined in (13). The
+training set S contains K task distributions, with J context–query episodes sampled from each task and NT diffusion
+samples generated for each episode. Consider an independent test task ρ ∼µ, observed through context samples,
+x(1), . . . , x(n) i.i.d.
+∼
+ρ, ˆρ =
+1
+n
+Pn
+i=1 δx(i). At the task level, we compare the risk of the learned operator, evaluated
+using the empirical representation ˆρ, with that of the target distribution-level score operator T ∗(ρ). The corresponding
+excess risk is
+Ln
+ρ (Tθ∗;S) −Lρ (T ∗(ρ)) .
+Averaging over unseen tasks drawn from the meta-distribution yields the mean excess risk
+Ln (Tθ∗;S) −L(T ∗) = Eρ∼µ
+
+Ln
+ρ (Tθ∗;S) −Lρ (T ∗(ρ))
+
+.
+This quantity measures the performance gap between the empirical risk minimizer and the target score operator on
+an unseen task drawn from the same meta-distribution and represented by only n context samples. Because Tθ∗;S
+depends on the randomly sampled training set S, we evaluate its performance by taking the expectation of the excess
+risk with respect to the randomness of S. Throughout this subsection, we therefore use the term generalization error
+to denote the expected excess risk
+ES [Ln (Tθ∗;S) −L(T ∗)] ,
+where the outer expectation accounts for the randomness in the meta-training set.
+The accuracy of the empirical kernel estimator depends on how well the context samples cover the support of the
+task distribution ρ. In a general ambient space RD, achieving sufficient coverage may require an impractically large
+context set. Fortunately, many high-dimensional datasets possess substantially lower-dimensional intrinsic structure.
+Natural images provide a familiar example: although they are represented as high-dimensional pixel arrays, semanti-
+cally meaningful images are often modeled as concentrating near a low-dimensional image manifold. Similar structure
+arises in scientific applications. For instance, in the Navier–Stokes problem considered in Section 5, task distributions
+induced by different viscosity parameters retain shared coherent flow structures. Although the probability law varies
+with viscosity, the resulting solution fields may remain concentrated near a common low-dimensional solution mani-
+fold. Motivated by these observations, we assume that all task distributions are supported on a common d-dimensional
+manifold M ⊂RD, where d ≪D. Under this assumption, the complexity of context-based score estimation is
+governed primarily by the intrinsic dimension d, rather than by the potentially much larger ambient dimension D. For
+the finite-sample analysis, a uniform loss bound follows from the bounded mean-network output and the positive time
+cutoff. The precise assumptions are stated below.
+10
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Assumption 1 (Regularity of the task distributions). We assume the following:
+1. There exists a compact d-dimensional Riemannian manifold M ⊂RD such that every task distribution ρ
+under consideration is supported on M. Moreover, M is isometrically embedded in RD, satisfies M ⊂
+[−b, b]D for some b > 0, and has positive reach τM > 0.
+2. Each task distribution ρ is quasi-uniform on M. That is, if ¯ρ denotes the uniform probability measure on M,
+then there exist constants Cρ,1, Cρ,2 > 0 such that
+Cρ,1¯ρ(B) ≤ρ(B) ≤Cρ,2¯ρ(B)
+for every measurable set B ⊆M.
+We take the support bound b ≥1, enlarging it if necessary. Let
+AM := sup
+0<r≤1
+rdN(M, r) < ∞,
+N(M, r) ≤AMr−d,
+0 < r ≤1,
+(28)
+where N(M, r) is the Euclidean covering number with centers on M. For a compact smooth embedded manifold,
+this bound follows by covering finitely many bounded coordinate charts, whose parametrizations are Lipschitz, by d-
+dimensional grids. The constant AM retains the dependence on the geometry of M. The quasi-uniformity condition
+in Assumption 1 is retained, although the approximation argument below does not use it.
+Assumption 2 (Gaussian perturbations and diffusion schedule). For t ∈[δ, 1], the known measurable schedule satis-
+fies 0 ≤α(t) ≤1 and 0 < σ(δ) ≤σ(t) ≤1. The noisy query is
+x(t) = α(t)x + σ(t)ε,
+ε ∼N(0, ID),
+where ε is independent of the clean query and the prompt. The time variable is independent and uniform on [δ, 1].
+All population and empirical losses below use this same Gaussian perturbation law. A finite radius introduced in the
+proof restricts the region of exact network realization, rather than the distribution of the noise.
+The denoising score-matching loss is bounded under the full Gaussian law. Indeed,
+Tθ(ˆρ)(x(t), t) +
+ε
+σ(t) = α(t)
+σ(t)2
+ Gθ(s) −x
+
+,
+(29)
+so that, uniformly over the hypothesis class and all noise realizations,
+0 ≤
+Tθ(ˆρ)(x(t), t) +
+ε
+σ(t)
+
+2
+2
+≤RL,
+RL = D(R + b)2
+σ(δ)4
+.
+(30)
+This bound uses the output restriction already present in G. Its dependence on δ must be retained when the time cutoff
+is subsequently chosen as a function of n.
+Under Assumption 1 and 2, we obtain the following generalization error bound.
+Theorem 1 (Generalization error). Under Assumption 1 and Assumption 2, let S be the training set de-
+fined above.
+Let n
+≥
+2 and choose δ
+∈
+(0, 1) satisfying σ(δ)
+=
+n−1/(d+6).
+Consider the class
+T (LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D) with parameters
+LT = 5,
+mT = n,
+dembed = O(D),
+ℓ= n + 1,
+LFFN = O(1),
+wFFN = O(D),
+κ = O
+
+D8n
+2d+20
+d+6 b8R4
+,
+Take the concrete choice dembed = wFFN = 2D + 6 and LFFN = 6, with a sufficiently large absolute constant in
+the weight budget to contain the candidate from Proposition 1. Let Tθ∗;S be a measurable empirical minimizer of LS
+over this class. Then
+ES [Ln(Tθ∗;S) −L(T ∗)]
+≤C1D5/2n
+1
+2 +
+4
+d+6 p
+log(n2DKJNT )
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+
++ C2Dn−
+2
+d+6 .
+(31)
+Here C1 depends only on b, R and the fixed depths, and C2 depends only on b, d, AM, R. Both are independent of
+n, D, K, J, NT and δ. The cutoff choice is required to be attained by the diffusion schedule.
+The theorem yields the following implications:
+11
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+1. Context efficiency is governed by intrinsic dimension. The finite-context error decays as n−2/(d+6). As the
+intrinsic dimension d increases, the exponent becomes smaller and the convergence rate deteriorates, reflect-
+ing a curse of intrinsic dimensionality. The ambient dimension D enters the bound only through polynomial
+and logarithmic factors. Thus, high-dimensional observations need not be prohibitive when the task distribu-
+tions concentrate on a low-dimensional manifold.
+2. The statistical error separates across sampling levels. The terms K−1/2, (KJ)−1/2, and (KJNT )−1/2 quan-
+tify the effects of finite sampling at the task, episode, and diffusion-sample levels, respectively. Increasing
+J reduces the episode-level and diffusion-level errors, while increasing NT reduces only the diffusion-level
+error.
+3. Task diversity is essential for generalization. The persistent K−1/2 term is unaffected by increases in either
+J or NT . Thus, collecting additional episodes or diffusion samples from existing tasks cannot compensate
+for limited meta-training task coverage. Generalization to unseen distributions instead requires a sufficiently
+large and diverse collection of meta-training tasks. From a data-allocation perspective, the theorem there-
+fore suggests prioritizing broader task coverage once the within-task estimation error has been sufficiently
+reduced.
+4.3
+Proof Outline
+This subsection outlines the proof of Theorem 1. Let Tˆθ denote the transformer realization of the empirical kernel
+estimator established in Lemma 1. By adding and subtracting LS(Tθ∗;S), LS(Tˆθ), and Ln(Tˆθ), we obtain
+Ln(Tθ∗;S) −L(T ∗) =
+
+Ln(Tθ∗;S) −LS(Tθ∗;S)
+
++
+
+LS(Tθ∗;S) −LS(Tˆθ)
+
++
+
+LS(Tˆθ) −Ln(Tˆθ)
+
++
+
+Ln(Tˆθ) −L(T ∗)
+
+.
+Since LS(Tθ∗;S) −LS(Tˆθ) ≤0, we then have
+ES [Ln(Tθ∗;S) −L(T ∗)] ≤ES [Ln(Tθ∗;S) −LS(Tθ∗;S)]
+|
+{z
+}
+statistical error I
++ ES
+
+LS(Tˆθ) −Ln(Tˆθ)
+
+|
+{z
+}
+statistical error II
++
+ Ln(Tˆθ) −L(T ∗)
+
+|
+{z
+}
+approximation error III
+.
+(32)
+In what follows, we control the three terms in (32) separately. We first bound the approximation error by showing
+that the target score operator T ∗admits a kernel regression representation and can therefore be approximated by
+a transformer-based neural operator. We then bound Statistical Error I using covering numbers and Rademacher
+complexity, followed by Statistical Error II via Hoeffding’s inequality. Combining these estimates establishes the
+desired generalization bound.
+Approximation error term III.
+By the exact transformer realization in Section 4.1, this term reduces to the approx-
+imation error of the empirical Nadaraya–Watson estimator. Concentration of the kernel estimator on the underlying
+d-dimensional manifold gives the following result, whose proof is deferred to Appendix B.4.
+Proposition
+1
+(Approximation
+error).
+Under
+Assumption
+1
+and
+Assumption
+2,
+there
+exists
+Tˆθ
+∈
+T (LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D) with parameters
+LT = 5,
+mT = n,
+dembed = O(D),
+ℓ= n + 1,
+LFFN = O(1),
+wFFN = O(D),
+κ = O
+D8n2b8R4
+σ(δ)8
+
+,
+(33)
+such that
+Ln(Tˆθ) −L(T ∗) ≤Cb,dAMD
+nσ(δ)d+4 + 4Db2σ(δ)2.
+(34)
+The constants hidden in the network budgets are absolute, with R ≥b ≥1; the geometric dependence is explicit in
+AM.
+Statistical Error I.
+Term I measures the deviation between the finite-context population risk and the empirical risk of
+the learned estimator. Since Tθ∗;S depends on the training set, controlling this term requires a uniform generalization
+analysis over the transformer hypothesis class. Using covering number and Rademacher complexity estimates, we
+obtain the following bound.
+12
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Lemma 2 (Statistic error term I). Use the width convention of Lemma 4. Let Tθ∗;S ∈T be a measurable empirical
+minimizer of LS(Tθ). Then
+ES [Ln(Tθ∗;S) −LS(Tθ∗;S)]
+≤4RL
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+ 
+6
+s
+DPT log A0,δ
+√KJNT
+RL
++ 1
+
++ RLqδ,
+(35)
+where RL is given in (30), qδ in (43), and PT , A0,δ in (47), (50).
+Furthermore, with parameters
+LT = 5,
+mT = n,
+dembed = O(D),
+ℓ= n + 1,
+LFFN = O(1),
+wFFN = O(D),
+κ = O
+D8n2b8R4
+σ(δ)8
+
+,
+we have
+ES [Ln(Tθ∗;S) −LS(Tθ∗;S)]
+≤O
+ 
+D(R + b)2
+σ(δ)4
+s
+nD3 log nDKJNT
+σ(δ)
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+!
++ D(R + b)2σ(δ)2.
+(36)
+Here n ≥2, and the notation O(·) hides constants depending only on b, R and the fixed depths. In particular, the
+dependence of RL on δ is displayed explicitly.
+The proof of Lemma 2 is provided in Appendix B.2.
+Statistical error II.
+Term II measures the deviation between the empirical and finite-context population risks eval-
+uated at Tˆθ. Since Tˆθ is fixed independently of the training set, the deviations arising from the task, episode, and
+diffusion-sample levels can be controlled separately using concentration inequalities. This yields the following bound,
+whose proof is deferred to Appendix B.3.
+Lemma 3 (Statistic error term II). . The Statistic error term II can be bounded as
+ES
+ LS(Tˆθ) −Ln(Tˆθ)
+
+≤O
+p
+log(1/σ(δ))
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+
++ σ2(δ)
+
+.
+(37)
+Combining Lemmas 2 and 3 with Proposition 1 in the decomposition (32) yields an upper bound consisting of the
+three hierarchical statistical error terms and the finite-context approximation error term. Choosing σ(δ) = n−1/(d+6)
+balances the dominant approximation error terms and yields the rate n−2/(d+6). Substituting the transformer parameter
+scaling and the loss bound RL = D(R + b)2σ(δ)−4 establishes the bound in Theorem 1. The detailed derivation is
+postponed to Appendix B.5.
+5
+Numerical results
+In this section, we evaluate our method on four benchmark datasets spanning scientific fields and visual data: solution
+fields of the 2D Navier–Stokes equation, ERA5 climate data, QuickDraw sketches, and Food-101 images. For Navier–
+Stokes, we examine both in-distribution and out-of-distribution task generalization. For the remaining datasets, we
+evaluate in-distribution generation on observed task categories.
+Data preparation and mini-batch construction
+Algorithm 1 is presented using an explicit training set S =
+{sk}K
+k=1, where for each task ρk one pre-generates J independent context–query episodes and, for each episode,
+NT independent draws of diffusion time and noise, yielding tuples sk,j,l = {ˆρk,j, xk,j(tk,j,l), tk,j,l} that are stored in
+full before training begins. In practice, however, pre-generating and storing the full dataset S is prohibitively memory-
+intensive: since each episode ˆρk,j requires n fresh samples from ρk, the total number of samples grows as K × J × n,
+which quickly becomes infeasible for large J. We therefore construct mini-batches on the fly. Specifically, for the
+NS experiments, we pre-sample K task distributions {ρk}K
+k=1
+i.i.d.
+∼µ and, for each task ρk, draw a fixed bank of B
+i.i.d. samples {x(i)
+k }B
+i=1
+i.i.d.
+∼ρk; for fixed labeled datasets (ERA5, QuickDraw, and Food-101), we treat each class as
+a task, select K classes, and randomly sample B datapoints per class. At each training step, we sample a task index
+13
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+k ∼U{1, . . . , K}, randomly draw n + 1 samples from the fixed bank {x(i)
+k }B
+i=1, and split them into a context set
+ˆρk := {x(1)
+k , . . . , x(n)
+k } and a clean query xqry
+k
+:= x(n+1)
+k
+; we then sample t ∼Unif[δ, 1] and ε ∼N(0, I) indepen-
+dently on the fly to form the noised query xk(t) = α(t)xqry
+k
++ σ(t)ε, yielding the training episode s = {ˆρk, xk(t), t}
+used in (13).
+Metrics.
+To quantify the performance of the in-context diffusion model and the baseline methods, we compare
+the generated and reference empirical distributions using the Wasserstein-2 distance, the Jensen–Shannon divergence
+(JSD) between scalar-valued empirical probability density functions, energy-spectrum-based metrics, and Fr´echet
+Inception Distance (FID). Further details are provided in Appendix D.3.
+Baseline models.
+We compare three methods: our proposed in-context learning diffusion model (ICL DM), a
+conditional diffusion model (Cond DM), and the closely related baseline SNO [27]. All three models share the same
+time-conditioned, multi-resolution U-Net denoising backbone and training protocol, and differ only in how the prompt
+set is represented and injected. In ICL DM, the prompt set is encoded into multi-scale features that interact with the
+noisy query through cross-attention. In Cond DM, the prompt set is compressed into a single learned embedding that
+modulates the U-Net through FiLM-style conditioning. In SNO, this learned prompt representation is replaced by a
+projected kernel mean embedding (KME), while the rest of the denoising architecture remains the same as in Cond
+DM. Additional implementation details are given in Appendix D.
+5.1
+2D Navier–Stokes equation
+We consider the vorticity form of the 2D Navier–Stokes equation with Kolmogorov forcing:
+
+
+
+
+
+∂tω(t, x) + u(t, x) · ∇ω(t, x) −ν∇2ω(t, x) = f(x),
+x ∈[0, 2π]2, t ∈[0, T],
+∇· u(t, x) = 0,
+x ∈[0, 2π]2, t ∈[0, T],
+ω(0, x) = ω0(x),
+x ∈[0, 2π]2.
+(38)
+Here x = (x1, x2), ω(t, x) denotes the vorticity, and the velocity field is given by
+u(t, x) =
+ ∂x2ψ(t, x), −∂x1ψ(t, x)
+
+,
+ω(t, x) = −∇2ψ(t, x).
+The Kolmogorov forcing is defined as f(x) = sin(k0x1). In this example, we set the wavenumber k0 = 4. To generate
+initial conditions, we first draw samples from a log-normal distribution on a uniform 256 × 256 mesh over the spatial
+domain x ∈[0, 2π]2. We parameterize Navier-Stokes tasks by ξ ∈Ξ, here the ξ := ν is the viscosity. Let π0 be a
+probability measure over initial conditions ω0, and for each ξ ∈Ξ, we let ST,ξ denote the solution operator mapping
+ω0 to the vorticity field at time T, i.e., ST,ξ : ω0(x) 7→ω(T, x; ω0, ξ); this induces the task distribution
+ρξ := (ST,ξ)#π0 ∈P(X).
+Let ν be a probability distribution on Ξ, and define the mapping F : Ξ →P(X) by F(ξ) = ρξ. The meta-distribution
+over task distributions is then the pushforward
+µ := F#ν ∈P(P(X)).
+In the following experiments, we set T = 1 and use the finite volume method (FVM) implemented in JAX-CFD [22]
+for generating data. To evaluate both in-distribution and out-of-distribution generalization, we construct 100 tasks by
+uniformly sampling ν from the union of two intervals,
+ν ∼Unif ([1.5e −3, 1.2e −2] ∪[1.5e −2, 5e −2]) .
+(39)
+For the in-distribution setting, we randomly sample five values of ν from the first interval and five values from the
+second interval, and evaluate the model on these 10 values. The results of the different methods are reported in Table 1.
+We also present three representative examples with ν = 1.5e−3, ν = 2.2e−3, and ν = 3e−2, as shown in Figures 1
+and 2. For the out-of-distribution setting, we evaluate the model at ν1 = 1.2e−3, ν2 = 1.3e−2, and ν3 = 6.4e−2, all
+of which lie outside the training intervals. The corresponding results are presented in Figures 3 and 4. To assess sample
+quality, we compare the generated and reference distributions using the weighted mean energy log ratio (MELRw) and
+the JSD between empirical scalar-valued PDFs. The results are reported in Table 1. As shown in Table 1, our method
+outperforms the baselines in both in-distribution and out-of-distribution settings, except for MELRw in the OOD(high)
+setting, where Cond DM achieves a lower value.
+14
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+(a) ν = 1.5 × 10−3
+(b) ν = 2.2 × 10−3
+(c) ν = 3 × 10−2
+Figure 1: Representative in-distribution inferencesamples for the Navier–Stokes equation. Panels (a)–(c) correspond to
+viscosities ν = 1.5×10−3, 2.2×10−3, and 3×10−2, respectively. Within each panel, the rows show prompt samples
+and samples generated by ICL DM, Cond DM, and SNO, from top to bottom, while the columns show representative
+realizations. All methods use n = 100 prompt samples.
+15
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+(a) ν = 1.5 × 10−3
+(b) ν = 2.2 × 10−3
+(c) ν = 3 × 10−2
+Figure 2: Scalar-valued empirical PDF of the Navier–Stokes equation in the in-distribution setting. Panels (a)–(c)
+correspond to ν = 1.5 × 10−3, 2.2 × 10−3, and 3 × 10−2, respectively. The blue curve denotes the reference
+distribution, while the red, green, and purple curves represent ICL DM, Cond DM, and SNO, respectively. Greater
+overlap with the reference curve indicates better agreement with the reference distribution.
+IND
+OOD(low)
+OOD(mid)
+OOD(high)
+MELRw ↓
+JSD ↓
+MELRw ↓
+JSD ↓
+MELRw ↓
+JSD ↓
+MELRw ↓
+JSD ↓
+ICL DM
+1.29e-1
+5.35e-4
+1.17e-1
+4.74e-4
+9.79e-2
+3.82e-4
+2.30e-1
+5.92e-4
+Cond DM
+1.48e-1
+5.67e-4
+1.34e-1
+1.44e-3
+1.23e-1
+4.14e-4
+1.84e-1
+8.15e-4
+SNO
+3.97e-1
+2.79e-3
+6.05e-1
+1.02e-2
+1.29e-1
+7.16e-4
+6.49e-1
+3.30e-3
+Table 1: Navier–Stokes results comparing ICL DM, Cond DM, and SNO in terms of in-distribution (IND) and out-of-
+distribution (OOD) generalization, as measured by weighted MELR and the JSD between empirical PDFs. The IND
+results are averaged over viscosity values sampled according to (39). The OOD(low), OOD(mid), and OOD(high)
+settings correspond to ν = 1.2 × 10−3, 1.3 × 10−2, and 6.4 × 10−2, respectively. Lower values indicate better
+performance, and the best result in each column is shown in bold. During both training and evaluation, we use
+n = 100 prompt samples.
+5.2
+ERA5 dataset
+ERA5 [12] provides hourly estimates of a wide range of atmospheric, land-surface, and ocean-wave variables on a
+global grid, with a horizontal resolution of approximately 31 km for the main product and 137 vertical levels. In this
+study, we prepare the dataset as follows. First, we select nine variables: 0 = temperature, 1 = u-wind, 2 = v-wind, 3
+= geopotential, 4 = vertical velocity, 5 = specific humidity, 6 = relative humidity, 7 = divergence, and 8 = vorticity.
+Second, we select 16 pressure levels: 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, and
+800 hPa. For each variable–pressure-level pair, we record data at 8 hour intervals during 2023 and 2024. The resulting
+pairs define 144 candidate task classes, from which we select K = 100 tasks for the experiments. For each selected
+task, we randomly sample B = 1000 data points. During training and testing, the number of prompts is set to n = 100
+in both cases. Figures 5, 6 and 7 present a comparison of the data generated by the different methods. From the visual
+comparison, we observe that our method consistently produces samples that shares the similar pattern to the reference
+samples compared to the baselines. To quantitatively assess generation quality, we compute the Wasserstein-2 distance
+(W2), the weighted and unweighted mean energy log ratios (MELRw and MELRu), and the JSD between empirical
+scalar-valued PDFs. The results are reported in Table 2, where our method outperforms the baselines on most of the
+evaluated metrics, demonstrating its strong ability to capture the underlying data distribution and generate high-quality
+samples that closely match the reference distribution.
+5.3
+Google sketch dataset
+Google’s Quick, Draw! (QuickDraw) sketch dataset [20] is a large-scale collection of human doodles obtained through
+the online game “Quick, Draw!,” in which players are asked to draw an object within a short time. The dataset contains
+approximately 50 million drawings spanning 345 categories. In this paper, we use the first 100 categories and randomly
+sample 2000 sketches from each category. During both training and testing, we set the number of prompts to n = 200.
+Figure 8 compares the samples generated by different methods for the case K = 5. From the visual comparison,
+we observe that our method consistently produces samples that more closely resemble the reference samples than
+16
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+(a) ν = 1.2 × 10−3
+(b) ν = 1.3 × 10−2
+(c) ν = 6.4 × 10−2
+Figure 3: Out-of-distribution inference samples for Navier–Stokes equation. Panels (a)–(c) correspond to ν = 1.2 ×
+10−3, 1.3 × 10−2, and 6.4 × 10−2, respectively. These viscosities lie below, between, and above the two training
+intervals defined in (39), respectively. Within each panel, the rows show prompt samples and samples generated by
+ICL DM, Cond DM, and SNO, from top to bottom.
+17
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+(a) ν = 1.2 × 10−3
+(b) ν = 1.3 × 10−2
+(c) ν = 6.4 × 10−2
+Figure 4: Scalar-valued empirical PDFs for the Navier–Stokes equation in the out-of-distribution setting. Panels (a)–
+(c) correspond to ν = 1.2 × 10−3, 1.3 × 10−2, and 6.4 × 10−2, respectively. The blue curve denotes the reference
+distribution, while the red, green, and purple curves represent ICL DM, Cond DM, and SNO, respectively. Greater
+overlap with the reference curve indicates better recovery of the target marginal distribution. All methods use n = 100
+prompt samples.
+Figure 5: In-distribution generation for ERA5 temperature at 150 hPa. The upper panel shows 9 prompt samples
+followed by 9 samples generated by ICL DM, Cond DM, and SNO, respectively. The lower-left panel compares the
+scalar-valued empirical PDFs, where blue denotes the reference distribution, while red, green, and purple denote ICL
+DM, Cond DM, and SNO, respectively. The lower right panel reports the spectral discrepancy |log(Ek/Eref
+k )| as a
+function of wavenumber k; values closer to zero indicate better agreement with the reference energy spectrum. All
+methods use n = 100 prompt samples.
+18
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Idx
+Method
+W2 ↓
+MELRw ↓
+MELRu ↓
+JSD ↓
+0
+ICL DM
+2.68e1
+2.43e-1
+2.32e-1
+1.33e-2
+Cond DM
+4.39e1
+1.38e-1
+3.18e-1
+1.30e-2
+SNO
+3.94e1
+2.64e-1
+1.85e-1
+1.40e-2
+10
+ICL DM
+1.85e1
+2.27e-2
+2.87e-2
+1.54e-3
+Cond DM
+3.58e1
+2.36e-1
+3.01e-1
+2.70e-2
+SNO
+2.60e1
+3.10e-2
+3.33e-1
+3.37e-3
+20
+ICL DM
+2.56e1
+1.42e-1
+1.20e-1
+4.59e-3
+Cond DM
+3.04e1
+1.39e-1
+1.91e-1
+2.08e-2
+SNO
+3.06e1
+2.21e-1
+2.61e-1
+2.07e-2
+30
+ICL DM
+2.59e1
+1.13e-1
+2.03e-1
+4.93e-3
+Cond DM
+3.32e1
+2.00e-1
+9.53e-2
+3.20e-2
+SNO
+3.01e1
+1.35e-1
+1.20e-1
+1.52e-2
+40
+ICL DM
+2.32e1
+1.81e-2
+1.37e-1
+1.25e-3
+Cond DM
+2.96e1
+3.45e-1
+1.14e-1
+6.20e-2
+SNO
+2.92e1
+2.40e-1
+2.58e-1
+4.37e-2
+50
+ICL DM
+1.51e1
+2.98e-2
+1.38e-1
+4.55e-3
+Cond DM
+3.55e1
+1.52e-1
+7.47e-1
+8.42e-3
+SNO
+3.03e1
+1.61e-1
+8.28e-1
+3.47e-2
+60
+ICL DM
+1.54e1
+5.25e-2
+1.27e-1
+4.45e-3
+Cond DM
+2.26e1
+1.86e-2
+7.04e-1
+8.89e-2
+SNO
+2.52e1
+3.72e-2
+1.22e0
+1.09e-1
+70
+ICL DM
+1.25e1
+1.33e-1
+3.78e-1
+5.60e-2
+Cond DM
+3.77e1
+8.06e-1
+1.72e0
+2.24e-1
+SNO
+2.33e1
+1.66e-1
+1.18e0
+8.55e-2
+80
+ICL DM
+2.46e1
+7.60e-2
+6.87e-2
+3.06e-3
+Cond DM
+3.84e1
+9.16e-1
+3.18e-1
+1.06e-1
+SNO
+3.16e1
+6.55e-1
+2.42e-1
+5.48e-2
+90
+ICL DM
+1.91e1
+2.17e-1
+1.37e-1
+7.29e-3
+Cond DM
+3.79e1
+8.63e-1
+2.29e-1
+8.84e-2
+SNO
+3.04e1
+2.96e-1
+1.64e-1
+4.86e-3
+Table 2: In-distribution quantitative comparison of ICL DM, Cond DM, and SNO across ten ERA5 tasks, where
+Idx denotes the task defined by a specific variable and pressure level. The discrepancy between the generated and
+reference distributions is evaluated using the Wasserstein-2 distance (W2), weighted and unweighted mean energy log
+ratios (MELRw and MELRu), and the Jensen–Shannon divergence (JSD). Lower values indicate better agreement
+with the reference distribution, and the best result for each task and metric is highlighted in bold. All methods use
+n = 100 prompt samples.
+those generated by the baselines. For quantitative evaluation, we compute the FID, FID-QD, and JSDPDF metrics to
+measure the discrepancy between the generated and reference distributions. The results in Table 3 for K = 5, 10, and
+100 show that our method outperforms the baselines across most metrics and settings. These results indicate that our
+method better captures the underlying data distribution and generates higher-quality samples that more closely match
+the reference distribution. We also observe an overall degradation in performance as K increases. Here, increasing K
+introduces more distinct categorical task modes into the meta-distribution, increasing task heterogeneity and making
+generalization more challenging. This differs from the theoretical K−1/2 scaling, which considers increasing the
+number of tasks under a fixed meta-distribution. Nevertheless, our method maintains a clear performance advantage
+over the baselines even for larger K, further demonstrating its effectiveness in complex multi-class generation tasks.
+19
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Figure 6: In-distribution generation for ERA5 humidity at 150 hPa. The upper panel shows 9 prompt fields followed
+by 9 samples generated by ICL DM, Cond DM, and SNO, respectively. The lower left panel compares the scalar-
+valued empirical PDFs, where blue denotes the reference distribution, while red, green, and purple denote ICL DM,
+Cond DM, and SNO, respectively. The lower right panel reports the spectral discrepancy |log(Ek/Eref
+k )| as a function
+of wavenumber k; values closer to zero indicate better agreement with the reference energy spectrum. All methods
+use n = 100 prompt samples.
+Eiffel Tower
+Mona Lisa
+Airplane
+FID ↓
+FID-QD ↓
+JSD ↓
+FID ↓
+FID-QD ↓
+JSD ↓
+FID ↓
+FID-QD ↓
+JSD ↓
+ICL DM (K = 5)
+122.42
+49.72
+1.87e-3
+102.00
+48.96
+1.34e-3
+146.75
+67.16
+2.76e-3
+Cond DM (K = 5)
+253.54
+96.68
+1.81e-3
+150.14
+109.17
+3.77e-3
+182.03
+104.82
+5.22e-3
+SNO (K = 5)
+328.88
+133.77
+5.64e-3
+195.21
+156.29
+2.36e-2
+207.13
+125.73
+3.80e-3
+ICL DM (K = 10)
+144.59
+50.72
+8.45e-4
+103.04
+50.51
+3.88e-3
+146.90
+72.76
+1.67e-3
+Cond DM (K = 10)
+287.01
+116.46
+3.70e-3
+150.31
+114.13
+6.76e-3
+200.89
+104.64
+2.31e-3
+SNO (K = 10)
+333.72
+138.12
+3.19e-3
+182.83
+135.98
+9.06e-3
+215.78
+129.79
+1.36e-3
+ICL DM (K = 100)
+217.64
+70.31
+2.08e-3
+142.77
+93.19
+4.66e-3
+143.42
+104.52
+4.28e-3
+Cond DM (K = 100)
+316.93
+116.63
+1.54e-3
+171.23
+148.58
+1.41e-2
+197.50
+128.99
+3.38e-3
+SNO (K = 100)
+320.16
+132.71
+4.91e-3
+176.47
+144.63
+1.16e-2
+181.37
+134.70
+3.18e-3
+Table 3: In-distribution quantitative comparison on three representative QuickDraw categories as the number of meta-
+training tasks varies over K ∈{5, 10, 100}. ICL DM, Cond DM, and SNO are evaluated using the standard Fr´echet
+Inception Distance (FID), the QuickDraw-specific FID (FID-QD), and the Jensen–Shannon divergence (JSD) between
+empirical pixel-value distributions. FID-QD is computed using features extracted by a ResNet-18 pretrained on the
+QuickDraw dataset. Lower values indicate better distributional agreement, and the best result for each combination of
+K, category, and metric is highlighted in bold. All methods use n = 200 prompt samples.
+20
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Figure 7: In-distribution generation for ERA5 divergence at 150 hPa. The upper panel shows 9 prompt fields followed
+by 9 samples generated by ICL DM, Cond DM, and SNO, respectively. The lower left panel compares the scalar-
+valued empirical PDFs, where blue denotes the reference distribution, while red, green, and purple denote ICL DM,
+Cond DM, and SNO, respectively. The lower right panel reports the spectral discrepancy |log(Ek/Eref
+k )| as a function
+of wavenumber k; values closer to zero indicate better agreement with the reference energy spectrum. All methods
+use n = 100 prompt samples.
+5.4
+Food-101 Dataset
+Food-101 [3] is a large-scale food image dataset consisting of 101 food categories, with 1,000 images in each cate-
+gory. The images exhibit substantial variation in viewpoint, scale, illumination, occlusion, and plating style. In this
+setting, the meta-distribution can be viewed as the overall distribution over food images, while each task distribution
+corresponds to a specific food category. Following the same procedure as in the QuickDraw experiments, we consider
+K = 5, 10, and 100 categories and perform the same quantitative evaluation. Note that all 1,000 images in each
+selected category are used to construct the empirical task distribution from which both training samples and inference
+prompts and reference samples are drawn. Thus, this experiment evaluates in-distribution generation only and does
+not assess out-of-distribution generalization.
+As shown in Table 4, our method outperforms the baselines across most metrics and settings. This suggests that our
+method more effectively captures the class-conditioned data distribution and generates samples that are closer to the
+reference distribution. As K increases, the performance of all methods generally degrades. As in the QuickDraw
+experiment, this reflects the increased complexity of the categorical task family under a fixed per-task data budget,
+prompt size, and shared model capacity, rather than the K−1/2 scaling under a fixed meta-distribution. Even in this
+more challenging regime, however, our method retains a substantial advantage over the baselines.
+These results should not be interpreted as an inherent limitation of the proposed method to categorical task distribu-
+tions. Rather, they reflect the resource-limited regime considered here, where the per-task data and model capacity
+are fixed relative to an increasingly broad task family. Whether additional data and model capacity can mitigate this
+degradation is left for future work.
+21
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+(a) Eiffel Tower.
+(b) Mona Lisa.
+(c) Airplane.
+Figure 8: Representative in-distribution generation results on the Quick, Draw! dataset with K = 5 task categories.
+Panels (a)–(c) correspond to Eiffel Tower, Mona Lisa, and Airplane, respectively. Within each panel, the rows show
+prompt sketches and samples generated by ICL DM, Cond DM, and SNO, from top to bottom. All methods use
+n = 200 prompt samples, nine of which are displayed.
+22
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+(a) Apple Pie.
+(b) Baby Back Ribs.
+(c) Beef Carpaccio.
+Figure 9: Representative in-distribution generation results on the Food-101 dataset with K = 5 task categories. Panels
+(a)–(c) correspond to Apple Pie, Baby Back Ribs, and Beef Carpaccio, respectively. Within each panel, the rows
+show prompt images and samples generated by ICL DM, Cond DM, and SNO, from top to bottom. All methods use
+n = 200 prompt samples, nine of which are displayed.
+23
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Apple Pie
+Ribs
+Beef Carpaccio
+FID ↓
+FID-Food ↓
+JSD ↓
+FID ↓
+FID-Food ↓
+JSD ↓
+FID ↓
+FID-Food ↓
+JSD ↓
+ICL DM (K = 5)
+173.38
+42.74
+8.18e-3
+185.44
+45.57
+1.23e-2
+153.11
+62.51
+1.74e-2
+Cond DM (K = 5)
+232.05
+67.75
+1.38e-2
+246.44
+84.22
+4.16e-2
+238.29
+120.05
+3.00e-2
+SNO (K = 5)
+231.43
+68.22
+1.91e-2
+260.38
+73.82
+5.14e-2
+230.45
+105.07
+1.89e-2
+ICL DM (K = 10)
+201.67
+46.49
+2.54e-2
+195.81
+53.34
+2.05e-2
+165.45
+83.27
+2.69e-2
+Cond DM (K = 10)
+231.73
+68.71
+2.38e-2
+241.53
+77.92
+3.87e-2
+236.25
+116.03
+2.31e-2
+SNO (K = 10)
+241.85
+72.62
+2.13e-2
+259.45
+83.33
+1.10e-1
+247.94
+131.94
+6.52e-2
+ICL DM (K = 100)
+197.98
+55.60
+1.98e-2
+218.12
+60.53
+2.81e-2
+192.40
+102.73
+1.75e-2
+Cond DM (K = 100)
+221.63
+69.52
+2.64e-2
+255.99
+87.90
+5.79e-2
+238.23
+119.79
+2.08e-2
+SNO (K = 100)
+235.84
+70.97
+2.44e-2
+250.45
+98.45
+5.97e-2
+250.09
+127.23
+1.97e-2
+Table 4: In-distribution quantitative comparison of ICL DM, Cond DM, and SNO on three representative Food-101
+categories as the number of meta-training tasks varies over K ∈{5, 10, 100}. Performance is evaluated using the stan-
+dard Fr´echet Inception Distance (FID), the Food-101-specific FID (FID-Food), and the Jensen–Shannon divergence
+(JSD) between empirical pixel-value distributions. FID-Food is computed using features extracted by a ResNet-18
+pretrained on the Food-101 dataset. Lower values indicate better distributional agreement, and the best result for each
+combination of K, category, and metric is highlighted in bold. All methods use n = 200 prompt samples.
+6
+Conclusion
+We introduced an in-context solution operator learning framework for diffusion models. In our formulation, each target
+distribution is treated as a task drawn from a meta-distribution and is specified at inference time by a finite set of i.i.d.
+context samples. The proposed in-context score operator acts directly on this empirical measure, constructing task-
+dependent score estimates through interactions among the context samples, the noisy query point, and the diffusion
+time. By training the operator through amortized denoising score matching across task distributions, reverse-diffusion
+sampling can be performed on previously unseen tasks without retraining, fine-tuning, or task-specific parameter
+updates.
+A central observation underlying our method is that the task-dependent score admits a Gaussian-kernel conditional-
+mean representation. Its empirical approximation leads to a Nadaraya–Watson estimator that can be represented
+exactly by a model in our constructed transformer class. This connection provides a principled explanation for the pro-
+posed architecture: the transformer parameters encode a distribution-independent kernel-regression algorithm, while
+all task-specific information is supplied through the context set. We further established generalization-error bounds
+that separate the effects of the context size, the number of meta-training tasks, the number of episodes per task, the
+number of diffusion samples per episode, model complexity, and data geometry. The finite-context rate is governed
+by the intrinsic dimension of the task manifold, whereas the ambient dimension enters only through polynomial and
+logarithmic factors. Moreover, the persistent task-level error term shows that additional within-task sampling cannot
+compensate for insufficient meta-training task coverage, highlighting the importance of training on a sufficiently large
+and diverse family of distributions.
+Our empirical results further demonstrate the effectiveness of the proposed framework. For task families of lower
+complexity, such as Navier-Stokes equation, the method achieves both strong in-distribution performance and modest
+out-of-distribution generalization. For task families of intermediate complexity, such as ERA5, it remains effective in
+the in-distribution setting. By contrast, for more complex task families, such as QuickDraw and Food-101, generaliza-
+tion becomes substantially more challenging, and even strong in-distribution performance can be difficult to achieve
+when both the number of in-context prompts and the amount of training data are limited. Importantly, these findings
+should not be interpreted as evidence that the method fails on more complex task families. Rather, they indicate that
+generalization in these settings are intrinsically more challenging under limited context and finite training data.
+7
+Acknowledgments
+24
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+References
+[1] Yu Bai, Fan Chen, Huan Wang, Caiming Xiong, and Song Mei. Transformers as statisticians: Provable in-context
+learning with in-context algorithm selection. In Advances in Neural Information Processing Systems, volume 36,
+pages 57125–57211, 2023.
+[2] Arpit Bansal, Hsiao-Ming Chu, Avi Schwarzschild, Sravanti Sengupta, Micah Goldblum, Jonas Geiping, and
+Tom Goldstein. Universal guidance for diffusion models. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, pages 843–852, 2023.
+[3] Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool. Food-101 – mining discriminative components with
+random forests. In European Conference on Computer Vision, 2014.
+[4] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Nee-
+lakantan, Pranav Shyam, Girish Sastry, Amanda Askell, et al.
+Language models are few-shot learners.
+In
+Advances in Neural Information Processing Systems (NeurIPS), volume 33, pages 1877–1901, 2020.
+[5] Tianqi Chen, Yongfei Liu, Zhendong Wang, Jianbo Yuan, Quanzeng You, Hongxia Yang, and Mingyuan Zhou.
+Improving in-context learning in diffusion models with visual context-modulated prompts.
+arXiv preprint
+arXiv:2312.01408, 2023.
+[6] Frank Cole, Yulong Lu, Wuzhe Xu, and Tianhao Zhang. In-context learning of linear systems: Generalization
+theory and applications to operator learning. arXiv preprint arXiv:2409.12293, 2024.
+[7] Frank Cole, Dixi Wang, Yineng Chen, Yulong Lu, and Rongjie Lai. In-context operator learning on the space of
+probability measures. arXiv preprint arXiv:2601.09979, 2026.
+[8] Prafulla Dhariwal and Alex Nichol. Diffusion models beat GANs on image synthesis. In Advances in Neural
+Information Processing Systems, 2021.
+[9] Xue Feng, Li Wang, Deanna Needell, and Rongjie Lai. Learn to evolve: Self-supervised neural jko operator for
+wasserstein gradient flow. arXiv preprint arXiv:2601.05583, 2026.
+[10] Shivam Garg, Dimitris Tsipras, Percy Liang, and Gregory Valiant. What can transformers learn in-context? a
+case study of simple function classes. arXiv preprint arXiv:2208.01066, 2022.
+[11] Giorgio Giannone, Didrik Nielsen, and Ole Winther.
+Few-shot diffusion models.
+arXiv preprint
+arXiv:2205.15463, 2022.
+[12] Hans Hersbach, Bill Bell, Paul Berrisford, Shoji Hirahara, Andr´as Hor´anyi, Joaqu´ın Mu˜noz-Sabater, Julien Nico-
+las, Carole Peubey, Raluca Radu, Dinand Schepers, et al. The era5 global reanalysis. Quarterly journal of the
+royal meteorological society, 146(730):1999–2049, 2020.
+[13] Jonathan Ho, Ajay N. Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. In Advances in Neural
+Information Processing Systems, 2020.
+[14] Jonathan Ho and Tim Salimans. Classifier-free diffusion guidance. arXiv preprint arXiv:2207.12598, 2022.
+[15] Yankun Hong, Harshit Bansal, and Karen Veroy. A score-based generative solver for pde-constrained inverse
+problems with complex priors. arXiv preprint arXiv:2408.16626, 2024.
+[16] Han Huang and Rongjie Lai. Unsupervised solution operator learning for mean-field games. Journal of Compu-
+tational Physics, 537:114057, 2025.
+[17] Jiahe Huang, Guandao Yang, Zichen Wang, and Jeong Joon Park. Diffusionpde: Generative pde-solving under
+partial observation. arXiv preprint arXiv:2406.17763, 2024.
+[18] Rongjie Huang, Zhou Zhao, Huadai Liu, Jinglin Liu, Chenye Cui, and Yi Ren. ProDiff: Progressive fast diffusion
+model for high-quality text-to-speech. In Proceedings of the 30th ACM International Conference on Multimedia,
+pages 2595–2605, 2022.
+[19] Minki Jeong, Hyeon Cho Kim, Seung Jae Cheon, Byeong-Ju Choi, and Nam Soo Kim. Diff-TTS: A denoising
+diffusion model for text-to-speech. arXiv preprint arXiv:2104.01409, 2021.
+[20] Jonas Jongejan, Henry Rowley, Takashi Kawashima, Justin Kim, and Nick Fox-Gieg. The Quick, Draw! Dataset,
+2017.
+[21] Gwanghyun Kim, Taeseong Kwon, and Jong Chul Ye. DiffusionCLIP: Text-guided diffusion models for robust
+image manipulation. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pages 2426–2435, 2022.
+25
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+[22] Dmitrii Kochkov, Jamie A. Smith, Ayya Alieva, Qing Wang, Michael P. Brenner, and Stephan Hoyer. Machine
+learning–accelerated computational fluid dynamics. Proceedings of the National Academy of Sciences, 118(21),
+2021.
+[23] Zhifeng Kong, Wei Ping, Jiaji Huang, Kexin Zhao, and Bryan Catanzaro. DiffWave: A versatile diffusion model
+for audio synthesis. arXiv preprint arXiv:2009.09761, 2020.
+[24] Nikola Kovachki, Zongyi Li, Burigede Liu, Kamyar Azizzadenesheli, Kaushik Bhattacharya, Andrew Stuart,
+and Anima Anandkumar. Neural operator: Learning maps between function spaces with applications to pdes.
+Journal of Machine Learning Research, 24(89):1–97, 2023.
+[25] Yingcong Li, Muhammed Emrullah Ildiz, Dimitris Papailiopoulos, and Samet Oymak. Transformers as algo-
+rithms: Generalization and stability in in-context learning. In Proceedings of the 40th International Conference
+on Machine Learning, volume 202 of Proceedings of Machine Learning Research, pages 19565–19594. PMLR,
+2023.
+[26] Zongyi Li, Nikola Kovachki, Kamyar Azizzadenesheli, Burigede Liu, Kaushik Bhattacharya, Andrew M. Stuart,
+and Anima Anandkumar. Fourier neural operator for parametric partial differential equations. In International
+Conference on Learning Representations, 2021.
+[27] Xinyu Liao, Aoyang Qin, Jacob Seidman, Junqi Wang, Wei Wang, and Paris Perdikaris. Score neural opera-
+tor: A generative model for learning and generalizing across multiple probability distributions. arXiv preprint
+arXiv:2410.08549, 2024.
+[28] Lu Lu, Pengzhan Jin, Guofei Pang, Zhongqiang Zhang, and George Em Karniadakis. Learning nonlinear oper-
+ators via DeepONet based on the universal approximation theorem of operators. Nature Machine Intelligence,
+3(3):218–229, 2021.
+[29] Yulong Lu and Wuzhe Xu. Generative downscaling of pde solvers with physics-guided diffusion models. Journal
+of scientific computing, 101(3):71, 2024.
+[30] Sewon Min, Mike Lewis, Luke Zettlemoyer, and Hannaneh Hajishirzi. Metaicl: Learning to learn in context.
+In Proceedings of the 2022 conference of the North American chapter of the Association for Computational
+Linguistics: Human Language Technologies, pages 2791–2809, 2022.
+[31] Sewon Min, Xinxi Lyu, Ari Holtzman, Mikel Artetxe, Mike Lewis, Hannaneh Hajishirzi, and Luke Zettlemoyer.
+Rethinking the role of demonstrations: What makes in-context learning work?
+In Proceedings of the 2022
+Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 11048–11064, 2022.
+[32] Gautam Mittal, Jesse Engel, Curtis Hawthorne, and Ian Simon. Symbolic music generation with diffusion mod-
+els. arXiv preprint arXiv:2103.16091, 2021.
+[33] Ivona Najdenkoska, Animesh Sinha, Abhimanyu Dubey, Dhruv Mahajan, Vignesh Ramanathan, and Filip Rade-
+novic. Context diffusion: In-context aware image generation. arXiv preprint arXiv:2312.03584, 2023.
+[34] Weili Nie, Brandon Guo, Yujia Huang, Chaowei Xiao, Arash Vahdat, and Anima Anandkumar. Diffusion models
+for adversarial purification. arXiv preprint arXiv:2205.07460, 2022.
+[35] Tim Pearce, Tabish Rashid, Antti Kanervisto, David Bignell, Mingfei Sun, Raluca Georgescu, Sergio V. Macua,
+Shun Zhang Tan, Ida Momennejad, Katja Hofmann, and Satinder Devlin.
+Imitating human behaviour with
+diffusion models. arXiv preprint arXiv:2301.10677, 2023.
+[36] Ryan Po, Wang Yifan, Volker Golyanik, Kfir Aberman, Jonathan T. Barron, Amit H. Bermano, Eric R. Chan, Tali
+Dekel, Aleksander Holynski, Angjoo Kanazawa, et al. State of the art on diffusion models for visual computing.
+arXiv preprint arXiv:2310.07204, 2023.
+[37] Allan Ravent´os, Mansheej Paul, Feng Chen, and Surya Ganguli. Pretraining task diversity and the emergence
+of non-bayesian in-context learning for regression. In Advances in Neural Information Processing Systems,
+volume 36, pages 14228–14246, 2023.
+[38] Moritz Reuss, Ming Li, Xiaogang Jia, and Rudolf Lioutikov. Goal-conditioned imitation learning using score-
+based diffusion policies. arXiv preprint arXiv:2304.02532, 2023.
+[39] Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bjorn Ommer. High-resolution image
+synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, 2022.
+[40] Zhaiming Shen, Alexander Hsu, Rongjie Lai, and Wenjing Liao. Understanding in-context learning on structured
+manifolds: Bridging attention to kernel methods. In International Conference on Learning Representations,
+volume 2026, pages 42067–42103, 2026.
+26
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+[41] Naufal Shidqi, Chaeyoon Jeong, Sungwon Park, Elke Zeller, Arjun Babu Nellikkattil, and Karandeep
+Singh.
+Generating high-resolution regional precipitation using conditional diffusion model.
+arXiv preprint
+arXiv:2312.07112, 2023.
+[42] Yang Song and Stefano Ermon. Generative modeling by estimating gradients of the data distribution. In Advances
+in Neural Information Processing Systems, volume 32, 2019.
+[43] Yang Song, Jascha Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-
+based generative modeling through stochastic differential equations. arXiv preprint arXiv:2011.13456, 2020.
+[44] Prakhar Srivastava, Ruihan Yang, Gavin Kerrigan, Gideon Dresdner, Jeremy McGibbon, Christopher Brether-
+ton, and Stephan Mandt.
+Precipitation downscaling with spatiotemporal video diffusion.
+arXiv preprint
+arXiv:2312.06071, 2023.
+[45] Jingmin Sun, Yuxuan Liu, Zecheng Zhang, and Hayden Schaeffer. Towards a foundation model for partial
+differential equations: Multioperator learning and extrapolation. Physical Review E, 111(3):035304, 2025.
+[46] Johannes von Oswald, Eyvind Niklasson, Ettore Randazzo, Joao Sacramento, Alexander Mordvintsev, Andrey
+Zhmoginov, and Max Vladymyrov. Transformers learn in-context by gradient descent. In Proceedings of the
+40th International Conference on Machine Learning, volume 202 of Proceedings of Machine Learning Research,
+2023.
+[47] Zhendong Wang, Yifan Jiang, Yadong Lu, Yelong Shen, Pengcheng He, Weizhu Chen, Zhangyang Wang, and
+Mingyuan Zhou. In-context learning unlocked for diffusion models. In Advances in Neural Information Pro-
+cessing Systems, 2023.
+[48] Quanlin Wu, Hang Ye, and Yuntian Gu. Guided diffusion model for adversarial purification from random noise.
+arXiv preprint arXiv:2206.10875, 2022.
+[49] Chaowei Xiao, Zhongzhu Chen, Kun Jin, Jiongxiao Wang, Weili Nie, Mingyan Liu, Anima Anandkumar, Bo Li,
+and Dawn Song. Densepure: Understanding diffusion models for adversarial robustness. In The Eleventh Inter-
+national Conference on Learning Representations, 2023.
+[50] Sang Michael Xie, Aditi Raghunathan, Percy Liang, and Tengyu Ma. An explanation of in-context learning as
+implicit bayesian inference. arXiv preprint arXiv:2111.02080, 2021.
+[51] Wuzhe Xu, Yulong Lu, Lian Shen, Anqing Xuan, and Ali Barzegari. Diffusion-based models for unpaired super-
+resolution in fluid dynamics. arXiv preprint arXiv:2504.05443, 2025.
+[52] Wuzhe Xu, Yulong Lu, Sifan Wang, and Tong-Rui Liu.
+Improving data fidelity via diffusion model-based
+correction and super-resolution. arXiv preprint arXiv:2505.08526, 2025.
+[53] Ling Yang, Zhilong Zhang, Yang Song, Shenda Hong, Runsheng Xu, Yue Zhao, Wentao Zhang, Bin Cui, and
+Ming-Hsuan Yang. Diffusion models: A comprehensive survey of methods and applications. ACM computing
+surveys, 56(4):1–39, 2023.
+[54] Liu Yang, Siting Liu, Tingwei Meng, and Stanley J Osher. In-context operator learning with data prompts for
+differential equation problems. Proceedings of the National Academy of Sciences, 120(39):e2310142120, 2023.
+[55] Tony Zhao, Eric Wallace, Shi Feng, Dan Klein, and Sameer Singh. Calibrate before use: Improving few-shot
+performance of language models. In International Conference on Machine Learning (ICML), pages 12697–
+12706. PMLR, 2021.
+[56] Zheyu Zhu, Haoran Zhao, Hongru He, Yiming Zhong, Shangtong Zhang, Yang Yu, and Weinan Zhang. Diffusion
+models for reinforcement learning: A survey. arXiv preprint arXiv:2311.01223, 2023.
+A
+Notation Table
+B
+Proofs for Section 4
+This section provides the proofs of the theoretical results stated in Section 4. We first establish the exact transformer
+realization in Lemma 1, then derive the statistical error bounds in Lemmas 2 and 3 and the approximation error bound
+in Proposition 1. Finally, we combine these results to prove Theorem 1.
+27
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Table 5: Notation for in-context learning of diffusion-model score operators.
+Notation
+Meaning
+x ∈RD
+Data sample (e.g., an image) with ambient dimension D.
+M ⊂RD
+Data manifold
+d
+Intrinsic dimension of data manifold
+µ ∈P(P(RD))
+Meta-distribution over tasks (distribution of distributions).
+ρ ∼µ
+Task distribution sampled from the meta-distribution.
+t ∈[δ, 1]
+Diffusion time.
+β(t), α(t), σ(t)
+Forward SDE coefficients.
+ε ∼N(0, I)
+Standard Gaussian noise.
+xk ∼ρk
+Clean sample from task distribution ρk.
+xk(t) = α(t)xk + σ(t)ε
+Noisy sample from task distribution ρk at time t.
+ρk,t
+Law/distribution of xt under task ρk.
+pρ,t
+Density of the perturbed task distribution ρt; for task ρk, we write pk,t := pρk,t.
+Sk(xk(t), t)
+Time-t score function: Sk(xk(t), t) = ∇x log ρk,t(x)
+
+x=xk(t).
+T(ρk)
+In-context solution operator.
+n
+Number of samples in a prompt/context set.
+ˆρ = {ˆx(1), . . . , ˆx(n)}
+Empirical distribution (also used as the in-context prompt).
+{ˆρk}K
+k=1
+K training tasks sampled from µ.
+Tθ(ˆρk)(xk(t), t)
+Neural operator predicting score function at xt,k, t given prompt ˆρk.
+K
+Number of task distributions in the meta-training set.
+J
+Number of context-query episodes sampled for each training task.
+NT
+Number of diffusion-time and noise samples for each episode.
+S = {sk}K
+k=1
+Total training set.
+sk = {sk,j,l}J, Nt
+j=1, l=1
+Training set for kth task.
+sk,j,l = {ˆρk,j, xk,j(tk,j,l), tk,j,l}
+One instance containing prompt + a query sample.
+ˆρk,j = {x(1)
+k,j, . . . , x(n)
+k,j }
+In-context prompt for the jth episode for kth task.
+T (LT , mT , dembed, ℓ, LFFN, wFFN, R, κ, D)
+Transformer network class (hypothesis class).
+LT
+Number of transformer blocks (depth).
+mT
+Maximum number of attention heads per block.
+dembed
+Embedding dimension.
+ℓ
+Number of hidden tokens (sequence length inside the transformer).
+LFFN
+Number of layers in each feed-forward subnetwork.
+wFFN
+Hidden width of each feed-forward subnetwork.
+RL
+Uniform bound on the pointwise DSM loss; see (30).
+κ
+Uniform bound on parameter magnitude: ∥θ∥∞≤κ.
+L(T)
+Population DSM loss.
+Ln(Tθ)
+Finite-context population DSM risk with n context samples.
+Ln,K(Tθ)
+Task-discretized risk over K sampled task distributions.
+Ln,K,J(Tθ)
+Task- and episode-discretized risk with J episodes per task.
+LS(Tθ)
+Empirical DSM loss over S.
+T ∗∈arg min L(T)
+Population-risk minimizer.
+Tˆθ ∈T
+Transformer approximator of T ∗obtained by exactly realizing the empirical kernel score estimator.
+Tθ∗;S ∈arg min
+Tθ∈T LS(Tθ)
+Empirical risk minimizer within hypothesis class T given dataset S.
+B.1
+Proof of Lemma 1: Exact Transformer Realization
+For notational convenience, throughout the remainder of the appendix, let ei ∈R2D+6 denote the ith standard basis
+vector, whose ith entry is one and whose remaining entries are zero. We also use 0m ∈Rm to denote the m-
+dimensional zero column vector. Finally, Im×n and 0m×n denote the m × n rectangular identity matrix and zero
+matrix, respectively.
+28
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Proof. It suffices to show that for each coordinate j = 1, · · · , D, there exists a Fθ ∈F such that for x(t) ∈X C
+t ,
+Fθ(s) = Kj(s) :=
+Pn
+i=1 x(i)
+j exp
+
+−∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+Pn
+i=1 exp
+
+−∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+.
+(40)
+Note that since t is given as an input, both α(t) and σ(t) are accessible. After the embedding layer E and the positional
+encoding layer PE, we have
+H = PE + E(s) =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+0D+3
+· · ·
+· · ·
+0D+3
+I1
+· · ·
+· · ·
+Iℓ
+1
+· · ·
+· · ·
+1
+
+∈Rdembed×ℓ= R(2D+6)×(n+1).
+(41)
+Here Iq = (cos(qπ/(2ℓ)), sin(qπ/(2ℓ)))⊤and M is defined in (25). Throughout the proof, take u = c
+√
+M, with
+an absolute constant c, as a uniform bound for the entries of H, H1, H2, H3 on X C
+t . We write B(m, L, w) for a
+transformer block with at most m heads and an FFN of depth L and width w.
+We use hi to denote the i-th column/token in the current embedding matrix. Let us present a step-by-step construction
+of Kj(s) based on H as the input to the first layer of transformer, guided by Interaction Lemma 6.
+• Implementation of x(i)
+j
+for i = 1, · · · , n.
+For each 1 ≤i ≤n, we define each attention head Ai, with Vi = eD+1e⊤
+j The data kernels are in the form
+Qdata
+i
+= Kdata
+i
+=
+
+
+0(2D+2)×3
+0(2D+3)×(2D+3)
+0
+0
+1
+
+
+(42)
+where Qdata
+i
+, Kdata
+i
+∈R(2D+3)×(2D+6). Both the Qdata
+i
+and Kdata
+i
+have the last row and last column’s element equal
+to 1 for all i = 1, · · · , n. By Interaction Lemma 6, we can construct Ai, 1 ≤i ≤n, such that hi interacts with itself
+only, i.e.,
+[Ai(H)]i = ReLU
+ ⟨Qdata
+i
+hi, Kdata
+i
+hi⟩
+
+Vihi = ReLU(1)
+
+
+0D
+x(i)
+j
+0D+5
+
+=
+
+
+0D
+x(i)
+j
+0D+5
+
+,
+and the output [Ai(H)]q = 0 when q̸ = i.
+Let MHA(H) := P
+i Ai(H) denote the multi-head attention, then the residual multi-head attention yields
+MHA(H) + H =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+0
+· · ·
+· · ·
+0
+...
+...
+...
+...
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+Let the feed-forward component have all weights and biases equal to zero. Then
+H1 := B1(H) =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+0
+· · ·
+· · ·
+0
+...
+...
+...
+...
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+In total, this process needs B1 ∈B(n, 1, 2D + 6). The upper bound of the weights parameter in B1 is ∥θB1∥∞≤
+O(D4ℓ2u2b2) = O(D4n2u2b2).
+29
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+• Implementation of −α(t)x(i) for i = 1, · · · , n.
+For each 1 ≤i ≤n, we define each attention head Ai, with
+Vi(t) =
+
+
+0(D+1)×D
+0(D+1)×(D+6)
+−α(t)ID×D
+0D×(D+6)
+05×D
+05×(D+6)
+
+∈R(2D+6)×(2D+6).
+We chose Qdata
+i
+, Kdata
+i
+the same as those used in (42). By Interaction Lemma 6, we can construct Ai, 1 ≤i ≤n,
+such that hi interacts with itself only, i.e.,
+[Ai(H1)]i = ReLU(⟨Qdata
+i
+hi, Kdata
+i
+hi⟩)Vihi = ReLU(1)
+
+
+0D+1
+−α(t)x(i)
+05
+
+=
+
+
+0D+1
+−α(t)x(i)
+05
+
+,
+and [Ai(H1)]t = 0 when t̸ = i.
+Therefore, the residual multi-head attention yields
+MHA(H1) + H1 =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+−α(t)x(1)
+· · ·
+−α(t)x(n)
+0
+0
+· · ·
+· · ·
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+Let the feed-forward component have all weights and biases equal to zero. Then
+H2 := B2(H1) =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+−α(t)x(1)
+· · ·
+−α(t)x(n)
+0
+0
+· · ·
+· · ·
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+In total, this process needs B2 ∈B(n, 1, 2D + 6). The upper bound of the weights parameter in B2 is ∥θB2∥∞≤
+O(D4ℓ2u2b2) = O(D4n2u2b2).
+• Implementation of x(t) −α(t)x(i) for i = 1, · · · , n.
+For each 1 ≤i ≤n, we define each attention head Ai, with
+Vi =
+
+
+0(D+1)×D
+0(D+1)×(D+6)
+ID×D
+0D×(D+6)
+05×D
+05×(D+6)
+
+∈R(2D+6)×(2D+6),
+We chose Qdata
+i
+, Kdata
+i
+the same as those used in (42). By Interaction Lemma 6, we can construct Ai, 1 ≤i ≤n,
+such that hi interacts with hn+1 only, i.e.,
+[Ai(H2)]i = ReLU(⟨Qdata
+i
+hi, Kdata
+i
+hn+1⟩)Vihn+1 = ReLU(1)
+"0D+1
+x(t)
+05
+#
+=
+"0D+1
+x(t)
+05
+#
+,
+and [Ai(H2)]t = 0 when t̸ = i. Therefore, the residual multi-head attention yields
+MHA(H2) + H2 =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+x(t) −α(t)x(1)
+· · ·
+x(t) −α(t)x(n)
+0
+0
+· · ·
+· · ·
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+30
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Let the feed-forward component have all weights and biases equal to zero. Then
+H3 := B3(H2) =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+x(t) −α(t)x(1)
+· · ·
+x(t) −α(t)x(n)
+0
+0
+· · ·
+· · ·
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+In total, this process needs B3 ∈B(n, 1, 2D + 6). The upper bound of the weights parameter in B3 is ∥θB3∥∞≤
+O(D4ℓ2u2b2) = O(D4n2u2b2).
+• Implementation of −∥x(t)−α(t)x(i)∥2
+2σ2(t)
++ M for i = 1, · · · , n.
+Let us define each attention head Ai with Vi = e2D+2e⊤
+2D+6, and data kernels in the form
+For c ∈R, define
+C(c) :=
+
+0
+0
+0
+0
+0
+c
+
+∈R2×3.
+For s ∈{−1, 1}, define
+W(s) :=
+
+
+0(D+1)×(D+1)
+0(D+1)×D
+0(D+1)×2
+0(D+1)×3
+0D×(D+1)
+s
+√
+2σ(t)ID
+0D×2
+0D×3
+02×(D+1)
+02×D
+02×2
+C(
+√
+M)
+
+∈R(2D+3)×(2D+6).
+We then set
+Qdata
+i
+= W(1),
+Kdata
+i
+= W(−1).
+By Interaction Lemma 6, we can construct Ai such that hi interacts with itself only, i.e.,
+[Ai(H3)]i = ReLU(⟨Qdata
+i
+hi, Kdata
+i
+hi⟩)Vihi
+= ReLU
+
+−
+1
+2σ(t)2 ⟨(x(t) −α(t)x(i)), (x(t) −α(t)x(i))⟩+ M
+
+e2D+2
+=
+
+−∥(x(t) −α(t)x(i))∥2
+2σ(t)2
++ M
+
+e2D+2
+and [Ai(H3)]q = 0 for q̸ = i. Here the choice of M in (25) ensures that the argument of ReLU is nonnegative on X C
+t ,
+since ∥x(t) −α(t)x(i)∥2/σ(t) ≤2b
+√
+D/σ(δ) + C.
+Therefore, the residual multi-head attention yields
+MHA(H3) + H3 =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+x(t) −α(t)x(1)
+· · ·
+x(t) −α(t)x(n)
+0
+−∥(x(t)−α(t)x(1))∥2
+2σ(t)2
++ M
+· · ·
+−∥(x(t)−α(t)x(n))∥2
+2σ(t)2
++ M
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+Let the feed-forward component have all weights and biases equal to zero, retaining the common constant M. Then
+H4 := B4(H3) =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
+· · ·
+x(n)
+j
+0
+x(t) −α(t)x(1)
+· · ·
+x(t) −α(t)x(n)
+0
+−∥(x(t)−α(t)x(1))∥2
+2σ(t)2
++ M
+· · ·
+−∥(x(t)−α(t)x(n))∥2
+2σ(t)2
++ M
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+31
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+In total, this process needs B4 ∈B(n, 6, 2D + 6). The upper bound of the weights parameter in B4 is ∥θB4∥∞≤
+O(D4ℓ2M 2 · M 2) = O(D4ℓ2M 4).
+• Implementation of Kj(s) in the (D + 1)-th row and (n + 1)-th column.
+For the last layer of transformer, we will use softmax activation (with a mask of size n). We can construct V =
+eD+1e⊤
+D+1, and data kernels
+Qdata =
+
+
+0
+0
+0
+0
+...
+...
+...
+...
+0
+0
+0
+1
+0
+0
+0
+0
+
+,
+Kdata =
+
+
+0
+0
+0
+0
+...
+...
+...
+...
+1
+0
+0
+0
+0
+0
+0
+0
+
+,
+where Qdata ∈R(2D+3)×(2D+6) has (2D + 2, 2D + 6)-th position equals to 1 and all the other entries are 0, and
+Kdata ∈R(2D+3)×(2D+6) has (2D + 2, 2D + 2)-th position equals to 1 and all the other entries are 0, such that
+[A(H4)]n+1 =
+n
+X
+i=1
+softmax
+ (KdataH4)⊤Qdatahn+1
+
+iV hi
+=
+Pn
+i=1 x(i)
+j exp
+
+M −∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+Pn
+i=1 exp
+
+M −∥x(t)−α(t)x(i)∥2
+2σ2(t)
+
+eD+1 = Kj(s)eD+1.
+The common factor eM cancels in the ratio. Since Qdatahq is the same for every token q, the attention output is also
+Kj(s)eD+1 at the prompt tokens.
+Therefore, the residual attention gives
+A(H4) + H4 =
+
+
+x(1)
+· · ·
+x(n)
+x(t)
+x(1)
+j
++ Kj(s)
+· · ·
+x(n)
+j
++ Kj(s)
+Kj(s)
+x(t) −α(t)x(1)
+· · ·
+x(t) −α(t)x(n)
+0
+−∥(x(t)−α(t)x(1))∥2
+2σ(t)2
++ M
+· · ·
+−∥(x(t)−α(t)x(n))∥2
+2σ(t)2
++ M
+0
+0
+· · ·
+· · ·
+0
+I1
+· · ·
+· · ·
+In+1
+1
+· · ·
+· · ·
+1
+
+
+.
+For the final residual FFN, let z denote the (D + 1)-th input coordinate and set
+f(z) = −b + ReLU(z + b) −ReLU(z −b) −ReLU(z) + ReLU(−z)
+in row D + 1, with all other output rows zero. Then z + f(z) = max{−b, min{z, b}}. Four ReLU units suffice;
+identity maps on their nonnegative activations pad the FFN to depth six. Since |Kj(s)| ≤b, the query output is
+unchanged on X C
+t and bounded by b for every noisy query.
+Therefore, there exists B5 ∈B(1, 6, 2D + 6) such that, on X C
+t ,
+[H5]n+1 := [B5(H4)]n+1 =
+
+
+x(t)
+Kj(s)
+0D+2
+In+1
+1
+
+.
+The upper bound of the weights parameter in B5 is ∥θB5∥∞≤O(D4ℓ2M 2 · 1) = O
+ D4ℓ2M 2
+. Finally, applying a
+decoding layer DE to output the element Kj(s), so we get Fθ(s) = Kj(s) on X C
+t , with |Fθ(s)| ≤b for all x(t) ∈RD,
+as desired.
+The uniform upper bound for the weight parameters in B5 ◦B4 ◦B3 ◦B2 ◦B1 is κ ≤O
+ D4ℓ2M 4
+. All blocks fit
+LFFN = 6 and wFFN = 2D+6. By stacking D such networks componentwise, we can represent the full vector-valued
+kernel regression estimator in (16) on X C
+t , with ∥Gθ(s)∥∞≤b for all x(t) ∈RD.
+32
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+We now fix
+C2
+δ = 2D log 2 + 24 log(1/σ(δ)),
+qδ := P(∥ε∥2 > Cδ).
+(43)
+Since E exp(∥ε∥2
+2/4) = 2D/2, Markov’s inequality gives
+qδ ≤2D/2e−C2
+δ /4 = σ(δ)6.
+(44)
+The radius (43) is compatible with the original weight-budget order. Indeed,
+1
+2
+ 
+2b
+√
+D
+σ(δ) + Cδ
+!2
+≤4b2D
+σ(δ)2 + 2D log 2 + 24 log(1/σ(δ)),
+M ≤cDb2Rσ(δ)−2,
+κ = c0D4(n + 1)2M 4 ≤c1
+D8n2b8R4
+σ(δ)8
+.
+(45)
+Here we used D ≥1, R ≥b ≥1, and log(1/s) ≤s−2 for 0 < s ≤1.
+Token budget.
+The realization uses n + 1 active tokens: the n prompt tokens followed by one query token. This is
+the token budget used in Lemma 1, Proposition 1, and Theorem 1.
+B.2
+Statistic Error I
+Define the pointwise loss
+fθ (ˆρ, x(t), t, ε) :=
+Tθ(ˆρ)(x(t), t) +
+ε
+σ(t)
+
+2
+2
+.
+Then define the episode-level loss
+hθ(ˆρ, x) := Et∼U[δ,1], ε∼N (0,I) [fθ (ˆρ, x(t), t, ε)] ,
+and the task-level loss
+gθ(ρ) := Eˆρ∼ρ⊗n, x∼ρ [hθ(ˆρ, x)] .
+With these abbreviations, the four losses are as follows:
+• The semi-discretized population loss is
+Ln(Tθ) := Eρ∼µ
+
+gθ(ρ)
+
+.
+• The task-discretized loss is
+Ln,K(Tθ) := 1
+K
+K
+X
+k=1
+gθ(ρk).
+• The task- and episode-discretized loss is
+Ln,K,J(Tθ) :=
+1
+KJ
+K
+X
+k=1
+J
+X
+j=1
+hθ (ˆρk,j, xk,j) .
+• The fully discretized empirical loss is
+LS(Tθ) :=
+1
+KJNT
+K
+X
+k=1
+J
+X
+j=1
+NT
+X
+l=1
+fθ (ˆρk,j, xk,j(tk,j,l), tk,j,l, εk,j,l) .
+For the statistical analysis only, set
+f C
+θ = fθ1{∥ε∥2≤Cδ},
+Uδ = max{1, b + Cδ}.
+(46)
+Use the same averages to define hC
+θ , gC
+θ , and the corresponding population and empirical losses. On this event,
+∥H∥∞,∞≤Uδ. This restriction is used only in the proof; the noise law and the training objective remain unchanged.
+33
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+For the statistical bounds below, use the concrete width choice already available in Lemma 1: w = dembed = wFFN,
+with w = 2D + 6, LT = 5, LFFN = 6, and mT = n for the main theorem. Each scalar network has at most
+PT := w(D + 1) + LT
+ 3w2mT + LFFN(w2 + w)
+
+(47)
+free coefficients. This counts the embedding, decoder, one trainable base matrix for each Q/K/V map, and all affine
+FFN matrices and biases. The prescribed time templates in (19) are not free coefficients. Tied weights and unused
+heads only reduce this count.
+We give an explicit covering constant by a layer recurrence. Set s0 = σ(δ), τ = 2 + s−1
+0 , and initialize
+u0 = 1 + DκUδ,
+v0 = DUδ.
+For k = 0, . . . , LT −1, define
+qk = wτκuk,
+ek = w(τuk + τκvk),
+ak = mT (qk + ℓwq3
+k),
+ck = mT (1 + 4wq2
+k + 3ℓwq2
+k)ek,
+zk = uk + ak,
+dk = vk + ck.
+For the FFN in that block, set rk,0 = zk, tk,0 = dk, and, for j = 0, . . . , LFFN −1, let
+rk,j+1 = κ + wκrk,j,
+tk,j+1 = wrk,j + 1 + wκtk,j.
+Complete the block recursion with
+uk+1 = zk + rk,LFFN,
+vk+1 = dk + tk,LFFN.
+The resulting mean-network sensitivity is
+Knet := w(uLT + κvLT ).
+(48)
+In particular, a maximum coefficient perturbation of ε changes every output coordinate by at most Knetε, uniformly
+over the restricted inputs and all t ∈[δ, 1].
+Lemma 4 (Covering number estimation). For the transformer class with the width and fixed time-operation convention
+above, the restricted loss class satisfies, for 0 < η ≤RL,
+log N
+ η, {f C
+θ : Tθ ∈T }, ∥· ∥L∞
+≤DPT log A0,δ
+η
+,
+(49)
+where a sufficient loss-covering constant is
+A0,δ := 4κ(Kloss + 1) + 2RL,
+Kloss := 2D(R + b)
+s4
+0
+Knet.
+(50)
+The same bound holds for hC
+θ and gC
+θ .
+Proof. We prove the network estimate directly. Each scheduled matrix has entry bound τκ; its parameter perturbation
+is at most τε. Fixed time templates have zero parameter difference. A matrix-vector product therefore has magnitude
+at most qk and perturbation at most ekε. The ReLU attention head has magnitude at most ℓwq3
+k and perturbation at
+most 3ℓwq2
+kekε.
+For the normalized softmax readout, if the values have magnitude at most B, then
+| Readout(u, v) −Readout(u′, v′)| ≤2B∥u −u′∥∞+ ∥v −v′∥∞.
+Indeed, the sum of the absolute score derivatives is at most 2B, and the value derivatives are the softmax weights,
+whose sum is one. Interpolating scores and values proves the inequality. Since the attention-score perturbation is at
+most 2wqkekε, the softmax head has perturbation at most (1+4wq2
+k)ekε. Summing these sufficient ReLU and softmax
+bounds over the heads gives ak, ck. Residual addition and the affine/ReLU FFN estimates give the stated recursions.
+The embedding and decoder give the initial values and (48). These estimates use the original blocks and are uniform
+in time.
+By (29), the loss conversion is
+|fθ −fθ′| ≤2D(R + b)
+s4
+0
+∥Gθ −Gθ′∥∞.
+(51)
+34
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Thus the restricted loss is Kloss-Lipschitz in the coefficient maximum norm. Both restricted losses vanish outside the
+same noise event. Partition the DPT -dimensional coefficient cube into cells of side r = η/[2(Kloss + 1)] and select
+one admissible representative from each occupied cell. Allowing endpoint cells, at most
+(2κ/r + 2)DPT =
+4κ(Kloss + 1) + 2η
+η
+DPT
+≤
+A0,δ
+η
+DPT
+representatives suffice. Their coefficient distance from any member of the same cell is at most 2r, so their loss distance
+is strictly below η. The centers belong to the legal bounded-output class. This proves (49). All network operations and
+the restriction event are measurable, and the common loss envelope gives integrability. Probability averaging cannot
+increase uniform distances, so the same parameter grid covers hC and gC.
+We are now ready to prove Lemma 2.
+Proof. Note that
+ES [Ln(Tθ∗;S) −LS(Tθ∗;S)] ≤ES sup
+Tθ∈T
+(Ln(Tθ) −LS(Tθ)).
+Since the tail contribution to the empirical loss is nonnegative and the population tail is at most RLqδ, for every training
+set,
+sup
+Tθ∈T
+(Ln −LS)(Tθ) ≤sup
+Tθ∈T
+(LC
+n −LC
+S)(Tθ) + RLqδ.
+(52)
+It remains to apply the hierarchical symmetrization argument to these auxiliary losses.
+For each fixed Tθ, decompose
+LC
+n (Tθ) −LC
+S(Tθ) = [LC
+n (Tθ) −LC
+n,K(Tθ)]
++ [LC
+n,K(Tθ) −LC
+n,K,J(Tθ)]
++ [LC
+n,K,J(Tθ) −LC
+S(Tθ)].
+The first bracket is the task-level statistical error, the second is the episode-level statistical error, and the third is the
+time/noise discretization error. For the first term, standard symmetrization gives
+Eρ1:K sup
+Tθ∈T
+(LC
+n −LC
+n,K)(Tθ) ≤2Eρ1:K d
+RadK({gC
+θ : Tθ ∈T }; ρ1:K).
+For the second term, condition on all tasks; for the third, condition on all tasks and episodes. Under these conditional
+laws the samples are independent, though they need not be identically distributed. Independent ghost copies and
+Jensen’s inequality give the same symmetrization bound with KJ and KJNT signs, respectively.
+For a function class H evaluated on N observations, write
+d
+RadN(H; Z1:N) := Eζ
+"
+sup
+h∈H
+1
+N
+N
+X
+i=1
+ζih(Zi)
+#
+,
+where the ζi are independent Rademacher variables. By Dudley’s entropy integral,
+E d
+RadN(H) ≤
+inf
+0<ξ≤RL
+ 
+2ξ + 12
+√
+N
+Z RL
+ξ
+p
+log N(η, H, ∥· ∥L∞) dη
+!
+≤
+inf
+0<ξ≤RL
+
+2ξ + 12RL
+√
+N
+q
+DPT log(A0,δ/ξ)
+
+≤RL
+√
+N
+
+12
+s
+DPT log A0,δ
+√
+N
+RL
++ 2
+
+.
+The last inequality is obtained by letting ξ = RL/
+√
+N. Apply this estimate at N = K, KJ, KJNT and sum the three
+bounds. Adding (52) proves (35).
+For the stated network parameters, DPT = O(nD3). Equations (43), (48), and (50) imply
+log A0,δ
+√KJNT
+RL
+≤c log nDKJNT
+σ(δ)
+,
+35
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+where c depends only on b, R and the fixed depths. Indeed, C2
+δ = 2D log 2 + 24 log(1/σ(δ)). For fixed LT = 5 and
+LFFN = 6, the recursions defining Knet are finite polynomials with nonnegative coefficients in D, w, mT , ℓ, κ, Uδ
+and τ = 2 + σ(δ)−1. Hence (50) has polynomial growth in n, D, σ(δ)−1 under the stated weight budget, and its
+logarithm has the displayed order. In particular, the bias-inclusive count satisfies DPT ≤3136nD3 when n, D ≥1;
+the statistical rate is unchanged. Substituting these bounds, RL = D(R + b)2σ(δ)−4, and qδ ≤σ(δ)6 into (35)
+proves (36).
+B.3
+Statistical Error II
+Proof. Note that
+ES[LS(Tˆθ) −Ln(Tˆθ)] = ES[Ln,K(Tˆθ) −Ln(Tˆθ)]
++ ES[Ln,K,J(Tˆθ) −Ln,K(Tˆθ)]
++ ES[LS(Tˆθ) −Ln,K,J(Tˆθ)].
+Since the variables gˆθ(ρk) with ρk
+iid
+∼µ are bounded by RL, Hoeffding’s inequality gives, for any u > 0,
+P(Ln,K(Tˆθ) −Ln(Tˆθ) ≥u) ≤exp
+
+−2Ku2
+(RL)2
+
+.
+Thus with probability at least 1 −ϵ,
+Ln,K(Tˆθ) −Ln(Tˆθ) ≤RL
+r
+log(1/ϵ)
+2K
+,
+and therefore
+ES[Ln,K(Tˆθ) −Ln(Tˆθ)] ≤RL
+r
+log(1/ϵ)
+2K
++ 2ϵRL.
+Conditional Hoeffding bounds at the episode and time–noise levels give the same expressions with KJ and KJNT .
+Combining these three bounds yields (53).
+For every 0 < ϵ < 1, the same argument gives
+ES[LS(Tˆθ) −Ln(Tˆθ)] ≤RL
+r
+log(1/ϵ)
+2
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+
++ 6ϵRL.
+(53)
+For the cutoff used in Theorem 1, set s0 = σ(δ) ∈(0, 1) and choose ϵ = s6
+0. The explicit inequality (53) becomes
+ES[LS(Tˆθ) −Ln(Tˆθ)]
+≤D(R + b)2
+s4
+0
+p
+3 log(1/s0)
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+
++ 6D(R + b)2s2
+0.
+(54)
+Here log(1/s6
+0) = 6 log(1/s0) and RL = D(R+b)2s−4
+0 . For each fixed cutoff, this gives the order in (37); its implied
+constant can depend on the fixed loss envelope. If s0 = 1, taking ϵ = 1/2 and using K, J, NT ≥1 gives the same
+coarse order. When the cutoff varies with n, the theorem proof retains the explicit dependence in (54).
+B.4
+Approximation Error III
+Fix a task distribution ρ and t ∈[δ, 1]. Define
+Kσ(t)(z) = exp
+
+−∥z∥2
+2
+2σ(t)2
+
+,
+ˆNn(x(t)) = 1
+n
+n
+X
+i=1
+Kσ(t)
+
+x(t) −α(t)x(i)
+x(i),
+ˆDn(x(t)) = 1
+n
+n
+X
+i=1
+Kσ(t)
+
+x(t) −α(t)x(i)
+,
+N(x(t)) = Ex∼ρ[Kσ(t)(x(t) −α(t)x) x],
+D(x(t)) = Ex∼ρ[Kσ(t)(x(t) −α(t)x)].
+(55)
+36
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Here D denotes the ambient dimension, whereas D(x(t)) denotes the population kernel denominator. Since the
+Gaussian kernel is strictly positive, Bayes’ formula gives
+K(s) =
+ˆNn(x(t))
+ˆDn(x(t))
+,
+E(x | x(t)) = N(x(t))
+D(x(t)).
+(56)
+The noisy-query density and its score satisfy
+pρ,t(x(t)) =
+1
+(2πσ(t)2)D/2 D(x(t)),
+(57)
+T ∗(ρ)(x(t), t) = −x(t)
+σ(t)2 + α(t)
+σ(t)2 E(x | x(t)).
+(58)
+Differentiation under the integral in (57) is justified by the compact support of ρ and the smooth Gaussian kernel.
+Lemma 5 (Finite prompt approximation error). Under Assumptions 1 and 2, let Tˆθ be the candidate from Lemma 1
+with C = Cδ and weight budget (45). For every task distribution ρ and every t ∈[δ, 1],
+Eˆρ,x,ε∥Tˆθ(ˆρ)(x(t), t) −T ∗(ρ)(x(t), t)∥2
+2 ≤Cb,dAMD
+nσ(δ)d+4 + 4Db2σ(δ)2,
+(59)
+where Cb,d = 32e 2db2, the prompt is sampled from ρ⊗n, and the clean query and noise are independent of the prompt.
+Proof. Assume first that α(t) > 0.
+Control at a fixed noisy query.
+Fix x(t), and suppress the arguments of N, D, ˆNn, ˆDn within this paragraph. The
+centered numerator is
+ˆNn −N
+D
+ˆDn = 1
+n
+n
+X
+i=1
+Kσ(t)
+
+x(t) −α(t)x(i) 
+x(i) −N
+D
+
+.
+Each summand has mean zero, since Ex∼ρ[Kσ(t)(x(t) −α(t)x) (x −N/D)] = 0. Moreover, N/D and every clean
+sample lie in [−b, b]D. Independence therefore yields
+Eˆρ
+ ˆNn −N
+D
+ˆDn
+
+2
+2
+= 1
+nEx∼ρ
+"
+Kσ(t)(x(t) −α(t)x)2
+x −N
+D
+
+2
+2
+#
+≤4Db2
+n
+Ex∼ρ[Kσ(t)(x(t) −α(t)x)2].
+(60)
+On the event ˆDn ≥D/2, divide (60) by D2/4 to obtain
+Eˆρ
+h
+∥K(s) −E(x | x(t))∥2
+21{ ˆ
+Dn≥D/2}
+i
+≤16Db2
+n
+Ex∼ρ[Kσ(t)(x(t) −α(t)x)2]
+D(x(t))2
+.
+On the complementary event, the squared error is at most 4Db2. Chebyshev’s inequality gives
+Pˆρ( ˆDn < D/2) ≤4 Var( ˆDn)
+D2
+= 4
+n
+ 
+Ex∼ρ[Kσ(t)(x(t) −α(t)x)2]
+D(x(t))2
+−1
+!
+.
+Combining both events proves
+Eˆρ∥K(s) −E(x | x(t))∥2
+2 ≤32Db2
+n
+Ex∼ρ[Kσ(t)(x(t) −α(t)x)2]
+D(x(t))2
+.
+(61)
+Integration against the noisy-query law.
+Using (57), the expectation of the ratio in (61) is
+Ex(t)
+"
+Ex∼ρ[Kσ(t)(x(t) −α(t)x)2]
+D(x(t))2
+#
+=
+1
+(2πσ(t)2)D/2
+Z
+RD
+R
+M Kσ(t)(x(t) −α(t)x)2 dρ(x)
+D(x(t))
+dx(t).
+(62)
+The factor D(x(t)) in the query density cancels one denominator. We bound the resulting integral directly, without a
+uniform lower bound on D(x(t)).
+37
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Localization on the clean support.
+Let A1, . . . , AJ′ be a finite measurable partition of M; the symbol J′ here is
+only a partition size and is unrelated to the number of training episodes. Discard cells of zero ρ-mass. For nonnegative
+aj and positive bj,
+P
+j aj
+P
+j bj
+=
+X
+j
+aj
+P
+k bk
+≤
+X
+j
+aj
+bj
+.
+Consequently,
+R
+M Kσ(t)(x(t) −α(t)x)2 dρ(x)
+D(x(t))
+≤
+X
+j
+R
+Aj Kσ(t)(x(t) −α(t)x)2 dρ(x)
+R
+Aj Kσ(t)(x(t) −α(t)x) dρ(x) .
+(63)
+For every positive-mass cell, define its conditional probability law by ρ(B | Aj) = ρ(B ∩Aj)/ρ(Aj) for measurable
+B. The common mass ρ(Aj) cancels from the numerator and denominator of the corresponding term. Thus (62) is at
+most P
+j Ij(t), where
+Ij(t) :=
+1
+(2πσ(t)2)D/2
+Z
+RD
+Ex∼ρ(·|Aj)[Kσ(t)(x(t) −α(t)x)2]
+Ex∼ρ(·|Aj)[Kσ(t)(x(t) −α(t)x)] dx(t).
+(64)
+No lower bound on the mass of a partition cell is needed.
+Gaussian integral on each cell.
+Draw x, x′ independently from ρ(· | Aj). Convexity of u 7→1/u implies, at each
+fixed query,
+Ex[Kσ(t)(x(t) −α(t)x)2]
+Ex′[Kσ(t)(x(t) −α(t)x′)] ≤Ex[Kσ(t)(x(t) −α(t)x)2] Ex′[1/Kσ(t)(x(t) −α(t)x′)]
+= Ex,x′
+"
+Kσ(t)(x(t) −α(t)x)2
+Kσ(t)(x(t) −α(t)x′)
+#
+.
+All integrands are nonnegative. Tonelli’s theorem therefore yields
+Ij(t) ≤Ex,x′
+"
+1
+(2πσ(t)2)D/2
+Z
+RD
+Kσ(t)(x(t) −α(t)x)2
+Kσ(t)(x(t) −α(t)x′) dx(t)
+#
+.
+(65)
+Completing the square gives
+2∥x(t) −α(t)x∥2
+2 −∥x(t) −α(t)x′∥2
+2 = ∥x(t) −α(t)(2x −x′)∥2
+2
+−2α(t)2∥x −x′∥2
+2.
+Hence
+1
+(2πσ(t)2)D/2
+Z
+RD
+Kσ(t)(x(t) −α(t)x)2
+Kσ(t)(x(t) −α(t)x′) dx(t)
+= exp
+α(t)2∥x −x′∥2
+2
+σ(t)2
+
+1
+(2πσ(t)2)D/2
+Z
+RD exp
+
+−∥x(t) −α(t)(2x −x′)∥2
+2
+2σ(t)2
+
+dx(t)
+= exp
+α(t)2∥x −x′∥2
+2
+σ(t)2
+
+.
+(66)
+The normalized Gaussian integral is exactly one in ambient dimension D.
+Choice of the partition.
+Take a cover of M by balls Bj of radius rt = σ(t)/(2α(t)) with centers on M and
+cardinality N(M, rt). Turn the cover into a measurable partition by setting
+A1 = M ∩B1,
+Aj = (M ∩Bj) \
+[
+i<j
+Bi.
+Every cell has diameter at most σ(t)/α(t). Thus (65)–(66) imply Ij(t) ≤e. Applying (61)–(62) and (28),
+Ex(t),ˆρ∥K(s) −E(x | x(t))∥2
+2 ≤32eDb2
+n
+N
+
+M, σ(t)
+2α(t)
+
+≤32eDb2
+n
+N(M, σ(t)/2) ≤Cb,dAMD
+nσ(t)d
+.
+(67)
+The second inequality uses α(t) ≤1 and monotonicity of covering numbers; the last evaluates (28) at σ(t)/2 ≤1.
+38
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Transfer to the transformer candidate.
+On Eδ := {∥ε∥2 ≤Cδ}, Lemma 1 gives Gˆθ = K. On the complement,
+both Gˆθ and E(x | x(t)) have coordinates in [−b, b]. Therefore
+E∥Tˆθ −T ∗∥2
+2 = α(t)2
+σ(t)4 E∥Gˆθ −E(x | x(t))∥2
+2
+≤α(t)2
+σ(t)4 E∥K −E(x | x(t))∥2
+2 + 4Db2α(t)2
+σ(t)4
+qδ
+≤Cb,dAMD
+nσ(δ)d+4 + 4Db2σ(δ)2.
+(68)
+This proves (59). If α(t) = 0, both score functions equal −x(t)/σ(t)2, so the score error is zero and the same bound
+holds.
+Under the stated assumptions, we are now ready to prove Proposition 1.
+Proof. The candidate satisfies the budgets in (33) by (45) and the token-budget discussion. The prompt is conditionally
+independent of the clean query and its perturbation, given the task. Therefore (58) gives
+E
+
+T ∗(ρ)(x(t), t) +
+ε
+σ(t)
+ ρ, t, x(t), ˆρ
+
+= 0.
+Expanding the difference of the two squared losses, the cross term has conditional expectation zero. Consequently,
+Ln(Tθ) −L(T ∗) = Eρ,ˆρ,x,t,ε∥Tθ(ˆρ)(x(t), t) −T ∗(ρ)(x(t), t)∥2
+2.
+(69)
+All quantities are integrable: the two mean terms are bounded and σ(t) ≥σ(δ) > 0. Averaging (59) over the task and
+time distributions proves (34).
+B.5
+Proof of Theorem 1
+Proof. Set s0 = σ(δ) and
+ΦK,J,NT :=
+1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+.
+We use the inequality (54) for Statistical Error II. Since n ≥2 and D, K, J, NT ≥1,
+p
+3 log(1/s0) ≤
+√
+3
+r
+nD3 log nDKJNT
+s0
+.
+Thus its statistical contribution is absorbed into Statistical Error I, while its tail contribution is 6D(R + b)2s2
+0. By
+combining (36), (54), and (34) in (32), we obtain
+ES [Ln(Tθ∗;S) −L(T ∗)]
+≤(C′
+1 +
+√
+3)D(R + b)2
+σ(δ)4
+s
+nD3 log nDKJNT
+σ(δ)
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+
++ Cb,dAMD
+nσ(δ)d+4 + D[4b2 + 7(R + b)2]σ(δ)2.
+(70)
+The coefficient 7(R+b)2 combines the localization remainder (R+b)2 from Statistical Error I and the tail contribution
+6(R + b)2 from Statistical Error II.
+Choose δ such that σ(δ) = n−1/(d+6), as in the statement of the theorem. Then
+log nDKJNT
+σ(δ)
+= log
+
+n1+
+1
+d+6 DKJNT
+
+≤log(n2DKJNT ),
+and
+1
+nσ(δ)d+4 = n−
+2
+d+6 ,
+σ(δ)2 = n−
+2
+d+6 .
+39
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+The loss bound becomes
+RL = D(R + b)2
+σ(δ)4
+= D(R + b)2n4/(d+6),
+so its dependence on n must be included in the statistical term. The candidate from Proposition 1 uses the n + 1
+active-token realization of Lemma 1. Its weight budget satisfies
+κ = O
+D8n2b8R4
+σ(δ)8
+
+= O
+
+D8n
+2d+20
+d+6 b8R4
+.
+Therefore
+ES [Ln(Tθ∗;S) −L(T ∗)]
+≤(C′
+1 +
+√
+3)(R + b)2D5/2n
+1
+2 +
+4
+d+6 p
+log(n2DKJNT )
+ 1
+√
+K
++
+1
+√
+KJ
++
+1
+√KJNT
+
++ D[Cb,dAM + 4b2 + 7(R + b)2]n−
+2
+d+6 .
+(71)
+With C1 = (C′
+1 +
+√
+3)(R + b)2 and C2 = Cb,dAM + 4b2 + 7(R + b)2, absorbing the fixed factors proves (31).
+C
+Auxiliary Lemmas
+For completeness, we state the following lemmas; Their proof can be found in [40].
+Lemma 6 (Interaction Lemma). Let H
+=
+[ht]1≤t≤ℓ
+∈
+Rdembed×ℓbe an embedding matrix such that
+h(dembed−2):(dembed−1)
+t
+= It and hdembed
+t
+= 1. Fix 1 ≤t1, t2 ≤ℓ, 1 ≤i ≤dembed, and ℓ∈N. Suppose dembed ≥5
+and ∥H∥∞,∞< U for some U > 0, and the data kernels Qdata ∈R(dembed−3)×dembed (the first (dembed −3) rows
+in the query matrix Q) and Kdata ∈R(dembed−3)×dembed (the first (dembed −3) rows in the key matrix K) satisfy
+max{∥Qdata∥∞,∞, ∥Kdata∥∞,∞} ≤κ. Then one can construct an attention head A with ReLU activation such that
+[A(H)]t =
+ReLU(⟨Qdataht, Kdataht2⟩)ei
+if t = t1,
+0
+otherwise.
+The weight parameters of this attention head satisfies ∥θA∥∞= O(d4
+embedκ2ℓ2U 2).
+The same positional selection applies to any linear value map V , replacing ei by V ht2. The weight bound becomes
+the maximum of the original bound and ∥V ∥∞,∞.
+Lemma 7 (Decrementing Lemma). Let dembed ≥5 and H = [ht]1≤t≤ℓ∈Rdembed×ℓ, be an embedding matrix such
+that h(dembed−2):(dembed−1)
+t
+= (I1
+t , I2
+t ) = It and hdembed
+t
+= 1. Then for any r1, r2 with 1 ≤r1 ≤r2 ≤dembed −3
+and any k1, k2 with 1 ≤k1, k2 ≤ℓand any M > 0, there exists a six-layer residual feed-forward network (FFN)
+such that
+FFN(ht) + ht =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ht
+if t ∈{1, · · · , k1} ∪{k2, · · · , ℓ}
+
+
+(ht)1
+...
+(ht)r1−1
+(ht)r1 −M
+...
+(ht)r2 −M
+(ht)r2+1
+...
+(ht)dembed−3
+It
+1
+
+
+otherwise
+Additionally, we have ∥θFFN∥∞≤O(ℓM).
+40
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+D
+Additional Experimental Details
+D.1
+Network Architecture
+We provide additional implementation details for the architectures used in our experiments. While the models em-
+ployed in practice are more expressive than the simplified versions presented in the main text for theoretical analysis,
+they retain the same core design principles. All three methods use a time-conditioned, multi-resolution U-Net as the
+denoising backbone, and differ primarily in how the prompt set is encoded and injected. In ICL DM, the prompt set
+is represented by multi-scale features that interact with the noisy query through cross-attention. In Cond DM, the
+prompt set is compressed into a single learned embedding that modulates the U-Net through FiLM-style conditioning.
+In SNO, the learned prompt embedding is replaced by a projected kernel mean embedding (KME), while the denoising
+U-Net remains otherwise the same as in Cond DM.
+ICL DM.
+Our implementation of ICL DM uses a time-conditioned, multi-resolution U-Net with prompt-dependent
+cross-attention. Given an unordered prompt set ˆρ = {x(i)}n
+i=1, a noisy query x(t) and diffusion time t, we first
+encode the diffusion time using a sinusoidal embedding followed by a multilayer perceptron. The prompt set is then
+processed by a prompt encoder composed of an input convolution, an initial downsampling layer, and a hierarchy of
+residual blocks with time modulation. At each resolution, a set-transformer block applies self-attention across the
+prompt elements, allowing information to be exchanged before the features are aggregated by permutation-invariant
+mean pooling. This produces multi-scale key-value feature maps that summarize the prompt set. In parallel, the noisy
+query x(t) is passed through a U-Net encoder-decoder with residual blocks at corresponding resolutions, while cross-
+attention modules at every scale in both the encoder and decoder inject the pooled prompt features into the query
+pathway. After a final upsampling stage to the original spatial resolution, the network outputs the predicted noise
+field, which serves as the model prediction for denoising score matching. Specifically, we use a U-Net architecture
+with 4 resolution levels, where the number of channels at each level is [64, 128, 256, 512]. The timestep embedding
+is produced by a two-layer MLP with hidden dimension 256, each residual block contains two convolutional layers,
+cross-attention uses 4 heads at every scale, and the prompt set transformer uses 2 attention heads.
+Cond DM.
+Our conditional diffusion model uses a time-conditioned, multi-resolution U-Net in which the prompt set
+is compressed into a single global conditioning vector rather than injected through cross-attention. Given an unordered
+prompt set ˆρ = {x(i)}n
+i=1, a noisy query x(t), and diffusion time t, we encode t using a sinusoidal embedding followed
+by a multilayer perceptron. The prompt set is passed through a prompt encoder consisting of an input convolution, an
+initial downsampling layer, and a hierarchy of residual blocks, and only the deepest prompt feature is retained. This
+feature is averaged over the prompt dimension to ensure permutation invariance, aggregated over spatial locations
+by a learned attention-based pooling module, and mapped to a prompt embedding vector. The resulting prompt
+embedding is added to the time embedding and used to modulate all residual blocks of the denoising U-Net through
+FiLM-style conditioning. The denoising network follows an encoder-decoder architecture with skip connections and
+includes a self-attention block at the bottleneck to enhance global spatial interactions. A final upsampling stage restores
+the original spatial resolution, after which the network predicts the noise field used for denoising score matching.
+Specifically, the U-Net has 4 resolution levels with channel dimensions [64,128,256,512]; the timestep embedding
+and prompt embedding both have dimension 256; the spatial attention pooling module uses a hidden dimension of
+128; and both the deepest prompt self-attention block and the bottleneck self-attention block use 2 attention heads.
+SNO.
+Our implementation of SNO uses a time-conditioned, multi-resolution U-Net in which the conditioning infor-
+mation is provided by a kernel mean embedding (KME) of the prompt set rather than by cross-attention over prompt
+features. Given a KME vector associated with the prompt set, a noisy query x(t), and diffusion time t, we first encode
+the diffusion time using a sinusoidal embedding followed by a multilayer perceptron. The KME vector is then mapped
+by a two-layer projection network to the same latent dimension as the timestep embedding, and the resulting condi-
+tioning vector is added to the time embedding. This combined embedding is used to modulate all residual blocks in
+the denoising U-Net through FiLM-style conditioning. Other than replacing the prompt encoder and attention-based
+prompt pooling in Cond DM by the KME projection module, the rest of the denoising architecture is identical to the
+conditional diffusion model baseline. Specifically, we use a U-Net architecture with 4 resolution levels, where the
+number of channels at each level is [64, 128, 256, 512]. The timestep embedding and projected KME embedding both
+have dimension 256, and the bottleneck self-attention block uses 2 attention heads.
+D.2
+Training Details
+All models are trained using the Adam optimizer with a learning rate of 1e-4 and a batch size of 32.
+41
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+Dataset
+Resolution
+K
+B
+n
+m
+Epochs
+NS
+128x128
+100
+1000
+100
+100
+400
+ERA5
+128x128
+100
+1000
+100
+100
+400
+QuickDraw
+64x64
+5, 10, 100
+2000
+200
+200
+400
+Food-101
+128x128
+5, 10, 100
+1000
+200
+200
+2000
+Table 6: Dataset specifications and sampling parameters used in the experiments. Here, K denotes the number of
+meta-training tasks, B the number of samples used for training per task, n the number of prompt samples provided to
+the model, m the number of generated samples used for evaluation, and Epochs the number of training epochs used
+for ICL DM, Cond DM, and SNO.
+For sampling, we set δ = 10−4 and discretize the reverse-time SDE using Nrev = 1000 Euler–Maruyama steps for all
+experiments.
+D.3
+Evaluation Metrics
+The metrics used to evaluate the performance of the models are as follows:
+• Scalar-Valued Empirical Probability Density Functions (PDFs). For each ensemble of scalar field values
+{ui}N
+i=1 := {ui,p,q | i = 1, . . . , N; p, q = 1, . . . , Nx},
+we estimate the empirical probability density function (PDF) of the scalar variable u using Kernel Density
+Estimation (KDE):
+PDF(u) :=
+1
+Nsh
+Ns
+X
+k=1
+K
+u −uk
+h
+
+,
+Ns = N × N 2
+x,
+(72)
+where K(·) is a smooth kernel function, typically chosen as the Gaussian kernel,
+K(z) =
+1
+√
+2π exp
+
+−z2
+2
+
+,
+(73)
+and h > 0 denotes the bandwidth parameter controlling the smoothness of the resulting density estimate.
+• Jensen–Shannon divergence (JSD) of PDFs. Given two empirical datasets {xi}n
+i=1 and {yj}m
+j=1, we first
+estimate their corresponding probability density functions p and q. The Jensen–Shannon divergence between
+p and q is defined by
+JSD(p∥q) := 1
+2 KL(p∥m) + 1
+2 KL(q∥m),
+m := 1
+2(p + q),
+(74)
+where KL denotes the Kullback–Leibler divergence.
+• Energy spectra. For a scalar field f(x) defined on a uniform grid {xn}, the energy spectrum describes how
+the energy of f is distributed across Fourier modes. It is defined by
+Ef(k) =
+X
+|k|=k
+
+X
+n
+f(xn) exp (−j 2π k · xn/L)
+
+2
+,
+(75)
+where xn denotes the grid points, j is the imaginary unit, k is the wave vector, and k = |k| is its magnitude.
+Thus, Ef(k) represents the total energy contained in all Fourier modes with wave number magnitude k.
+• Mean Energy Log Ratio (MELR). To measure the spectral alignment between two empirical datasets
+{xi}n
+i=1 and {yj}m
+j=1, we consider the Mean Energy Log Ratio (MELR), defined as
+MELR(x, y) =
+X
+k
+wk
+log
+Ex(k)
+Ey(k)
+ ,
+(76)
+where Ex(k) and Ey(k) denote the average energy spectra of the two datasets at wave number k, and wk is
+a user-specified weight function. If wk = 1 for all k, we obtain the unweighted mean energy log ratio. If
+wk = Ey(k)/ P
+j Ey(j), we obtain the weighted mean energy log ratio.
+42
+
+
+Transformer-based In-Context Score Operator Learning for Diffusion Models
+A PREPRINT
+• Fr´echet Inception Distance (FID). The Fr´echet Inception Distance (FID) quantifies the discrepancy between
+the distributions of real and generated images by comparing the means and covariance matrices of features
+extracted from a pretrained Inception-v3 network; smaller values indicate better agreement.
+• Problem-specific FID. We use standard Fr´echet-distance formula, but evaluate it in a problem-specific fea-
+ture space rather than the default feature space induced by an ImageNet-pretrained Inception-v3 network.
+Specifically, we replace the standard Inception encoder with a feature extractor trained for the dataset of
+interest. For both the Quick, Draw! dataset [20] and the Food-101 dataset [3], we use a ResNet-18 model
+pretrained on the corresponding dataset to extract features from real and generated samples, and then compute
+the FID score from the resulting empirical feature distributions. The corresponding metrics are denoted by
+FID-QD and FID-Food, respectively.
+43
